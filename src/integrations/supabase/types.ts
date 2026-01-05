@@ -298,8 +298,117 @@ export type Database = {
           },
         ]
       }
+      invitation_account_access: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          invitation_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          invitation_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          invitation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitation_account_access_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitation_account_access_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "invitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitation_account_group_access: {
+        Row: {
+          account_group_id: string
+          created_at: string
+          id: string
+          invitation_id: string
+        }
+        Insert: {
+          account_group_id: string
+          created_at?: string
+          id?: string
+          invitation_id: string
+        }
+        Update: {
+          account_group_id?: string
+          created_at?: string
+          id?: string
+          invitation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitation_account_group_access_account_group_id_fkey"
+            columns: ["account_group_id"]
+            isOneToOne: false
+            referencedRelation: "account_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitation_account_group_access_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "invitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitation_company_access: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          invitation_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          invitation_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          invitation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitation_company_access_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitation_company_access_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "invitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
+          access_all: boolean | null
           company_id: string
           created_at: string
           email: string
@@ -313,6 +422,7 @@ export type Database = {
           token_hash: string | null
         }
         Insert: {
+          access_all?: boolean | null
           company_id: string
           created_at?: string
           email: string
@@ -326,6 +436,7 @@ export type Database = {
           token_hash?: string | null
         }
         Update: {
+          access_all?: boolean | null
           company_id?: string
           created_at?: string
           email?: string
@@ -922,6 +1033,64 @@ export type Database = {
             columns: ["to_account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_account_access: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_account_access_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_account_group_access: {
+        Row: {
+          account_group_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          account_group_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          account_group_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_account_group_access_account_group_id_fkey"
+            columns: ["account_group_id"]
+            isOneToOne: false
+            referencedRelation: "account_groups"
             referencedColumns: ["id"]
           },
         ]

@@ -130,8 +130,9 @@ export function useUsers(companyId: string | null) {
     fetchInvitations();
   }, [fetchUsers, fetchInvitations]);
 
-  const createInvitation = async (email: string, role: AppRole, name: string, expiresAt: string): Promise<{ id: string; tempPassword: string } | null> => {
-    if (!companyId) return null;
+  const createInvitation = async (email: string, role: AppRole, name: string, expiresAt: string, inviteCompanyId?: string): Promise<{ id: string; tempPassword: string } | null> => {
+    const targetCompanyId = inviteCompanyId || companyId;
+    if (!targetCompanyId) return null;
 
     try {
       // Generate a secure token using the database function
@@ -161,7 +162,7 @@ export function useUsers(companyId: string | null) {
           email,
           role,
           name,
-          company_id: companyId,
+          company_id: targetCompanyId,
           temp_password: tempPassword, // Keep for backward compatibility
           token_hash: hashData as string,
           expires_at: expiresAt,

@@ -75,6 +75,7 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
   const [isSupervisor, setIsSupervisor] = useState(false);
   
   // Access control state
+  const [selectedMainCompany, setSelectedMainCompany] = useState<string>(companyId || '');
   const [groupsWithAccounts, setGroupsWithAccounts] = useState<GroupWithAccounts[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [accessAll, setAccessAll] = useState(true);
@@ -180,10 +181,10 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
   };
 
   const handleCreateInvitation = async () => {
-    if (!email.trim() || !name.trim()) return;
+    if (!email.trim() || !name.trim() || !selectedMainCompany) return;
     
     setSaving(true);
-    const result = await createInvitation(email.trim(), role, name.trim(), expiresAt.toISOString());
+    const result = await createInvitation(email.trim(), role, name.trim(), expiresAt.toISOString(), selectedMainCompany);
     
     if (result) {
       // Save access selections
@@ -244,6 +245,7 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
     setEmail('');
     setRole('operador');
     setExpiresAt(addDays(new Date(), 7));
+    setSelectedMainCompany(companyId || '');
     setAccessAll(true);
     setSelectedCompanies(new Set());
     setSelectedGroups(new Set());
@@ -253,8 +255,8 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
 
   const totalAccessSelected = selectedCompanies.size + selectedGroups.size + selectedAccounts.size;
 
-  // Filter other companies (not current one)
-  const otherCompanies = companies.filter(c => c.id !== companyId);
+  // Filter other companies (not selected main one)
+  const otherCompanies = companies.filter(c => c.id !== selectedMainCompany);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -344,6 +346,28 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
                 />
               </div>
               
+              <div className="space-y-2">
+                <Label htmlFor="inviteCompany">Empresa</Label>
+                <Select value={selectedMainCompany} onValueChange={setSelectedMainCompany}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded flex-shrink-0" 
+                            style={{ backgroundColor: `hsl(${company.color})` }}
+                          />
+                          {company.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="inviteRole">Cargo</Label>
                 <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>

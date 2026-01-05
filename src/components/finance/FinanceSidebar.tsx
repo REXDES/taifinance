@@ -16,7 +16,8 @@ import {
   Plus,
   Settings,
   FolderCog,
-  Receipt
+  Receipt,
+  ClipboardList
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -58,14 +59,18 @@ interface FinanceSidebarProps {
 // Main menu items (not in submenus)
 const mainMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: <Home className="w-4 h-4" /> },
-  { view: 'balance', label: 'Balancete', icon: <BarChart3 className="w-4 h-4" /> },
-  { view: 'statement', label: 'Extrato', icon: <FileText className="w-4 h-4" /> },
 ];
 
 // Sub-menu items for "Transações"
 const transacoesMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
   { view: 'transactions', label: 'Lançamentos', icon: <ArrowUpDown className="w-4 h-4" /> },
   { view: 'transfers', label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" /> },
+];
+
+// Sub-menu items for "Relatórios"
+const relatoriosMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
+  { view: 'balance', label: 'Balancete', icon: <BarChart3 className="w-4 h-4" /> },
+  { view: 'statement', label: 'Extrato', icon: <FileText className="w-4 h-4" /> },
 ];
 
 // Sub-menu items for "Cadastros"
@@ -243,6 +248,57 @@ export function FinanceSidebar({
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pl-4 space-y-1 mt-1">
                   {transacoesMenuItems.map((item) => (
+                    <Button 
+                      key={item.view}
+                      variant="ghost" 
+                      className={cn(
+                        "w-full justify-start gap-2 text-foreground hover:bg-accent",
+                        currentView === item.view && "bg-accent"
+                      )}
+                      onClick={() => onChangeView(item.view)}
+                    >
+                      {item.icon}
+                      {item.label}
+                    </Button>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Relatórios submenu */}
+            {collapsed ? (
+              // When collapsed, show relatorios items as regular icons
+              relatoriosMenuItems.map((item) => (
+                <Tooltip key={item.view}>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className={cn("w-full", currentView === item.view && "bg-accent")}
+                      onClick={() => onChangeView(item.view)}
+                    >
+                      {item.icon}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{item.label}</TooltipContent>
+                </Tooltip>
+              ))
+            ) : (
+              <Collapsible defaultOpen={relatoriosMenuItems.some(item => currentView === item.view)}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-between text-foreground hover:bg-accent"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ClipboardList className="w-4 h-4" />
+                      Relatórios
+                    </span>
+                    <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                  {relatoriosMenuItems.map((item) => (
                     <Button 
                       key={item.view}
                       variant="ghost" 

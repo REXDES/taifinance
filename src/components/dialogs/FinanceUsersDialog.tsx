@@ -125,7 +125,8 @@ export function FinanceUsersDialog({ open, onOpenChange, companyId, isSupervisor
                       {roleLabels[user.role]}
                     </Badge>
                     
-                    {(isSupervisor || currentUserRole === 'gerente') && user.user_id !== currentUser?.id && (
+                    {/* Gerentes não podem gerenciar supervisores */}
+                    {(isSupervisor || (currentUserRole === 'gerente' && user.role !== 'supervisor')) && user.user_id !== currentUser?.id && (
                       <>
                         <Button
                           variant="outline"

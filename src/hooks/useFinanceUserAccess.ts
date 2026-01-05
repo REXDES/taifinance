@@ -20,6 +20,7 @@ interface AccountAccess {
 interface UserRoleInfo {
   role: 'supervisor' | 'gerente' | 'operador';
   company_limit: number | null;
+  invitation_limit: number | null;
 }
 
 export function useFinanceUserAccess(userId: string | null) {
@@ -51,7 +52,7 @@ export function useFinanceUserAccess(userId: string | null) {
           .eq('user_id', userId),
         supabase
           .from('user_roles')
-          .select('role, company_limit')
+          .select('role, company_limit, invitation_limit')
           .eq('user_id', userId)
           .single()
       ]);
@@ -227,6 +228,23 @@ export function useFinanceUserAccess(userId: string | null) {
     }
   };
 
+  const updateInvitationLimit = async (limit: number | null) => {
+    if (!userId) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ invitation_limit: limit })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      toast({ title: 'Limite de convites atualizado' });
+      await fetchAccess();
+    } catch (error: any) {
+      toast({ title: 'Erro ao atualizar limite', description: error.message, variant: 'destructive' });
+    }
+  };
+
   // Check methods
   const hasCompanyAccess = (companyId: string) => companyAccess.some(c => c.company_id === companyId);
   const hasAccountGroupAccess = (groupId: string) => accountGroupAccess.some(g => g.account_group_id === groupId);
@@ -246,6 +264,7 @@ export function useFinanceUserAccess(userId: string | null) {
     removeAccountAccess,
     updateRole,
     updateCompanyLimit,
+    updateInvitationLimit,
     hasCompanyAccess,
     hasAccountGroupAccess,
     hasAccountAccess,

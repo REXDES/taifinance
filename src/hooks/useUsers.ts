@@ -145,16 +145,16 @@ export function useUsers(companyId: string | null) {
       
       const token = tokenData as string;
       
-      // Hash the token for storage
+      // Use first 8 characters as the user-visible code for simplicity
+      const visibleCode = token.substring(0, 8).toUpperCase();
+      
+      // Hash the visible code (not the full token) so validation works correctly
       const { data: hashData, error: hashError } = await supabase
-        .rpc('hash_invitation_token', { token });
+        .rpc('hash_invitation_token', { token: visibleCode });
       
       if (hashError || !hashData) {
         throw hashError || new Error('Failed to hash token');
       }
-      
-      // Still generate temp_password for backward compatibility but also store token_hash
-      const tempPassword = Math.random().toString(36).slice(-8).toUpperCase();
       
       const { data, error } = await supabase
         .from('invitations')
@@ -163,7 +163,7 @@ export function useUsers(companyId: string | null) {
           role,
           name,
           company_id: targetCompanyId,
-          temp_password: tempPassword, // Keep for backward compatibility
+          temp_password: visibleCode, // Store the visible code for reference
           token_hash: hashData as string,
           expires_at: expiresAt,
           company_limit: role === 'gerente' ? companyLimitValue : null,
@@ -179,8 +179,8 @@ export function useUsers(companyId: string | null) {
       });
 
       await fetchInvitations();
-      // Return the token (not tempPassword) for display to user
-      return { id: data.id, tempPassword: token.substring(0, 16).toUpperCase() };
+      // Return the visible code for display to user
+      return { id: data.id, tempPassword: visibleCode };
     } catch (error: any) {
       toast({
         title: 'Erro ao criar convite',

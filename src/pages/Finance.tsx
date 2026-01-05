@@ -16,32 +16,58 @@ import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
+
+type AppRole = Database['public']['Enums']['app_role'];
 
 export type FinanceView = 'dashboard' | 'accounts' | 'transactions' | 'transfers' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow';
+
+interface UserRoleInfo {
+  role: AppRole;
+  companyLimit: number | null;
+  companiesCreated: number;
+}
 
 const Finance = () => {
   const { user, signOut } = useAuth();
   const { companies, createCompany, refetch: refetchCompanies } = useCompanies();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<FinanceView>('dashboard');
-  const [isSupervisor, setIsSupervisor] = useState(false);
+  const [userRole, setUserRole] = useState<UserRoleInfo | null>(null);
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const [showInvitations, setShowInvitations] = useState(false);
 
-  // Check if user is supervisor
+  const isSupervisor = userRole?.role === 'supervisor';
+  const isGerente = userRole?.role === 'gerente';
+  const canAccessUserManagement = isSupervisor || isGerente;
+  const canCreateCompany = isSupervisor || (isGerente && userRole.companyLimit !== null && userRole.companiesCreated < userRole.companyLimit);
+
+  // Check user role and company limit
   useEffect(() => {
-    const checkSupervisor = async () => {
+    const checkUserRole = async () => {
       if (!user?.id) return;
-      const { data } = await supabase
+      
+      // Get role and company_limit
+      const { data: roleData } = await supabase
         .from('user_roles')
-        .select('role')
+        .select('role, company_limit')
         .eq('user_id', user.id)
-        .eq('role', 'supervisor')
         .maybeSingle();
-      setIsSupervisor(!!data);
+      
+      // Count companies created by this user
+      const { count } = await supabase
+        .from('companies')
+        .select('*', { count: 'exact', head: true })
+        .eq('created_by', user.id);
+      
+      setUserRole({
+        role: roleData?.role || 'operador',
+        companyLimit: roleData?.company_limit ?? null,
+        companiesCreated: count || 0,
+      });
     };
-    checkSupervisor();
+    checkUserRole();
   }, [user?.id]);
 
   // Auto-select company
@@ -112,6 +138,8 @@ const Finance = () => {
         currentView={currentView}
         onChangeView={setCurrentView}
         isSupervisor={isSupervisor}
+        isGerente={isGerente}
+        canCreateCompany={canCreateCompany}
         onCreateCompany={() => setIsCreateCompanyOpen(true)}
         onManageCompanies={() => setIsCreateCompanyOpen(true)}
         onOpenUsers={() => setShowUsers(true)}
@@ -123,7 +151,7 @@ const Finance = () => {
           onSignOut={signOut}
           companyName={selectedCompany?.name}
           onOpenUsers={() => setShowUsers(true)}
-          showUsersButton={!!selectedCompanyId && isSupervisor}
+          showUsersButton={!!selectedCompanyId && canAccessUserManagement}
         />
         <main className="flex-1 overflow-auto p-6">
           {renderContent()}
@@ -141,12 +169,14 @@ const Finance = () => {
         onOpenChange={setShowUsers}
         companyId={selectedCompanyId}
         isSupervisor={isSupervisor}
+        currentUserRole={userRole?.role || 'operador'}
       />
 
       <FinanceInvitationsDialog
         open={showInvitations}
         onOpenChange={setShowInvitations}
         companyId={selectedCompanyId}
+        currentUserRole={userRole?.role || 'operador'}
       />
     </div>
   );

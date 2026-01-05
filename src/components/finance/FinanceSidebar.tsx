@@ -11,7 +11,9 @@ import {
   Tags,
   PanelLeftClose,
   PanelLeft,
-  Building2
+  Building2,
+  Plus,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +43,8 @@ interface FinanceSidebarProps {
   currentView: FinanceView;
   onChangeView: (view: FinanceView) => void;
   isSupervisor?: boolean;
+  onCreateCompany?: () => void;
+  onManageCompanies?: () => void;
 }
 
 const menuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
@@ -60,6 +64,8 @@ export function FinanceSidebar({
   currentView,
   onChangeView,
   isSupervisor = false,
+  onCreateCompany,
+  onManageCompanies,
 }: FinanceSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
@@ -186,6 +192,50 @@ export function FinanceSidebar({
             ))}
           </div>
         </nav>
+
+        {/* Footer - Settings for supervisors */}
+        {isSupervisor && (
+          <div className="p-2 border-t border-border">
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="w-full"
+                    onClick={onManageCompanies}
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Gerenciar Empresas</TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                onClick={onManageCompanies}
+              >
+                <Settings className="w-4 h-4" />
+                Gerenciar Empresas
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Create company button when no companies exist */}
+        {companies.length === 0 && !collapsed && (
+          <div className="p-2 border-t border-border">
+            <Button 
+              variant="default" 
+              className="w-full justify-start gap-2"
+              onClick={onCreateCompany}
+            >
+              <Plus className="w-4 h-4" />
+              Criar Primeira Empresa
+            </Button>
+          </div>
+        )}
       </aside>
     </TooltipProvider>
   );

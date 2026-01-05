@@ -8,6 +8,7 @@ export interface TransactionCategory {
   name: string;
   type: 'income' | 'expense' | 'both';
   color: string;
+  monthly_budget?: number | null;
   created_at: string;
   subcategories?: TransactionSubcategory[];
 }
@@ -77,6 +78,7 @@ export function useTransactionCategories(companyId: string | null) {
     name: string;
     type: 'income' | 'expense' | 'both';
     color?: string;
+    monthly_budget?: number | null;
   }) => {
     if (!companyId) return null;
 
@@ -88,6 +90,7 @@ export function useTransactionCategories(companyId: string | null) {
           name: data.name,
           type: data.type,
           color: data.color || '#8B5CF6',
+          monthly_budget: data.monthly_budget || null,
         })
         .select()
         .single();

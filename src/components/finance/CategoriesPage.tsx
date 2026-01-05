@@ -18,15 +18,20 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
   const [editingCategory, setEditingCategory] = useState<TransactionCategory | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [form, setForm] = useState({ name: '', type: 'expense' as 'income' | 'expense' | 'both', color: '#8B5CF6' });
+  const [form, setForm] = useState({ name: '', type: 'expense' as 'income' | 'expense' | 'both', color: '#8B5CF6', monthly_budget: '' });
   const [subName, setSubName] = useState('');
 
   const typeLabels = { income: 'Receita', expense: 'Despesa', both: 'Ambos' };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
   const handleSave = async () => {
-    if (editingCategory) await updateCategory(editingCategory.id, { name: form.name, type: form.type, color: form.color });
-    else await createCategory({ name: form.name, type: form.type, color: form.color });
-    setShowDialog(false); setEditingCategory(null); setForm({ name: '', type: 'expense', color: '#8B5CF6' });
+    const budgetValue = form.monthly_budget ? parseFloat(form.monthly_budget) : null;
+    if (editingCategory) await updateCategory(editingCategory.id, { name: form.name, type: form.type, color: form.color, monthly_budget: budgetValue });
+    else await createCategory({ name: form.name, type: form.type, color: form.color, monthly_budget: budgetValue });
+    setShowDialog(false); setEditingCategory(null); setForm({ name: '', type: 'expense', color: '#8B5CF6', monthly_budget: '' });
   };
 
   const handleSaveSub = async () => {
@@ -46,12 +51,13 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-foreground">Categorias</h1><p className="text-muted-foreground">Gerencie grupos e sub-grupos</p></div>
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogTrigger asChild><Button onClick={() => { setEditingCategory(null); setForm({ name: '', type: 'expense', color: '#8B5CF6' }); }}><Plus className="w-4 h-4 mr-2" />Nova Categoria</Button></DialogTrigger>
+          <DialogTrigger asChild><Button onClick={() => { setEditingCategory(null); setForm({ name: '', type: 'expense', color: '#8B5CF6', monthly_budget: '' }); }}><Plus className="w-4 h-4 mr-2" />Nova Categoria</Button></DialogTrigger>
           <DialogContent><DialogHeader><DialogTitle>{editingCategory ? 'Editar' : 'Nova'} Categoria</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div><Label>Nome</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
               <div><Label>Tipo</Label><Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as any })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="income">Receita</SelectItem><SelectItem value="expense">Despesa</SelectItem><SelectItem value="both">Ambos</SelectItem></SelectContent></Select></div>
               <div><Label>Cor</Label><Input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
+              <div><Label>Orçamento Mensal (opcional)</Label><Input type="number" step="0.01" placeholder="0,00" value={form.monthly_budget} onChange={(e) => setForm({ ...form, monthly_budget: e.target.value })} /></div>
               <Button onClick={handleSave} className="w-full" disabled={!form.name}>Salvar</Button>
             </div>
           </DialogContent>
@@ -68,11 +74,12 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
                     <span className="font-medium">{cat.name}</span>
                     <span className="text-xs text-muted-foreground">({typeLabels[cat.type]})</span>
+                    {cat.monthly_budget && <span className="text-xs text-muted-foreground">• Orç: {formatCurrency(cat.monthly_budget)}</span>}
                     <span className="text-xs text-muted-foreground">• {cat.subcategories?.length || 0} sub</span>
                   </CollapsibleTrigger>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => { setSelectedCategoryId(cat.id); setShowSubDialog(true); }}><Plus className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => { setEditingCategory(cat); setForm({ name: cat.name, type: cat.type, color: cat.color }); setShowDialog(true); }}><Pencil className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => { setEditingCategory(cat); setForm({ name: cat.name, type: cat.type, color: cat.color, monthly_budget: cat.monthly_budget?.toString() || '' }); setShowDialog(true); }}><Pencil className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => confirm('Excluir?') && deleteCategory(cat.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
                 </div>

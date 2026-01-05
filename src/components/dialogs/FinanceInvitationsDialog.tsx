@@ -60,7 +60,7 @@ const roleLabels: Record<AppRole, string> = {
 
 export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: FinanceInvitationsDialogProps) {
   const { invitations, loading, createInvitation, deleteInvitation } = useUsers(companyId);
-  const { companies } = useCompanies();
+  const { companies, refetch: refetchCompanies } = useCompanies();
   const { accounts, groups } = useAccounts(companyId);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -91,6 +91,13 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
     };
     checkSupervisor();
   }, [user]);
+
+  // Refresh companies when dialog opens
+  useEffect(() => {
+    if (open) {
+      refetchCompanies();
+    }
+  }, [open, refetchCompanies]);
 
   // Build groups with accounts structure
   useEffect(() => {

@@ -409,7 +409,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
               <TableBody>
                 {transactions.map((transaction) => (
                   <TableRow key={transaction.id}>
-                    <TableCell>{new Date(transaction.date).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell>{new Date(transaction.date + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {transaction.type === 'income' ? (

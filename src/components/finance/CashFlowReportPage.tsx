@@ -11,6 +11,8 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useTransfers } from '@/hooks/useTransfers';
 import { useUsers } from '@/hooks/useUsers';
+import { useCompanies } from '@/hooks/useCompanies';
+import { useProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -45,8 +47,13 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
   const { transactions, loading: transactionsLoading } = useTransactions(companyId);
   const { transfers, loading: transfersLoading } = useTransfers(companyId);
   const { users } = useUsers(companyId);
+  const { companies } = useCompanies();
+  const { profile } = useProfile();
 
   const loading = accountsLoading || transactionsLoading || transfersLoading;
+  
+  const companyName = companies.find(c => c.id === companyId)?.name || 'Empresa';
+  const currentUserName = profile?.full_name || profile?.email || 'Usuário';
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -224,19 +231,58 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
       return;
     }
 
-    const data = flowData.map(entry => ({
-      'Data': format(parseISO(entry.date), 'dd/MM/yyyy'),
-      'Conta': entry.accountName,
-      'Categoria': entry.category,
-      'Descrição': entry.description,
-      'Saída': entry.expense > 0 ? formatCurrencyPlain(entry.expense) : '',
-      'Entrada': entry.income > 0 ? formatCurrencyPlain(entry.income) : '',
-      'Saldo': formatCurrencyPlain(entry.runningBalance),
-      'Usuário': entry.userName,
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
+    
+    // Header data
+    const headerData = [
+      ['FLUXO FINANCEIRO'],
+      [`Empresa: ${companyName}`],
+      [`Emitido por: ${currentUserName}`],
+      [`Período: ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`],
+      [`Data de emissão: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`],
+      [],
+      ['Data', 'Conta', 'Categoria', 'Descrição', 'Saída', 'Entrada', 'Saldo', 'Usuário'],
+    ];
+
+    // Data rows
+    const dataRows = flowData.map(entry => [
+      format(parseISO(entry.date), 'dd/MM/yyyy'),
+      entry.accountName,
+      entry.category,
+      entry.description,
+      entry.expense > 0 ? formatCurrencyPlain(entry.expense) : '',
+      entry.income > 0 ? formatCurrencyPlain(entry.income) : '',
+      formatCurrencyPlain(entry.runningBalance),
+      entry.userName,
+    ]);
+
+    // Footer with totals
+    const footerData = [
+      [],
+      ['', '', '', 'TOTAIS:', formatCurrencyPlain(totals.expense), formatCurrencyPlain(totals.income - totals.initialBalance), formatCurrencyPlain(totals.finalBalance), ''],
+      [`Saldo Inicial: ${formatCurrency(totals.initialBalance)}`],
+      [`Total Entradas: ${formatCurrency(totals.income - totals.initialBalance)}`],
+      [`Total Saídas: ${formatCurrency(totals.expense)}`],
+      [`Saldo Final: ${formatCurrency(totals.finalBalance)}`],
+      [],
+      ['Copyright © Tai Finance'],
+    ];
+
+    const allData = [...headerData, ...dataRows, ...footerData];
+    const ws = XLSX.utils.aoa_to_sheet(allData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 12 }, // Data
+      { wch: 20 }, // Conta
+      { wch: 18 }, // Categoria
+      { wch: 35 }, // Descrição
+      { wch: 15 }, // Saída
+      { wch: 15 }, // Entrada
+      { wch: 15 }, // Saldo
+      { wch: 20 }, // Usuário
+    ];
+
     XLSX.utils.book_append_sheet(wb, ws, 'Fluxo Financeiro');
     
     const fileName = `fluxo-financeiro_${format(startDate, 'yyyy-MM-dd')}_${format(endDate, 'yyyy-MM-dd')}.xlsx`;
@@ -252,38 +298,65 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
     }
 
     const doc = new jsPDF({ orientation: 'landscape' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     
-    // Title
-    doc.setFontSize(16);
-    doc.text('Fluxo Financeiro', 14, 15);
+    // Header
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('FLUXO FINANCEIRO', pageWidth / 2, 15, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Empresa: ${companyName}`, 14, 25);
+    doc.text(`Emitido por: ${currentUserName}`, 14, 31);
+    
     doc.setFontSize(10);
-    doc.text(`Período: ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`, 14, 22);
+    doc.text(`Período: ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`, pageWidth - 14, 25, { align: 'right' });
+    doc.text(`Data de emissão: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - 14, 31, { align: 'right' });
 
-    // Summary
-    doc.setFontSize(9);
-    doc.text(`Saldo Inicial: ${formatCurrency(totals.initialBalance)}`, 14, 30);
-    doc.text(`Total Entradas: ${formatCurrency(totals.income - totals.initialBalance)}`, 80, 30);
-    doc.text(`Total Saídas: ${formatCurrency(totals.expense)}`, 150, 30);
-    doc.text(`Saldo Final: ${formatCurrency(totals.finalBalance)}`, 220, 30);
-
-    // Table
+    // Table data
     const tableData = flowData.map(entry => [
       format(parseISO(entry.date), 'dd/MM/yyyy'),
       entry.accountName,
       entry.category,
-      entry.description.length > 30 ? entry.description.substring(0, 30) + '...' : entry.description,
+      entry.description.length > 35 ? entry.description.substring(0, 35) + '...' : entry.description,
       entry.expense > 0 ? formatCurrencyPlain(entry.expense) : '-',
       entry.income > 0 ? formatCurrencyPlain(entry.income) : '-',
       formatCurrencyPlain(entry.runningBalance),
       entry.userName,
     ]);
 
+    // Totals row
+    tableData.push([
+      '', '', '', 'TOTAIS:',
+      formatCurrencyPlain(totals.expense),
+      formatCurrencyPlain(totals.income - totals.initialBalance),
+      formatCurrencyPlain(totals.finalBalance),
+      ''
+    ]);
+
     autoTable(doc, {
       head: [['Data', 'Conta', 'Categoria', 'Descrição', 'Saída', 'Entrada', 'Saldo', 'Usuário']],
       body: tableData,
-      startY: 35,
+      startY: 38,
       styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
+      headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 245, 245] }, // Light gray for alternate rows
+      bodyStyles: { fillColor: [255, 255, 255] }, // White for other rows
+      foot: [[
+        { content: `Saldo Inicial: ${formatCurrency(totals.initialBalance)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
+        { content: `Total Entradas: ${formatCurrency(totals.income - totals.initialBalance)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
+        { content: `Total Saídas: ${formatCurrency(totals.expense)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
+        { content: `Saldo Final: ${formatCurrency(totals.finalBalance)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
+      ]],
+      footStyles: { fillColor: [230, 230, 230], textColor: [0, 0, 0] },
+      didDrawPage: () => {
+        // Footer on each page
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.text('Copyright © Tai Finance', pageWidth / 2, pageHeight - 10, { align: 'center' });
+      },
     });
 
     const fileName = `fluxo-financeiro_${format(startDate, 'yyyy-MM-dd')}_${format(endDate, 'yyyy-MM-dd')}.pdf`;

@@ -724,6 +724,7 @@ export type Database = {
           company_id: string
           created_at: string
           id: string
+          monthly_budget: number | null
           name: string
           type: string
           updated_at: string
@@ -733,6 +734,7 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
+          monthly_budget?: number | null
           name: string
           type: string
           updated_at?: string
@@ -742,6 +744,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           id?: string
+          monthly_budget?: number | null
           name?: string
           type?: string
           updated_at?: string

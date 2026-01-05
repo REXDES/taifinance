@@ -29,8 +29,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Filter, Target } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useMemo } from 'react';
+import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface TransactionsPageProps {
   companyId: string;
@@ -59,6 +62,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
 
   const [showDialog, setShowDialog] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showBudget, setShowBudget] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const [form, setForm] = useState({
@@ -72,6 +76,39 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     notes: '',
   });
 
+  // Calculate current month's spending per category with budget
+  const budgetSummary = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return categories
+      .filter(cat => cat.monthly_budget && cat.monthly_budget > 0)
+      .map(cat => {
+        const spent = transactions
+          .filter(t => {
+            const tDate = new Date(t.date + 'T00:00:00');
+            return t.category_id === cat.id && 
+                   t.type === 'expense' &&
+                   tDate.getMonth() === currentMonth &&
+                   tDate.getFullYear() === currentYear;
+          })
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const budget = cat.monthly_budget || 0;
+        const remaining = budget - spent;
+        const percentage = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+
+        return {
+          category: cat,
+          spent,
+          budget,
+          remaining,
+          percentage,
+          isOverBudget: spent > budget,
+        };
+      });
+  }, [categories, transactions]);
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -386,6 +423,57 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Budget Summary */}
+      {budgetSummary.length > 0 && (
+        <Collapsible open={showBudget} onOpenChange={setShowBudget}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-accent/50 rounded-t-lg">
+                <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                  <Target className="w-4 h-4" />
+                  Orçamento do Mês
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {showBudget ? 'Clique para recolher' : 'Clique para expandir'}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0 space-y-4">
+                {budgetSummary.map(({ category, spent, budget, remaining, percentage, isOverBudget }) => (
+                  <div key={category.id} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
+                        <span className="font-medium text-sm">{category.name}</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className={isOverBudget ? 'text-red-600 font-medium' : 'text-muted-foreground'}>
+                          {formatCurrency(spent)}
+                        </span>
+                        <span className="text-muted-foreground"> / {formatCurrency(budget)}</span>
+                      </div>
+                    </div>
+                    <Progress 
+                      value={percentage} 
+                      className={`h-2 ${isOverBudget ? '[&>div]:bg-red-500' : ''}`}
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{percentage.toFixed(0)}% utilizado</span>
+                      <span className={isOverBudget ? 'text-red-600' : remaining > 0 ? 'text-green-600' : ''}>
+                        {isOverBudget 
+                          ? `${formatCurrency(Math.abs(remaining))} acima` 
+                          : `${formatCurrency(remaining)} disponível`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
 
       {/* Transactions List */}
       <Card>

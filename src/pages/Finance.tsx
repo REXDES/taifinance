@@ -11,10 +11,11 @@ import { StatementPage } from '@/components/finance/StatementPage';
 import { CategoriesPage } from '@/components/finance/CategoriesPage';
 import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
 import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
+import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { supabase } from '@/integrations/supabase/client';
 
-export type FinanceView = 'dashboard' | 'accounts' | 'transactions' | 'transfers' | 'balance' | 'statement' | 'categories' | 'category-report';
+export type FinanceView = 'dashboard' | 'accounts' | 'transactions' | 'transfers' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow';
 
 const Finance = () => {
   const { user, signOut } = useAuth();
@@ -91,6 +92,8 @@ const Finance = () => {
         return <CategoriesPage companyId={selectedCompanyId} />;
       case 'category-report':
         return <CategoryReportPage companyId={selectedCompanyId} />;
+      case 'cash-flow':
+        return <CashFlowReportPage companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }

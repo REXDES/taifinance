@@ -1,12 +1,23 @@
 import { useState, useMemo, Fragment } from 'react';
 import { useAccounts, Account, AccountGroup } from '@/hooks/useAccounts';
 import { useTransactions, Transaction } from '@/hooks/useTransactions';
+import { useTransfers, Transfer } from '@/hooks/useTransfers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet, ArrowLeftRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+// Entry unificado para exibir transações e transferências
+interface AccountEntry {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense' | 'transfer_in' | 'transfer_out';
+  categoryName?: string;
+}
 
 interface BalanceSheetPageProps { 
   companyId: string; 
@@ -15,6 +26,7 @@ interface BalanceSheetPageProps {
 export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
   const { accounts, groups, totalBalance, loading: accLoading } = useAccounts(companyId);
   const { transactions, totalIncome, totalExpense, loading: txLoading } = useTransactions(companyId);
+  const { transfers, loading: trLoading } = useTransfers(companyId);
   
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
@@ -37,19 +49,59 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
     return grouped;
   }, [accounts]);
 
-  // Get transactions by account
-  const transactionsByAccount = useMemo(() => {
-    const byAccount: Map<string, Transaction[]> = new Map();
+  // Get all entries (transactions + transfers) by account
+  const entriesByAccount = useMemo(() => {
+    const byAccount: Map<string, AccountEntry[]> = new Map();
     
+    // Add transactions
     transactions.forEach(tx => {
       if (!byAccount.has(tx.account_id)) {
         byAccount.set(tx.account_id, []);
       }
-      byAccount.get(tx.account_id)!.push(tx);
+      byAccount.get(tx.account_id)!.push({
+        id: tx.id,
+        date: tx.date,
+        description: tx.description,
+        amount: tx.amount,
+        type: tx.type,
+        categoryName: tx.category?.name,
+      });
+    });
+    
+    // Add transfers (each transfer creates 2 entries: out from source, in to destination)
+    transfers.forEach(tr => {
+      // Transfer out (from account)
+      if (!byAccount.has(tr.from_account_id)) {
+        byAccount.set(tr.from_account_id, []);
+      }
+      byAccount.get(tr.from_account_id)!.push({
+        id: `${tr.id}-out`,
+        date: tr.date,
+        description: `Transferência para ${tr.to_account?.name || 'outra conta'}${tr.description ? ` - ${tr.description}` : ''}`,
+        amount: tr.amount,
+        type: 'transfer_out',
+      });
+      
+      // Transfer in (to account)
+      if (!byAccount.has(tr.to_account_id)) {
+        byAccount.set(tr.to_account_id, []);
+      }
+      byAccount.get(tr.to_account_id)!.push({
+        id: `${tr.id}-in`,
+        date: tr.date,
+        description: `Transferência de ${tr.from_account?.name || 'outra conta'}${tr.description ? ` - ${tr.description}` : ''}`,
+        amount: tr.amount,
+        type: 'transfer_in',
+      });
+    });
+    
+    // Sort entries by date (newest first)
+    byAccount.forEach((entries) => {
+      entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
     
     return byAccount;
-  }, [transactions]);
+  }, [transactions, transfers]);
 
   // Calculate group totals
   const getGroupTotal = (groupId: string | null): number => {
@@ -81,7 +133,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
     });
   };
 
-  if (accLoading || txLoading) {
+  if (accLoading || txLoading || trLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -204,7 +256,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                     {/* Account Rows (when group is expanded) */}
                     {isGroupExpanded && groupAccounts.map((account) => {
                       const isAccountExpanded = expandedAccounts.has(account.id);
-                      const accountTransactions = transactionsByAccount.get(account.id) || [];
+                      const accountEntries = entriesByAccount.get(account.id) || [];
 
                       return (
                         <Fragment key={account.id}>
@@ -216,9 +268,9 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                                 size="icon"
                                 className="h-6 w-6"
                                 onClick={() => toggleAccount(account.id)}
-                                disabled={accountTransactions.length === 0}
+                                disabled={accountEntries.length === 0}
                               >
-                                {accountTransactions.length > 0 ? (
+                                {accountEntries.length > 0 ? (
                                   isAccountExpanded ? (
                                     <ChevronDown className="h-4 w-4" />
                                   ) : (
@@ -236,9 +288,9 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                                   style={{ backgroundColor: account.color }} 
                                 />
                                 <span>{account.name}</span>
-                                {accountTransactions.length > 0 && (
+                                {accountEntries.length > 0 && (
                                   <span className="text-xs text-muted-foreground">
-                                    ({accountTransactions.length} lançamentos)
+                                    ({accountEntries.length} lançamentos)
                                   </span>
                                 )}
                               </div>
@@ -251,36 +303,56 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                             </TableCell>
                           </TableRow>
 
-                          {/* Transaction Rows (when account is expanded) */}
-                          {isAccountExpanded && accountTransactions.map((tx) => (
-                            <TableRow key={tx.id} className="bg-muted/20 text-sm">
-                              <TableCell></TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2 pl-12">
-                                  <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                    tx.type === 'income' 
-                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                  }`}>
-                                    {tx.type === 'income' ? 'R' : 'D'}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    {format(new Date(tx.date), 'dd/MM/yyyy', { locale: ptBR })}
-                                  </span>
-                                  <span>{tx.description}</span>
-                                  {tx.category && (
-                                    <span className="text-xs text-muted-foreground">
-                                      [{tx.category.name}]
+                          {/* Entry Rows (when account is expanded) */}
+                          {isAccountExpanded && accountEntries.map((entry) => {
+                            const getEntryStyle = () => {
+                              switch (entry.type) {
+                                case 'income':
+                                  return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+                                case 'expense':
+                                  return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+                                case 'transfer_in':
+                                  return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+                                case 'transfer_out':
+                                  return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+                              }
+                            };
+                            const getEntryLabel = () => {
+                              switch (entry.type) {
+                                case 'income': return 'R';
+                                case 'expense': return 'D';
+                                case 'transfer_in': return 'T↓';
+                                case 'transfer_out': return 'T↑';
+                              }
+                            };
+                            const isPositive = entry.type === 'income' || entry.type === 'transfer_in';
+                            
+                            return (
+                              <TableRow key={entry.id} className="bg-muted/20 text-sm">
+                                <TableCell></TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2 pl-12">
+                                    <span className={`text-xs px-1.5 py-0.5 rounded ${getEntryStyle()}`}>
+                                      {getEntryLabel()}
                                     </span>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell></TableCell>
-                              <TableCell className={`text-right ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                                {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                    <span className="text-muted-foreground">
+                                      {format(new Date(entry.date), 'dd/MM/yyyy', { locale: ptBR })}
+                                    </span>
+                                    <span>{entry.description}</span>
+                                    {entry.categoryName && (
+                                      <span className="text-xs text-muted-foreground">
+                                        [{entry.categoryName}]
+                                      </span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className={`text-right ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                                  {isPositive ? '+' : '-'}{formatCurrency(entry.amount)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </Fragment>
                       );
                     })}
@@ -325,7 +397,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
 
                   {expandedGroups.has('ungrouped') && ungroupedAccounts.map((account) => {
                     const isAccountExpanded = expandedAccounts.has(account.id);
-                    const accountTransactions = transactionsByAccount.get(account.id) || [];
+                    const accountEntries = entriesByAccount.get(account.id) || [];
 
                     return (
                       <Fragment key={account.id}>
@@ -336,9 +408,9 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                               size="icon"
                               className="h-6 w-6"
                               onClick={() => toggleAccount(account.id)}
-                              disabled={accountTransactions.length === 0}
+                              disabled={accountEntries.length === 0}
                             >
-                              {accountTransactions.length > 0 ? (
+                              {accountEntries.length > 0 ? (
                                 isAccountExpanded ? (
                                   <ChevronDown className="h-4 w-4" />
                                 ) : (
@@ -356,9 +428,9 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                                 style={{ backgroundColor: account.color }} 
                               />
                               <span>{account.name}</span>
-                              {accountTransactions.length > 0 && (
+                              {accountEntries.length > 0 && (
                                 <span className="text-xs text-muted-foreground">
-                                  ({accountTransactions.length} lançamentos)
+                                  ({accountEntries.length} lançamentos)
                                 </span>
                               )}
                             </div>
@@ -371,35 +443,55 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                           </TableCell>
                         </TableRow>
 
-                        {isAccountExpanded && accountTransactions.map((tx) => (
-                          <TableRow key={tx.id} className="bg-muted/20 text-sm">
-                            <TableCell></TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2 pl-12">
-                                <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                  tx.type === 'income' 
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                }`}>
-                                  {tx.type === 'income' ? 'R' : 'D'}
-                                </span>
-                                <span className="text-muted-foreground">
-                                  {format(new Date(tx.date), 'dd/MM/yyyy', { locale: ptBR })}
-                                </span>
-                                <span>{tx.description}</span>
-                                {tx.category && (
-                                  <span className="text-xs text-muted-foreground">
-                                    [{tx.category.name}]
+                        {isAccountExpanded && accountEntries.map((entry) => {
+                          const getEntryStyle = () => {
+                            switch (entry.type) {
+                              case 'income':
+                                return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+                              case 'expense':
+                                return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+                              case 'transfer_in':
+                                return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+                              case 'transfer_out':
+                                return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+                            }
+                          };
+                          const getEntryLabel = () => {
+                            switch (entry.type) {
+                              case 'income': return 'R';
+                              case 'expense': return 'D';
+                              case 'transfer_in': return 'T↓';
+                              case 'transfer_out': return 'T↑';
+                            }
+                          };
+                          const isPositive = entry.type === 'income' || entry.type === 'transfer_in';
+                          
+                          return (
+                            <TableRow key={entry.id} className="bg-muted/20 text-sm">
+                              <TableCell></TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2 pl-12">
+                                  <span className={`text-xs px-1.5 py-0.5 rounded ${getEntryStyle()}`}>
+                                    {getEntryLabel()}
                                   </span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell></TableCell>
-                            <TableCell className={`text-right ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                              {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                                  <span className="text-muted-foreground">
+                                    {format(new Date(entry.date), 'dd/MM/yyyy', { locale: ptBR })}
+                                  </span>
+                                  <span>{entry.description}</span>
+                                  {entry.categoryName && (
+                                    <span className="text-xs text-muted-foreground">
+                                      [{entry.categoryName}]
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell></TableCell>
+                              <TableCell className={`text-right ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                                {isPositive ? '+' : '-'}{formatCurrency(entry.amount)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </Fragment>
                     );
                   })}

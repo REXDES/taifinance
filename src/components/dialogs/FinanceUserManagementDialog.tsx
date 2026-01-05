@@ -36,6 +36,8 @@ interface FinanceUserManagementDialogProps {
   userName: string;
   userEmail: string;
   userAvatar?: string | null;
+  currentUserRole?: AppRole;
+  selectedCompanyId?: string | null;
 }
 
 interface GroupWithAccounts {
@@ -59,6 +61,8 @@ export function FinanceUserManagementDialog({
   userName,
   userEmail,
   userAvatar,
+  currentUserRole = 'operador',
+  selectedCompanyId,
 }: FinanceUserManagementDialogProps) {
   const {
     companyAccess,
@@ -84,19 +88,10 @@ export function FinanceUserManagementDialog({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [loadingData, setLoadingData] = useState(false);
   const [companyLimitInput, setCompanyLimitInput] = useState<string>('');
-  const [isSupervisor, setIsSupervisor] = useState(false);
-
-  // Check if current user is supervisor
-  useEffect(() => {
-    const checkSupervisor = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase.rpc('is_supervisor', { _user_id: user.id });
-        setIsSupervisor(!!data);
-      }
-    };
-    checkSupervisor();
-  }, []);
+  
+  const isSupervisor = currentUserRole === 'supervisor';
+  const isGerente = currentUserRole === 'gerente';
+  const canManageAccounts = isSupervisor || isGerente;
 
   // Set company limit input when roleInfo loads
   useEffect(() => {
@@ -407,8 +402,12 @@ export function FinanceUserManagementDialog({
 
                 <ScrollArea className="h-[300px]">
                   <div className="space-y-2 pr-4">
-                    {/* Group by company */}
-                    {companies.filter(c => isSupervisorRole || hasCompanyAccess(c.id)).map(company => {
+                    {/* Group by company - managers only see selected company */}
+                    {companies.filter(c => {
+                      if (isSupervisor) return isSupervisorRole || hasCompanyAccess(c.id);
+                      if (isGerente && selectedCompanyId) return c.id === selectedCompanyId;
+                      return hasCompanyAccess(c.id);
+                    }).map(company => {
                       const companyGroups = groupsWithAccounts.filter(g => g.company_id === company.id);
                       if (companyGroups.length === 0) return null;
 
@@ -441,7 +440,7 @@ export function FinanceUserManagementDialog({
                                     id={`group-${group.id}`}
                                     checked={hasAccountGroupAccess(group.id)}
                                     onCheckedChange={(checked) => handleGroupToggle(group.id, !!checked)}
-                                    disabled={!isSupervisor}
+                                    disabled={!canManageAccounts}
                                   />
                                 )}
 
@@ -477,7 +476,7 @@ export function FinanceUserManagementDialog({
                                         id={`account-${account.id}`}
                                         checked={hasAccountAccess(account.id)}
                                         onCheckedChange={(checked) => handleAccountToggle(account.id, !!checked)}
-                                        disabled={!isSupervisor}
+                                        disabled={!canManageAccounts}
                                       />
                                       
                                       <div

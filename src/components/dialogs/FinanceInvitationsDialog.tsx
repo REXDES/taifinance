@@ -43,6 +43,7 @@ interface FinanceInvitationsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companyId: string | null;
+  currentUserRole: AppRole;
 }
 
 interface GroupWithAccounts {
@@ -58,7 +59,7 @@ const roleLabels: Record<AppRole, string> = {
   operador: 'Operador',
 };
 
-export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: FinanceInvitationsDialogProps) {
+export function FinanceInvitationsDialog({ open, onOpenChange, companyId, currentUserRole }: FinanceInvitationsDialogProps) {
   const { invitations, loading, createInvitation, deleteInvitation } = useUsers(companyId);
   const { companies, refetch: refetchCompanies } = useCompanies();
   const { accounts, groups } = useAccounts(companyId);
@@ -72,7 +73,10 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
   const [saving, setSaving] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [createdInvite, setCreatedInvite] = useState<{ id: string; tempPassword: string } | null>(null);
-  const [isSupervisor, setIsSupervisor] = useState(false);
+  const [userCompanyIds, setUserCompanyIds] = useState<Set<string>>(new Set());
+  
+  const isSupervisor = currentUserRole === 'supervisor';
+  const isGerente = currentUserRole === 'gerente';
   
   // Access control state
   const [selectedInviteCompanies, setSelectedInviteCompanies] = useState<Set<string>>(new Set(companyId ? [companyId] : []));
@@ -83,21 +87,25 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
   const [companyLimit, setCompanyLimit] = useState<number | null>(null);
 
+  // Fetch user's accessible companies for managers
   useEffect(() => {
-    const checkSupervisor = async () => {
-      if (!user) return;
-      const { data } = await supabase.rpc('is_supervisor', { _user_id: user.id });
-      setIsSupervisor(!!data);
+    const fetchUserCompanies = async () => {
+      if (!user || isSupervisor) return;
+      const { data } = await supabase
+        .from('user_companies')
+        .select('company_id')
+        .eq('user_id', user.id);
+      if (data) {
+        setUserCompanyIds(new Set(data.map(uc => uc.company_id)));
+      }
     };
-    checkSupervisor();
-  }, [user]);
+    fetchUserCompanies();
+  }, [user, isSupervisor]);
 
-  // Refresh companies when dialog opens
-  useEffect(() => {
-    if (open) {
-      refetchCompanies();
-    }
-  }, [open, refetchCompanies]);
+  // Filter companies for managers
+  const availableCompanies = isSupervisor 
+    ? companies 
+    : companies.filter(c => userCompanyIds.has(c.id));
 
   // Build groups with accounts structure
   useEffect(() => {
@@ -363,7 +371,7 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
                   )}
                 </Label>
                 <div className="border rounded-lg p-2 space-y-1 max-h-[120px] overflow-y-auto">
-                  {companies.map((company) => (
+                  {availableCompanies.map((company) => (
                     <div 
                       key={company.id}
                       className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/30"
@@ -397,12 +405,19 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="operador">Operador</SelectItem>
-                    <SelectItem value="gerente">Gerente</SelectItem>
                     {isSupervisor && (
-                      <SelectItem value="supervisor">Supervisor</SelectItem>
+                      <>
+                        <SelectItem value="gerente">Gerente</SelectItem>
+                        <SelectItem value="supervisor">Supervisor</SelectItem>
+                      </>
                     )}
                   </SelectContent>
                 </Select>
+                {isGerente && (
+                  <p className="text-xs text-muted-foreground">
+                    Gerentes só podem convidar operadores
+                  </p>
+                )}
               </div>
 
               {/* Company limit field for gerente role */}

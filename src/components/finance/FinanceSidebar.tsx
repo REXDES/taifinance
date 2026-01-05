@@ -56,6 +56,8 @@ interface FinanceSidebarProps {
   currentView: FinanceView;
   onChangeView: (view: FinanceView) => void;
   isSupervisor?: boolean;
+  isGerente?: boolean;
+  canCreateCompany?: boolean;
   onCreateCompany?: () => void;
   onManageCompanies?: () => void;
   onOpenUsers?: () => void;
@@ -94,6 +96,8 @@ export function FinanceSidebar({
   currentView,
   onChangeView,
   isSupervisor = false,
+  isGerente = false,
+  canCreateCompany = false,
   onCreateCompany,
   onManageCompanies,
   onOpenUsers,
@@ -379,8 +383,8 @@ export function FinanceSidebar({
           </div>
         </nav>
 
-        {/* Footer - Settings for supervisors */}
-        {isSupervisor && (
+        {/* Footer - Settings for supervisors and managers */}
+        {(isSupervisor || isGerente) && (
           <div className="p-2 border-t border-border space-y-1">
             {collapsed ? (
               <>
@@ -410,19 +414,36 @@ export function FinanceSidebar({
                   </TooltipTrigger>
                   <TooltipContent side="right">Convites</TooltipContent>
                 </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="w-full"
-                      onClick={onManageCompanies}
-                    >
-                      <Settings className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Gerenciar Empresas</TooltipContent>
-                </Tooltip>
+                {canCreateCompany && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="w-full"
+                        onClick={onCreateCompany}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Nova Empresa</TooltipContent>
+                  </Tooltip>
+                )}
+                {isSupervisor && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="w-full"
+                        onClick={onManageCompanies}
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Gerenciar Empresas</TooltipContent>
+                  </Tooltip>
+                )}
               </>
             ) : (
               <>
@@ -442,14 +463,26 @@ export function FinanceSidebar({
                   <UserPlus className="w-4 h-4" />
                   Convites
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start gap-2 text-foreground hover:bg-accent"
-                  onClick={onManageCompanies}
-                >
-                  <Settings className="w-4 h-4" />
-                  Gerenciar Empresas
-                </Button>
+                {canCreateCompany && (
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                    onClick={onCreateCompany}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Nova Empresa
+                  </Button>
+                )}
+                {isSupervisor && (
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                    onClick={onManageCompanies}
+                  >
+                    <Settings className="w-4 h-4" />
+                    Gerenciar Empresas
+                  </Button>
+                )}
               </>
             )}
           </div>

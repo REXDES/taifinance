@@ -31,6 +31,7 @@ interface FinanceUsersDialogProps {
   onOpenChange: (open: boolean) => void;
   companyId: string | null;
   isSupervisor: boolean;
+  currentUserRole: AppRole;
 }
 
 const roleLabels: Record<AppRole, string> = {
@@ -45,7 +46,7 @@ const roleBadgeVariant: Record<AppRole, 'default' | 'secondary' | 'outline'> = {
   operador: 'outline',
 };
 
-export function FinanceUsersDialog({ open, onOpenChange, companyId, isSupervisor }: FinanceUsersDialogProps) {
+export function FinanceUsersDialog({ open, onOpenChange, companyId, isSupervisor, currentUserRole }: FinanceUsersDialogProps) {
   const { users, loading, removeUserFromCompany } = useUsers(companyId);
   const { user: currentUser } = useAuth();
   const [userToRemove, setUserToRemove] = useState<string | null>(null);
@@ -124,7 +125,7 @@ export function FinanceUsersDialog({ open, onOpenChange, companyId, isSupervisor
                       {roleLabels[user.role]}
                     </Badge>
                     
-                    {isSupervisor && user.user_id !== currentUser?.id && (
+                    {(isSupervisor || currentUserRole === 'gerente') && user.user_id !== currentUser?.id && (
                       <>
                         <Button
                           variant="outline"
@@ -183,6 +184,8 @@ export function FinanceUsersDialog({ open, onOpenChange, companyId, isSupervisor
           userName={selectedUserForManagement.name}
           userEmail={selectedUserForManagement.email}
           userAvatar={selectedUserForManagement.avatar}
+          currentUserRole={currentUserRole}
+          selectedCompanyId={companyId}
         />
       )}
     </>

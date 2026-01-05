@@ -13,6 +13,8 @@ import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
 import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
 import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
+import { UsersDialog } from '@/components/dialogs/UsersDialog';
+import { InvitationsDialog } from '@/components/dialogs/InvitationsDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 export type FinanceView = 'dashboard' | 'accounts' | 'transactions' | 'transfers' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow';
@@ -24,6 +26,8 @@ const Finance = () => {
   const [currentView, setCurrentView] = useState<FinanceView>('dashboard');
   const [isSupervisor, setIsSupervisor] = useState(false);
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
+  const [showUsers, setShowUsers] = useState(false);
+  const [showInvitations, setShowInvitations] = useState(false);
 
   // Check if user is supervisor
   useEffect(() => {
@@ -110,6 +114,8 @@ const Finance = () => {
         isSupervisor={isSupervisor}
         onCreateCompany={() => setIsCreateCompanyOpen(true)}
         onManageCompanies={() => setIsCreateCompanyOpen(true)}
+        onOpenUsers={() => setShowUsers(true)}
+        onOpenInvitations={() => setShowInvitations(true)}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <FinanceHeader
@@ -126,6 +132,19 @@ const Finance = () => {
         open={isCreateCompanyOpen}
         onOpenChange={setIsCreateCompanyOpen}
         onSubmit={handleCreateCompany}
+      />
+
+      <UsersDialog
+        open={showUsers}
+        onOpenChange={setShowUsers}
+        companyId={selectedCompanyId}
+        isSupervisor={isSupervisor}
+      />
+
+      <InvitationsDialog
+        open={showInvitations}
+        onOpenChange={setShowInvitations}
+        companyId={selectedCompanyId}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Calendar, TrendingUp, TrendingDown, DollarSign, Download, FileSpreadsheet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -11,6 +11,10 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useTransfers } from '@/hooks/useTransfers';
 import { useUsers } from '@/hooks/useUsers';
+import { useToast } from '@/hooks/use-toast';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface CashFlowReportPageProps {
   companyId: string;
@@ -35,6 +39,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
   const today = new Date();
   const [startDate, setStartDate] = useState<Date>(startOfMonth(today));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(today));
+  const { toast } = useToast();
 
   const { accounts, loading: accountsLoading } = useAccounts(companyId);
   const { transactions, loading: transactionsLoading } = useTransactions(companyId);
@@ -209,6 +214,84 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
     };
   }, [flowData]);
 
+  const formatCurrencyPlain = (value: number) => {
+    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const exportToExcel = () => {
+    if (flowData.length === 0) {
+      toast({ title: 'Sem dados para exportar', variant: 'destructive' });
+      return;
+    }
+
+    const data = flowData.map(entry => ({
+      'Data': format(parseISO(entry.date), 'dd/MM/yyyy'),
+      'Conta': entry.accountName,
+      'Categoria': entry.category,
+      'Descrição': entry.description,
+      'Saída': entry.expense > 0 ? formatCurrencyPlain(entry.expense) : '',
+      'Entrada': entry.income > 0 ? formatCurrencyPlain(entry.income) : '',
+      'Saldo': formatCurrencyPlain(entry.runningBalance),
+      'Usuário': entry.userName,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Fluxo Financeiro');
+    
+    const fileName = `fluxo-financeiro_${format(startDate, 'yyyy-MM-dd')}_${format(endDate, 'yyyy-MM-dd')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    
+    toast({ title: 'Excel exportado com sucesso' });
+  };
+
+  const exportToPDF = () => {
+    if (flowData.length === 0) {
+      toast({ title: 'Sem dados para exportar', variant: 'destructive' });
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: 'landscape' });
+    
+    // Title
+    doc.setFontSize(16);
+    doc.text('Fluxo Financeiro', 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Período: ${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`, 14, 22);
+
+    // Summary
+    doc.setFontSize(9);
+    doc.text(`Saldo Inicial: ${formatCurrency(totals.initialBalance)}`, 14, 30);
+    doc.text(`Total Entradas: ${formatCurrency(totals.income - totals.initialBalance)}`, 80, 30);
+    doc.text(`Total Saídas: ${formatCurrency(totals.expense)}`, 150, 30);
+    doc.text(`Saldo Final: ${formatCurrency(totals.finalBalance)}`, 220, 30);
+
+    // Table
+    const tableData = flowData.map(entry => [
+      format(parseISO(entry.date), 'dd/MM/yyyy'),
+      entry.accountName,
+      entry.category,
+      entry.description.length > 30 ? entry.description.substring(0, 30) + '...' : entry.description,
+      entry.expense > 0 ? formatCurrencyPlain(entry.expense) : '-',
+      entry.income > 0 ? formatCurrencyPlain(entry.income) : '-',
+      formatCurrencyPlain(entry.runningBalance),
+      entry.userName,
+    ]);
+
+    autoTable(doc, {
+      head: [['Data', 'Conta', 'Categoria', 'Descrição', 'Saída', 'Entrada', 'Saldo', 'Usuário']],
+      body: tableData,
+      startY: 35,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+    });
+
+    const fileName = `fluxo-financeiro_${format(startDate, 'yyyy-MM-dd')}_${format(endDate, 'yyyy-MM-dd')}.pdf`;
+    doc.save(fileName);
+    
+    toast({ title: 'PDF exportado com sucesso' });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -225,44 +308,56 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
           <CardTitle className="text-lg">Período</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">De:</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[160px] justify-start text-left font-normal">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {format(startDate, 'dd/MM/yyyy')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={startDate}
-                    onSelect={(date) => date && setStartDate(date)}
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">De:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-[160px] justify-start text-left font-normal">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {format(startDate, 'dd/MM/yyyy')}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => date && setStartDate(date)}
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Até:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-[160px] justify-start text-left font-normal">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {format(endDate, 'dd/MM/yyyy')}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={endDate}
+                      onSelect={(date) => date && setEndDate(date)}
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Até:</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[160px] justify-start text-left font-normal">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {format(endDate, 'dd/MM/yyyy')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={endDate}
-                    onSelect={(date) => date && setEndDate(date)}
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportToExcel}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportToPDF}>
+                <Download className="mr-2 h-4 w-4" />
+                PDF
+              </Button>
             </div>
           </div>
         </CardContent>

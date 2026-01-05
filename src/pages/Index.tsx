@@ -104,12 +104,13 @@ const Index = () => {
   useEffect(() => {
     const checkSupervisor = async () => {
       if (!user?.id) return;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .eq('role', 'supervisor')
         .maybeSingle();
+      console.log('Supervisor check:', { userId: user.id, data, error, isSupervisor: !!data });
       setIsSupervisor(!!data);
     };
     checkSupervisor();

@@ -122,6 +122,8 @@ const Finance = () => {
           user={user}
           onSignOut={signOut}
           companyName={selectedCompany?.name}
+          onOpenUsers={() => setShowUsers(true)}
+          showUsersButton={!!selectedCompanyId && isSupervisor}
         />
         <main className="flex-1 overflow-auto p-6">
           {renderContent()}

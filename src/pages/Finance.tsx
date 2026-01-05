@@ -13,7 +13,7 @@ import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
 import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
 import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
-import { UsersDialog } from '@/components/dialogs/UsersDialog';
+import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -134,7 +134,7 @@ const Finance = () => {
         onSubmit={handleCreateCompany}
       />
 
-      <UsersDialog
+      <FinanceUsersDialog
         open={showUsers}
         onOpenChange={setShowUsers}
         companyId={selectedCompanyId}

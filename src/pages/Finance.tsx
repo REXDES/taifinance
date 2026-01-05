@@ -10,16 +10,18 @@ import { BalanceSheetPage } from '@/components/finance/BalanceSheetPage';
 import { StatementPage } from '@/components/finance/StatementPage';
 import { CategoriesPage } from '@/components/finance/CategoriesPage';
 import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
+import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 export type FinanceView = 'dashboard' | 'accounts' | 'transactions' | 'transfers' | 'balance' | 'statement' | 'categories';
 
 const Finance = () => {
   const { user, signOut } = useAuth();
-  const { companies } = useCompanies();
+  const { companies, createCompany, refetch: refetchCompanies } = useCompanies();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<FinanceView>('dashboard');
   const [isSupervisor, setIsSupervisor] = useState(false);
+  const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
 
   // Check if user is supervisor
   useEffect(() => {
@@ -44,6 +46,23 @@ const Finance = () => {
   }, [companies, selectedCompanyId]);
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+
+  const handleCreateCompany = async (name: string, color: string) => {
+    const result = await createCompany(name, color);
+    if (result) {
+      // Also add user to this company
+      if (user?.id) {
+        await supabase.from('user_companies').insert({
+          user_id: user.id,
+          company_id: result.id
+        });
+      }
+      await refetchCompanies();
+      setSelectedCompanyId(result.id);
+      return true;
+    }
+    return false;
+  };
 
   const renderContent = () => {
     if (!selectedCompanyId) {
@@ -83,6 +102,8 @@ const Finance = () => {
         currentView={currentView}
         onChangeView={setCurrentView}
         isSupervisor={isSupervisor}
+        onCreateCompany={() => setIsCreateCompanyOpen(true)}
+        onManageCompanies={() => setIsCreateCompanyOpen(true)}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <FinanceHeader
@@ -94,6 +115,12 @@ const Finance = () => {
           {renderContent()}
         </main>
       </div>
+
+      <CreateCompanyDialog
+        open={isCreateCompanyOpen}
+        onOpenChange={setIsCreateCompanyOpen}
+        onSubmit={handleCreateCompany}
+      />
     </div>
   );
 };

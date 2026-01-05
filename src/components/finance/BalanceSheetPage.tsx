@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { useAccounts, Account, AccountGroup } from '@/hooks/useAccounts';
 import { useTransactions, Transaction } from '@/hooks/useTransactions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -164,9 +164,9 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                 const groupInitialBalance = groupAccounts.reduce((sum, acc) => sum + Number(acc.initial_balance), 0);
 
                 return (
-                  <>
+                  <Fragment key={group.id}>
                     {/* Group Row */}
-                    <TableRow key={group.id} className="bg-accent/30 hover:bg-accent/50 font-medium">
+                    <TableRow className="bg-accent/30 hover:bg-accent/50 font-medium">
                       <TableCell>
                         <Button
                           variant="ghost"
@@ -207,9 +207,9 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                       const accountTransactions = transactionsByAccount.get(account.id) || [];
 
                       return (
-                        <>
+                        <Fragment key={account.id}>
                           {/* Account Row */}
-                          <TableRow key={account.id} className="bg-background hover:bg-muted/50">
+                          <TableRow className="bg-background hover:bg-muted/50">
                             <TableCell className="pl-8">
                               <Button
                                 variant="ghost"
@@ -281,10 +281,10 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                               </TableCell>
                             </TableRow>
                           ))}
-                        </>
+                        </Fragment>
                       );
                     })}
-                  </>
+                  </Fragment>
                 );
               })}
 
@@ -328,8 +328,8 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                     const accountTransactions = transactionsByAccount.get(account.id) || [];
 
                     return (
-                      <>
-                        <TableRow key={account.id} className="bg-background hover:bg-muted/50">
+                      <Fragment key={account.id}>
+                        <TableRow className="bg-background hover:bg-muted/50">
                           <TableCell className="pl-8">
                             <Button
                               variant="ghost"
@@ -400,7 +400,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                             </TableCell>
                           </TableRow>
                         ))}
-                      </>
+                      </Fragment>
                     );
                   })}
                 </>

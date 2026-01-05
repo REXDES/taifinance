@@ -14,7 +14,7 @@ import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
 import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { UsersDialog } from '@/components/dialogs/UsersDialog';
-import { InvitationsDialog } from '@/components/dialogs/InvitationsDialog';
+import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
 import { supabase } from '@/integrations/supabase/client';
 
 export type FinanceView = 'dashboard' | 'accounts' | 'transactions' | 'transfers' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow';
@@ -141,7 +141,7 @@ const Finance = () => {
         isSupervisor={isSupervisor}
       />
 
-      <InvitationsDialog
+      <FinanceInvitationsDialog
         open={showInvitations}
         onOpenChange={setShowInvitations}
         companyId={selectedCompanyId}

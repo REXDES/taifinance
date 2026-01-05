@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { 
+import {
   ChevronDown,
   ChevronRight,
   Home, 
@@ -17,7 +17,8 @@ import {
   Settings,
   FolderCog,
   Receipt,
-  ClipboardList
+  ClipboardList,
+  PieChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -71,6 +72,7 @@ const transacoesMenuItems: { view: FinanceView; label: string; icon: React.React
 const relatoriosMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
   { view: 'balance', label: 'Balancete', icon: <BarChart3 className="w-4 h-4" /> },
   { view: 'statement', label: 'Extrato', icon: <FileText className="w-4 h-4" /> },
+  { view: 'category-report', label: 'Por Categoria', icon: <PieChart className="w-4 h-4" /> },
 ];
 
 // Sub-menu items for "Cadastros"

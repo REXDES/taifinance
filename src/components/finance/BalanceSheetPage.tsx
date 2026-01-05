@@ -5,8 +5,8 @@ import { useTransfers, Transfer } from '@/hooks/useTransfers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet, ArrowLeftRight } from 'lucide-react';
-import { format } from 'date-fns';
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, subMonths, isBefore, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Entry unificado para exibir transações e transferências
@@ -34,6 +34,12 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
   const formatCurrency = (v: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
+  // Current month date range
+  const now = new Date();
+  const currentMonthStart = startOfMonth(now);
+  const currentMonthEnd = endOfMonth(now);
+  const previousMonthEnd = endOfMonth(subMonths(now, 1));
+
   // Group accounts by group_id
   const groupedData = useMemo(() => {
     const grouped: Map<string | null, Account[]> = new Map();
@@ -49,8 +55,8 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
     return grouped;
   }, [accounts]);
 
-  // Get all entries (transactions + transfers) by account
-  const entriesByAccount = useMemo(() => {
+  // Build all entries for each account (transactions + transfers)
+  const allEntriesByAccount = useMemo(() => {
     const byAccount: Map<string, AccountEntry[]> = new Map();
     
     // Add transactions
@@ -95,15 +101,63 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
       });
     });
     
-    // Sort entries by date (newest first)
+    // Sort entries by date (oldest first for balance calculation)
     byAccount.forEach((entries) => {
-      entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     });
     
     return byAccount;
   }, [transactions, transfers]);
 
-  // Calculate group totals
+  // Calculate opening balance for each account (sum of movements before current month)
+  const accountOpeningBalances = useMemo(() => {
+    const balances: Map<string, number> = new Map();
+    
+    accounts.forEach(account => {
+      const entries = allEntriesByAccount.get(account.id) || [];
+      let balance = Number(account.initial_balance);
+      
+      // Sum all entries before current month
+      entries.forEach(entry => {
+        const entryDate = parseISO(entry.date);
+        if (isBefore(entryDate, currentMonthStart)) {
+          if (entry.type === 'income' || entry.type === 'transfer_in') {
+            balance += entry.amount;
+          } else {
+            balance -= entry.amount;
+          }
+        }
+      });
+      
+      balances.set(account.id, balance);
+    });
+    
+    return balances;
+  }, [accounts, allEntriesByAccount, currentMonthStart]);
+
+  // Get current month entries by account (filtered and sorted newest first for display)
+  const currentMonthEntriesByAccount = useMemo(() => {
+    const byAccount: Map<string, AccountEntry[]> = new Map();
+    
+    allEntriesByAccount.forEach((entries, accountId) => {
+      const filtered = entries.filter(entry => {
+        const entryDate = parseISO(entry.date);
+        return entryDate >= currentMonthStart && entryDate <= currentMonthEnd;
+      });
+      // Sort newest first for display
+      filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      byAccount.set(accountId, filtered);
+    });
+    
+    return byAccount;
+  }, [allEntriesByAccount, currentMonthStart, currentMonthEnd]);
+
+  // Calculate group totals based on opening balances
+  const getGroupOpeningBalance = (groupId: string | null): number => {
+    const groupAccounts = groupedData.get(groupId) || [];
+    return groupAccounts.reduce((sum, acc) => sum + (accountOpeningBalances.get(acc.id) || Number(acc.initial_balance)), 0);
+  };
+
   const getGroupTotal = (groupId: string | null): number => {
     const groupAccounts = groupedData.get(groupId) || [];
     return groupAccounts.reduce((sum, acc) => sum + Number(acc.current_balance), 0);
@@ -150,7 +204,9 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Balancete Geral</h1>
-        <p className="text-muted-foreground">Visão consolidada das finanças</p>
+        <p className="text-muted-foreground">
+          Mês vigente: {format(currentMonthStart, 'MMMM/yyyy', { locale: ptBR })}
+        </p>
       </div>
 
       {/* Summary Cards */}
@@ -213,7 +269,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                 const isGroupExpanded = expandedGroups.has(group.id);
                 const groupTotal = getGroupTotal(group.id);
                 const groupAccounts = groupedData.get(group.id) || [];
-                const groupInitialBalance = groupAccounts.reduce((sum, acc) => sum + Number(acc.initial_balance), 0);
+                const groupOpeningBalance = getGroupOpeningBalance(group.id);
 
                 return (
                   <Fragment key={group.id}>
@@ -246,7 +302,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatCurrency(groupInitialBalance)}
+                        {formatCurrency(groupOpeningBalance)}
                       </TableCell>
                       <TableCell className={`text-right font-medium ${groupTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {formatCurrency(groupTotal)}
@@ -256,7 +312,8 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                     {/* Account Rows (when group is expanded) */}
                     {isGroupExpanded && groupAccounts.map((account) => {
                       const isAccountExpanded = expandedAccounts.has(account.id);
-                      const accountEntries = entriesByAccount.get(account.id) || [];
+                      const accountEntries = currentMonthEntriesByAccount.get(account.id) || [];
+                      const openingBalance = accountOpeningBalances.get(account.id) || Number(account.initial_balance);
 
                       return (
                         <Fragment key={account.id}>
@@ -296,7 +353,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              {formatCurrency(Number(account.initial_balance))}
+                              {formatCurrency(openingBalance)}
                             </TableCell>
                             <TableCell className={`text-right ${Number(account.current_balance) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               {formatCurrency(Number(account.current_balance))}
@@ -388,7 +445,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(ungroupedAccounts.reduce((sum, acc) => sum + Number(acc.initial_balance), 0))}
+                      {formatCurrency(getGroupOpeningBalance(null))}
                     </TableCell>
                     <TableCell className={`text-right font-medium ${getGroupTotal(null) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(getGroupTotal(null))}
@@ -397,7 +454,8 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
 
                   {expandedGroups.has('ungrouped') && ungroupedAccounts.map((account) => {
                     const isAccountExpanded = expandedAccounts.has(account.id);
-                    const accountEntries = entriesByAccount.get(account.id) || [];
+                    const accountEntries = currentMonthEntriesByAccount.get(account.id) || [];
+                    const openingBalance = accountOpeningBalances.get(account.id) || Number(account.initial_balance);
 
                     return (
                       <Fragment key={account.id}>
@@ -436,7 +494,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatCurrency(Number(account.initial_balance))}
+                            {formatCurrency(openingBalance)}
                           </TableCell>
                           <TableCell className={`text-right ${Number(account.current_balance) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {formatCurrency(Number(account.current_balance))}
@@ -503,7 +561,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                 <TableCell></TableCell>
                 <TableCell>TOTAL GERAL</TableCell>
                 <TableCell className="text-right">
-                  {formatCurrency(accounts.reduce((sum, acc) => sum + Number(acc.initial_balance), 0))}
+                  {formatCurrency(accounts.reduce((sum, acc) => sum + (accountOpeningBalances.get(acc.id) || Number(acc.initial_balance)), 0))}
                 </TableCell>
                 <TableCell className={`text-right ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(totalBalance)}

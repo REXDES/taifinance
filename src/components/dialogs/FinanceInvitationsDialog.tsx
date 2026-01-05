@@ -75,11 +75,10 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
   const [isSupervisor, setIsSupervisor] = useState(false);
   
   // Access control state
-  const [selectedMainCompany, setSelectedMainCompany] = useState<string>(companyId || '');
+  const [selectedInviteCompanies, setSelectedInviteCompanies] = useState<Set<string>>(new Set(companyId ? [companyId] : []));
   const [groupsWithAccounts, setGroupsWithAccounts] = useState<GroupWithAccounts[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [accessAll, setAccessAll] = useState(true);
-  const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(new Set());
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
 
@@ -140,14 +139,14 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
     setExpandedGroups(newExpanded);
   };
 
-  const handleCompanyToggle = (companyId: string, checked: boolean) => {
-    const newSelected = new Set(selectedCompanies);
+  const handleInviteCompanyToggle = (companyId: string, checked: boolean) => {
+    const newSelected = new Set(selectedInviteCompanies);
     if (checked) {
       newSelected.add(companyId);
     } else {
       newSelected.delete(companyId);
     }
-    setSelectedCompanies(newSelected);
+    setSelectedInviteCompanies(newSelected);
   };
 
   const handleGroupToggle = (groupId: string, checked: boolean) => {
@@ -188,20 +187,23 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
   };
 
   const handleCreateInvitation = async () => {
-    if (!email.trim() || !name.trim() || !selectedMainCompany) return;
+    if (!email.trim() || !name.trim() || selectedInviteCompanies.size === 0) return;
+    
+    // Use first selected company as the main one for the invitation record
+    const mainCompanyId = Array.from(selectedInviteCompanies)[0];
     
     setSaving(true);
-    const result = await createInvitation(email.trim(), role, name.trim(), expiresAt.toISOString(), selectedMainCompany);
+    const result = await createInvitation(email.trim(), role, name.trim(), expiresAt.toISOString(), mainCompanyId);
     
     if (result) {
       // Save access selections
       try {
-        // Save company access
-        if (selectedCompanies.size > 0) {
-          const companyInserts = Array.from(selectedCompanies).map(companyId => ({
-            invitation_id: result.id,
-            company_id: companyId,
-          }));
+        // Save all selected companies to invitation_company_access
+        const companyInserts = Array.from(selectedInviteCompanies).map(cId => ({
+          invitation_id: result.id,
+          company_id: cId,
+        }));
+        if (companyInserts.length > 0) {
           await supabase.from('invitation_company_access').insert(companyInserts);
         }
         
@@ -252,18 +254,14 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
     setEmail('');
     setRole('operador');
     setExpiresAt(addDays(new Date(), 7));
-    setSelectedMainCompany(companyId || '');
+    setSelectedInviteCompanies(new Set(companyId ? [companyId] : []));
     setAccessAll(true);
-    setSelectedCompanies(new Set());
     setSelectedGroups(new Set());
     setSelectedAccounts(new Set());
     setExpandedGroups(new Set());
   };
 
-  const totalAccessSelected = selectedCompanies.size + selectedGroups.size + selectedAccounts.size;
-
-  // Filter other companies (not selected main one)
-  const otherCompanies = companies.filter(c => c.id !== selectedMainCompany);
+  const totalAccessSelected = selectedGroups.size + selectedAccounts.size;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -354,25 +352,39 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="inviteCompany">Empresa</Label>
-                <Select value={selectedMainCompany} onValueChange={setSelectedMainCompany}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a empresa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded flex-shrink-0" 
-                            style={{ backgroundColor: `hsl(${company.color})` }}
-                          />
-                          {company.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="flex items-center gap-2">
+                  Empresas
+                  {selectedInviteCompanies.size > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {selectedInviteCompanies.size} selecionada(s)
+                    </Badge>
+                  )}
+                </Label>
+                <div className="border rounded-lg p-2 space-y-1 max-h-[120px] overflow-y-auto">
+                  {companies.map((company) => (
+                    <div 
+                      key={company.id}
+                      className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/30"
+                    >
+                      <Checkbox
+                        id={`invite-company-${company.id}`}
+                        checked={selectedInviteCompanies.has(company.id)}
+                        onCheckedChange={(checked) => handleInviteCompanyToggle(company.id, !!checked)}
+                      />
+                      <div 
+                        className="w-3 h-3 rounded flex-shrink-0" 
+                        style={{ backgroundColor: `hsl(${company.color})` }}
+                      />
+                      <label 
+                        htmlFor={`invite-company-${company.id}`}
+                        className="flex-1 text-sm cursor-pointer flex items-center gap-1"
+                      >
+                        <Building2 className="h-3 w-3 text-muted-foreground" />
+                        {company.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -437,7 +449,6 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
                     onCheckedChange={(checked) => {
                       setAccessAll(!!checked);
                       if (checked) {
-                        setSelectedCompanies(new Set());
                         setSelectedGroups(new Set());
                         setSelectedAccounts(new Set());
                       }
@@ -447,43 +458,13 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
                     htmlFor="access-all"
                     className="flex-1 text-sm font-medium cursor-pointer"
                   >
-                    Acesso Completo (todas as empresas, grupos e contas)
+                    Acesso Completo (todos os grupos e contas das empresas selecionadas)
                   </label>
                 </div>
                 
                 {!accessAll && (
                   <ScrollArea className="h-[250px] border rounded-lg">
                     <div className="p-2 space-y-3">
-                      {/* Other Companies Section */}
-                      {isSupervisor && otherCompanies.length > 0 && (
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium text-muted-foreground px-1">Empresas Adicionais</p>
-                          {otherCompanies.map((company) => (
-                            <div 
-                              key={company.id}
-                              className="flex items-center gap-2 p-2 rounded hover:bg-muted/30"
-                            >
-                              <Checkbox
-                                id={`inv-company-${company.id}`}
-                                checked={selectedCompanies.has(company.id)}
-                                onCheckedChange={(checked) => handleCompanyToggle(company.id, !!checked)}
-                              />
-                              <div 
-                                className="w-3 h-3 rounded flex-shrink-0" 
-                                style={{ backgroundColor: `hsl(${company.color})` }}
-                              />
-                              <label 
-                                htmlFor={`inv-company-${company.id}`}
-                                className="flex-1 text-sm cursor-pointer flex items-center gap-1"
-                              >
-                                <Building2 className="h-3 w-3 text-muted-foreground" />
-                                {company.name}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
                       {/* Account Groups Section */}
                       <div className="space-y-1">
                         <p className="text-xs font-medium text-muted-foreground px-1">Grupos de Contas e Contas</p>

@@ -113,6 +113,7 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          created_by: string | null
           id: string
           name: string
           updated_at: string
@@ -120,6 +121,7 @@ export type Database = {
         Insert: {
           color?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           name: string
           updated_at?: string
@@ -127,6 +129,7 @@ export type Database = {
         Update: {
           color?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           name?: string
           updated_at?: string
@@ -410,6 +413,7 @@ export type Database = {
         Row: {
           access_all: boolean | null
           company_id: string
+          company_limit: number | null
           created_at: string
           email: string
           expires_at: string
@@ -424,6 +428,7 @@ export type Database = {
         Insert: {
           access_all?: boolean | null
           company_id: string
+          company_limit?: number | null
           created_at?: string
           email: string
           expires_at?: string
@@ -438,6 +443,7 @@ export type Database = {
         Update: {
           access_all?: boolean | null
           company_id?: string
+          company_limit?: number | null
           created_at?: string
           email?: string
           expires_at?: string
@@ -1184,16 +1190,19 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          company_limit: number | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
+          company_limit?: number | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
+          company_limit?: number | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string

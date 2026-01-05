@@ -130,7 +130,7 @@ export function useUsers(companyId: string | null) {
     fetchInvitations();
   }, [fetchUsers, fetchInvitations]);
 
-  const createInvitation = async (email: string, role: AppRole, name: string, expiresAt: string, inviteCompanyId?: string): Promise<{ id: string; tempPassword: string } | null> => {
+  const createInvitation = async (email: string, role: AppRole, name: string, expiresAt: string, inviteCompanyId?: string, companyLimitValue?: number | null): Promise<{ id: string; tempPassword: string } | null> => {
     const targetCompanyId = inviteCompanyId || companyId;
     if (!targetCompanyId) return null;
 
@@ -166,6 +166,7 @@ export function useUsers(companyId: string | null) {
           temp_password: tempPassword, // Keep for backward compatibility
           token_hash: hashData as string,
           expires_at: expiresAt,
+          company_limit: role === 'gerente' ? companyLimitValue : null,
         })
         .select('id')
         .single();

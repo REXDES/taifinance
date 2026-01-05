@@ -81,6 +81,7 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
   const [accessAll, setAccessAll] = useState(true);
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
+  const [companyLimit, setCompanyLimit] = useState<number | null>(null);
 
   useEffect(() => {
     const checkSupervisor = async () => {
@@ -193,7 +194,7 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
     const mainCompanyId = Array.from(selectedInviteCompanies)[0];
     
     setSaving(true);
-    const result = await createInvitation(email.trim(), role, name.trim(), expiresAt.toISOString(), mainCompanyId);
+    const result = await createInvitation(email.trim(), role, name.trim(), expiresAt.toISOString(), mainCompanyId, role === 'gerente' ? companyLimit : null);
     
     if (result) {
       // Save access selections
@@ -259,6 +260,7 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
     setSelectedGroups(new Set());
     setSelectedAccounts(new Set());
     setExpandedGroups(new Set());
+    setCompanyLimit(null);
   };
 
   const totalAccessSelected = selectedGroups.size + selectedAccounts.size;
@@ -402,6 +404,24 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId }: Fina
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Company limit field for gerente role */}
+              {role === 'gerente' && (
+                <div className="space-y-2">
+                  <Label htmlFor="companyLimit">Limite de Empresas</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Quantas empresas este gerente pode criar/adicionar
+                  </p>
+                  <Input
+                    id="companyLimit"
+                    type="number"
+                    min={0}
+                    value={companyLimit ?? ''}
+                    onChange={(e) => setCompanyLimit(e.target.value ? parseInt(e.target.value, 10) : null)}
+                    placeholder="0 = não pode criar empresas"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Validade do Convite</Label>

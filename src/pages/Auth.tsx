@@ -177,11 +177,11 @@ export default function Auth() {
         return;
       }
       
-      // Validate token using secure RPC function
+      // Validate token using secure RPC function - normalize to uppercase
       const { data: validationData, error: validationError } = await supabase
         .rpc('validate_invitation_token', { 
           _invitation_id: invitation.id, 
-          _token: invitePassword 
+          _token: invitePassword.toUpperCase().trim()
         });
       
       if (validationError || !validationData?.[0]?.is_valid) {

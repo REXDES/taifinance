@@ -7,15 +7,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { LogOut, User as UserIcon, Users } from 'lucide-react';
 
 interface FinanceHeaderProps {
   user: User | null;
   onSignOut: () => void;
   companyName?: string;
+  onOpenUsers?: () => void;
+  showUsersButton?: boolean;
 }
 
-export function FinanceHeader({ user, onSignOut, companyName }: FinanceHeaderProps) {
+export function FinanceHeader({ user, onSignOut, companyName, onOpenUsers, showUsersButton }: FinanceHeaderProps) {
   const initials = user?.email?.substring(0, 2).toUpperCase() || 'U';
 
   return (
@@ -29,6 +31,11 @@ export function FinanceHeader({ user, onSignOut, companyName }: FinanceHeaderPro
       </div>
 
       <div className="flex items-center gap-4">
+        {showUsersButton && onOpenUsers && (
+          <Button variant="ghost" size="icon" onClick={onOpenUsers} title="Gerenciar Usuários">
+            <Users className="h-5 w-5" />
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">

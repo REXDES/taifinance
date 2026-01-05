@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { 
-  ChevronDown, 
+  ChevronDown,
+  ChevronRight,
   Home, 
   Wallet, 
   ArrowUpDown, 
@@ -13,7 +14,8 @@ import {
   PanelLeft,
   Building2,
   Plus,
-  Settings
+  Settings,
+  FolderCog
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +30,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { FinanceView } from '@/pages/Finance';
 
 interface Company {
@@ -47,14 +54,19 @@ interface FinanceSidebarProps {
   onManageCompanies?: () => void;
 }
 
-const menuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
+// Menu items outside "Cadastros"
+const mainMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: <Home className="w-4 h-4" /> },
-  { view: 'accounts', label: 'Contas', icon: <Wallet className="w-4 h-4" /> },
   { view: 'transactions', label: 'Lançamentos', icon: <ArrowUpDown className="w-4 h-4" /> },
   { view: 'transfers', label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" /> },
-  { view: 'categories', label: 'Categorias', icon: <Tags className="w-4 h-4" /> },
   { view: 'balance', label: 'Balancete', icon: <BarChart3 className="w-4 h-4" /> },
   { view: 'statement', label: 'Extrato', icon: <FileText className="w-4 h-4" /> },
+];
+
+// Sub-menu items for "Cadastros"
+const cadastrosMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
+  { view: 'accounts', label: 'Contas', icon: <Wallet className="w-4 h-4" /> },
+  { view: 'categories', label: 'Categorias', icon: <Tags className="w-4 h-4" /> },
 ];
 
 export function FinanceSidebar({
@@ -160,7 +172,8 @@ export function FinanceSidebar({
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-2">
           <div className="space-y-1">
-            {menuItems.map((item) => (
+            {/* Main menu items */}
+            {mainMenuItems.map((item) => (
               collapsed ? (
                 <Tooltip key={item.view}>
                   <TooltipTrigger asChild>
@@ -190,6 +203,57 @@ export function FinanceSidebar({
                 </Button>
               )
             ))}
+
+            {/* Cadastros submenu */}
+            {collapsed ? (
+              // When collapsed, show cadastros items as regular icons
+              cadastrosMenuItems.map((item) => (
+                <Tooltip key={item.view}>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className={cn("w-full", currentView === item.view && "bg-accent")}
+                      onClick={() => onChangeView(item.view)}
+                    >
+                      {item.icon}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{item.label}</TooltipContent>
+                </Tooltip>
+              ))
+            ) : (
+              <Collapsible defaultOpen={cadastrosMenuItems.some(item => currentView === item.view)}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-between text-foreground hover:bg-accent"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FolderCog className="w-4 h-4" />
+                      Cadastros
+                    </span>
+                    <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                  {cadastrosMenuItems.map((item) => (
+                    <Button 
+                      key={item.view}
+                      variant="ghost" 
+                      className={cn(
+                        "w-full justify-start gap-2 text-foreground hover:bg-accent",
+                        currentView === item.view && "bg-accent"
+                      )}
+                      onClick={() => onChangeView(item.view)}
+                    >
+                      {item.icon}
+                      {item.label}
+                    </Button>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </div>
         </nav>
 

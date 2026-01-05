@@ -78,6 +78,7 @@ export function FinanceUserManagementDialog({
     removeAccountAccess,
     updateRole,
     updateCompanyLimit,
+    updateInvitationLimit,
     hasCompanyAccess,
     hasAccountGroupAccess,
     hasAccountAccess,
@@ -88,15 +89,19 @@ export function FinanceUserManagementDialog({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [loadingData, setLoadingData] = useState(false);
   const [companyLimitInput, setCompanyLimitInput] = useState<string>('');
+  const [invitationLimitInput, setInvitationLimitInput] = useState<string>('');
   
   const isSupervisor = currentUserRole === 'supervisor';
   const isGerente = currentUserRole === 'gerente';
   const canManageAccounts = isSupervisor || isGerente;
 
-  // Set company limit input when roleInfo loads
+  // Set limit inputs when roleInfo loads
   useEffect(() => {
     if (roleInfo?.company_limit !== undefined) {
       setCompanyLimitInput(roleInfo.company_limit?.toString() ?? '');
+    }
+    if (roleInfo?.invitation_limit !== undefined) {
+      setInvitationLimitInput(roleInfo.invitation_limit?.toString() ?? '');
     }
   }, [roleInfo]);
 
@@ -211,6 +216,11 @@ export function FinanceUserManagementDialog({
     await updateCompanyLimit(limit);
   };
 
+  const handleInvitationLimitSave = async () => {
+    const limit = invitationLimitInput ? parseInt(invitationLimitInput, 10) : null;
+    await updateInvitationLimit(limit);
+  };
+
   const getInitials = (name: string, email: string) => {
     if (name) {
       return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -290,28 +300,55 @@ export function FinanceUserManagementDialog({
                 </div>
 
                 {roleInfo?.role === 'gerente' && (
-                  <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
-                    <Label htmlFor="companyLimit">Limite de Empresas</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Quantas empresas este gerente pode criar/adicionar
-                    </p>
-                    <div className="flex gap-2">
-                      <Input
-                        id="companyLimit"
-                        type="number"
-                        min={0}
-                        value={companyLimitInput}
-                        onChange={(e) => setCompanyLimitInput(e.target.value)}
-                        placeholder="0 = não pode criar"
-                        disabled={!isSupervisor}
-                      />
-                      <Button
-                        onClick={handleCompanyLimitSave}
-                        disabled={!isSupervisor}
-                        size="sm"
-                      >
-                        Salvar
-                      </Button>
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <div className="space-y-2">
+                      <Label htmlFor="companyLimit">Limite de Empresas</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Quantas empresas este gerente pode criar/adicionar
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          id="companyLimit"
+                          type="number"
+                          min={0}
+                          value={companyLimitInput}
+                          onChange={(e) => setCompanyLimitInput(e.target.value)}
+                          placeholder="0 = não pode criar"
+                          disabled={!isSupervisor}
+                        />
+                        <Button
+                          onClick={handleCompanyLimitSave}
+                          disabled={!isSupervisor}
+                          size="sm"
+                        >
+                          Salvar
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="invitationLimit">Limite de Convites</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Quantos convites este gerente pode enviar
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          id="invitationLimit"
+                          type="number"
+                          min={0}
+                          value={invitationLimitInput}
+                          onChange={(e) => setInvitationLimitInput(e.target.value)}
+                          placeholder="0 = não pode convidar"
+                          disabled={!isSupervisor}
+                        />
+                        <Button
+                          onClick={handleInvitationLimitSave}
+                          disabled={!isSupervisor}
+                          size="sm"
+                        >
+                          Salvar
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -341,10 +378,16 @@ export function FinanceUserManagementDialog({
                       <span>{accountAccess.length || 'Todas'}</span>
                     </div>
                     {roleInfo?.role === 'gerente' && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Limite de Empresas:</span>
-                        <span>{roleInfo.company_limit ?? 'Ilimitado'}</span>
-                      </div>
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Limite de Empresas:</span>
+                          <span>{roleInfo.company_limit ?? 'Não pode'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Limite de Convites:</span>
+                          <span>{roleInfo.invitation_limit ?? 'Não pode'}</span>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>

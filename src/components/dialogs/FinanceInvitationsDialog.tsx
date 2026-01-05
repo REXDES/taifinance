@@ -44,6 +44,8 @@ interface FinanceInvitationsDialogProps {
   onOpenChange: (open: boolean) => void;
   companyId: string | null;
   currentUserRole: AppRole;
+  invitationLimit: number | null;
+  invitationsCreated: number;
 }
 
 interface GroupWithAccounts {
@@ -59,8 +61,12 @@ const roleLabels: Record<AppRole, string> = {
   operador: 'Operador',
 };
 
-export function FinanceInvitationsDialog({ open, onOpenChange, companyId, currentUserRole }: FinanceInvitationsDialogProps) {
+export function FinanceInvitationsDialog({ open, onOpenChange, companyId, currentUserRole, invitationLimit, invitationsCreated }: FinanceInvitationsDialogProps) {
   const { invitations, loading, createInvitation, deleteInvitation } = useUsers(companyId);
+  
+  const canCreateInvitation = currentUserRole === 'supervisor' || 
+    (currentUserRole === 'gerente' && invitationLimit !== null && invitationsCreated < invitationLimit);
+  const remainingInvitations = invitationLimit !== null ? invitationLimit - invitationsCreated : null;
   const { companies, refetch: refetchCompanies } = useCompanies();
   const { accounts, groups } = useAccounts(companyId);
   const { user } = useAuth();
@@ -608,14 +614,27 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId, curren
               </div>
             </div>
           ) : !createdInvite && (
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={() => setShowForm(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Novo Convite
-            </Button>
+            <div className="space-y-2">
+              {isGerente && remainingInvitations !== null && (
+                <p className="text-sm text-muted-foreground">
+                  Convites disponíveis: <span className="font-medium">{remainingInvitations}</span> de {invitationLimit}
+                </p>
+              )}
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={() => setShowForm(true)}
+                disabled={!canCreateInvitation}
+              >
+                <Plus className="h-4 w-4" />
+                Novo Convite
+              </Button>
+              {!canCreateInvitation && isGerente && (
+                <p className="text-xs text-destructive">
+                  Você atingiu o limite de convites permitido.
+                </p>
+              )}
+            </div>
           )}
 
           {/* Invitations List */}

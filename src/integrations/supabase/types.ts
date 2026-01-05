@@ -1192,18 +1192,21 @@ export type Database = {
         Row: {
           company_limit: number | null
           id: string
+          invitation_limit: number | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           company_limit?: number | null
           id?: string
+          invitation_limit?: number | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           company_limit?: number | null
           id?: string
+          invitation_limit?: number | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }

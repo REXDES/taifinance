@@ -23,6 +23,7 @@ import {
   PieChart,
   Activity,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -58,6 +59,11 @@ interface FinanceSidebarProps {
   isSupervisor?: boolean;
   isGerente?: boolean;
   canCreateCompany?: boolean;
+  companyLimit?: number | null;
+  companiesCreated?: number;
+  canInvite?: boolean;
+  invitationLimit?: number | null;
+  invitationsCreated?: number;
   onCreateCompany?: () => void;
   onManageCompanies?: () => void;
   onOpenUsers?: () => void;
@@ -98,6 +104,11 @@ export function FinanceSidebar({
   isSupervisor = false,
   isGerente = false,
   canCreateCompany = false,
+  companyLimit,
+  companiesCreated = 0,
+  canInvite = false,
+  invitationLimit,
+  invitationsCreated = 0,
   onCreateCompany,
   onManageCompanies,
   onOpenUsers,
@@ -401,19 +412,23 @@ export function FinanceSidebar({
                   </TooltipTrigger>
                   <TooltipContent side="right">Usuários</TooltipContent>
                 </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="w-full"
-                      onClick={onOpenInvitations}
-                    >
-                      <UserPlus className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Convites</TooltipContent>
-                </Tooltip>
+                {canInvite && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="w-full"
+                        onClick={onOpenInvitations}
+                      >
+                        <UserPlus className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Convites {isGerente && invitationLimit !== null && `(${invitationsCreated}/${invitationLimit})`}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 {canCreateCompany && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -426,7 +441,9 @@ export function FinanceSidebar({
                         <Plus className="w-4 h-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right">Nova Empresa</TooltipContent>
+                    <TooltipContent side="right">
+                      Nova Empresa {isGerente && companyLimit !== null && `(${companiesCreated}/${companyLimit})`}
+                    </TooltipContent>
                   </Tooltip>
                 )}
                 {isSupervisor && (
@@ -455,14 +472,21 @@ export function FinanceSidebar({
                   <Users className="w-4 h-4" />
                   Usuários
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start gap-2 text-foreground hover:bg-accent"
-                  onClick={onOpenInvitations}
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Convites
-                </Button>
+                {canInvite && (
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                    onClick={onOpenInvitations}
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Convites
+                    {isGerente && invitationLimit !== null && (
+                      <Badge variant="secondary" className="ml-auto text-xs">
+                        {invitationsCreated}/{invitationLimit}
+                      </Badge>
+                    )}
+                  </Button>
+                )}
                 {canCreateCompany && (
                   <Button 
                     variant="ghost" 
@@ -471,6 +495,11 @@ export function FinanceSidebar({
                   >
                     <Plus className="w-4 h-4" />
                     Nova Empresa
+                    {isGerente && companyLimit !== null && (
+                      <Badge variant="secondary" className="ml-auto text-xs">
+                        {companiesCreated}/{companyLimit}
+                      </Badge>
+                    )}
                   </Button>
                 )}
                 {isSupervisor && (

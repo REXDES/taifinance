@@ -26,6 +26,8 @@ interface UserRoleInfo {
   role: AppRole;
   companyLimit: number | null;
   companiesCreated: number;
+  invitationLimit: number | null;
+  invitationsCreated: number;
 }
 
 const Finance = () => {
@@ -43,28 +45,36 @@ const Finance = () => {
   const canAccessUserManagement = isSupervisor || isGerente;
   const canCreateCompany = isSupervisor || (isGerente && userRole.companyLimit !== null && userRole.companiesCreated < userRole.companyLimit);
 
-  // Check user role and company limit
+  // Check user role and limits
   useEffect(() => {
     const checkUserRole = async () => {
       if (!user?.id) return;
       
-      // Get role and company_limit
+      // Get role, company_limit and invitation_limit
       const { data: roleData } = await supabase
         .from('user_roles')
-        .select('role, company_limit')
+        .select('role, company_limit, invitation_limit')
         .eq('user_id', user.id)
         .maybeSingle();
       
       // Count companies created by this user
-      const { count } = await supabase
+      const { count: companiesCount } = await supabase
         .from('companies')
         .select('*', { count: 'exact', head: true })
         .eq('created_by', user.id);
       
+      // Count invitations created by this user
+      const { count: invitationsCount } = await supabase
+        .from('invitations')
+        .select('*', { count: 'exact', head: true })
+        .eq('invited_by', user.id);
+      
       setUserRole({
         role: roleData?.role || 'operador',
         companyLimit: roleData?.company_limit ?? null,
-        companiesCreated: count || 0,
+        companiesCreated: companiesCount || 0,
+        invitationLimit: roleData?.invitation_limit ?? null,
+        invitationsCreated: invitationsCount || 0,
       });
     };
     checkUserRole();
@@ -140,6 +150,11 @@ const Finance = () => {
         isSupervisor={isSupervisor}
         isGerente={isGerente}
         canCreateCompany={canCreateCompany}
+        companyLimit={userRole?.companyLimit ?? null}
+        companiesCreated={userRole?.companiesCreated ?? 0}
+        canInvite={isSupervisor || (isGerente && userRole?.invitationLimit !== null && userRole.invitationLimit > 0)}
+        invitationLimit={userRole?.invitationLimit ?? null}
+        invitationsCreated={userRole?.invitationsCreated ?? 0}
         onCreateCompany={() => setIsCreateCompanyOpen(true)}
         onManageCompanies={() => setIsCreateCompanyOpen(true)}
         onOpenUsers={() => setShowUsers(true)}
@@ -177,6 +192,8 @@ const Finance = () => {
         onOpenChange={setShowInvitations}
         companyId={selectedCompanyId}
         currentUserRole={userRole?.role || 'operador'}
+        invitationLimit={userRole?.invitationLimit ?? null}
+        invitationsCreated={userRole?.invitationsCreated ?? 0}
       />
     </div>
   );

@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface Company {
   id: string;
   name: string;
   color: string;
   created_at: string;
+  created_by?: string | null;
 }
 
 export function useCompanies() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   const fetchCompanies = async () => {
     try {
@@ -34,7 +37,7 @@ export function useCompanies() {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .insert({ name, color })
+        .insert({ name, color, created_by: user?.id })
         .select()
         .single();
 

@@ -2,8 +2,9 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useTransfers } from '@/hooks/useTransfers';
 import { usePatrimonialEvolution } from '@/hooks/usePatrimonialEvolution';
+import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft, Calendar } from 'lucide-react';
 import { 
   LineChart, 
   Line, 
@@ -14,6 +15,8 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
+import { startOfWeek, endOfWeek, format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface FinanceDashboardProps {
   companyId: string;
@@ -35,6 +38,31 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
   // Get all transactions and transfers for evolution chart
   const { transactions: allTransactions, loading: allTxLoading } = useTransactions(companyId);
   const { transfers, loading: transfersLoading } = useTransfers(companyId);
+
+  // Get week payables/receivables
+  const weekStart = startOfWeek(now, { weekStartsOn: 0 });
+  const weekEnd = endOfWeek(now, { weekStartsOn: 0 });
+  const { payablesReceivables: weekPR, loading: prLoading } = usePayablesReceivables(companyId, {
+    startDate: format(weekStart, 'yyyy-MM-dd'),
+    endDate: format(weekEnd, 'yyyy-MM-dd'),
+    status: 'pending'
+  });
+
+  // Group week payables/receivables by day
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  const weekData = weekDays.map(day => {
+    const dayItems = weekPR.filter(item => isSameDay(parseISO(item.due_date), day));
+    const payable = dayItems.filter(i => i.type === 'payable').reduce((sum, i) => sum + Number(i.amount), 0);
+    const receivable = dayItems.filter(i => i.type === 'receivable').reduce((sum, i) => sum + Number(i.amount), 0);
+    return {
+      day,
+      dayLabel: format(day, 'EEE', { locale: ptBR }),
+      dayNumber: format(day, 'd'),
+      payable,
+      receivable,
+      items: dayItems
+    };
+  });
 
   // Calculate patrimonial evolution
   const patrimonialData = usePatrimonialEvolution({
@@ -62,7 +90,7 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
     return `R$ ${value.toFixed(0)}`;
   };
 
-  const loading = accountsLoading || transactionsLoading || allTxLoading || transfersLoading;
+  const loading = accountsLoading || transactionsLoading || allTxLoading || transfersLoading || prLoading;
 
   if (loading) {
     return (
@@ -148,6 +176,59 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Week Payables/Receivables */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Contas da Semana
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-7 gap-2">
+            {weekData.map(({ day, dayLabel, dayNumber, payable, receivable, items }) => {
+              const isToday = isSameDay(day, now);
+              return (
+                <div
+                  key={dayNumber}
+                  className={`p-2 rounded-lg border text-center ${
+                    isToday ? 'border-primary bg-primary/5' : 'border-border'
+                  }`}
+                >
+                  <p className={`text-xs font-medium uppercase ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {dayLabel}
+                  </p>
+                  <p className={`text-lg font-bold ${isToday ? 'text-primary' : 'text-foreground'}`}>
+                    {dayNumber}
+                  </p>
+                  {items.length > 0 ? (
+                    <div className="mt-2 space-y-1">
+                      {receivable > 0 && (
+                        <p className="text-xs text-green-600 font-medium">
+                          +{formatCurrencyShort(receivable)}
+                        </p>
+                      )}
+                      {payable > 0 && (
+                        <p className="text-xs text-red-600 font-medium">
+                          -{formatCurrencyShort(payable)}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-2">-</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {weekPR.length === 0 && (
+            <p className="text-muted-foreground text-center py-2 text-sm">
+              Nenhuma conta pendente esta semana.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Patrimonial Evolution Chart */}
       <Card>

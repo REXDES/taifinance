@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,7 +39,9 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     totalReceivable,
     createPayableReceivable,
     effectuatePayment,
-    cancelPayableReceivable
+    cancelPayableReceivable,
+    deletePayableReceivable,
+    checkRelatedRecords
   } = usePayablesReceivables(companyId, {
     startDate: filters.startDate,
     endDate: filters.endDate,
@@ -54,6 +56,13 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
   const [isEffectuateDialogOpen, setIsEffectuateDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteDialogData, setDeleteDialogData] = useState<{
+    id: string;
+    hasRelated: boolean;
+    count: number;
+    type: 'installment' | 'recurring' | null;
+  } | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
@@ -203,6 +212,48 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       toast.success('Conta cancelada');
     } catch (error) {
       toast.error('Erro ao cancelar conta');
+    }
+  };
+
+  const handleDeleteClick = async (record: any) => {
+    try {
+      const related = await checkRelatedRecords(record.id);
+      if (related.hasRelated) {
+        setDeleteDialogData({
+          id: record.id,
+          hasRelated: related.hasRelated,
+          count: related.count,
+          type: related.type
+        });
+        setIsDeleteDialogOpen(true);
+      } else {
+        // No related records, delete directly
+        await deletePayableReceivable(record.id, false);
+        toast.success('Conta excluída com sucesso');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Erro ao excluir conta');
+    }
+  };
+
+  const handleDeleteConfirm = async (deleteRelated: boolean) => {
+    if (!deleteDialogData) return;
+    
+    try {
+      setSaving(true);
+      await deletePayableReceivable(deleteDialogData.id, deleteRelated);
+      toast.success(deleteRelated 
+        ? 'Conta e registros futuros excluídos com sucesso' 
+        : 'Conta excluída com sucesso'
+      );
+      setIsDeleteDialogOpen(false);
+      setDeleteDialogData(null);
+    } catch (error) {
+      console.error(error);
+      toast.error('Erro ao excluir conta');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -411,6 +462,14 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                           onClick={() => handleCancel(record.id)}
                         >
                           <X className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteClick(record)}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     )}
@@ -659,6 +718,52 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
             <Button onClick={handleEffectuate} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Efetivar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para confirmar exclusão com parcelas/recorrência */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Conta</DialogTitle>
+            <DialogDescription>
+              {deleteDialogData?.type === 'installment' && (
+                <>
+                  Esta conta faz parte de um parcelamento. Existem <strong>{deleteDialogData.count}</strong> parcela(s) futura(s) pendente(s).
+                  <br /><br />
+                  Deseja excluir apenas esta parcela ou todas as parcelas futuras?
+                </>
+              )}
+              {deleteDialogData?.type === 'recurring' && (
+                <>
+                  Esta é uma conta recorrente. Existem <strong>{deleteDialogData.count}</strong> ocorrência(s) futura(s) pendente(s).
+                  <br /><br />
+                  Deseja excluir apenas esta ocorrência ou todas as futuras?
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="secondary" 
+              onClick={() => handleDeleteConfirm(false)}
+              disabled={saving}
+            >
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Excluir Apenas Esta
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => handleDeleteConfirm(true)}
+              disabled={saving}
+            >
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Excluir Todas Futuras
             </Button>
           </DialogFooter>
         </DialogContent>

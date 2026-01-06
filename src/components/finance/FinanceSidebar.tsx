@@ -86,16 +86,27 @@ const transacoesMenuItems: { view: FinanceView; label: string; icon: React.React
   { view: 'payables-receivables', label: 'Contas a Pagar/Receber', icon: <CreditCard className="w-4 h-4" /> },
 ];
 
-// Sub-menu items for "Relatórios"
-const relatoriosMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
+// Sub-menu items for "Relatórios" - Balancete (main item, not in submenu)
+const relatoriosMainItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
   { view: 'balance', label: 'Balancete', icon: <BarChart3 className="w-4 h-4" /> },
+];
+
+// Sub-menu items for "Relatórios > Movimentações"
+const movimentacoesMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
   { view: 'statement', label: 'Extrato', icon: <FileText className="w-4 h-4" /> },
   { view: 'category-report', label: 'Por Categoria', icon: <PieChart className="w-4 h-4" /> },
   { view: 'cash-flow', label: 'Fluxo Financeiro', icon: <Activity className="w-4 h-4" /> },
+];
+
+// Sub-menu items for "Relatórios > Pagar/Receber"
+const pagarReceberMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
   { view: 'payables-receivables-report', label: 'Contas a Pagar/Receber', icon: <FileSearch className="w-4 h-4" /> },
   { view: 'payables-receivables-calendar', label: 'Calendário Financeiro', icon: <Calendar className="w-4 h-4" /> },
   { view: 'payables-receivables-flow', label: 'Fluxo de Contas', icon: <TrendingUp className="w-4 h-4" /> },
 ];
+
+// All relatórios items combined for collapsed view
+const allRelatoriosItems = [...relatoriosMainItems, ...movimentacoesMenuItems, ...pagarReceberMenuItems];
 
 // Sub-menu items for "Cadastros"
 const cadastrosMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
@@ -301,7 +312,7 @@ export function FinanceSidebar({
             {/* Relatórios submenu */}
             {collapsed ? (
               // When collapsed, show relatorios items as regular icons
-              relatoriosMenuItems.map((item) => (
+              allRelatoriosItems.map((item) => (
                 <Tooltip key={item.view}>
                   <TooltipTrigger asChild>
                     <Button 
@@ -317,7 +328,7 @@ export function FinanceSidebar({
                 </Tooltip>
               ))
             ) : (
-              <Collapsible defaultOpen={relatoriosMenuItems.some(item => currentView === item.view)}>
+              <Collapsible defaultOpen={allRelatoriosItems.some(item => currentView === item.view)}>
                 <CollapsibleTrigger asChild>
                   <Button 
                     variant="ghost" 
@@ -331,7 +342,8 @@ export function FinanceSidebar({
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                  {relatoriosMenuItems.map((item) => (
+                  {/* Balancete - main item */}
+                  {relatoriosMainItems.map((item) => (
                     <Button 
                       key={item.view}
                       variant="ghost" 
@@ -345,6 +357,70 @@ export function FinanceSidebar({
                       {item.label}
                     </Button>
                   ))}
+
+                  {/* Movimentações sub-submenu */}
+                  <Collapsible defaultOpen={movimentacoesMenuItems.some(item => currentView === item.view)}>
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-between text-foreground hover:bg-accent"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Activity className="w-4 h-4" />
+                          Movimentações
+                        </span>
+                        <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                      {movimentacoesMenuItems.map((item) => (
+                        <Button 
+                          key={item.view}
+                          variant="ghost" 
+                          className={cn(
+                            "w-full justify-start gap-2 text-foreground hover:bg-accent",
+                            currentView === item.view && "bg-accent"
+                          )}
+                          onClick={() => onChangeView(item.view)}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </Button>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  {/* Pagar/Receber sub-submenu */}
+                  <Collapsible defaultOpen={pagarReceberMenuItems.some(item => currentView === item.view)}>
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-between text-foreground hover:bg-accent"
+                      >
+                        <span className="flex items-center gap-2">
+                          <CreditCard className="w-4 h-4" />
+                          Pagar/Receber
+                        </span>
+                        <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                      {pagarReceberMenuItems.map((item) => (
+                        <Button 
+                          key={item.view}
+                          variant="ghost" 
+                          className={cn(
+                            "w-full justify-start gap-2 text-foreground hover:bg-accent",
+                            currentView === item.view && "bg-accent"
+                          )}
+                          onClick={() => onChangeView(item.view)}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </Button>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
                 </CollapsibleContent>
               </Collapsible>
             )}

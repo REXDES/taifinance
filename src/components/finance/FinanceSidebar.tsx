@@ -395,9 +395,9 @@ export function FinanceSidebar({
           </div>
         </nav>
 
-        {/* Footer - Settings for supervisors and managers */}
+        {/* Configurações submenu */}
         {(isSupervisor || isGerente) && (
-          <div className="p-2 border-t border-border space-y-1">
+          <div className="p-2 border-t border-border">
             {collapsed ? (
               <>
                 <Tooltip>
@@ -456,7 +456,7 @@ export function FinanceSidebar({
                         className="w-full"
                         onClick={onManageCompanies}
                       >
-                        <Settings className="w-4 h-4" />
+                        <Building2 className="w-4 h-4" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">Gerenciar Empresas</TooltipContent>
@@ -479,69 +479,83 @@ export function FinanceSidebar({
                 )}
               </>
             ) : (
-              <>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start gap-2 text-foreground hover:bg-accent"
-                  onClick={onOpenUsers}
-                >
-                  <Users className="w-4 h-4" />
-                  Usuários
-                </Button>
-                {canInvite && (
+              <Collapsible defaultOpen={currentView === 'audit-logs'}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-between text-foreground hover:bg-accent"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      Configurações
+                    </span>
+                    <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pl-4 space-y-1 mt-1">
                   <Button 
                     variant="ghost" 
                     className="w-full justify-start gap-2 text-foreground hover:bg-accent"
-                    onClick={onOpenInvitations}
+                    onClick={onOpenUsers}
                   >
-                    <UserPlus className="w-4 h-4" />
-                    Convites
-                    {isGerente && invitationLimit !== null && (
-                      <Badge variant="secondary" className="ml-auto text-xs">
-                        {invitationsCreated}/{invitationLimit}
-                      </Badge>
-                    )}
+                    <Users className="w-4 h-4" />
+                    Usuários
                   </Button>
-                )}
-                {canCreateCompany && (
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start gap-2 text-foreground hover:bg-accent"
-                    onClick={onCreateCompany}
-                  >
-                    <Plus className="w-4 h-4" />
-                    Nova Empresa
-                    {isGerente && companyLimit !== null && (
-                      <Badge variant="secondary" className="ml-auto text-xs">
-                        {companiesCreated}/{companyLimit}
-                      </Badge>
-                    )}
-                  </Button>
-                )}
-                {isSupervisor && (
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start gap-2 text-foreground hover:bg-accent"
-                    onClick={onManageCompanies}
-                  >
-                    <Settings className="w-4 h-4" />
-                    Gerenciar Empresas
-                  </Button>
-                )}
-                {isSupervisor && (
-                  <Button 
-                    variant="ghost" 
-                    className={cn(
-                      "w-full justify-start gap-2 text-foreground hover:bg-accent",
-                      currentView === 'audit-logs' && "bg-accent"
-                    )}
-                    onClick={() => onChangeView('audit-logs')}
-                  >
-                    <FileSearch className="w-4 h-4" />
-                    Logs de Auditoria
-                  </Button>
-                )}
-              </>
+                  {canInvite && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onOpenInvitations}
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Convites
+                      {isGerente && invitationLimit !== null && (
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {invitationsCreated}/{invitationLimit}
+                        </Badge>
+                      )}
+                    </Button>
+                  )}
+                  {canCreateCompany && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onCreateCompany}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Nova Empresa
+                      {isGerente && companyLimit !== null && (
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {companiesCreated}/{companyLimit}
+                        </Badge>
+                      )}
+                    </Button>
+                  )}
+                  {isSupervisor && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onManageCompanies}
+                    >
+                      <Building2 className="w-4 h-4" />
+                      Gerenciar Empresas
+                    </Button>
+                  )}
+                  {isSupervisor && (
+                    <Button 
+                      variant="ghost" 
+                      className={cn(
+                        "w-full justify-start gap-2 text-foreground hover:bg-accent",
+                        currentView === 'audit-logs' && "bg-accent"
+                      )}
+                      onClick={() => onChangeView('audit-logs')}
+                    >
+                      <FileSearch className="w-4 h-4" />
+                      Logs de Auditoria
+                    </Button>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
             )}
           </div>
         )}

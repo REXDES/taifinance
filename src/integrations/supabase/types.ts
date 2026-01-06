@@ -153,6 +153,56 @@ export type Database = {
           },
         ]
       }
+      clients_suppliers: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          document: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          document?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          document?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_suppliers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           color: string
@@ -585,6 +635,131 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      payables_receivables: {
+        Row: {
+          amount: number
+          category_id: string | null
+          client_supplier_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string
+          due_date: string
+          id: string
+          installment_number: number | null
+          paid_account_id: string | null
+          paid_amount: number | null
+          paid_by: string | null
+          paid_date: string | null
+          parent_id: string | null
+          payment_type: string
+          status: string
+          subcategory_id: string | null
+          total_installments: number | null
+          transaction_id: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          client_supplier_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          due_date: string
+          id?: string
+          installment_number?: number | null
+          paid_account_id?: string | null
+          paid_amount?: number | null
+          paid_by?: string | null
+          paid_date?: string | null
+          parent_id?: string | null
+          payment_type: string
+          status?: string
+          subcategory_id?: string | null
+          total_installments?: number | null
+          transaction_id?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          client_supplier_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          due_date?: string
+          id?: string
+          installment_number?: number | null
+          paid_account_id?: string | null
+          paid_amount?: number | null
+          paid_by?: string | null
+          paid_date?: string | null
+          parent_id?: string | null
+          payment_type?: string
+          status?: string
+          subcategory_id?: string | null
+          total_installments?: number | null
+          transaction_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payables_receivables_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payables_receivables_client_supplier_id_fkey"
+            columns: ["client_supplier_id"]
+            isOneToOne: false
+            referencedRelation: "clients_suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payables_receivables_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payables_receivables_paid_account_id_fkey"
+            columns: ["paid_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payables_receivables_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "payables_receivables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payables_receivables_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_subcategories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payables_receivables_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

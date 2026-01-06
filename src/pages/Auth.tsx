@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, DollarSign } from 'lucide-react';
 
 interface InvitationData {
   id: string;
@@ -242,9 +242,14 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">TAI Projects</CardTitle>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="p-2 bg-primary rounded-lg">
+              <DollarSign className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <CardTitle className="text-2xl font-bold">TAI Finance</CardTitle>
+          </div>
           <CardDescription>
-            Gerencie seus projetos de forma eficiente
+            Sistema de Gestão Financeira
           </CardDescription>
         </CardHeader>
         <CardContent>

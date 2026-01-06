@@ -167,6 +167,32 @@ export function useTransactions(companyId: string | null, filters?: TransactionF
 
   const deleteTransaction = useCallback(async (id: string) => {
     try {
+      // Check if there's a payable/receivable linked to this transaction
+      const { data: linkedPR, error: prFetchError } = await supabase
+        .from('payables_receivables')
+        .select('id')
+        .eq('transaction_id', id);
+
+      if (prFetchError) throw prFetchError;
+
+      // If there's a linked payable/receivable, revert it to pending
+      if (linkedPR && linkedPR.length > 0) {
+        const { error: prUpdateError } = await supabase
+          .from('payables_receivables')
+          .update({
+            status: 'pending',
+            paid_amount: null,
+            paid_date: null,
+            paid_account_id: null,
+            paid_by: null,
+            transaction_id: null
+          })
+          .eq('transaction_id', id);
+
+        if (prUpdateError) throw prUpdateError;
+      }
+
+      // Delete the transaction
       const { error } = await supabase
         .from('transactions')
         .delete()
@@ -175,7 +201,12 @@ export function useTransactions(companyId: string | null, filters?: TransactionF
       if (error) throw error;
       
       await fetchTransactions();
-      toast({ title: 'Transação excluída com sucesso' });
+      
+      if (linkedPR && linkedPR.length > 0) {
+        toast({ title: 'Transação excluída e conta revertida para pendente' });
+      } else {
+        toast({ title: 'Transação excluída com sucesso' });
+      }
       return true;
     } catch (error: any) {
       toast({ title: 'Erro ao excluir transação', description: error.message, variant: 'destructive' });

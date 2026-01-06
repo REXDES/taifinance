@@ -38,7 +38,9 @@ interface UserRoleInfo {
 const Finance = () => {
   const { user, signOut } = useAuth();
   const { companies, createCompany, refetch: refetchCompanies } = useCompanies();
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => {
+    return localStorage.getItem('tai-finance-last-company') || null;
+  });
   const [currentView, setCurrentView] = useState<FinanceView>('dashboard');
   const [userRole, setUserRole] = useState<UserRoleInfo | null>(null);
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
@@ -85,12 +87,28 @@ const Finance = () => {
     checkUserRole();
   }, [user?.id]);
 
-  // Auto-select company
+  // Auto-select company (prefer last selected, fallback to first)
   useEffect(() => {
-    if (!selectedCompanyId && companies.length > 0) {
-      setSelectedCompanyId(companies[0].id);
+    if (companies.length > 0) {
+      const lastCompanyId = localStorage.getItem('tai-finance-last-company');
+      const lastCompanyExists = lastCompanyId && companies.some(c => c.id === lastCompanyId);
+      
+      if (!selectedCompanyId || !companies.some(c => c.id === selectedCompanyId)) {
+        if (lastCompanyExists) {
+          setSelectedCompanyId(lastCompanyId);
+        } else {
+          setSelectedCompanyId(companies[0].id);
+        }
+      }
     }
   }, [companies, selectedCompanyId]);
+
+  // Persist selected company to localStorage
+  useEffect(() => {
+    if (selectedCompanyId) {
+      localStorage.setItem('tai-finance-last-company', selectedCompanyId);
+    }
+  }, [selectedCompanyId]);
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 

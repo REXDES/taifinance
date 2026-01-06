@@ -23,6 +23,9 @@ import {
   PieChart,
   Activity,
   FileSearch,
+  CreditCard,
+  Calendar,
+  TrendingUp,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,6 +83,7 @@ const mainMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }
 const transacoesMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
   { view: 'transactions', label: 'Lançamentos', icon: <ArrowUpDown className="w-4 h-4" /> },
   { view: 'transfers', label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" /> },
+  { view: 'payables-receivables', label: 'Contas a Pagar/Receber', icon: <CreditCard className="w-4 h-4" /> },
 ];
 
 // Sub-menu items for "Relatórios"
@@ -88,6 +92,9 @@ const relatoriosMenuItems: { view: FinanceView; label: string; icon: React.React
   { view: 'statement', label: 'Extrato', icon: <FileText className="w-4 h-4" /> },
   { view: 'category-report', label: 'Por Categoria', icon: <PieChart className="w-4 h-4" /> },
   { view: 'cash-flow', label: 'Fluxo Financeiro', icon: <Activity className="w-4 h-4" /> },
+  { view: 'payables-receivables-report', label: 'Contas a Pagar/Receber', icon: <FileSearch className="w-4 h-4" /> },
+  { view: 'payables-receivables-calendar', label: 'Calendário Financeiro', icon: <Calendar className="w-4 h-4" /> },
+  { view: 'payables-receivables-flow', label: 'Fluxo de Contas', icon: <TrendingUp className="w-4 h-4" /> },
 ];
 
 // Sub-menu items for "Cadastros"

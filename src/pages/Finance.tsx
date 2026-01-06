@@ -13,6 +13,10 @@ import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
 import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
 import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
 import { AuditLogsPage } from '@/components/finance/AuditLogsPage';
+import { PayablesReceivablesPage } from '@/components/finance/PayablesReceivablesPage';
+import { PayablesReceivablesReportPage } from '@/components/finance/PayablesReceivablesReportPage';
+import { PayablesReceivablesCalendarPage } from '@/components/finance/PayablesReceivablesCalendarPage';
+import { PayablesReceivablesFlowPage } from '@/components/finance/PayablesReceivablesFlowPage';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
@@ -21,7 +25,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
-export type FinanceView = 'dashboard' | 'accounts' | 'transactions' | 'transfers' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow' | 'audit-logs';
+export type FinanceView = 'dashboard' | 'accounts' | 'transactions' | 'transfers' | 'payables-receivables' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow' | 'payables-receivables-report' | 'payables-receivables-calendar' | 'payables-receivables-flow' | 'audit-logs';
 
 interface UserRoleInfo {
   role: AppRole;
@@ -125,6 +129,8 @@ const Finance = () => {
         return <TransactionsPage companyId={selectedCompanyId} />;
       case 'transfers':
         return <TransfersPage companyId={selectedCompanyId} />;
+      case 'payables-receivables':
+        return <PayablesReceivablesPage companyId={selectedCompanyId} />;
       case 'balance':
         return <BalanceSheetPage companyId={selectedCompanyId} />;
       case 'statement':
@@ -135,6 +141,12 @@ const Finance = () => {
         return <CategoryReportPage companyId={selectedCompanyId} />;
       case 'cash-flow':
         return <CashFlowReportPage companyId={selectedCompanyId} />;
+      case 'payables-receivables-report':
+        return <PayablesReceivablesReportPage companyId={selectedCompanyId} />;
+      case 'payables-receivables-calendar':
+        return <PayablesReceivablesCalendarPage companyId={selectedCompanyId} />;
+      case 'payables-receivables-flow':
+        return <PayablesReceivablesFlowPage companyId={selectedCompanyId} />;
       case 'audit-logs':
         return <AuditLogsPage />;
       default:

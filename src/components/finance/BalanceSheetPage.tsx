@@ -449,12 +449,22 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
               <Wallet className="w-4 h-4" />
-              Saldo Total
+              Saldo Geral
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(totalBalance)}
+            <div className={`text-2xl font-bold ${totals.ativoTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(totals.ativoTotal)}
+            </div>
+            <div className="mt-2 space-y-1">
+              <p className="text-xs text-muted-foreground flex justify-between">
+                <span>Passivo:</span>
+                <span className={totals.passivoTotal >= 0 ? 'text-red-500' : 'text-green-500'}>{formatCurrency(totals.passivoTotal)}</span>
+              </p>
+              <p className="text-xs font-medium flex justify-between border-t pt-1">
+                <span>Total Geral:</span>
+                <span className={totals.ativoTotal - totals.passivoTotal >= 0 ? 'text-green-600' : 'text-red-600'}>{formatCurrency(totals.ativoTotal - totals.passivoTotal)}</span>
+              </p>
             </div>
           </CardContent>
         </Card>

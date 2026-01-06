@@ -8,7 +8,7 @@ interface FinanceDashboardProps {
 }
 
 export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
-  const { accounts, totalBalance, loading: accountsLoading } = useAccounts(companyId);
+  const { accounts, totalAtivo, totalPassivo, totalGeral, loading: accountsLoading } = useAccounts(companyId);
   
   // Get current month transactions
   const now = new Date();
@@ -48,16 +48,23 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Saldo Total</CardTitle>
+            <CardTitle className="text-sm font-medium">Saldo Geral</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(totalBalance)}
+            <div className={`text-2xl font-bold ${totalAtivo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(totalAtivo)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {accounts.length} conta{accounts.length !== 1 ? 's' : ''} ativa{accounts.length !== 1 ? 's' : ''}
-            </p>
+            <div className="mt-2 space-y-1">
+              <p className="text-xs text-muted-foreground flex justify-between">
+                <span>Passivo:</span>
+                <span className={totalPassivo >= 0 ? 'text-red-500' : 'text-green-500'}>{formatCurrency(totalPassivo)}</span>
+              </p>
+              <p className="text-xs font-medium flex justify-between border-t pt-1">
+                <span>Total Geral:</span>
+                <span className={totalGeral >= 0 ? 'text-green-600' : 'text-red-600'}>{formatCurrency(totalGeral)}</span>
+              </p>
+            </div>
           </CardContent>
         </Card>
 

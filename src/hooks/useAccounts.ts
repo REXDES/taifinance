@@ -207,11 +207,32 @@ export function useAccounts(companyId: string | null) {
 
   const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.current_balance), 0);
 
+  // Calculate totals by group type (ativo/passivo)
+  const balancesByType = accounts.reduce((acc, account) => {
+    const group = groups.find(g => g.id === account.group_id);
+    const groupType = group?.type || 'ativo'; // Default to ativo for ungrouped accounts
+    const balance = Number(account.current_balance);
+    
+    if (groupType === 'passivo') {
+      acc.passivo += balance;
+    } else {
+      acc.ativo += balance;
+    }
+    return acc;
+  }, { ativo: 0, passivo: 0 });
+
+  const totalAtivo = balancesByType.ativo;
+  const totalPassivo = balancesByType.passivo;
+  const totalGeral = totalAtivo - totalPassivo;
+
   return {
     accounts,
     groups,
     loading,
     totalBalance,
+    totalAtivo,
+    totalPassivo,
+    totalGeral,
     createAccount,
     updateAccount,
     deleteAccount,

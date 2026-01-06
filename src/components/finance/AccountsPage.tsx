@@ -37,7 +37,9 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
     accounts,
     groups,
     loading,
-    totalBalance,
+    totalAtivo,
+    totalPassivo,
+    totalGeral,
     createAccount,
     updateAccount,
     deleteAccount,
@@ -312,11 +314,21 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
       {/* Total Balance */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Total</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Geral</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={`text-3xl font-bold ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatCurrency(totalBalance)}
+          <div className={`text-3xl font-bold ${totalAtivo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {formatCurrency(totalAtivo)}
+          </div>
+          <div className="mt-3 space-y-1">
+            <p className="text-sm text-muted-foreground flex justify-between">
+              <span>Passivo:</span>
+              <span className={totalPassivo >= 0 ? 'text-red-500' : 'text-green-500'}>{formatCurrency(totalPassivo)}</span>
+            </p>
+            <p className="text-sm font-medium flex justify-between border-t pt-1">
+              <span>Total Geral:</span>
+              <span className={totalGeral >= 0 ? 'text-green-600' : 'text-red-600'}>{formatCurrency(totalGeral)}</span>
+            </p>
           </div>
         </CardContent>
       </Card>

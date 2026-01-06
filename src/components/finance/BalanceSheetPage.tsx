@@ -2,10 +2,11 @@ import { useState, useMemo, Fragment } from 'react';
 import { useAccounts, Account, AccountGroup } from '@/hooks/useAccounts';
 import { useTransactions, Transaction } from '@/hooks/useTransactions';
 import { useTransfers, Transfer } from '@/hooks/useTransfers';
+import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, CreditCard, Calculator } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, isBefore, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -27,6 +28,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
   const { accounts, groups, totalBalance, loading: accLoading } = useAccounts(companyId);
   const { transactions, totalIncome, totalExpense, loading: txLoading } = useTransactions(companyId);
   const { transfers, loading: trLoading } = useTransfers(companyId);
+  const { totalPayable, totalReceivable, loading: prLoading } = usePayablesReceivables(companyId);
   
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
@@ -245,13 +247,15 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
     });
   };
 
-  if (accLoading || txLoading || trLoading) {
+  if (accLoading || txLoading || trLoading || prLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
+
+  const projectedBalance = (totals.ativoTotal - totals.passivoTotal) + totalReceivable - totalPayable;
 
   const renderAccountRows = (groupAccounts: Account[]) => {
     return groupAccounts.map((account) => {
@@ -606,6 +610,94 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                 </TableCell>
                 <TableCell className={`text-right ${(totals.ativoTotal - totals.passivoTotal) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(totals.ativoTotal - totals.passivoTotal)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Contas a Pagar e a Receber Card */}
+      <Card className="border-amber-200 dark:border-amber-800">
+        <CardHeader className="bg-amber-50 dark:bg-amber-900/20">
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-amber-600" />
+            Contas a Pagar e a Receber (Pendentes)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableBody>
+              <TableRow className="hover:bg-muted/50">
+                <TableCell className="w-[50px]"></TableCell>
+                <TableCell>Total a Receber</TableCell>
+                <TableCell></TableCell>
+                <TableCell className="text-right text-green-600 font-medium">
+                  +{formatCurrency(totalReceivable)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/50">
+                <TableCell className="w-[50px]"></TableCell>
+                <TableCell>Total a Pagar</TableCell>
+                <TableCell></TableCell>
+                <TableCell className="text-right text-red-600 font-medium">
+                  -{formatCurrency(totalPayable)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="font-bold bg-amber-100 dark:bg-amber-900/30 border-t-2 border-amber-300 dark:border-amber-700">
+                <TableCell className="w-[50px]"></TableCell>
+                <TableCell>SALDO PROJETADO (A Receber - A Pagar)</TableCell>
+                <TableCell></TableCell>
+                <TableCell className={`text-right ${(totalReceivable - totalPayable) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(totalReceivable - totalPayable)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Saldo Total Projetado Card */}
+      <Card className="border-blue-200 dark:border-blue-800">
+        <CardHeader className="bg-blue-50 dark:bg-blue-900/20">
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="w-5 h-5 text-blue-600" />
+            Saldo Total Projetado
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableBody>
+              <TableRow className="hover:bg-muted/50">
+                <TableCell className="w-[50px]"></TableCell>
+                <TableCell>Saldo Atual (Ativo - Passivo)</TableCell>
+                <TableCell></TableCell>
+                <TableCell className={`text-right ${(totals.ativoTotal - totals.passivoTotal) >= 0 ? 'text-foreground' : 'text-red-600'}`}>
+                  {formatCurrency(totals.ativoTotal - totals.passivoTotal)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/50">
+                <TableCell className="w-[50px]"></TableCell>
+                <TableCell>(+) A Receber</TableCell>
+                <TableCell></TableCell>
+                <TableCell className="text-right text-green-600">
+                  +{formatCurrency(totalReceivable)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/50">
+                <TableCell className="w-[50px]"></TableCell>
+                <TableCell>(-) A Pagar</TableCell>
+                <TableCell></TableCell>
+                <TableCell className="text-right text-red-600">
+                  -{formatCurrency(totalPayable)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="font-bold bg-blue-100 dark:bg-blue-900/30 border-t-2 border-blue-300 dark:border-blue-700">
+                <TableCell className="w-[50px]"></TableCell>
+                <TableCell>= SALDO TOTAL PROJETADO</TableCell>
+                <TableCell></TableCell>
+                <TableCell className={`text-right ${projectedBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(projectedBalance)}
                 </TableCell>
               </TableRow>
             </TableBody>

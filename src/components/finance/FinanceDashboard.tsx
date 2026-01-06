@@ -1,14 +1,26 @@
 import { useAccounts } from '@/hooks/useAccounts';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useTransfers } from '@/hooks/useTransfers';
+import { usePatrimonialEvolution } from '@/hooks/usePatrimonialEvolution';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts';
 
 interface FinanceDashboardProps {
   companyId: string;
 }
 
 export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
-  const { accounts, totalAtivo, totalPassivo, totalGeral, loading: accountsLoading } = useAccounts(companyId);
+  const { accounts, groups, totalAtivo, totalPassivo, totalGeral, loading: accountsLoading } = useAccounts(companyId);
   
   // Get current month transactions
   const now = new Date();
@@ -20,6 +32,19 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
     endDate: endOfMonth,
   });
 
+  // Get all transactions and transfers for evolution chart
+  const { transactions: allTransactions, loading: allTxLoading } = useTransactions(companyId);
+  const { transfers, loading: transfersLoading } = useTransfers(companyId);
+
+  // Calculate patrimonial evolution
+  const patrimonialData = usePatrimonialEvolution({
+    accounts,
+    groups,
+    transactions: allTransactions,
+    transfers,
+    monthsBack: 6,
+  });
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -27,7 +52,17 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
     }).format(value);
   };
 
-  const loading = accountsLoading || transactionsLoading;
+  const formatCurrencyShort = (value: number) => {
+    if (Math.abs(value) >= 1000000) {
+      return `R$ ${(value / 1000000).toFixed(1)}M`;
+    }
+    if (Math.abs(value) >= 1000) {
+      return `R$ ${(value / 1000).toFixed(1)}K`;
+    }
+    return `R$ ${value.toFixed(0)}`;
+  };
+
+  const loading = accountsLoading || transactionsLoading || allTxLoading || transfersLoading;
 
   if (loading) {
     return (
@@ -113,6 +148,79 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Patrimonial Evolution Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Evolução Patrimonial</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {patrimonialData.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              Dados insuficientes para exibir o gráfico.
+            </p>
+          ) : (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={patrimonialData}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="monthLabel" 
+                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <YAxis 
+                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatCurrencyShort}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => formatCurrency(value)}
+                    labelFormatter={(label) => `Mês: ${label}`}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="ativo"
+                    name="Ativo"
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    dot={{ fill: '#22c55e', strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="passivo"
+                    name="Passivo"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    dot={{ fill: '#ef4444', strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    name="Total Geral"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={{ fill: '#3b82f6', strokeWidth: 2 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Accounts List */}
       <Card>

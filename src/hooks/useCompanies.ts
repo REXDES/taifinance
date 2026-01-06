@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 export interface Company {
   id: string;
@@ -15,6 +16,7 @@ export function useCompanies() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { logAction } = useAuditLog();
 
   const fetchCompanies = async () => {
     try {
@@ -42,6 +44,16 @@ export function useCompanies() {
         .single();
 
       if (error) throw error;
+      
+      // Log audit action
+      await logAction({
+        action: 'company_created',
+        entity_type: 'company',
+        entity_id: data.id,
+        company_id: data.id,
+        details: { name, color },
+      });
+
       setCompanies(prev => [...prev, data]);
       toast.success('Empresa criada com sucesso!');
       return data;
@@ -62,6 +74,16 @@ export function useCompanies() {
         .single();
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        action: 'company_updated',
+        entity_type: 'company',
+        entity_id: id,
+        company_id: id,
+        details: { name, color },
+      });
+
       setCompanies(prev => prev.map(c => c.id === id ? data : c));
       toast.success('Empresa atualizada com sucesso!');
       return data;
@@ -80,6 +102,15 @@ export function useCompanies() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        action: 'company_deleted',
+        entity_type: 'company',
+        entity_id: id,
+        company_id: id,
+      });
+
       setCompanies(prev => prev.filter(c => c.id !== id));
       toast.success('Empresa excluída com sucesso!');
       return true;

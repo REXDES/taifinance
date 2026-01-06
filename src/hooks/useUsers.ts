@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -30,6 +31,7 @@ export function useUsers(companyId: string | null) {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { logAction } = useAuditLog();
 
   const fetchUsers = useCallback(async () => {
     if (!companyId) return;
@@ -173,6 +175,15 @@ export function useUsers(companyId: string | null) {
 
       if (error) throw error;
 
+      // Log audit action
+      await logAction({
+        action: 'invitation_created',
+        entity_type: 'invitation',
+        entity_id: data.id,
+        company_id: targetCompanyId,
+        details: { email, role, name },
+      });
+
       toast({
         title: 'Convite criado',
         description: `Convite criado para ${name}. Copie o link e a senha para enviar ao convidado.`,
@@ -200,6 +211,14 @@ export function useUsers(companyId: string | null) {
 
       if (error) throw error;
 
+      // Log audit action
+      await logAction({
+        action: 'invitation_deleted',
+        entity_type: 'invitation',
+        entity_id: invitationId,
+        company_id: companyId || undefined,
+      });
+
       toast({
         title: 'Convite removido',
       });
@@ -222,6 +241,15 @@ export function useUsers(companyId: string | null) {
         .eq('user_id', userId);
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        action: 'user_role_updated',
+        entity_type: 'user_role',
+        entity_id: userId,
+        company_id: companyId || undefined,
+        details: { newRole },
+      });
 
       toast({
         title: 'Cargo atualizado',
@@ -248,6 +276,14 @@ export function useUsers(companyId: string | null) {
         .eq('company_id', companyId);
 
       if (error) throw error;
+
+      // Log audit action
+      await logAction({
+        action: 'user_removed',
+        entity_type: 'user',
+        entity_id: userId,
+        company_id: companyId,
+      });
 
       toast({
         title: 'Usuário removido da empresa',

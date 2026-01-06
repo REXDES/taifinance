@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTransfers } from '@/hooks/useTransfers';
 import { useAccounts } from '@/hooks/useAccounts';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Trash2, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Filter } from 'lucide-react';
 
 interface TransfersPageProps {
   companyId: string;
@@ -37,6 +37,12 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
   const { transfers, loading, createTransfer, deleteTransfer } = useTransfers(companyId);
   const { accounts } = useAccounts(companyId);
   const [showDialog, setShowDialog] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<{
+    startDate?: string;
+    endDate?: string;
+    accountId?: string;
+  }>({});
   const [form, setForm] = useState({
     from_account_id: '',
     to_account_id: '',
@@ -46,6 +52,30 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
   });
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const filteredTransfers = useMemo(() => {
+    return transfers.filter(t => {
+      const transferDate = new Date(t.date + 'T00:00:00');
+      
+      if (filters.startDate) {
+        const startDate = new Date(filters.startDate + 'T00:00:00');
+        if (transferDate < startDate) return false;
+      }
+      
+      if (filters.endDate) {
+        const endDate = new Date(filters.endDate + 'T00:00:00');
+        if (transferDate > endDate) return false;
+      }
+      
+      if (filters.accountId) {
+        if (t.from_account_id !== filters.accountId && t.to_account_id !== filters.accountId) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [transfers, filters]);
 
   const handleSave = async () => {
     await createTransfer({
@@ -68,41 +98,90 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
           <h1 className="text-2xl font-bold text-foreground">Transferências</h1>
           <p className="text-muted-foreground">Transfira valores entre suas contas</p>
         </div>
-        <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogTrigger asChild>
-            <Button><Plus className="w-4 h-4 mr-2" />Nova Transferência</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Nova Transferência</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div><Label>De (Conta Origem) *</Label>
-                <Select value={form.from_account_id} onValueChange={(v) => setForm({ ...form, from_account_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
-                </Select>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+            <Filter className="w-4 h-4 mr-2" />
+            Filtros
+          </Button>
+          <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            <DialogTrigger asChild>
+              <Button><Plus className="w-4 h-4 mr-2" />Nova Transferência</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nova Transferência</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>De (Conta Origem) *</Label>
+                  <Select value={form.from_account_id} onValueChange={(v) => setForm({ ...form, from_account_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Para (Conta Destino) *</Label>
+                  <Select value={form.to_account_id} onValueChange={(v) => setForm({ ...form, to_account_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{accounts.filter(a => a.id !== form.from_account_id).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Valor *</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
+                <div><Label>Data *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
+                <div><Label>Descrição</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Opcional" /></div>
+                <Button onClick={handleSave} className="w-full" disabled={!form.from_account_id || !form.to_account_id || !form.amount}>Transferir</Button>
               </div>
-              <div><Label>Para (Conta Destino) *</Label>
-                <Select value={form.to_account_id} onValueChange={(v) => setForm({ ...form, to_account_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{accounts.filter(a => a.id !== form.from_account_id).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>Valor *</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
-              <div><Label>Data *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-              <div><Label>Descrição</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Opcional" /></div>
-              <Button onClick={handleSave} className="w-full" disabled={!form.from_account_id || !form.to_account_id || !form.amount}>Transferir</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      {/* Filters */}
+      {showFilters && (
+        <Card>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Data Inicial</Label>
+                <Input
+                  type="date"
+                  value={filters.startDate || ''}
+                  onChange={(e) => setFilters({ ...filters, startDate: e.target.value || undefined })}
+                />
+              </div>
+              <div>
+                <Label>Data Final</Label>
+                <Input
+                  type="date"
+                  value={filters.endDate || ''}
+                  onChange={(e) => setFilters({ ...filters, endDate: e.target.value || undefined })}
+                />
+              </div>
+              <div>
+                <Label>Conta</Label>
+                <Select value={filters.accountId || 'all'} onValueChange={(v) => setFilters({ ...filters, accountId: v === 'all' ? undefined : v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {accounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card><CardContent className="pt-4">
-        {transfers.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhuma transferência encontrada.</p> : (
+        {filteredTransfers.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhuma transferência encontrada.</p> : (
           <Table>
             <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>De</TableHead><TableHead></TableHead><TableHead>Para</TableHead><TableHead className="text-right">Valor</TableHead><TableHead className="w-16">Ações</TableHead></TableRow></TableHeader>
             <TableBody>
-              {transfers.map((t) => (
+              {filteredTransfers.map((t) => (
                 <TableRow key={t.id}>
-                  <TableCell>{new Date(t.date).toLocaleDateString('pt-BR')}</TableCell>
+                  <TableCell>{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
                   <TableCell>{t.from_account?.name}</TableCell>
                   <TableCell><ArrowRight className="w-4 h-4 text-muted-foreground" /></TableCell>
                   <TableCell>{t.to_account?.name}</TableCell>

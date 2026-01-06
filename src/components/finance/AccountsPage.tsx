@@ -74,11 +74,15 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
 
   const handleSaveAccount = async () => {
     if (editingAccount) {
+      const newInitialBalance = parseFloat(accountForm.initial_balance) || 0;
+      const balanceDiff = newInitialBalance - editingAccount.initial_balance;
       await updateAccount(editingAccount.id, {
         name: accountForm.name,
         description: accountForm.description || null,
         group_id: accountForm.group_id || null,
         color: accountForm.color,
+        initial_balance: newInitialBalance,
+        current_balance: editingAccount.current_balance + balanceDiff,
       });
     } else {
       await createAccount({
@@ -259,18 +263,16 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                {!editingAccount && (
-                  <div>
-                    <Label>Saldo Inicial</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={accountForm.initial_balance}
-                      onChange={(e) => setAccountForm({ ...accountForm, initial_balance: e.target.value })}
-                      placeholder="0,00"
-                    />
-                  </div>
-                )}
+                <div>
+                  <Label>Saldo Inicial</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={accountForm.initial_balance}
+                    onChange={(e) => setAccountForm({ ...accountForm, initial_balance: e.target.value })}
+                    placeholder="0,00"
+                  />
+                </div>
                 <div>
                   <Label>Cor</Label>
                   <Input

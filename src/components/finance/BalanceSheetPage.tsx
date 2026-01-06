@@ -449,7 +449,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
               <Wallet className="w-4 h-4" />
-              Saldo Geral
+              Saldo Ativo
             </CardTitle>
           </CardHeader>
           <CardContent>

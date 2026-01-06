@@ -22,6 +22,7 @@ import {
   ClipboardList,
   PieChart,
   Activity,
+  FileSearch,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -461,6 +462,21 @@ export function FinanceSidebar({
                     <TooltipContent side="right">Gerenciar Empresas</TooltipContent>
                   </Tooltip>
                 )}
+                {isSupervisor && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className={cn("w-full", currentView === 'audit-logs' && "bg-accent")}
+                        onClick={() => onChangeView('audit-logs')}
+                      >
+                        <FileSearch className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Logs de Auditoria</TooltipContent>
+                  </Tooltip>
+                )}
               </>
             ) : (
               <>
@@ -510,6 +526,19 @@ export function FinanceSidebar({
                   >
                     <Settings className="w-4 h-4" />
                     Gerenciar Empresas
+                  </Button>
+                )}
+                {isSupervisor && (
+                  <Button 
+                    variant="ghost" 
+                    className={cn(
+                      "w-full justify-start gap-2 text-foreground hover:bg-accent",
+                      currentView === 'audit-logs' && "bg-accent"
+                    )}
+                    onClick={() => onChangeView('audit-logs')}
+                  >
+                    <FileSearch className="w-4 h-4" />
+                    Logs de Auditoria
                   </Button>
                 )}
               </>

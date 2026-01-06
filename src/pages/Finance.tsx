@@ -12,6 +12,7 @@ import { CategoriesPage } from '@/components/finance/CategoriesPage';
 import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
 import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
 import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
+import { AuditLogsPage } from '@/components/finance/AuditLogsPage';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
@@ -20,7 +21,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
-export type FinanceView = 'dashboard' | 'accounts' | 'transactions' | 'transfers' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow';
+export type FinanceView = 'dashboard' | 'accounts' | 'transactions' | 'transfers' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow' | 'audit-logs';
 
 interface UserRoleInfo {
   role: AppRole;
@@ -134,6 +135,8 @@ const Finance = () => {
         return <CategoryReportPage companyId={selectedCompanyId} />;
       case 'cash-flow':
         return <CashFlowReportPage companyId={selectedCompanyId} />;
+      case 'audit-logs':
+        return <AuditLogsPage />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }

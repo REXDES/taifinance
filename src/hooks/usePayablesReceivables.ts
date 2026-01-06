@@ -243,14 +243,115 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
     await fetchPayablesReceivables();
   };
 
-  const deletePayableReceivable = async (id: string) => {
-    const { error } = await supabase
-      .from('payables_receivables')
-      .delete()
-      .eq('id', id);
+  const deletePayableReceivable = async (id: string, deleteRelated: boolean = false) => {
+    if (deleteRelated) {
+      // Get the record to check its relationships
+      const { data: record, error: fetchError } = await supabase
+        .from('payables_receivables')
+        .select('id, parent_id, payment_type, description, type, company_id, due_date')
+        .eq('id', id)
+        .single();
 
-    if (error) throw error;
+      if (fetchError) throw fetchError;
+
+      // Find the root parent ID (if this is a child) or use current ID (if this is parent)
+      const rootId = record.parent_id || record.id;
+
+      // Delete all related pending records (children with same parent OR same recurring pattern)
+      if (record.payment_type === 'installment') {
+        // For installments: delete all pending children and the parent if it's pending
+        const { error: deleteChildrenError } = await supabase
+          .from('payables_receivables')
+          .delete()
+          .eq('parent_id', rootId)
+          .eq('status', 'pending')
+          .gt('due_date', record.due_date);
+
+        if (deleteChildrenError) throw deleteChildrenError;
+
+        // If deleting from parent, also delete parent if pending
+        if (!record.parent_id) {
+          const { error } = await supabase
+            .from('payables_receivables')
+            .delete()
+            .eq('id', id);
+          if (error) throw error;
+        } else {
+          // Delete the current record
+          const { error } = await supabase
+            .from('payables_receivables')
+            .delete()
+            .eq('id', id);
+          if (error) throw error;
+        }
+      } else if (record.payment_type === 'recurring') {
+        // For recurring: delete all pending future occurrences with same description/type
+        const { error } = await supabase
+          .from('payables_receivables')
+          .delete()
+          .eq('company_id', record.company_id)
+          .eq('description', record.description)
+          .eq('type', record.type)
+          .eq('payment_type', 'recurring')
+          .eq('status', 'pending')
+          .gte('due_date', record.due_date);
+
+        if (error) throw error;
+      }
+    } else {
+      // Delete only this record
+      const { error } = await supabase
+        .from('payables_receivables')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    }
+    
     await fetchPayablesReceivables();
+  };
+
+  const checkRelatedRecords = async (id: string): Promise<{ hasRelated: boolean; count: number; type: 'installment' | 'recurring' | null }> => {
+    const { data: record, error: fetchError } = await supabase
+      .from('payables_receivables')
+      .select('id, parent_id, payment_type, description, type, company_id, due_date')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    if (record.payment_type === 'installment') {
+      const rootId = record.parent_id || record.id;
+      
+      // Count pending children with future due dates
+      const { count, error } = await supabase
+        .from('payables_receivables')
+        .select('id', { count: 'exact', head: true })
+        .or(`parent_id.eq.${rootId},id.eq.${rootId}`)
+        .eq('status', 'pending')
+        .gt('due_date', record.due_date);
+
+      if (error) throw error;
+      
+      return { hasRelated: (count || 0) > 0, count: count || 0, type: 'installment' };
+    } else if (record.payment_type === 'recurring') {
+      // Count pending future recurring with same description
+      const { count, error } = await supabase
+        .from('payables_receivables')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', record.company_id)
+        .eq('description', record.description)
+        .eq('type', record.type)
+        .eq('payment_type', 'recurring')
+        .eq('status', 'pending')
+        .gt('due_date', record.due_date);
+
+      if (error) throw error;
+      
+      return { hasRelated: (count || 0) > 0, count: count || 0, type: 'recurring' };
+    }
+
+    return { hasRelated: false, count: 0, type: null };
   };
 
   // Calculate totals
@@ -277,6 +378,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
     effectuatePayment,
     cancelPayableReceivable,
     deletePayableReceivable,
+    checkRelatedRecords,
     refetch: fetchPayablesReceivables
   };
 }

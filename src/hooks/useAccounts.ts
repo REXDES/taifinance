@@ -8,6 +8,7 @@ export interface AccountGroup {
   name: string;
   description: string | null;
   color: string;
+  type: 'ativo' | 'passivo';
   created_at: string;
 }
 
@@ -56,8 +57,8 @@ export function useAccounts(companyId: string | null) {
       if (accountsRes.error) throw accountsRes.error;
       if (groupsRes.error) throw groupsRes.error;
 
-      setAccounts(accountsRes.data || []);
-      setGroups(groupsRes.data || []);
+      setAccounts((accountsRes.data || []) as Account[]);
+      setGroups((groupsRes.data || []) as AccountGroup[]);
     } catch (error: any) {
       console.error('Error fetching accounts:', error);
       toast({ title: 'Erro ao carregar contas', description: error.message, variant: 'destructive' });
@@ -141,7 +142,7 @@ export function useAccounts(companyId: string | null) {
     }
   }, [fetchAccounts, toast]);
 
-  const createGroup = useCallback(async (data: { name: string; description?: string; color?: string }) => {
+  const createGroup = useCallback(async (data: { name: string; description?: string; color?: string; type?: 'ativo' | 'passivo' }) => {
     if (!companyId) return null;
 
     try {
@@ -152,6 +153,7 @@ export function useAccounts(companyId: string | null) {
           name: data.name,
           description: data.description || null,
           color: data.color || '#3B82F6',
+          type: data.type || 'ativo',
         })
         .select()
         .single();

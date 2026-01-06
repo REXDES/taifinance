@@ -63,6 +63,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
     name: '',
     description: '',
     color: '#3B82F6',
+    type: 'ativo' as 'ativo' | 'passivo',
   });
 
   const formatCurrency = (value: number) => {
@@ -122,17 +123,19 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
         name: groupForm.name,
         description: groupForm.description || null,
         color: groupForm.color,
+        type: groupForm.type,
       });
     } else {
       await createGroup({
         name: groupForm.name,
         description: groupForm.description,
         color: groupForm.color,
+        type: groupForm.type,
       });
     }
     setShowGroupDialog(false);
     setEditingGroup(null);
-    setGroupForm({ name: '', description: '', color: '#3B82F6' });
+    setGroupForm({ name: '', description: '', color: '#3B82F6', type: 'ativo' });
   };
 
   const handleEditGroup = (group: AccountGroup) => {
@@ -141,6 +144,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
       name: group.name,
       description: group.description || '',
       color: group.color,
+      type: group.type || 'ativo',
     });
     setShowGroupDialog(true);
   };
@@ -171,7 +175,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
             <DialogTrigger asChild>
               <Button variant="outline" onClick={() => {
                 setEditingGroup(null);
-                setGroupForm({ name: '', description: '', color: '#3B82F6' });
+                setGroupForm({ name: '', description: '', color: '#3B82F6', type: 'ativo' });
               }}>
                 <FolderPlus className="w-4 h-4 mr-2" />
                 Novo Grupo
@@ -197,6 +201,21 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
                     onChange={(e) => setGroupForm({ ...groupForm, description: e.target.value })}
                     placeholder="Descrição opcional"
                   />
+                </div>
+                <div>
+                  <Label>Tipo</Label>
+                  <Select
+                    value={groupForm.type}
+                    onValueChange={(value: 'ativo' | 'passivo') => setGroupForm({ ...groupForm, type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="passivo">Passivo</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Cor</Label>
@@ -313,6 +332,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Contas</TableHead>
                   <TableHead className="w-24">Ações</TableHead>
@@ -329,6 +349,11 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
                         />
                         {group.name}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`text-xs px-2 py-1 rounded ${group.type === 'ativo' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                        {group.type === 'ativo' ? 'Ativo' : 'Passivo'}
+                      </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{group.description || '-'}</TableCell>
                     <TableCell>{accounts.filter(a => a.group_id === group.id).length}</TableCell>

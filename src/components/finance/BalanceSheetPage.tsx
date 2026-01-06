@@ -5,7 +5,7 @@ import { useTransfers, Transfer } from '@/hooks/useTransfers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, isBefore, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -38,7 +38,6 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
   const now = new Date();
   const currentMonthStart = startOfMonth(now);
   const currentMonthEnd = endOfMonth(now);
-  const previousMonthEnd = endOfMonth(subMonths(now, 1));
 
   // Group accounts by group_id
   const groupedData = useMemo(() => {
@@ -152,7 +151,66 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
     return byAccount;
   }, [allEntriesByAccount, currentMonthStart, currentMonthEnd]);
 
-  // Calculate group totals based on opening balances
+  // Separate groups by type (ativo/passivo)
+  const { ativoGroups, passivoGroups, ungroupedAccounts, ativoUngrouped, passivoUngrouped } = useMemo(() => {
+    const ativo: AccountGroup[] = [];
+    const passivo: AccountGroup[] = [];
+    
+    groups.forEach(group => {
+      const hasAccounts = groupedData.has(group.id) && (groupedData.get(group.id)?.length || 0) > 0;
+      if (hasAccounts) {
+        if (group.type === 'passivo') {
+          passivo.push(group);
+        } else {
+          ativo.push(group);
+        }
+      }
+    });
+    
+    const ungrouped = groupedData.get(null) || [];
+    
+    return {
+      ativoGroups: ativo,
+      passivoGroups: passivo,
+      ungroupedAccounts: ungrouped,
+      ativoUngrouped: ungrouped, // Ungrouped accounts go to ativo by default
+      passivoUngrouped: [] as Account[],
+    };
+  }, [groups, groupedData]);
+
+  // Calculate totals by type
+  const totals = useMemo(() => {
+    let ativoTotal = 0;
+    let passivoTotal = 0;
+    let ativoOpening = 0;
+    let passivoOpening = 0;
+
+    // Calculate grouped accounts
+    groups.forEach(group => {
+      const groupAccounts = groupedData.get(group.id) || [];
+      const groupBalance = groupAccounts.reduce((sum, acc) => sum + Number(acc.current_balance), 0);
+      const groupOpening = groupAccounts.reduce((sum, acc) => sum + (accountOpeningBalances.get(acc.id) || Number(acc.initial_balance)), 0);
+      
+      if (group.type === 'passivo') {
+        passivoTotal += groupBalance;
+        passivoOpening += groupOpening;
+      } else {
+        ativoTotal += groupBalance;
+        ativoOpening += groupOpening;
+      }
+    });
+
+    // Add ungrouped to ativo
+    const ungrouped = groupedData.get(null) || [];
+    ungrouped.forEach(acc => {
+      ativoTotal += Number(acc.current_balance);
+      ativoOpening += accountOpeningBalances.get(acc.id) || Number(acc.initial_balance);
+    });
+
+    return { ativoTotal, passivoTotal, ativoOpening, passivoOpening };
+  }, [groups, groupedData, accountOpeningBalances]);
+
+  // Calculate group totals
   const getGroupOpeningBalance = (groupId: string | null): number => {
     const groupAccounts = groupedData.get(groupId) || [];
     return groupAccounts.reduce((sum, acc) => sum + (accountOpeningBalances.get(acc.id) || Number(acc.initial_balance)), 0);
@@ -195,9 +253,163 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
     );
   }
 
-  // Separate groups and ungrouped accounts
-  const groupsWithAccounts = groups.filter(g => groupedData.has(g.id) && (groupedData.get(g.id)?.length || 0) > 0);
-  const ungroupedAccounts = groupedData.get(null) || [];
+  const renderAccountRows = (groupAccounts: Account[]) => {
+    return groupAccounts.map((account) => {
+      const isAccountExpanded = expandedAccounts.has(account.id);
+      const accountEntries = currentMonthEntriesByAccount.get(account.id) || [];
+      const openingBalance = accountOpeningBalances.get(account.id) || Number(account.initial_balance);
+
+      return (
+        <Fragment key={account.id}>
+          {/* Account Row */}
+          <TableRow className="bg-background hover:bg-muted/50">
+            <TableCell className="pl-8">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => toggleAccount(account.id)}
+                disabled={accountEntries.length === 0}
+              >
+                {accountEntries.length > 0 ? (
+                  isAccountExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )
+                ) : (
+                  <div className="h-4 w-4" />
+                )}
+              </Button>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-2 pl-4">
+                <div 
+                  className="w-2 h-2 rounded-full" 
+                  style={{ backgroundColor: account.color }} 
+                />
+                <span>{account.name}</span>
+                {accountEntries.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    ({accountEntries.length} lançamentos)
+                  </span>
+                )}
+              </div>
+            </TableCell>
+            <TableCell className="text-right">
+              {formatCurrency(openingBalance)}
+            </TableCell>
+            <TableCell className={`text-right ${Number(account.current_balance) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(Number(account.current_balance))}
+            </TableCell>
+          </TableRow>
+
+          {/* Entry Rows (when account is expanded) */}
+          {isAccountExpanded && accountEntries.map((entry) => {
+            const getEntryStyle = () => {
+              switch (entry.type) {
+                case 'income':
+                  return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+                case 'expense':
+                  return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+                case 'transfer_in':
+                  return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+                case 'transfer_out':
+                  return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+              }
+            };
+            const getEntryLabel = () => {
+              switch (entry.type) {
+                case 'income': return 'R';
+                case 'expense': return 'D';
+                case 'transfer_in': return 'T↓';
+                case 'transfer_out': return 'T↑';
+              }
+            };
+            const isPositive = entry.type === 'income' || entry.type === 'transfer_in';
+            
+            return (
+              <TableRow key={entry.id} className="bg-muted/20 text-sm">
+                <TableCell></TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2 pl-12">
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${getEntryStyle()}`}>
+                      {getEntryLabel()}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {format(new Date(entry.date), 'dd/MM/yyyy', { locale: ptBR })}
+                    </span>
+                    <span>{entry.description}</span>
+                    {entry.categoryName && (
+                      <span className="text-xs text-muted-foreground">
+                        [{entry.categoryName}]
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell></TableCell>
+                <TableCell className={`text-right ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                  {isPositive ? '+' : '-'}{formatCurrency(entry.amount)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </Fragment>
+      );
+    });
+  };
+
+  const renderGroupRows = (groupList: AccountGroup[]) => {
+    return groupList.map((group) => {
+      const isGroupExpanded = expandedGroups.has(group.id);
+      const groupTotal = getGroupTotal(group.id);
+      const groupAccounts = groupedData.get(group.id) || [];
+      const groupOpeningBalance = getGroupOpeningBalance(group.id);
+
+      return (
+        <Fragment key={group.id}>
+          {/* Group Row */}
+          <TableRow className="bg-accent/30 hover:bg-accent/50 font-medium">
+            <TableCell>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => toggleGroup(group.id)}
+              >
+                {isGroupExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </Button>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: group.color }} 
+                />
+                <span className="font-semibold">{group.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  ({groupAccounts.length} {groupAccounts.length === 1 ? 'conta' : 'contas'})
+                </span>
+              </div>
+            </TableCell>
+            <TableCell className="text-right font-medium">
+              {formatCurrency(groupOpeningBalance)}
+            </TableCell>
+            <TableCell className={`text-right font-medium ${groupTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(groupTotal)}
+            </TableCell>
+          </TableRow>
+
+          {/* Account Rows (when group is expanded) */}
+          {isGroupExpanded && renderAccountRows(groupAccounts)}
+        </Fragment>
+      );
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -248,12 +460,15 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
         </Card>
       </div>
 
-      {/* Hierarchical Balance Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Saldo por Grupo e Conta</CardTitle>
+      {/* ATIVO Card */}
+      <Card className="border-green-200 dark:border-green-800">
+        <CardHeader className="bg-green-50 dark:bg-green-900/20">
+          <CardTitle className="flex items-center gap-2">
+            <ArrowUpCircle className="w-5 h-5 text-green-600" />
+            Ativo
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -264,160 +479,10 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Groups with accounts */}
-              {groupsWithAccounts.map((group) => {
-                const isGroupExpanded = expandedGroups.has(group.id);
-                const groupTotal = getGroupTotal(group.id);
-                const groupAccounts = groupedData.get(group.id) || [];
-                const groupOpeningBalance = getGroupOpeningBalance(group.id);
+              {/* Ativo Groups */}
+              {renderGroupRows(ativoGroups)}
 
-                return (
-                  <Fragment key={group.id}>
-                    {/* Group Row */}
-                    <TableRow className="bg-accent/30 hover:bg-accent/50 font-medium">
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => toggleGroup(group.id)}
-                        >
-                          {isGroupExpanded ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: group.color }} 
-                          />
-                          <span className="font-semibold">{group.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            ({groupAccounts.length} {groupAccounts.length === 1 ? 'conta' : 'contas'})
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(groupOpeningBalance)}
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${groupTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(groupTotal)}
-                      </TableCell>
-                    </TableRow>
-
-                    {/* Account Rows (when group is expanded) */}
-                    {isGroupExpanded && groupAccounts.map((account) => {
-                      const isAccountExpanded = expandedAccounts.has(account.id);
-                      const accountEntries = currentMonthEntriesByAccount.get(account.id) || [];
-                      const openingBalance = accountOpeningBalances.get(account.id) || Number(account.initial_balance);
-
-                      return (
-                        <Fragment key={account.id}>
-                          {/* Account Row */}
-                          <TableRow className="bg-background hover:bg-muted/50">
-                            <TableCell className="pl-8">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => toggleAccount(account.id)}
-                                disabled={accountEntries.length === 0}
-                              >
-                                {accountEntries.length > 0 ? (
-                                  isAccountExpanded ? (
-                                    <ChevronDown className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4" />
-                                  )
-                                ) : (
-                                  <div className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2 pl-4">
-                                <div 
-                                  className="w-2 h-2 rounded-full" 
-                                  style={{ backgroundColor: account.color }} 
-                                />
-                                <span>{account.name}</span>
-                                {accountEntries.length > 0 && (
-                                  <span className="text-xs text-muted-foreground">
-                                    ({accountEntries.length} lançamentos)
-                                  </span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(openingBalance)}
-                            </TableCell>
-                            <TableCell className={`text-right ${Number(account.current_balance) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {formatCurrency(Number(account.current_balance))}
-                            </TableCell>
-                          </TableRow>
-
-                          {/* Entry Rows (when account is expanded) */}
-                          {isAccountExpanded && accountEntries.map((entry) => {
-                            const getEntryStyle = () => {
-                              switch (entry.type) {
-                                case 'income':
-                                  return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-                                case 'expense':
-                                  return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-                                case 'transfer_in':
-                                  return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-                                case 'transfer_out':
-                                  return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
-                              }
-                            };
-                            const getEntryLabel = () => {
-                              switch (entry.type) {
-                                case 'income': return 'R';
-                                case 'expense': return 'D';
-                                case 'transfer_in': return 'T↓';
-                                case 'transfer_out': return 'T↑';
-                              }
-                            };
-                            const isPositive = entry.type === 'income' || entry.type === 'transfer_in';
-                            
-                            return (
-                              <TableRow key={entry.id} className="bg-muted/20 text-sm">
-                                <TableCell></TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2 pl-12">
-                                    <span className={`text-xs px-1.5 py-0.5 rounded ${getEntryStyle()}`}>
-                                      {getEntryLabel()}
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                      {format(new Date(entry.date), 'dd/MM/yyyy', { locale: ptBR })}
-                                    </span>
-                                    <span>{entry.description}</span>
-                                    {entry.categoryName && (
-                                      <span className="text-xs text-muted-foreground">
-                                        [{entry.categoryName}]
-                                      </span>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell></TableCell>
-                                <TableCell className={`text-right ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                                  {isPositive ? '+' : '-'}{formatCurrency(entry.amount)}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </Fragment>
-                      );
-                    })}
-                  </Fragment>
-                );
-              })}
-
-              {/* Ungrouped Accounts */}
+              {/* Ungrouped Accounts (go to ativo) */}
               {ungroupedAccounts.length > 0 && (
                 <>
                   <TableRow className="bg-accent/30 hover:bg-accent/50 font-medium">
@@ -452,119 +517,85 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                     </TableCell>
                   </TableRow>
 
-                  {expandedGroups.has('ungrouped') && ungroupedAccounts.map((account) => {
-                    const isAccountExpanded = expandedAccounts.has(account.id);
-                    const accountEntries = currentMonthEntriesByAccount.get(account.id) || [];
-                    const openingBalance = accountOpeningBalances.get(account.id) || Number(account.initial_balance);
-
-                    return (
-                      <Fragment key={account.id}>
-                        <TableRow className="bg-background hover:bg-muted/50">
-                          <TableCell className="pl-8">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => toggleAccount(account.id)}
-                              disabled={accountEntries.length === 0}
-                            >
-                              {accountEntries.length > 0 ? (
-                                isAccountExpanded ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )
-                              ) : (
-                                <div className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 pl-4">
-                              <div 
-                                className="w-2 h-2 rounded-full" 
-                                style={{ backgroundColor: account.color }} 
-                              />
-                              <span>{account.name}</span>
-                              {accountEntries.length > 0 && (
-                                <span className="text-xs text-muted-foreground">
-                                  ({accountEntries.length} lançamentos)
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(openingBalance)}
-                          </TableCell>
-                          <TableCell className={`text-right ${Number(account.current_balance) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatCurrency(Number(account.current_balance))}
-                          </TableCell>
-                        </TableRow>
-
-                        {isAccountExpanded && accountEntries.map((entry) => {
-                          const getEntryStyle = () => {
-                            switch (entry.type) {
-                              case 'income':
-                                return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-                              case 'expense':
-                                return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-                              case 'transfer_in':
-                                return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-                              case 'transfer_out':
-                                return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
-                            }
-                          };
-                          const getEntryLabel = () => {
-                            switch (entry.type) {
-                              case 'income': return 'R';
-                              case 'expense': return 'D';
-                              case 'transfer_in': return 'T↓';
-                              case 'transfer_out': return 'T↑';
-                            }
-                          };
-                          const isPositive = entry.type === 'income' || entry.type === 'transfer_in';
-                          
-                          return (
-                            <TableRow key={entry.id} className="bg-muted/20 text-sm">
-                              <TableCell></TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2 pl-12">
-                                  <span className={`text-xs px-1.5 py-0.5 rounded ${getEntryStyle()}`}>
-                                    {getEntryLabel()}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    {format(new Date(entry.date), 'dd/MM/yyyy', { locale: ptBR })}
-                                  </span>
-                                  <span>{entry.description}</span>
-                                  {entry.categoryName && (
-                                    <span className="text-xs text-muted-foreground">
-                                      [{entry.categoryName}]
-                                    </span>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell></TableCell>
-                              <TableCell className={`text-right ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                                {isPositive ? '+' : '-'}{formatCurrency(entry.amount)}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </Fragment>
-                    );
-                  })}
+                  {expandedGroups.has('ungrouped') && renderAccountRows(ungroupedAccounts)}
                 </>
               )}
 
-              {/* Total Row */}
-              <TableRow className="font-bold bg-primary/10 border-t-2 border-primary">
+              {/* Total Ativo Row */}
+              <TableRow className="font-bold bg-green-100 dark:bg-green-900/30 border-t-2 border-green-300 dark:border-green-700">
                 <TableCell></TableCell>
-                <TableCell>TOTAL GERAL</TableCell>
+                <TableCell>TOTAL ATIVO</TableCell>
                 <TableCell className="text-right">
-                  {formatCurrency(accounts.reduce((sum, acc) => sum + (accountOpeningBalances.get(acc.id) || Number(acc.initial_balance)), 0))}
+                  {formatCurrency(totals.ativoOpening)}
                 </TableCell>
-                <TableCell className={`text-right ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(totalBalance)}
+                <TableCell className={`text-right ${totals.ativoTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(totals.ativoTotal)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* PASSIVO Card */}
+      <Card className="border-red-200 dark:border-red-800">
+        <CardHeader className="bg-red-50 dark:bg-red-900/20">
+          <CardTitle className="flex items-center gap-2">
+            <ArrowDownCircle className="w-5 h-5 text-red-600" />
+            Passivo
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]"></TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead className="text-right">Saldo Inicial</TableHead>
+                <TableHead className="text-right">Saldo Atual</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {/* Passivo Groups */}
+              {passivoGroups.length > 0 ? (
+                renderGroupRows(passivoGroups)
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    Nenhum grupo passivo cadastrado
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {/* Total Passivo Row */}
+              <TableRow className="font-bold bg-red-100 dark:bg-red-900/30 border-t-2 border-red-300 dark:border-red-700">
+                <TableCell></TableCell>
+                <TableCell>TOTAL PASSIVO</TableCell>
+                <TableCell className="text-right">
+                  {formatCurrency(totals.passivoOpening)}
+                </TableCell>
+                <TableCell className={`text-right ${totals.passivoTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(totals.passivoTotal)}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Total Geral Card */}
+      <Card className="border-primary/30">
+        <CardContent className="py-4">
+          <Table>
+            <TableBody>
+              <TableRow className="font-bold bg-primary/10 border-t-2 border-primary">
+                <TableCell className="w-[50px]"></TableCell>
+                <TableCell>TOTAL GERAL (Ativo - Passivo)</TableCell>
+                <TableCell className="text-right">
+                  {formatCurrency(totals.ativoOpening - totals.passivoOpening)}
+                </TableCell>
+                <TableCell className={`text-right ${(totals.ativoTotal - totals.passivoTotal) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(totals.ativoTotal - totals.passivoTotal)}
                 </TableCell>
               </TableRow>
             </TableBody>

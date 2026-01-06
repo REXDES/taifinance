@@ -41,6 +41,7 @@ export function usePatrimonialEvolution({
     // Calculate balance for each month
     for (let i = monthsBack - 1; i >= 0; i--) {
       const targetDate = subMonths(now, i);
+      const monthStart = startOfMonth(targetDate);
       const monthEnd = endOfMonth(targetDate);
       const monthKey = format(targetDate, 'yyyy-MM');
       const monthLabel = format(targetDate, 'MMM/yy', { locale: ptBR });
@@ -48,16 +49,16 @@ export function usePatrimonialEvolution({
       let ativoBalance = 0;
       let passivoBalance = 0;
 
-      // For each account, calculate its balance at the end of this month
+      // For each account, calculate its balance within this specific month only
       accounts.forEach(account => {
         const accountType = getAccountType(account);
-        let balance = Number(account.initial_balance);
+        let balance = 0;
 
-        // Add transactions up to this month end
+        // Add transactions within this month only
         transactions.forEach(tx => {
           if (tx.account_id === account.id) {
             const txDate = parseISO(tx.date);
-            if (!isAfter(txDate, monthEnd)) {
+            if (!isBefore(txDate, monthStart) && !isAfter(txDate, monthEnd)) {
               if (tx.type === 'income') {
                 balance += tx.amount;
               } else {
@@ -67,10 +68,10 @@ export function usePatrimonialEvolution({
           }
         });
 
-        // Add transfers up to this month end
+        // Add transfers within this month only
         transfers.forEach(tr => {
           const trDate = parseISO(tr.date);
-          if (!isAfter(trDate, monthEnd)) {
+          if (!isBefore(trDate, monthStart) && !isAfter(trDate, monthEnd)) {
             if (tr.from_account_id === account.id) {
               balance -= tr.amount;
             }

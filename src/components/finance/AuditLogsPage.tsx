@@ -153,12 +153,12 @@ export function AuditLogsPage() {
             </div>
             <div className="space-y-2">
               <Label>Ação</Label>
-              <Select value={selectedAction} onValueChange={setSelectedAction}>
+              <Select value={selectedAction || "all"} onValueChange={(v) => setSelectedAction(v === "all" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todas as ações" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as ações</SelectItem>
+                  <SelectItem value="all">Todas as ações</SelectItem>
                   {Object.entries(actionLabels).map(([key, label]) => (
                     <SelectItem key={key} value={key}>
                       {label}
@@ -169,12 +169,12 @@ export function AuditLogsPage() {
             </div>
             <div className="space-y-2">
               <Label>Empresa</Label>
-              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+              <Select value={selectedCompanyId || "all"} onValueChange={(v) => setSelectedCompanyId(v === "all" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todas as empresas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as empresas</SelectItem>
+                  <SelectItem value="all">Todas as empresas</SelectItem>
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
                       {company.name}

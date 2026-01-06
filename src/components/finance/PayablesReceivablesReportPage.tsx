@@ -154,12 +154,12 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
           </div>
           <div>
             <Label>Tipo</Label>
-            <Select value={filters.type} onValueChange={(v) => setFilters(prev => ({ ...prev, type: v as any }))}>
+            <Select value={filters.type || "all"} onValueChange={(v) => setFilters(prev => ({ ...prev, type: v === "all" ? "" : v as any }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="payable">A Pagar</SelectItem>
                 <SelectItem value="receivable">A Receber</SelectItem>
               </SelectContent>
@@ -167,12 +167,12 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
           </div>
           <div>
             <Label>Status</Label>
-            <Select value={filters.status} onValueChange={(v) => setFilters(prev => ({ ...prev, status: v as any }))}>
+            <Select value={filters.status || "all"} onValueChange={(v) => setFilters(prev => ({ ...prev, status: v === "all" ? "" : v as any }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="pending">Pendente</SelectItem>
                 <SelectItem value="paid">Pago</SelectItem>
                 <SelectItem value="cancelled">Cancelado</SelectItem>

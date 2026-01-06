@@ -314,7 +314,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
       {/* Total Balance */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Ativo</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Geral</CardTitle>
         </CardHeader>
         <CardContent>
           <div className={`text-3xl font-bold ${totalAtivo >= 0 ? 'text-green-600' : 'text-red-600'}`}>

@@ -58,11 +58,11 @@ const Finance = () => {
         .eq('user_id', user.id)
         .maybeSingle();
       
-      // Count companies created by this user
+      // Count companies this user has access to (includes invited companies)
       const { count: companiesCount } = await supabase
-        .from('companies')
+        .from('user_companies')
         .select('*', { count: 'exact', head: true })
-        .eq('created_by', user.id);
+        .eq('user_id', user.id);
       
       // Count invitations created by this user
       const { count: invitationsCount } = await supabase

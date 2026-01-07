@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -483,122 +484,124 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
 
       {/* Dialog para criar nova conta */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Nova Conta</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Tipo</Label>
-              <Select value={formData.type} onValueChange={(v) => setFormData(prev => ({ ...prev, type: v as any, category_id: '', subcategory_id: '' }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="payable">A Pagar</SelectItem>
-                  <SelectItem value="receivable">A Receber</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Modalidade</Label>
-              <Select value={formData.payment_type} onValueChange={(v) => setFormData(prev => ({ ...prev, payment_type: v as any }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="single">Única</SelectItem>
-                  <SelectItem value="installment">Parcelado</SelectItem>
-                  <SelectItem value="recurring">Recorrente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {formData.payment_type === 'installment' && (
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4">
               <div>
-                <Label>Número de Parcelas</Label>
+                <Label>Tipo</Label>
+                <Select value={formData.type} onValueChange={(v) => setFormData(prev => ({ ...prev, type: v as any, category_id: '', subcategory_id: '' }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="payable">A Pagar</SelectItem>
+                    <SelectItem value="receivable">A Receber</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Modalidade</Label>
+                <Select value={formData.payment_type} onValueChange={(v) => setFormData(prev => ({ ...prev, payment_type: v as any }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">Única</SelectItem>
+                    <SelectItem value="installment">Parcelado</SelectItem>
+                    <SelectItem value="recurring">Recorrente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.payment_type === 'installment' && (
+                <div>
+                  <Label>Número de Parcelas</Label>
+                  <Input
+                    type="number"
+                    min="2"
+                    value={formData.installments}
+                    onChange={(e) => setFormData(prev => ({ ...prev, installments: e.target.value }))}
+                  />
+                </div>
+              )}
+              <div>
+                <Label>Descrição *</Label>
                 <Input
-                  type="number"
-                  min="2"
-                  value={formData.installments}
-                  onChange={(e) => setFormData(prev => ({ ...prev, installments: e.target.value }))}
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Descrição da conta"
                 />
               </div>
-            )}
-            <div>
-              <Label>Descrição *</Label>
-              <Input
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Descrição da conta"
-              />
-            </div>
-            <div>
-              <Label>Valor Total *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                placeholder="0,00"
-              />
-            </div>
-            <div>
-              <Label>Vencimento *</Label>
-              <Input
-                type="date"
-                value={formData.due_date}
-                onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Categoria</Label>
-              <Select value={formData.category_id} onValueChange={(v) => setFormData(prev => ({ ...prev, category_id: v, subcategory_id: '' }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCategories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedCategory?.subcategories && selectedCategory.subcategories.length > 0 && (
               <div>
-                <Label>Subcategoria</Label>
-                <Select value={formData.subcategory_id} onValueChange={(v) => setFormData(prev => ({ ...prev, subcategory_id: v }))}>
+                <Label>Valor Total *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                  placeholder="0,00"
+                />
+              </div>
+              <div>
+                <Label>Vencimento *</Label>
+                <Input
+                  type="date"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Categoria</Label>
+                <Select value={formData.category_id} onValueChange={(v) => setFormData(prev => ({ ...prev, category_id: v, subcategory_id: '' }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {selectedCategory.subcategories.map((sub) => (
-                      <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                    {filteredCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
-            <div>
-              <div className="flex items-center justify-between">
-                <Label>Cliente/Fornecedor</Label>
-                <Button variant="ghost" size="sm" onClick={() => setIsClientDialogOpen(true)}>
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Novo
-                </Button>
+              {selectedCategory?.subcategories && selectedCategory.subcategories.length > 0 && (
+                <div>
+                  <Label>Subcategoria</Label>
+                  <Select value={formData.subcategory_id} onValueChange={(v) => setFormData(prev => ({ ...prev, subcategory_id: v }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedCategory.subcategories.map((sub) => (
+                        <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label>Cliente/Fornecedor</Label>
+                  <Button variant="ghost" size="sm" onClick={() => setIsClientDialogOpen(true)}>
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Novo
+                  </Button>
+                </div>
+                <Select value={formData.client_supplier_id} onValueChange={(v) => setFormData(prev => ({ ...prev, client_supplier_id: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientsSuppliers.map((cs) => (
+                      <SelectItem key={cs.id} value={cs.id}>{cs.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={formData.client_supplier_id} onValueChange={(v) => setFormData(prev => ({ ...prev, client_supplier_id: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientsSuppliers.map((cs) => (
-                    <SelectItem key={cs.id} value={cs.id}>{cs.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
-          </div>
-          <DialogFooter>
+          </ScrollArea>
+          <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

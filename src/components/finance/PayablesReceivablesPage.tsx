@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2 } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { useClientsSuppliers } from '@/hooks/useClientsSuppliers';
@@ -38,6 +39,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     loading, 
     totalPayable, 
     totalReceivable,
+    pendingAmountCount,
     createPayableReceivable,
     effectuatePayment,
     cancelPayableReceivable,
@@ -72,6 +74,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     payment_type: 'single' as 'single' | 'installment' | 'recurring',
     description: '',
     amount: '',
+    is_amount_pending: false,
     due_date: format(new Date(), 'yyyy-MM-dd'),
     category_id: '',
     subcategory_id: '',
@@ -109,8 +112,14 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
   };
 
   const handleSave = async () => {
-    if (!formData.description || !formData.amount || !formData.due_date) {
+    if (!formData.description || !formData.due_date) {
       toast.error('Preencha os campos obrigatórios');
+      return;
+    }
+
+    // Validar valor apenas se não for valor pendente
+    if (!formData.is_amount_pending && !formData.amount) {
+      toast.error('Preencha o valor ou marque "Valor a definir"');
       return;
     }
 
@@ -122,7 +131,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
           type: formData.type,
           payment_type: formData.payment_type,
           description: formData.description,
-          amount: parseFloat(formData.amount),
+          amount: formData.is_amount_pending ? null : parseFloat(formData.amount),
+          is_amount_pending: formData.is_amount_pending,
           due_date: formData.due_date,
           category_id: formData.category_id || null,
           subcategory_id: formData.subcategory_id || null,
@@ -264,6 +274,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       payment_type: 'single',
       description: '',
       amount: '',
+      is_amount_pending: false,
       due_date: format(new Date(), 'yyyy-MM-dd'),
       category_id: '',
       subcategory_id: '',
@@ -275,7 +286,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
   const openEffectuateDialog = (record: any) => {
     setSelectedRecord(record);
     setEffectuateFormData({
-      paid_amount: String(record.amount),
+      // Se valor pendente, iniciar vazio; senão, usar valor original
+      paid_amount: record.is_amount_pending ? '' : String(record.amount),
       paid_date: format(new Date(), 'yyyy-MM-dd'),
       account_id: ''
     });
@@ -389,6 +401,12 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
           <p className={`text-2xl font-bold ${totalReceivable - totalPayable >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {formatCurrency(totalReceivable - totalPayable)}
           </p>
+          {pendingAmountCount > 0 && (
+            <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+              <HelpCircle className="h-3 w-3" />
+              {pendingAmountCount} conta(s) sem valor definido
+            </p>
+          )}
         </Card>
       </div>
 
@@ -442,7 +460,14 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                     )}
                   </TableCell>
                   <TableCell className={record.type === 'payable' ? 'text-red-600' : 'text-green-600'}>
-                    {formatCurrency(Number(record.amount))}
+                    {record.is_amount_pending ? (
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                        <HelpCircle className="h-3 w-3 mr-1" />
+                        A definir
+                      </Badge>
+                    ) : (
+                      formatCurrency(Number(record.amount))
+                    )}
                   </TableCell>
                   <TableCell>{getStatusBadge(record.status)}</TableCell>
                   <TableCell className="text-right">
@@ -534,15 +559,40 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                   placeholder="Descrição da conta"
                 />
               </div>
-              <div>
-                <Label>Valor Total *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                  placeholder="0,00"
-                />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Valor Total {!formData.is_amount_pending && '*'}</Label>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="is_amount_pending"
+                      checked={formData.is_amount_pending}
+                      onCheckedChange={(checked) => setFormData(prev => ({ 
+                        ...prev, 
+                        is_amount_pending: !!checked,
+                        amount: checked ? '' : prev.amount
+                      }))}
+                    />
+                    <Label htmlFor="is_amount_pending" className="text-xs text-muted-foreground cursor-pointer">
+                      Valor a definir
+                    </Label>
+                  </div>
+                </div>
+                {formData.is_amount_pending ? (
+                  <div className="flex items-center gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/30">
+                    <HelpCircle className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm text-amber-600">
+                      O valor será informado na efetivação
+                    </span>
+                  </div>
+                ) : (
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                    placeholder="0,00"
+                  />
+                )}
               </div>
               <div>
                 <Label>Vencimento *</Label>
@@ -685,13 +735,22 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
             <DialogTitle>Efetivar {selectedRecord?.type === 'payable' ? 'Pagamento' : 'Recebimento'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {selectedRecord?.is_amount_pending && (
+              <div className="flex items-center gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/30">
+                <HelpCircle className="h-4 w-4 text-amber-600" />
+                <span className="text-sm text-amber-600">
+                  Esta conta foi criada sem valor definido. Informe o valor real abaixo.
+                </span>
+              </div>
+            )}
             <div>
-              <Label>Valor *</Label>
+              <Label>Valor {selectedRecord?.is_amount_pending ? '(informe o valor real) *' : '*'}</Label>
               <Input
                 type="number"
                 step="0.01"
                 value={effectuateFormData.paid_amount}
                 onChange={(e) => setEffectuateFormData(prev => ({ ...prev, paid_amount: e.target.value }))}
+                placeholder={selectedRecord?.is_amount_pending ? 'Informe o valor' : '0,00'}
               />
             </div>
             <div>

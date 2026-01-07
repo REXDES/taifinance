@@ -8,7 +8,7 @@ export interface PayableReceivable {
   type: 'payable' | 'receivable';
   payment_type: 'single' | 'installment' | 'recurring';
   description: string;
-  amount: number;
+  amount: number | null;
   due_date: string;
   category_id: string | null;
   subcategory_id: string | null;
@@ -25,6 +25,7 @@ export interface PayableReceivable {
   paid_by: string | null;
   created_at: string;
   updated_at: string;
+  is_amount_pending: boolean;
   category?: { id: string; name: string; color: string } | null;
   subcategory?: { id: string; name: string } | null;
   client_supplier?: { id: string; name: string; type: string } | null;
@@ -102,13 +103,17 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
     const { data: user } = await supabase.auth.getUser();
     const userId = user?.user?.id;
 
+    // Para contas com valor pendente, não dividir parcelas
+    const isAmountPending = data.is_amount_pending || data.amount === null;
+
     if (data.payment_type === 'single') {
       const { error } = await supabase
         .from('payables_receivables')
-        .insert({ ...data, created_by: userId });
+        .insert({ ...data, created_by: userId, is_amount_pending: isAmountPending });
       if (error) throw error;
     } else if (data.payment_type === 'installment' && installments) {
-      const installmentAmount = data.amount / installments;
+      // Se valor pendente, criar parcelas com amount null
+      const installmentAmount = isAmountPending ? null : (data.amount as number) / installments;
       const records = [];
       
       // Create parent record
@@ -119,7 +124,8 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
           created_by: userId,
           installment_number: 1,
           total_installments: installments,
-          amount: installmentAmount
+          amount: installmentAmount,
+          is_amount_pending: isAmountPending
         })
         .select()
         .single();
@@ -135,7 +141,8 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
           installment_number: i,
           total_installments: installments,
           parent_id: parent.id,
-          amount: installmentAmount
+          amount: installmentAmount,
+          is_amount_pending: isAmountPending
         });
       }
 
@@ -149,7 +156,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
       // Create only for next month
       const { error } = await supabase
         .from('payables_receivables')
-        .insert({ ...data, created_by: userId });
+        .insert({ ...data, created_by: userId, is_amount_pending: isAmountPending });
       if (error) throw error;
     }
 
@@ -194,17 +201,25 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
 
     if (transactionError) throw transactionError;
 
-    // Update payable/receivable
+    // Update payable/receivable - also update amount if it was pending
+    const updateData: any = {
+      status: 'paid',
+      paid_amount: paidAmount,
+      paid_date: paidDate,
+      paid_account_id: accountId,
+      transaction_id: transaction.id,
+      paid_by: userId,
+      is_amount_pending: false
+    };
+
+    // Se o valor era pendente, atualizar o amount original
+    if (record.is_amount_pending) {
+      updateData.amount = paidAmount;
+    }
+
     const { error: updateError } = await supabase
       .from('payables_receivables')
-      .update({
-        status: 'paid',
-        paid_amount: paidAmount,
-        paid_date: paidDate,
-        paid_account_id: accountId,
-        transaction_id: transaction.id,
-        paid_by: userId
-      })
+      .update(updateData)
       .eq('id', id);
 
     if (updateError) throw updateError;
@@ -219,13 +234,14 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
           type: record.type,
           payment_type: 'recurring',
           description: record.description,
-          amount: record.amount,
+          amount: record.is_amount_pending ? null : record.amount, // Manter null se era pendente
           due_date: nextDueDate,
           category_id: record.category_id,
           subcategory_id: record.subcategory_id,
           client_supplier_id: record.client_supplier_id,
           created_by: record.created_by,
-          status: 'pending'
+          status: 'pending',
+          is_amount_pending: record.is_amount_pending // Manter o status de valor pendente
         });
       if (recurringError) throw recurringError;
     }
@@ -354,19 +370,23 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
     return { hasRelated: false, count: 0, type: null };
   };
 
-  // Calculate totals
+  // Calculate totals - ignorar contas com valor pendente
   const totals = payablesReceivables.reduce(
     (acc, item) => {
-      if (item.status === 'pending') {
+      if (item.status === 'pending' && !item.is_amount_pending && item.amount !== null) {
         if (item.type === 'payable') {
           acc.totalPayable += Number(item.amount);
         } else {
           acc.totalReceivable += Number(item.amount);
         }
       }
+      // Contar contas com valor pendente
+      if (item.status === 'pending' && item.is_amount_pending) {
+        acc.pendingCount += 1;
+      }
       return acc;
     },
-    { totalPayable: 0, totalReceivable: 0 }
+    { totalPayable: 0, totalReceivable: 0, pendingCount: 0 }
   );
 
   return {
@@ -374,6 +394,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
     loading,
     totalPayable: totals.totalPayable,
     totalReceivable: totals.totalReceivable,
+    pendingAmountCount: totals.pendingCount,
     createPayableReceivable,
     effectuatePayment,
     cancelPayableReceivable,

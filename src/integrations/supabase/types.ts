@@ -638,7 +638,7 @@ export type Database = {
       }
       payables_receivables: {
         Row: {
-          amount: number
+          amount: number | null
           category_id: string | null
           client_supplier_id: string | null
           company_id: string
@@ -648,6 +648,7 @@ export type Database = {
           due_date: string
           id: string
           installment_number: number | null
+          is_amount_pending: boolean
           paid_account_id: string | null
           paid_amount: number | null
           paid_by: string | null
@@ -662,7 +663,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          amount: number
+          amount?: number | null
           category_id?: string | null
           client_supplier_id?: string | null
           company_id: string
@@ -672,6 +673,7 @@ export type Database = {
           due_date: string
           id?: string
           installment_number?: number | null
+          is_amount_pending?: boolean
           paid_account_id?: string | null
           paid_amount?: number | null
           paid_by?: string | null
@@ -686,7 +688,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          amount?: number
+          amount?: number | null
           category_id?: string | null
           client_supplier_id?: string | null
           company_id?: string
@@ -696,6 +698,7 @@ export type Database = {
           due_date?: string
           id?: string
           installment_number?: number | null
+          is_amount_pending?: boolean
           paid_account_id?: string | null
           paid_amount?: number | null
           paid_by?: string | null

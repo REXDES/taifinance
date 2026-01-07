@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Pencil, Trash2, FolderPlus } from 'lucide-react';
+import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 
 interface AccountsPageProps {
   companyId: string;
@@ -52,6 +53,8 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [editingGroup, setEditingGroup] = useState<AccountGroup | null>(null);
+  const [deleteAccountTarget, setDeleteAccountTarget] = useState<Account | null>(null);
+  const [deleteGroupTarget, setDeleteGroupTarget] = useState<AccountGroup | null>(null);
 
   const [accountForm, setAccountForm] = useState({
     name: '',
@@ -113,10 +116,10 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
     setShowAccountDialog(true);
   };
 
-  const handleDeleteAccount = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir esta conta?')) {
-      await deleteAccount(id);
-    }
+  const handleDeleteAccount = async () => {
+    if (!deleteAccountTarget) return;
+    await deleteAccount(deleteAccountTarget.id);
+    setDeleteAccountTarget(null);
   };
 
   const handleSaveGroup = async () => {
@@ -151,10 +154,10 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
     setShowGroupDialog(true);
   };
 
-  const handleDeleteGroup = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este grupo?')) {
-      await deleteGroup(id);
-    }
+  const handleDeleteGroup = async () => {
+    if (!deleteGroupTarget) return;
+    await deleteGroup(deleteGroupTarget.id);
+    setDeleteGroupTarget(null);
   };
 
   if (loading) {
@@ -374,7 +377,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
                         <Button variant="ghost" size="icon" onClick={() => handleEditGroup(group)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteGroup(group.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteGroupTarget(group)}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       </div>
@@ -435,7 +438,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
                         <Button variant="ghost" size="icon" onClick={() => handleEditAccount(account)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAccount(account.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteAccountTarget(account)}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       </div>
@@ -447,6 +450,28 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
           )}
         </CardContent>
       </Card>
+
+      <DeleteConfirmDialog
+        open={!!deleteAccountTarget}
+        onOpenChange={(open) => !open && setDeleteAccountTarget(null)}
+        onConfirm={handleDeleteAccount}
+        title="Excluir conta"
+        itemName={deleteAccountTarget?.name}
+        itemType="conta"
+        description={`Você está prestes a excluir a conta "${deleteAccountTarget?.name}".`}
+        warningMessage="Verifique se não há lançamentos vinculados a esta conta antes de excluí-la."
+      />
+
+      <DeleteConfirmDialog
+        open={!!deleteGroupTarget}
+        onOpenChange={(open) => !open && setDeleteGroupTarget(null)}
+        onConfirm={handleDeleteGroup}
+        title="Excluir grupo"
+        itemName={deleteGroupTarget?.name}
+        itemType="grupo"
+        description={`Você está prestes a excluir o grupo "${deleteGroupTarget?.name}".`}
+        warningMessage="As contas associadas a este grupo ficarão sem grupo."
+      />
     </div>
   );
 }

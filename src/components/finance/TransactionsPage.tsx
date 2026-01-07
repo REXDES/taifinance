@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTransactions, Transaction } from '@/hooks/useTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -32,9 +32,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Filter, Target } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMemo } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 
 interface TransactionsPageProps {
   companyId: string;
@@ -65,6 +65,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [showBudget, setShowBudget] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
 
   const [form, setForm] = useState({
     type: 'expense' as 'income' | 'expense',
@@ -174,10 +175,10 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     setShowDialog(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir esta transação?')) {
-      await deleteTransaction(id);
-    }
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteTransaction(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   const filteredCategories = categories.filter(
@@ -539,7 +540,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(transaction)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(transaction.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(transaction)}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       </div>
@@ -551,6 +552,17 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
           )}
         </CardContent>
       </Card>
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Excluir lançamento"
+        itemName={deleteTarget?.description}
+        itemType="lançamento"
+        description={`Você está prestes a excluir o lançamento "${deleteTarget?.description}" no valor de ${deleteTarget ? formatCurrency(deleteTarget.amount) : ''}.`}
+        warningMessage="Esta ação não pode ser desfeita. O saldo da conta será recalculado automaticamente."
+      />
     </div>
   );
 }

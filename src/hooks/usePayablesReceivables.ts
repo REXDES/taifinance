@@ -44,6 +44,9 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
   const [payablesReceivables, setPayablesReceivables] = useState<PayableReceivable[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Serialize status array for stable dependency comparison
+  const statusKey = filters?.status?.join(',') ?? '';
+
   const fetchPayablesReceivables = useCallback(async () => {
     if (!companyId) {
       setPayablesReceivables([]);
@@ -90,7 +93,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
     } finally {
       setLoading(false);
     }
-  }, [companyId, filters?.startDate, filters?.endDate, filters?.type, filters?.status, filters?.clientSupplierId]);
+  }, [companyId, filters?.startDate, filters?.endDate, filters?.type, statusKey, filters?.clientSupplierId]);
 
   useEffect(() => {
     fetchPayablesReceivables();

@@ -166,23 +166,27 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
               onChange={(e) => {
                 // Remove non-numeric characters except comma and dot
                 let value = e.target.value.replace(/[^\d,\.]/g, '');
-                // Replace dot with comma for Brazilian format
+                // Replace dot with comma for Brazilian format (user input)
                 value = value.replace('.', ',');
+                // Remove existing thousand separators to get clean number
+                const cleanValue = value.replace(/\./g, '');
+                // Split by comma
+                const parts = cleanValue.split(',');
                 // Only allow one comma
-                const parts = value.split(',');
                 if (parts.length > 2) {
-                  value = parts[0] + ',' + parts.slice(1).join('');
+                  parts[1] = parts.slice(1).join('');
+                  parts.length = 2;
                 }
                 // Limit decimal places to 2
                 if (parts.length === 2 && parts[1].length > 2) {
-                  value = parts[0] + ',' + parts[1].slice(0, 2);
+                  parts[1] = parts[1].slice(0, 2);
                 }
                 // Format thousands with dots
-                if (parts[0].length > 3) {
-                  const intPart = parts[0].replace(/\./g, '');
-                  const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                  value = parts.length > 1 ? formatted + ',' + parts[1] : formatted;
+                let intPart = parts[0];
+                if (intPart.length > 3) {
+                  intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
                 }
+                value = parts.length > 1 ? intPart + ',' + parts[1] : intPart;
                 setAmount(value);
               }}
               style={{ fontSize: '3.5rem' }}

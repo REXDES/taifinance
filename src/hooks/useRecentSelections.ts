@@ -8,23 +8,25 @@ interface RecentAccount {
   color: string;
 }
 
-interface RecentCategory {
+interface RecentSubcategory {
   id: string;
   name: string;
-  color: string;
-  type: string;
+  category_id: string;
+  category_name: string;
+  category_color: string;
+  category_type: string;
 }
 
 export function useRecentSelections(companyId: string | null) {
   const { user } = useAuth();
   const [recentAccounts, setRecentAccounts] = useState<RecentAccount[]>([]);
-  const [recentCategories, setRecentCategories] = useState<RecentCategory[]>([]);
+  const [recentSubcategories, setRecentSubcategories] = useState<RecentSubcategory[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchRecentSelections = useCallback(async () => {
     if (!companyId || !user?.id) {
       setRecentAccounts([]);
-      setRecentCategories([]);
+      setRecentSubcategories([]);
       setLoading(false);
       return;
     }
@@ -32,10 +34,10 @@ export function useRecentSelections(companyId: string | null) {
     setLoading(true);
 
     try {
-      // Fetch recent transactions to get account and category usage
+      // Fetch recent transactions to get account and subcategory usage
       const { data: transactions } = await supabase
         .from('transactions')
-        .select('account_id, category_id, created_at')
+        .select('account_id, subcategory_id, category_id, type, created_at')
         .eq('company_id', companyId)
         .eq('created_by', user.id)
         .order('created_at', { ascending: false })
@@ -53,14 +55,14 @@ export function useRecentSelections(companyId: string | null) {
           }
         }
 
-        // Get unique category IDs (most recent first, only expenses)
-        const seenCategoryIds = new Set<string>();
-        const uniqueCategoryIds: string[] = [];
+        // Get unique subcategory IDs for expenses (most recent first)
+        const seenSubcategoryIds = new Set<string>();
+        const uniqueSubcategoryIds: string[] = [];
         for (const t of transactions) {
-          if (t.category_id && !seenCategoryIds.has(t.category_id)) {
-            seenCategoryIds.add(t.category_id);
-            uniqueCategoryIds.push(t.category_id);
-            if (uniqueCategoryIds.length >= 8) break; // Get more to filter by expense later
+          if (t.subcategory_id && !seenSubcategoryIds.has(t.subcategory_id) && t.type === 'expense') {
+            seenSubcategoryIds.add(t.subcategory_id);
+            uniqueSubcategoryIds.push(t.subcategory_id);
+            if (uniqueSubcategoryIds.length >= 4) break;
           }
         }
 
@@ -73,7 +75,6 @@ export function useRecentSelections(companyId: string | null) {
             .eq('is_active', true);
 
           if (accounts) {
-            // Sort by the order they appeared in transactions
             const sortedAccounts = uniqueAccountIds
               .map(id => accounts.find(a => a.id === id))
               .filter((a): a is RecentAccount => a !== undefined);
@@ -83,28 +84,48 @@ export function useRecentSelections(companyId: string | null) {
           setRecentAccounts([]);
         }
 
-        // Fetch category details (only expenses)
-        if (uniqueCategoryIds.length > 0) {
-          const { data: categories } = await supabase
-            .from('transaction_categories')
-            .select('id, name, color, type')
-            .in('id', uniqueCategoryIds)
-            .eq('type', 'expense');
+        // Fetch subcategory details with their categories
+        if (uniqueSubcategoryIds.length > 0) {
+          const { data: subcategories } = await supabase
+            .from('transaction_subcategories')
+            .select('id, name, category_id')
+            .in('id', uniqueSubcategoryIds);
 
-          if (categories) {
-            // Sort by the order they appeared in transactions
-            const sortedCategories = uniqueCategoryIds
-              .map(id => categories.find(c => c.id === id))
-              .filter((c): c is RecentCategory => c !== undefined)
-              .slice(0, 4);
-            setRecentCategories(sortedCategories);
+          if (subcategories && subcategories.length > 0) {
+            const categoryIds = [...new Set(subcategories.map(s => s.category_id))];
+            const { data: categories } = await supabase
+              .from('transaction_categories')
+              .select('id, name, color, type')
+              .in('id', categoryIds);
+
+            if (categories) {
+              const sortedSubcategories: RecentSubcategory[] = uniqueSubcategoryIds
+                .map(id => {
+                  const sub = subcategories.find(s => s.id === id);
+                  if (!sub) return undefined;
+                  const cat = categories.find(c => c.id === sub.category_id);
+                  if (!cat || cat.type !== 'expense') return undefined;
+                  return {
+                    id: sub.id,
+                    name: sub.name,
+                    category_id: sub.category_id,
+                    category_name: cat.name,
+                    category_color: cat.color,
+                    category_type: cat.type,
+                  };
+                })
+                .filter((s): s is RecentSubcategory => s !== undefined);
+              setRecentSubcategories(sortedSubcategories);
+            }
+          } else {
+            setRecentSubcategories([]);
           }
         } else {
-          setRecentCategories([]);
+          setRecentSubcategories([]);
         }
       } else {
         setRecentAccounts([]);
-        setRecentCategories([]);
+        setRecentSubcategories([]);
       }
     } catch (error) {
       console.error('Error fetching recent selections:', error);
@@ -119,7 +140,7 @@ export function useRecentSelections(companyId: string | null) {
 
   return {
     recentAccounts,
-    recentCategories,
+    recentSubcategories,
     loading,
     refetch: fetchRecentSelections,
   };

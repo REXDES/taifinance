@@ -552,20 +552,25 @@ function PeriodCard({
                           <TableRow>
                             <TableHead>Subcategoria</TableHead>
                             <TableHead className="text-right">Valor</TableHead>
-                            <TableHead className="text-right">% da Categoria</TableHead>
+                            <TableHead className="text-right">% Categoria</TableHead>
+                            <TableHead className="text-right">% Total</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {cat.subcategories.map((sub) => {
-                            const subPercentage = cat.total > 0 ? (sub.total / cat.total) * 100 : 0;
+                            const subPercentageOfCat = cat.total > 0 ? (sub.total / cat.total) * 100 : 0;
+                            const subPercentageOfTotal = total > 0 ? (sub.total / total) * 100 : 0;
                             return (
                               <TableRow key={sub.id}>
-                                <TableCell>{sub.name}</TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="font-medium">{sub.name}</TableCell>
+                                <TableCell className="text-right font-medium">
                                   {formatCurrency(sub.total)}
                                 </TableCell>
                                 <TableCell className="text-right text-muted-foreground">
-                                  {subPercentage.toFixed(1)}%
+                                  {subPercentageOfCat.toFixed(1)}%
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground">
+                                  {subPercentageOfTotal.toFixed(1)}%
                                 </TableCell>
                               </TableRow>
                             );

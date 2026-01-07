@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Check, ChevronDown, Loader2, Plus, Wallet, Tags } from 'lucide-react';
+import { Check, Loader2, Plus, Wallet, Tags } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRecentSelections } from '@/hooks/useRecentSelections';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -25,36 +25,50 @@ interface QuickEntryPageProps {
 
 export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const { toast } = useToast();
-  const { recentAccounts, recentCategories, loading: loadingRecent, refetch: refetchRecent } = useRecentSelections(companyId);
+  const { recentAccounts, recentSubcategories, loading: loadingRecent, refetch: refetchRecent } = useRecentSelections(companyId);
   const { accounts, loading: loadingAccounts } = useAccounts(companyId);
   const { categories, loading: loadingCategories } = useTransactionCategories(companyId);
   const { createTransaction } = useTransactions(companyId);
 
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [isIncome, setIsIncome] = useState(false);
   const [showMoreAccounts, setShowMoreAccounts] = useState(false);
-  const [showMoreCategories, setShowMoreCategories] = useState(false);
+  const [showMoreSubcategories, setShowMoreSubcategories] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const activeAccounts = accounts.filter(a => a.is_active);
-  const filteredCategories = categories.filter(c => c.type === (isIncome ? 'income' : 'expense'));
+  const filteredCategories = categories.filter(c => c.type === (isIncome ? 'income' : 'expense') || c.type === 'both');
   
-  // For expenses: show recent categories if available, otherwise show first 4 from filtered
-  // For income: always show first 4 from filtered (since recentCategories only tracks expenses)
-  const displayedCategories = isIncome 
-    ? filteredCategories.slice(0, 4) 
-    : (recentCategories.length > 0 ? recentCategories : filteredCategories.slice(0, 4));
+  // Build flat list of all subcategories with parent info
+  const allSubcategories = useMemo(() => {
+    return filteredCategories.flatMap(cat => 
+      (cat.subcategories || []).map(sub => ({
+        id: sub.id,
+        name: sub.name,
+        category_id: cat.id,
+        category_name: cat.name,
+        category_color: cat.color,
+      }))
+    );
+  }, [filteredCategories]);
+
+  // For expenses: show recent subcategories if available, otherwise show first 4 from all
+  // For income: always show first 4 from all (since recentSubcategories only tracks expenses)
+  const displayedSubcategories = isIncome 
+    ? allSubcategories.slice(0, 4) 
+    : (recentSubcategories.length > 0 ? recentSubcategories : allSubcategories.slice(0, 4));
   
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
-  const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+  const selectedSubcategory = allSubcategories.find(s => s.id === selectedSubcategoryId) || 
+    recentSubcategories.find(s => s.id === selectedSubcategoryId);
 
-  // Reset category when switching between income/expense
+  // Reset subcategory when switching between income/expense
   const handleTypeChange = (checked: boolean) => {
     setIsIncome(checked);
-    setSelectedCategoryId(null);
+    setSelectedSubcategoryId(null);
   };
 
   const handleSubmit = async () => {
@@ -62,8 +76,8 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       toast({ title: 'Selecione uma conta', variant: 'destructive' });
       return;
     }
-    if (!selectedCategoryId) {
-      toast({ title: 'Selecione uma categoria', variant: 'destructive' });
+    if (!selectedSubcategoryId) {
+      toast({ title: 'Selecione uma subcategoria', variant: 'destructive' });
       return;
     }
     const numAmount = parseFloat(amount.replace(',', '.'));
@@ -72,11 +86,16 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       return;
     }
 
+    // Find the category_id from the subcategory
+    const subcatInfo = allSubcategories.find(s => s.id === selectedSubcategoryId) || 
+      recentSubcategories.find(s => s.id === selectedSubcategoryId);
+
     setSubmitting(true);
     try {
       await createTransaction({
         account_id: selectedAccountId,
-        category_id: selectedCategoryId,
+        category_id: subcatInfo?.category_id,
+        subcategory_id: selectedSubcategoryId,
         amount: numAmount,
         type: isIncome ? 'income' : 'expense',
         description: description || (isIncome ? 'Receita rápida' : 'Despesa rápida'),
@@ -89,9 +108,9 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       setAmount('');
       setDescription('');
       setSelectedAccountId(null);
-      setSelectedCategoryId(null);
+      setSelectedSubcategoryId(null);
       setShowMoreAccounts(false);
-      setShowMoreCategories(false);
+      setShowMoreSubcategories(false);
       
       // Refetch recent selections
       refetchRecent();
@@ -192,7 +211,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
               <CardContent className="p-3 flex items-center gap-2">
                 <div 
                   className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: `hsl(${account.color})` }}
+                  style={{ backgroundColor: account.color }}
                 />
                 <span className="text-sm font-medium truncate flex-1">{account.name}</span>
                 {selectedAccountId === account.id && (
@@ -222,7 +241,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
                         <div className="flex items-center gap-2">
                           <div 
                             className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: `hsl(${account.color})` }}
+                            style={{ backgroundColor: account.color }}
                           />
                           {account.name}
                         </div>
@@ -246,73 +265,82 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         </div>
       </div>
 
-      {/* Recent Categories */}
+      {/* Recent Subcategories */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Tags className="w-4 h-4 text-muted-foreground" />
-            <Label className="text-sm font-medium">Categoria</Label>
+            <Label className="text-sm font-medium">Subcategoria</Label>
           </div>
-          {selectedCategory && (
+          {selectedSubcategory && (
             <span className="text-sm text-muted-foreground">
-              Selecionado: <span className="font-medium text-foreground">{selectedCategory.name}</span>
+              Selecionado: <span className="font-medium text-foreground">{selectedSubcategory.category_name} → {selectedSubcategory.name}</span>
             </span>
           )}
         </div>
         
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {displayedCategories.map((category) => (
+          {displayedSubcategories.map((subcategory) => (
             <Card
-              key={category.id}
+              key={subcategory.id}
               className={cn(
                 "cursor-pointer transition-all hover:shadow-md",
-                selectedCategoryId === category.id 
+                selectedSubcategoryId === subcategory.id 
                   ? "ring-2 ring-primary border-primary" 
                   : "hover:border-primary/50"
               )}
               onClick={() => {
-                setSelectedCategoryId(category.id);
-                setShowMoreCategories(false);
+                setSelectedSubcategoryId(subcategory.id);
+                setShowMoreSubcategories(false);
               }}
             >
-              <CardContent className="p-3 flex items-center gap-2">
-                <div 
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: `hsl(${category.color})` }}
-                />
-                <span className="text-sm font-medium truncate flex-1">{category.name}</span>
-                {selectedCategoryId === category.id && (
-                  <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                )}
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: subcategory.category_color }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-muted-foreground truncate">{subcategory.category_name}</div>
+                    <div className="text-sm font-medium truncate">{subcategory.name}</div>
+                  </div>
+                  {selectedSubcategoryId === subcategory.id && (
+                    <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
           
-          {/* Show more categories button/select */}
-          {filteredCategories.length > displayedCategories.length && (
-            showMoreCategories ? (
+          {/* Show more subcategories button/select */}
+          {allSubcategories.length > displayedSubcategories.length && (
+            showMoreSubcategories ? (
               <div className="col-span-2 sm:col-span-4">
                 <Select 
-                  value={selectedCategoryId || ''} 
+                  value={selectedSubcategoryId || ''} 
                   onValueChange={(value) => {
-                    setSelectedCategoryId(value);
-                    setShowMoreCategories(false);
+                    setSelectedSubcategoryId(value);
+                    setShowMoreSubcategories(false);
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione outra categoria" />
+                    <SelectValue placeholder="Selecione outra subcategoria" />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredCategories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: `hsl(${category.color})` }}
-                          />
-                          {category.name}
+                      category.subcategories && category.subcategories.length > 0 && (
+                        <div key={category.id}>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: category.color }} />
+                            {category.name}
+                          </div>
+                          {category.subcategories.map((sub) => (
+                            <SelectItem key={sub.id} value={sub.id}>
+                              <span className="ml-4">{sub.name}</span>
+                            </SelectItem>
+                          ))}
                         </div>
-                      </SelectItem>
+                      )
                     ))}
                   </SelectContent>
                 </Select>
@@ -320,7 +348,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
             ) : (
               <Card
                 className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50 border-dashed"
-                onClick={() => setShowMoreCategories(true)}
+                onClick={() => setShowMoreSubcategories(true)}
               >
                 <CardContent className="p-3 flex items-center justify-center gap-2">
                   <Plus className="w-4 h-4 text-muted-foreground" />
@@ -330,10 +358,10 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
             )
           )}
           
-          {/* Show message if no categories */}
-          {filteredCategories.length === 0 && (
+          {/* Show message if no subcategories */}
+          {allSubcategories.length === 0 && (
             <div className="col-span-2 sm:col-span-4 text-center py-4 text-muted-foreground">
-              Nenhuma categoria de {isIncome ? 'receita' : 'despesa'} cadastrada
+              Nenhuma subcategoria de {isIncome ? 'receita' : 'despesa'} cadastrada
             </div>
           )}
         </div>
@@ -344,7 +372,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         <Button 
           className="w-full h-14 text-lg"
           onClick={handleSubmit}
-          disabled={submitting || !selectedAccountId || !selectedCategoryId || !amount}
+          disabled={submitting || !selectedAccountId || !selectedSubcategoryId || !amount}
         >
           {submitting ? (
             <Loader2 className="w-5 h-5 animate-spin mr-2" />

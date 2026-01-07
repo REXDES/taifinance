@@ -219,13 +219,13 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                 Novo Lançamento
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
-              <DialogHeader>
+            <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
+              <DialogHeader className="flex-shrink-0">
                 <DialogTitle>
                   {editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}
                 </DialogTitle>
               </DialogHeader>
-              <ScrollArea className="flex-1 pr-4">
+              <div className="flex-1 overflow-y-auto pr-2">
                 <div className="space-y-4">
                   <Tabs value={form.type} onValueChange={(v) => setForm({ ...form, type: v as 'income' | 'expense', category_id: '', subcategory_id: '' })}>
                     <TabsList className="w-full">
@@ -333,7 +333,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                     />
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
               <Button 
                 onClick={handleSave} 
                 className="w-full mt-4"

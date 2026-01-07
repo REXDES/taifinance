@@ -484,11 +484,11 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
 
       {/* Dialog para criar nova conta */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Nova Conta</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-4">
+          <div className="flex-1 overflow-y-auto pr-2">
             <div className="space-y-4">
               <div>
                 <Label>Tipo</Label>
@@ -600,7 +600,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                 </Select>
               </div>
             </div>
-          </ScrollArea>
+          </div>
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={saving}>

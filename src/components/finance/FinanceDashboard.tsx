@@ -45,7 +45,7 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
   const { payablesReceivables: weekPR, loading: prLoading } = usePayablesReceivables(companyId, {
     startDate: format(weekStart, 'yyyy-MM-dd'),
     endDate: format(weekEnd, 'yyyy-MM-dd'),
-    status: 'pending'
+    status: ['pending']
   });
 
   // Group week payables/receivables by day

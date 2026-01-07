@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { useUsers } from '@/hooks/useUsers';
 import * as XLSX from 'xlsx';
@@ -24,14 +25,14 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
     startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
     endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
     type: '' as '' | 'payable' | 'receivable',
-    status: '' as '' | 'pending' | 'paid' | 'cancelled'
+    status: [] as ('pending' | 'paid' | 'cancelled')[]
   });
 
   const { payablesReceivables, loading, totalPayable, totalReceivable } = usePayablesReceivables(companyId, {
     startDate: filters.startDate,
     endDate: filters.endDate,
     type: filters.type || undefined,
-    status: filters.status || undefined
+    status: filters.status.length > 0 ? filters.status : undefined
   });
 
   const { users } = useUsers(companyId);
@@ -167,17 +168,32 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
           </div>
           <div>
             <Label>Status</Label>
-            <Select value={filters.status || "all"} onValueChange={(v) => setFilters(prev => ({ ...prev, status: v === "all" ? "" : v as any }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pending">Pendente</SelectItem>
-                <SelectItem value="paid">Pago</SelectItem>
-                <SelectItem value="cancelled">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-3 mt-2">
+              {[
+                { value: 'pending', label: 'Pendente' },
+                { value: 'paid', label: 'Pago' },
+                { value: 'cancelled', label: 'Cancelado' }
+              ].map((status) => (
+                <div key={status.value} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`report-status-${status.value}`}
+                    checked={filters.status.includes(status.value as any)}
+                    onCheckedChange={(checked) => {
+                      const newStatus = checked 
+                        ? [...filters.status, status.value as 'pending' | 'paid' | 'cancelled']
+                        : filters.status.filter(s => s !== status.value);
+                      setFilters(prev => ({ ...prev, status: newStatus }));
+                    }}
+                  />
+                  <label
+                    htmlFor={`report-status-${status.value}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {status.label}
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </Card>

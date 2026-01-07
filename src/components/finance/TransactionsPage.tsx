@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTransactions, Transaction } from '@/hooks/useTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
@@ -218,127 +219,128 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                 Novo Lançamento
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>
                   {editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <Tabs value={form.type} onValueChange={(v) => setForm({ ...form, type: v as 'income' | 'expense', category_id: '', subcategory_id: '' })}>
-                  <TabsList className="w-full">
-                    <TabsTrigger value="expense" className="flex-1">
-                      <TrendingDown className="w-4 h-4 mr-2" />
-                      Despesa
-                    </TabsTrigger>
-                    <TabsTrigger value="income" className="flex-1">
-                      <TrendingUp className="w-4 h-4 mr-2" />
-                      Receita
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+              <ScrollArea className="flex-1 pr-4">
+                <div className="space-y-4">
+                  <Tabs value={form.type} onValueChange={(v) => setForm({ ...form, type: v as 'income' | 'expense', category_id: '', subcategory_id: '' })}>
+                    <TabsList className="w-full">
+                      <TabsTrigger value="expense" className="flex-1">
+                        <TrendingDown className="w-4 h-4 mr-2" />
+                        Despesa
+                      </TabsTrigger>
+                      <TabsTrigger value="income" className="flex-1">
+                        <TrendingUp className="w-4 h-4 mr-2" />
+                        Receita
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
 
-                <div>
-                  <Label>Conta *</Label>
-                  <Select value={form.account_id} onValueChange={(v) => setForm({ ...form, account_id: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a conta" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          {account.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <div>
+                    <Label>Conta *</Label>
+                    <Select value={form.account_id} onValueChange={(v) => setForm({ ...form, account_id: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a conta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div>
-                  <Label>Valor *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                    placeholder="0,00"
-                  />
-                </div>
+                  <div>
+                    <Label>Valor *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={form.amount}
+                      onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                      placeholder="0,00"
+                    />
+                  </div>
 
-                <div>
-                  <Label>Descrição *</Label>
-                  <Input
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    placeholder="Ex: Compra no supermercado"
-                  />
-                </div>
+                  <div>
+                    <Label>Descrição *</Label>
+                    <Input
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      placeholder="Ex: Compra no supermercado"
+                    />
+                  </div>
 
-                <div>
-                  <Label>Data *</Label>
-                  <Input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  />
-                </div>
+                  <div>
+                    <Label>Data *</Label>
+                    <Input
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    />
+                  </div>
 
-                <div>
-                  <Label>Subcategoria *</Label>
-                  <Select 
-                    value={form.subcategory_id} 
-                    onValueChange={(v) => {
-                      // Find the category_id from the subcategory
-                      const subcat = filteredCategories
-                        .flatMap(c => (c.subcategories || []).map(s => ({ ...s, category_id: c.id })))
-                        .find(s => s.id === v);
-                      setForm({ 
-                        ...form, 
-                        subcategory_id: v, 
-                        category_id: subcat?.category_id || '' 
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma subcategoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredCategories.map((category) => (
-                        category.subcategories && category.subcategories.length > 0 && (
-                          <div key={category.id}>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: category.color }} />
-                              {category.name}
+                  <div>
+                    <Label>Subcategoria *</Label>
+                    <Select 
+                      value={form.subcategory_id} 
+                      onValueChange={(v) => {
+                        // Find the category_id from the subcategory
+                        const subcat = filteredCategories
+                          .flatMap(c => (c.subcategories || []).map(s => ({ ...s, category_id: c.id })))
+                          .find(s => s.id === v);
+                        setForm({ 
+                          ...form, 
+                          subcategory_id: v, 
+                          category_id: subcat?.category_id || '' 
+                        });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma subcategoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredCategories.map((category) => (
+                          category.subcategories && category.subcategories.length > 0 && (
+                            <div key={category.id}>
+                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: category.color }} />
+                                {category.name}
+                              </div>
+                              {category.subcategories.map((sub) => (
+                                <SelectItem key={sub.id} value={sub.id}>
+                                  <span className="ml-4">{sub.name}</span>
+                                </SelectItem>
+                              ))}
                             </div>
-                            {category.subcategories.map((sub) => (
-                              <SelectItem key={sub.id} value={sub.id}>
-                                <span className="ml-4">{sub.name}</span>
-                              </SelectItem>
-                            ))}
-                          </div>
-                        )
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                          )
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div>
-                  <Label>Observações</Label>
-                  <Textarea
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    placeholder="Observações adicionais"
-                  />
+                  <div>
+                    <Label>Observações</Label>
+                    <Textarea
+                      value={form.notes}
+                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                      placeholder="Observações adicionais"
+                    />
+                  </div>
                 </div>
-
-                <Button 
-                  onClick={handleSave} 
-                  className="w-full"
-                  disabled={!form.account_id || !form.amount || !form.description || !form.subcategory_id}
-                >
-                  {editingTransaction ? 'Salvar' : 'Criar Lançamento'}
-                </Button>
-              </div>
+              </ScrollArea>
+              <Button 
+                onClick={handleSave} 
+                className="w-full mt-4"
+                disabled={!form.account_id || !form.amount || !form.description || !form.subcategory_id}
+              >
+                {editingTransaction ? 'Salvar' : 'Criar Lançamento'}
+              </Button>
             </DialogContent>
           </Dialog>
         </div>

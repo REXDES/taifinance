@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useTransfers } from '@/hooks/useTransfers';
+import { useTransfers, Transfer } from '@/hooks/useTransfers';
 import { useAccounts } from '@/hooks/useAccounts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Trash2, ArrowRight, Filter } from 'lucide-react';
+import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 
 interface TransfersPageProps {
   companyId: string;
@@ -38,6 +39,7 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
   const { accounts } = useAccounts(companyId);
   const [showDialog, setShowDialog] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Transfer | null>(null);
   const [filters, setFilters] = useState<{
     startDate?: string;
     endDate?: string;
@@ -186,13 +188,24 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
                   <TableCell><ArrowRight className="w-4 h-4 text-muted-foreground" /></TableCell>
                   <TableCell>{t.to_account?.name}</TableCell>
                   <TableCell className="text-right font-medium">{formatCurrency(t.amount)}</TableCell>
-                  <TableCell><Button variant="ghost" size="icon" onClick={() => confirm('Excluir?') && deleteTransfer(t.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
+                  <TableCell><Button variant="ghost" size="icon" onClick={() => setDeleteTarget(t)}><Trash2 className="w-4 h-4 text-destructive" /></Button></TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
       </CardContent></Card>
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={async () => { if (deleteTarget) { await deleteTransfer(deleteTarget.id); setDeleteTarget(null); } }}
+        title="Excluir transferência"
+        itemName={deleteTarget?.description || 'Transferência'}
+        itemType="transferência"
+        description={`Você está prestes a excluir a transferência de ${deleteTarget ? formatCurrency(deleteTarget.amount) : ''} entre contas.`}
+        warningMessage="Os saldos das contas envolvidas serão recalculados automaticamente."
+      />
     </div>
   );
 }

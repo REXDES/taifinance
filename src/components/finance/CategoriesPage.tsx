@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 
 interface CategoriesPageProps { companyId: string; }
 
@@ -21,6 +22,8 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ name: '', type: 'expense' as 'income' | 'expense' | 'both', color: '#8B5CF6', monthly_budget: '' });
   const [subName, setSubName] = useState('');
+  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<TransactionCategory | null>(null);
+  const [deleteSubTarget, setDeleteSubTarget] = useState<{ id: string; name: string } | null>(null);
 
   const typeLabels = { income: 'Receita', expense: 'Despesa', both: 'Ambos' };
 
@@ -50,6 +53,18 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
     const next = new Set(expandedCategories);
     if (next.has(id)) next.delete(id); else next.add(id);
     setExpandedCategories(next);
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deleteCategoryTarget) return;
+    await deleteCategory(deleteCategoryTarget.id);
+    setDeleteCategoryTarget(null);
+  };
+
+  const handleDeleteSub = async () => {
+    if (!deleteSubTarget) return;
+    await deleteSubcategory(deleteSubTarget.id);
+    setDeleteSubTarget(null);
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
@@ -88,7 +103,7 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => { setSelectedCategoryId(cat.id); setEditingSubcategory(null); setSubName(''); setShowSubDialog(true); }}><Plus className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => { setEditingCategory(cat); setForm({ name: cat.name, type: cat.type, color: cat.color, monthly_budget: cat.monthly_budget?.toString() || '' }); setShowDialog(true); }}><Pencil className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => confirm('Excluir?') && deleteCategory(cat.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setDeleteCategoryTarget(cat)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
                 </div>
                 <CollapsibleContent>
@@ -98,7 +113,7 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
                         <span className="text-sm">{sub.name}</span>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => { setEditingSubcategory({ id: sub.id, name: sub.name, categoryId: cat.id }); setSubName(sub.name); setShowSubDialog(true); }}><Pencil className="w-3 h-3" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => confirm('Excluir?') && deleteSubcategory(sub.id)}><Trash2 className="w-3 h-3 text-destructive" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteSubTarget({ id: sub.id, name: sub.name })}><Trash2 className="w-3 h-3 text-destructive" /></Button>
                         </div>
                       </div>
                     ))}
@@ -112,6 +127,28 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
       <Dialog open={showSubDialog} onOpenChange={(open) => { setShowSubDialog(open); if (!open) setEditingSubcategory(null); }}><DialogContent><DialogHeader><DialogTitle>{editingSubcategory ? 'Editar' : 'Nova'} Subcategoria</DialogTitle></DialogHeader>
         <div className="space-y-4"><div><Label>Nome</Label><Input value={subName} onChange={(e) => setSubName(e.target.value)} /></div><Button onClick={handleSaveSub} className="w-full" disabled={!subName}>{editingSubcategory ? 'Salvar' : 'Criar'}</Button></div>
       </DialogContent></Dialog>
+
+      <DeleteConfirmDialog
+        open={!!deleteCategoryTarget}
+        onOpenChange={(open) => !open && setDeleteCategoryTarget(null)}
+        onConfirm={handleDeleteCategory}
+        title="Excluir categoria"
+        itemName={deleteCategoryTarget?.name}
+        itemType="categoria"
+        description={`Você está prestes a excluir a categoria "${deleteCategoryTarget?.name}".`}
+        warningMessage="Todas as subcategorias também serão removidas. Lançamentos existentes podem perder a categoria."
+      />
+
+      <DeleteConfirmDialog
+        open={!!deleteSubTarget}
+        onOpenChange={(open) => !open && setDeleteSubTarget(null)}
+        onConfirm={handleDeleteSub}
+        title="Excluir subcategoria"
+        itemName={deleteSubTarget?.name}
+        itemType="subcategoria"
+        description={`Você está prestes a excluir a subcategoria "${deleteSubTarget?.name}".`}
+        warningMessage="Lançamentos existentes podem perder a subcategoria."
+      />
     </div>
   );
 }

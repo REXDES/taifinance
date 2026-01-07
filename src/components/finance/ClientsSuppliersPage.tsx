@@ -36,6 +36,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Plus, MoreHorizontal, Pencil, Trash2, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 
 interface ClientsSuppliersPageProps {
   companyId: string;
@@ -47,6 +48,7 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
   const [editingItem, setEditingItem] = useState<ClientSupplier | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'client' | 'supplier' | 'both'>('all');
+  const [deleteTarget, setDeleteTarget] = useState<ClientSupplier | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -128,12 +130,12 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir?')) return;
-    
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteClientSupplier(id);
+      await deleteClientSupplier(deleteTarget.id);
       toast.success('Excluído com sucesso');
+      setDeleteTarget(null);
     } catch (error) {
       toast.error('Erro ao excluir');
     }
@@ -266,7 +268,7 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            onClick={() => handleDelete(item.id)}
+                            onClick={() => setDeleteTarget(item)}
                             className="text-destructive"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
@@ -373,6 +375,17 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Excluir cliente/fornecedor"
+        itemName={deleteTarget?.name}
+        itemType={deleteTarget?.type === 'client' ? 'cliente' : deleteTarget?.type === 'supplier' ? 'fornecedor' : 'cadastro'}
+        description={`Você está prestes a excluir "${deleteTarget?.name}" do seu cadastro.`}
+        warningMessage="Contas a pagar/receber vinculadas a este cadastro podem perder a referência."
+      />
     </div>
   );
 }

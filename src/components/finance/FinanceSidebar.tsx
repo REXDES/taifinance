@@ -26,6 +26,7 @@ import {
   CreditCard,
   Calendar,
   TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -77,6 +78,7 @@ interface FinanceSidebarProps {
 // Main menu items (not in submenus)
 const mainMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: <Home className="w-4 h-4" /> },
+  { view: 'quick-entry', label: 'Lance Rápido', icon: <Zap className="w-4 h-4" /> },
 ];
 
 // Sub-menu items for "Transações"

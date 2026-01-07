@@ -183,7 +183,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     c => c.type === form.type || c.type === 'both'
   );
 
-  const selectedCategory = categories.find(c => c.id === form.category_id);
+  // selectedCategory variable removed - now using flat subcategory selection
 
   if (loading) {
     return (
@@ -284,38 +284,43 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                 </div>
 
                 <div>
-                  <Label>Categoria</Label>
-                  <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v, subcategory_id: '' })}>
+                  <Label>Subcategoria *</Label>
+                  <Select 
+                    value={form.subcategory_id} 
+                    onValueChange={(v) => {
+                      // Find the category_id from the subcategory
+                      const subcat = filteredCategories
+                        .flatMap(c => (c.subcategories || []).map(s => ({ ...s, category_id: c.id })))
+                        .find(s => s.id === v);
+                      setForm({ 
+                        ...form, 
+                        subcategory_id: v, 
+                        category_id: subcat?.category_id || '' 
+                      });
+                    }}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria (opcional)" />
+                      <SelectValue placeholder="Selecione uma subcategoria" />
                     </SelectTrigger>
                     <SelectContent>
                       {filteredCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
+                        category.subcategories && category.subcategories.length > 0 && (
+                          <div key={category.id}>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: category.color }} />
+                              {category.name}
+                            </div>
+                            {category.subcategories.map((sub) => (
+                              <SelectItem key={sub.id} value={sub.id}>
+                                <span className="ml-4">{sub.name}</span>
+                              </SelectItem>
+                            ))}
+                          </div>
+                        )
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                {selectedCategory && selectedCategory.subcategories && selectedCategory.subcategories.length > 0 && (
-                  <div>
-                    <Label>Subcategoria</Label>
-                    <Select value={form.subcategory_id} onValueChange={(v) => setForm({ ...form, subcategory_id: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma subcategoria (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {selectedCategory.subcategories.map((sub) => (
-                          <SelectItem key={sub.id} value={sub.id}>
-                            {sub.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
 
                 <div>
                   <Label>Observações</Label>
@@ -329,7 +334,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                 <Button 
                   onClick={handleSave} 
                   className="w-full"
-                  disabled={!form.account_id || !form.amount || !form.description}
+                  disabled={!form.account_id || !form.amount || !form.description || !form.subcategory_id}
                 >
                   {editingTransaction ? 'Salvar' : 'Criar Lançamento'}
                 </Button>
@@ -515,9 +520,13 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                     </TableCell>
                     <TableCell>{transaction.account?.name || '-'}</TableCell>
                     <TableCell>
-                      {transaction.category?.name || '-'}
-                      {transaction.subcategory && (
-                        <span className="text-muted-foreground"> / {transaction.subcategory.name}</span>
+                      {transaction.subcategory ? (
+                        <div>
+                          <span className="text-xs text-muted-foreground">{transaction.category?.name || ''}</span>
+                          <span className="block font-medium">{transaction.subcategory.name}</span>
+                        </div>
+                      ) : (
+                        transaction.category?.name || '-'
                       )}
                     </TableCell>
                     <TableCell className={`text-right font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>

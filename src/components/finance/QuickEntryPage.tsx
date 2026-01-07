@@ -42,6 +42,12 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const activeAccounts = accounts.filter(a => a.is_active);
   const filteredCategories = categories.filter(c => c.type === (isIncome ? 'income' : 'expense'));
   
+  // For expenses: show recent categories if available, otherwise show first 4 from filtered
+  // For income: always show first 4 from filtered (since recentCategories only tracks expenses)
+  const displayedCategories = isIncome 
+    ? filteredCategories.slice(0, 4) 
+    : (recentCategories.length > 0 ? recentCategories : filteredCategories.slice(0, 4));
+  
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
@@ -255,7 +261,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         </div>
         
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {(isIncome ? filteredCategories.slice(0, 4) : recentCategories).map((category) => (
+          {displayedCategories.map((category) => (
             <Card
               key={category.id}
               className={cn(
@@ -283,7 +289,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
           ))}
           
           {/* Show more categories button/select */}
-          {filteredCategories.length > (isIncome ? 4 : recentCategories.length) && (
+          {filteredCategories.length > displayedCategories.length && (
             showMoreCategories ? (
               <div className="col-span-2 sm:col-span-4">
                 <Select 

@@ -36,7 +36,7 @@ export interface PayableReceivableFilters {
   startDate?: string;
   endDate?: string;
   type?: 'payable' | 'receivable';
-  status?: 'pending' | 'paid' | 'cancelled';
+  status?: ('pending' | 'paid' | 'cancelled')[];
   clientSupplierId?: string;
 }
 
@@ -74,8 +74,8 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
       if (filters?.type) {
         query = query.eq('type', filters.type);
       }
-      if (filters?.status) {
-        query = query.eq('status', filters.status);
+      if (filters?.status && filters.status.length > 0) {
+        query = query.in('status', filters.status);
       }
       if (filters?.clientSupplierId) {
         query = query.eq('client_supplier_id', filters.clientSupplierId);

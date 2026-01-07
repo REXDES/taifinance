@@ -26,13 +26,46 @@ interface PayablesReceivablesPageProps {
 
 export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPageProps) {
   const { user } = useAuth();
+  const STORAGE_KEY = `payables_receivables_filters_${companyId}`;
+
+  const getInitialFilters = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          startDate: parsed.startDate || format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+          endDate: parsed.endDate || format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+          type: (parsed.type || '') as '' | 'payable' | 'receivable',
+          status: (parsed.status || []) as ('pending' | 'paid' | 'cancelled')[]
+        };
+      }
+    } catch (e) {
+      console.error('Error loading filter preferences:', e);
+    }
+    return {
+      startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+      endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+      type: '' as '' | 'payable' | 'receivable',
+      status: [] as ('pending' | 'paid' | 'cancelled')[]
+    };
+  };
+
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
-    endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
-    type: '' as '' | 'payable' | 'receivable',
-    status: '' as '' | 'pending' | 'paid' | 'cancelled'
-  });
+  const [filters, setFilters] = useState(getInitialFilters);
+
+  // Persist filter preferences
+  const updateFilters = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        type: newFilters.type,
+        status: newFilters.status
+      }));
+    } catch (e) {
+      console.error('Error saving filter preferences:', e);
+    }
+  };
 
   const { 
     payablesReceivables, 
@@ -49,7 +82,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     startDate: filters.startDate,
     endDate: filters.endDate,
     type: filters.type || undefined,
-    status: filters.status || undefined
+    status: filters.status.length > 0 ? filters.status : undefined
   });
 
   const { clientsSuppliers, createClientSupplier } = useClientsSuppliers(companyId);
@@ -358,7 +391,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
             </div>
             <div>
               <Label>Tipo</Label>
-              <Select value={filters.type || "all"} onValueChange={(v) => setFilters(prev => ({ ...prev, type: v === "all" ? "" : v as any }))}>
+              <Select value={filters.type || "all"} onValueChange={(v) => updateFilters({ ...filters, type: v === "all" ? "" : v as any })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -371,17 +404,32 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
             </div>
             <div>
               <Label>Status</Label>
-              <Select value={filters.status || "all"} onValueChange={(v) => setFilters(prev => ({ ...prev, status: v === "all" ? "" : v as any }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                  <SelectItem value="paid">Pago</SelectItem>
-                  <SelectItem value="cancelled">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-3 mt-2">
+                {[
+                  { value: 'pending', label: 'Pendente' },
+                  { value: 'paid', label: 'Pago' },
+                  { value: 'cancelled', label: 'Cancelado' }
+                ].map((status) => (
+                  <div key={status.value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`status-${status.value}`}
+                      checked={filters.status.includes(status.value as any)}
+                      onCheckedChange={(checked) => {
+                        const newStatus = checked 
+                          ? [...filters.status, status.value as 'pending' | 'paid' | 'cancelled']
+                          : filters.status.filter(s => s !== status.value);
+                        updateFilters({ ...filters, status: newStatus });
+                      }}
+                    />
+                    <label
+                      htmlFor={`status-${status.value}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {status.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </Card>

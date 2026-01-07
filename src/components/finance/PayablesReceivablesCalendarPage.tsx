@@ -21,7 +21,7 @@ export function PayablesReceivablesCalendarPage({ companyId }: PayablesReceivabl
   const { payablesReceivables, loading } = usePayablesReceivables(companyId, {
     startDate,
     endDate,
-    status: 'pending'
+    status: ['pending']
   });
 
   const days = useMemo(() => {

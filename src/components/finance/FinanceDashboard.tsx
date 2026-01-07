@@ -366,7 +366,7 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
                       <TrendingDown className="w-4 h-4 text-red-600" />
                     )}
                     <div>
-                      <p className="font-medium text-foreground">{transaction.description}</p>
+                      <p className="font-medium text-foreground">{transaction.subcategory?.name || transaction.category?.name || transaction.description}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(transaction.date).toLocaleDateString('pt-BR')} • {transaction.account?.name}
                       </p>

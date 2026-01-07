@@ -66,7 +66,8 @@ export function CategoryReportPage({ companyId }: CategoryReportPageProps) {
   const [periodType, setPeriodType] = useState<PeriodType>('current');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string> | null>(null);
+  const [hasInitializedExpanded, setHasInitializedExpanded] = useState(false);
 
   // Calculate date ranges based on period type
   const { currentPeriod, previousPeriod } = useMemo(() => {
@@ -256,7 +257,8 @@ export function CategoryReportPage({ companyId }: CategoryReportPageProps) {
   };
 
   const toggleCategory = (categoryId: string) => {
-    const newExpanded = new Set(expandedCategories);
+    const current = expandedCategories || new Set<string>();
+    const newExpanded = new Set(current);
     if (newExpanded.has(categoryId)) {
       newExpanded.delete(categoryId);
     } else {
@@ -264,6 +266,24 @@ export function CategoryReportPage({ companyId }: CategoryReportPageProps) {
     }
     setExpandedCategories(newExpanded);
   };
+
+  // Auto-expand categories with subcategories on first load
+  if (!hasInitializedExpanded && reportData.length > 0 && reportData[0].categories.length > 0) {
+    const catsWithSubs = new Set<string>();
+    reportData.forEach(period => {
+      period.categories.forEach(cat => {
+        if (cat.subcategories.length > 0) {
+          catsWithSubs.add(cat.id);
+        }
+      });
+    });
+    if (catsWithSubs.size > 0) {
+      setExpandedCategories(catsWithSubs);
+    } else {
+      setExpandedCategories(new Set());
+    }
+    setHasInitializedExpanded(true);
+  }
 
   const getVariation = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 100 : 0;
@@ -478,7 +498,7 @@ function PeriodCard({
             {period.categories.map((cat) => {
               const percentage = total > 0 ? (cat.total / total) * 100 : 0;
               const hasSubcategories = cat.subcategories.length > 0;
-              const isExpanded = expandedCategories.has(cat.id);
+              const isExpanded = expandedCategories?.has(cat.id) ?? false;
 
               // Find comparison category
               const comparisonCat = comparisonPeriod?.categories.find((c) => c.id === cat.id);

@@ -155,14 +155,15 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
           <div className="text-center space-y-4">
             <Label className="text-muted-foreground">Valor</Label>
             <div className="flex items-center justify-center gap-2">
-              <span className="text-3xl font-bold text-muted-foreground">R$</span>
-              <Input
+              <span className="text-4xl font-bold text-muted-foreground">R$</span>
+              <input
                 type="text"
                 inputMode="decimal"
                 placeholder="0,00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="text-7xl font-bold text-center border-0 shadow-none focus-visible:ring-0 max-w-[320px] h-auto py-4"
+                style={{ fontSize: '4rem' }}
+                className="font-bold text-center bg-transparent border-0 outline-none focus:ring-0 max-w-[320px] text-foreground placeholder:text-muted-foreground/50"
               />
             </div>
           </div>

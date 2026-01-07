@@ -12,10 +12,11 @@ import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 interface CategoriesPageProps { companyId: string; }
 
 export function CategoriesPage({ companyId }: CategoriesPageProps) {
-  const { categories, loading, createCategory, updateCategory, deleteCategory, createSubcategory, deleteSubcategory } = useTransactionCategories(companyId);
+  const { categories, loading, createCategory, updateCategory, deleteCategory, createSubcategory, updateSubcategory, deleteSubcategory } = useTransactionCategories(companyId);
   const [showDialog, setShowDialog] = useState(false);
   const [showSubDialog, setShowSubDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<TransactionCategory | null>(null);
+  const [editingSubcategory, setEditingSubcategory] = useState<{ id: string; name: string; categoryId: string } | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ name: '', type: 'expense' as 'income' | 'expense' | 'both', color: '#8B5CF6', monthly_budget: '' });
@@ -35,7 +36,14 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
   };
 
   const handleSaveSub = async () => {
-    if (selectedCategoryId && subName) { await createSubcategory(selectedCategoryId, subName); setShowSubDialog(false); setSubName(''); }
+    if (editingSubcategory) {
+      await updateSubcategory(editingSubcategory.id, subName);
+      setEditingSubcategory(null);
+    } else if (selectedCategoryId && subName) {
+      await createSubcategory(selectedCategoryId, subName);
+    }
+    setShowSubDialog(false);
+    setSubName('');
   };
 
   const toggleExpand = (id: string) => {
@@ -78,7 +86,7 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
                     <span className="text-xs text-muted-foreground">• {cat.subcategories?.length || 0} sub</span>
                   </CollapsibleTrigger>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => { setSelectedCategoryId(cat.id); setShowSubDialog(true); }}><Plus className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => { setSelectedCategoryId(cat.id); setEditingSubcategory(null); setSubName(''); setShowSubDialog(true); }}><Plus className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => { setEditingCategory(cat); setForm({ name: cat.name, type: cat.type, color: cat.color, monthly_budget: cat.monthly_budget?.toString() || '' }); setShowDialog(true); }}><Pencil className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => confirm('Excluir?') && deleteCategory(cat.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
@@ -88,7 +96,10 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
                     {cat.subcategories?.map((sub) => (
                       <div key={sub.id} className="flex items-center justify-between p-2 rounded bg-background">
                         <span className="text-sm">{sub.name}</span>
-                        <Button variant="ghost" size="icon" onClick={() => confirm('Excluir?') && deleteSubcategory(sub.id)}><Trash2 className="w-3 h-3 text-destructive" /></Button>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => { setEditingSubcategory({ id: sub.id, name: sub.name, categoryId: cat.id }); setSubName(sub.name); setShowSubDialog(true); }}><Pencil className="w-3 h-3" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => confirm('Excluir?') && deleteSubcategory(sub.id)}><Trash2 className="w-3 h-3 text-destructive" /></Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -98,8 +109,8 @@ export function CategoriesPage({ companyId }: CategoriesPageProps) {
           </div>
         )}
       </CardContent></Card>
-      <Dialog open={showSubDialog} onOpenChange={setShowSubDialog}><DialogContent><DialogHeader><DialogTitle>Nova Subcategoria</DialogTitle></DialogHeader>
-        <div className="space-y-4"><div><Label>Nome</Label><Input value={subName} onChange={(e) => setSubName(e.target.value)} /></div><Button onClick={handleSaveSub} className="w-full" disabled={!subName}>Criar</Button></div>
+      <Dialog open={showSubDialog} onOpenChange={(open) => { setShowSubDialog(open); if (!open) setEditingSubcategory(null); }}><DialogContent><DialogHeader><DialogTitle>{editingSubcategory ? 'Editar' : 'Nova'} Subcategoria</DialogTitle></DialogHeader>
+        <div className="space-y-4"><div><Label>Nome</Label><Input value={subName} onChange={(e) => setSubName(e.target.value)} /></div><Button onClick={handleSaveSub} className="w-full" disabled={!subName}>{editingSubcategory ? 'Salvar' : 'Criar'}</Button></div>
       </DialogContent></Dialog>
     </div>
   );

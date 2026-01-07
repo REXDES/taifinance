@@ -153,16 +153,16 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       <Card className="border-2 border-primary/20">
         <CardContent className="py-8">
           <div className="text-center space-y-4">
-            <Label className="text-muted-foreground text-lg">Valor</Label>
-            <div className="flex items-center justify-center gap-3">
-              <span className="text-5xl font-bold text-muted-foreground">R$</span>
+            <Label className="text-muted-foreground">Valor</Label>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-3xl font-bold text-muted-foreground">R$</span>
               <Input
                 type="text"
                 inputMode="decimal"
                 placeholder="0,00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="text-6xl font-bold text-center border-0 shadow-none focus-visible:ring-0 max-w-[280px] h-auto py-4"
+                className="text-7xl font-bold text-center border-0 shadow-none focus-visible:ring-0 max-w-[320px] h-auto py-4"
               />
             </div>
           </div>

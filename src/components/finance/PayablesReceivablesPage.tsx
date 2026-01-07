@@ -29,13 +29,20 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
   const STORAGE_KEY = `payables_receivables_filters_${companyId}`;
 
   const getInitialFilters = () => {
+    const defaultFilters = {
+      startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+      endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+      type: '' as '' | 'payable' | 'receivable',
+      status: [] as ('pending' | 'paid' | 'cancelled')[]
+    };
+    
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        // Only restore type and status, never the period
         return {
-          startDate: parsed.startDate || format(startOfMonth(new Date()), 'yyyy-MM-dd'),
-          endDate: parsed.endDate || format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+          ...defaultFilters,
           type: (parsed.type || '') as '' | 'payable' | 'receivable',
           status: (parsed.status || []) as ('pending' | 'paid' | 'cancelled')[]
         };
@@ -43,12 +50,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     } catch (e) {
       console.error('Error loading filter preferences:', e);
     }
-    return {
-      startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
-      endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
-      type: '' as '' | 'payable' | 'receivable',
-      status: [] as ('pending' | 'paid' | 'cancelled')[]
-    };
+    return defaultFilters;
   };
 
   const [showFilters, setShowFilters] = useState(false);

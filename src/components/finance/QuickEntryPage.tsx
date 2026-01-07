@@ -80,7 +80,9 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       toast({ title: 'Selecione uma subcategoria', variant: 'destructive' });
       return;
     }
-    const numAmount = parseFloat(amount.replace(',', '.'));
+    // Remove dots (thousands separator) and replace comma with dot for parsing
+    const cleanAmount = amount.replace(/\./g, '').replace(',', '.');
+    const numAmount = parseFloat(cleanAmount);
     if (isNaN(numAmount) || numAmount <= 0) {
       toast({ title: 'Informe um valor válido', variant: 'destructive' });
       return;
@@ -151,21 +153,41 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
 
       {/* Amount Input */}
       <Card className="border-2 border-primary/20">
-        <CardContent className="py-8">
-          <div className="text-center space-y-4">
-            <Label className="text-muted-foreground">Valor</Label>
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-4xl font-bold text-muted-foreground">R$</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="0,00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                style={{ fontSize: '4rem' }}
-                className="font-bold text-center bg-transparent border-0 outline-none focus:ring-0 max-w-[320px] text-foreground placeholder:text-muted-foreground/50"
-              />
-            </div>
+        <CardContent className="py-4">
+          <div className="text-center space-y-2">
+            <Label className="text-muted-foreground flex items-center justify-center gap-2">
+              Valor <span className="text-xl font-bold">R$</span>
+            </Label>
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="0,00"
+              value={amount}
+              onChange={(e) => {
+                // Remove non-numeric characters except comma and dot
+                let value = e.target.value.replace(/[^\d,\.]/g, '');
+                // Replace dot with comma for Brazilian format
+                value = value.replace('.', ',');
+                // Only allow one comma
+                const parts = value.split(',');
+                if (parts.length > 2) {
+                  value = parts[0] + ',' + parts.slice(1).join('');
+                }
+                // Limit decimal places to 2
+                if (parts.length === 2 && parts[1].length > 2) {
+                  value = parts[0] + ',' + parts[1].slice(0, 2);
+                }
+                // Format thousands with dots
+                if (parts[0].length > 3) {
+                  const intPart = parts[0].replace(/\./g, '');
+                  const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                  value = parts.length > 1 ? formatted + ',' + parts[1] : formatted;
+                }
+                setAmount(value);
+              }}
+              style={{ fontSize: '3.5rem' }}
+              className="font-bold text-center bg-transparent border-0 outline-none focus:ring-0 w-full max-w-[320px] text-foreground placeholder:text-muted-foreground/50"
+            />
           </div>
         </CardContent>
       </Card>

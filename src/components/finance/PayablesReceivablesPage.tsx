@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -69,6 +69,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     }
   };
 
+  const [editingRecord, setEditingRecord] = useState<any>(null);
+
   const { 
     payablesReceivables, 
     loading, 
@@ -76,6 +78,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     totalReceivable,
     pendingAmountCount,
     createPayableReceivable,
+    updatePayableReceivable,
     effectuatePayment,
     cancelPayableReceivable,
     deletePayableReceivable,
@@ -160,40 +163,76 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
 
     try {
       setSaving(true);
-      await createPayableReceivable(
-        {
-          company_id: companyId,
+      
+      if (editingRecord) {
+        // Update existing record
+        await updatePayableReceivable(editingRecord.id, {
           type: formData.type,
-          payment_type: formData.payment_type,
           description: formData.description,
           amount: formData.is_amount_pending ? null : parseFloat(formData.amount),
           is_amount_pending: formData.is_amount_pending,
           due_date: formData.due_date,
           category_id: formData.category_id || null,
           subcategory_id: formData.subcategory_id || null,
-          client_supplier_id: formData.client_supplier_id || null,
-          status: 'pending',
-          installment_number: null,
-          total_installments: null,
-          parent_id: null,
-          paid_amount: null,
-          paid_date: null,
-          paid_account_id: null,
-          transaction_id: null,
-          created_by: user?.id || null,
-          paid_by: null
-        },
-        formData.payment_type === 'installment' ? parseInt(formData.installments) : undefined
-      );
-      toast.success('Conta criada com sucesso!');
+          client_supplier_id: formData.client_supplier_id || null
+        });
+        toast.success('Conta atualizada com sucesso!');
+      } else {
+        // Create new record
+        await createPayableReceivable(
+          {
+            company_id: companyId,
+            type: formData.type,
+            payment_type: formData.payment_type,
+            description: formData.description,
+            amount: formData.is_amount_pending ? null : parseFloat(formData.amount),
+            is_amount_pending: formData.is_amount_pending,
+            due_date: formData.due_date,
+            category_id: formData.category_id || null,
+            subcategory_id: formData.subcategory_id || null,
+            client_supplier_id: formData.client_supplier_id || null,
+            status: 'pending',
+            installment_number: null,
+            total_installments: null,
+            parent_id: null,
+            paid_amount: null,
+            paid_date: null,
+            paid_account_id: null,
+            transaction_id: null,
+            created_by: user?.id || null,
+            paid_by: null
+          },
+          formData.payment_type === 'installment' ? parseInt(formData.installments) : undefined
+        );
+        toast.success('Conta criada com sucesso!');
+      }
+      
       setIsDialogOpen(false);
+      setEditingRecord(null);
       resetForm();
     } catch (error) {
       console.error(error);
-      toast.error('Erro ao criar conta');
+      toast.error(editingRecord ? 'Erro ao atualizar conta' : 'Erro ao criar conta');
     } finally {
       setSaving(false);
     }
+  };
+
+  const openEditDialog = (record: any) => {
+    setEditingRecord(record);
+    setFormData({
+      type: record.type,
+      payment_type: record.payment_type,
+      description: record.description,
+      amount: record.amount ? String(record.amount) : '',
+      is_amount_pending: record.is_amount_pending,
+      due_date: record.due_date,
+      category_id: record.category_id || '',
+      subcategory_id: record.subcategory_id || '',
+      client_supplier_id: record.client_supplier_id || '',
+      installments: '2'
+    });
+    setIsDialogOpen(true);
   };
 
   const handleCreateClient = async () => {
@@ -316,6 +355,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       client_supplier_id: '',
       installments: '2'
     });
+    setEditingRecord(null);
   };
 
   const openEffectuateDialog = (record: any) => {
@@ -526,8 +566,17 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => openEditDialog(record)}
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           className="text-green-600 hover:text-green-700"
                           onClick={() => openEffectuateDialog(record)}
+                          title="Efetivar"
                         >
                           <Check className="h-4 w-4" />
                         </Button>
@@ -536,6 +585,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                           variant="outline"
                           className="text-red-600 hover:text-red-700"
                           onClick={() => handleCancel(record.id)}
+                          title="Cancelar"
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -544,6 +594,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                           variant="outline"
                           className="text-destructive hover:text-destructive"
                           onClick={() => handleDeleteClick(record)}
+                          title="Excluir"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -557,11 +608,17 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
         </Table>
       </Card>
 
-      {/* Dialog para criar nova conta */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      {/* Dialog para criar/editar conta */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) {
+          setEditingRecord(null);
+          resetForm();
+        }
+      }}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Nova Conta</DialogTitle>
+            <DialogTitle>{editingRecord ? 'Editar Conta' : 'Nova Conta'}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto pr-2">
             <div className="space-y-4">
@@ -577,29 +634,33 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Modalidade</Label>
-                <Select value={formData.payment_type} onValueChange={(v) => setFormData(prev => ({ ...prev, payment_type: v as any }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="single">Única</SelectItem>
-                    <SelectItem value="installment">Parcelado</SelectItem>
-                    <SelectItem value="recurring">Recorrente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {formData.payment_type === 'installment' && (
-                <div>
-                  <Label>Número de Parcelas</Label>
-                  <Input
-                    type="number"
-                    min="2"
-                    value={formData.installments}
-                    onChange={(e) => setFormData(prev => ({ ...prev, installments: e.target.value }))}
-                  />
-                </div>
+              {!editingRecord && (
+                <>
+                  <div>
+                    <Label>Modalidade</Label>
+                    <Select value={formData.payment_type} onValueChange={(v) => setFormData(prev => ({ ...prev, payment_type: v as any }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single">Única</SelectItem>
+                        <SelectItem value="installment">Parcelado</SelectItem>
+                        <SelectItem value="recurring">Recorrente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {formData.payment_type === 'installment' && (
+                    <div>
+                      <Label>Número de Parcelas</Label>
+                      <Input
+                        type="number"
+                        min="2"
+                        value={formData.installments}
+                        onChange={(e) => setFormData(prev => ({ ...prev, installments: e.target.value }))}
+                      />
+                    </div>
+                  )}
+                </>
               )}
               <div>
                 <Label>Descrição *</Label>
@@ -702,10 +763,14 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
             </div>
           </div>
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => {
+              setIsDialogOpen(false);
+              setEditingRecord(null);
+              resetForm();
+            }}>Cancelar</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Salvar
+              {editingRecord ? 'Atualizar' : 'Salvar'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -392,6 +392,37 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
     { totalPayable: 0, totalReceivable: 0, pendingCount: 0 }
   );
 
+  const updatePayableReceivable = async (
+    id: string,
+    data: {
+      type: 'payable' | 'receivable';
+      description: string;
+      amount: number | null;
+      is_amount_pending: boolean;
+      due_date: string;
+      category_id: string | null;
+      subcategory_id: string | null;
+      client_supplier_id: string | null;
+    }
+  ) => {
+    const { error } = await supabase
+      .from('payables_receivables')
+      .update({
+        type: data.type,
+        description: data.description,
+        amount: data.is_amount_pending ? null : data.amount,
+        is_amount_pending: data.is_amount_pending,
+        due_date: data.due_date,
+        category_id: data.category_id,
+        subcategory_id: data.subcategory_id,
+        client_supplier_id: data.client_supplier_id
+      })
+      .eq('id', id);
+
+    if (error) throw error;
+    await fetchPayablesReceivables();
+  };
+
   return {
     payablesReceivables,
     loading,
@@ -399,6 +430,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
     totalReceivable: totals.totalReceivable,
     pendingAmountCount: totals.pendingCount,
     createPayableReceivable,
+    updatePayableReceivable,
     effectuatePayment,
     cancelPayableReceivable,
     deletePayableReceivable,

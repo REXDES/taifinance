@@ -306,6 +306,9 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
                 if (subcategoryId) {
                   setSelectedSubcategoryId(subcategoryId);
                   setShowMoreSubcategories(false);
+                } else if (categoryId) {
+                  // Category selected but no subcategory - show subcategory selector
+                  setShowMoreSubcategories(true);
                 }
               }}
               trigger={

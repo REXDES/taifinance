@@ -300,6 +300,12 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                               category_id: categoryId,
                               subcategory_id: subcategoryId,
                             });
+                          } else if (categoryId) {
+                            setForm({
+                              ...form,
+                              category_id: categoryId,
+                              subcategory_id: '',
+                            });
                           }
                         }}
                         trigger={

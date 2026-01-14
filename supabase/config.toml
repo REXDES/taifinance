@@ -1,1 +1,4 @@
 project_id = "ignhvbtqhcyxkwnsqpue"
+
+[functions.suggest-category]
+verify_jwt = false

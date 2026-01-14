@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles } from 'lucide-react';
+import { AiCategoryHelper } from './AiCategoryHelper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -714,7 +715,37 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                 />
               </div>
               <div>
-                <Label>Categoria</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <Label>Categoria</Label>
+                  <AiCategoryHelper
+                    type={formData.type === 'payable' ? 'expense' : 'income'}
+                    categories={filteredCategories}
+                    onSelectCategory={(categoryId, subcategoryId) => {
+                      if (subcategoryId) {
+                        setFormData(prev => ({
+                          ...prev,
+                          category_id: categoryId,
+                          subcategory_id: subcategoryId,
+                        }));
+                      } else {
+                        setFormData(prev => ({
+                          ...prev,
+                          category_id: categoryId,
+                          subcategory_id: '',
+                        }));
+                      }
+                    }}
+                    trigger={
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        Ajude-me
+                      </button>
+                    }
+                  />
+                </div>
                 <Select value={formData.category_id} onValueChange={(v) => setFormData(prev => ({ ...prev, category_id: v, subcategory_id: '' }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />

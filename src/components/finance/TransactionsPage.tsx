@@ -30,7 +30,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Filter, Target } from 'lucide-react';
+import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Filter, Target, Sparkles } from 'lucide-react';
+import { AiCategoryHelper } from './AiCategoryHelper';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -287,7 +288,31 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                   </div>
 
                   <div>
-                    <Label>Subcategoria *</Label>
+                    <div className="flex items-center justify-between mb-1">
+                      <Label>Subcategoria *</Label>
+                      <AiCategoryHelper
+                        type={form.type}
+                        categories={filteredCategories}
+                        onSelectCategory={(categoryId, subcategoryId) => {
+                          if (subcategoryId) {
+                            setForm({
+                              ...form,
+                              category_id: categoryId,
+                              subcategory_id: subcategoryId,
+                            });
+                          }
+                        }}
+                        trigger={
+                          <button
+                            type="button"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Ajude-me
+                          </button>
+                        }
+                      />
+                    </div>
                     <Select 
                       value={form.subcategory_id} 
                       onValueChange={(v) => {

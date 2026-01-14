@@ -11,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Check, Loader2, Plus, Wallet, Tags } from 'lucide-react';
+import { Check, Loader2, Plus, Wallet, Tags, Sparkles } from 'lucide-react';
+import { AiCategoryHelper } from './AiCategoryHelper';
 import { cn } from '@/lib/utils';
 import { useRecentSelections } from '@/hooks/useRecentSelections';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -298,6 +299,25 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
           <div className="flex items-center gap-2">
             <Tags className="w-4 h-4 text-muted-foreground" />
             <Label className="text-sm font-medium">Subcategoria</Label>
+            <AiCategoryHelper
+              type={isIncome ? 'income' : 'expense'}
+              categories={filteredCategories}
+              onSelectCategory={(categoryId, subcategoryId) => {
+                if (subcategoryId) {
+                  setSelectedSubcategoryId(subcategoryId);
+                  setShowMoreSubcategories(false);
+                }
+              }}
+              trigger={
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline flex items-center gap-1 ml-2"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Ajude-me
+                </button>
+              }
+            />
           </div>
           {selectedSubcategory && (
             <span className="text-sm text-muted-foreground">

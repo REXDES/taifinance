@@ -61,13 +61,15 @@ O usuário vai descrever uma ${type === "expense" ? "despesa" : "receita"} e voc
 CATEGORIAS E SUBCATEGORIAS DISPONÍVEIS:
 ${categoriesContext || "Nenhuma categoria cadastrada."}
 
-REGRAS:
-1. Se encontrar uma categoria/subcategoria adequada, retorne-a usando a função suggest_category
-2. Se NÃO encontrar uma adequada, sugira nomes para criar uma nova categoria e/ou subcategoria
-3. Sempre forneça uma explicação clara e curta do porquê da sugestão
-4. A confiança deve ser:
+REGRAS IMPORTANTES:
+1. PRIORIZE usar categorias existentes! Se o NOME DA CATEGORIA pai faz sentido para o lançamento, use-a mesmo que as subcategorias existentes sejam específicas de outros itens.
+2. Exemplo: "Funcionário doméstico" deve usar "Folha de pagamento" pois é uma despesa com funcionário, mesmo que as subcategorias existentes sejam de outros funcionários.
+3. Se a categoria existente faz sentido mas não há subcategoria adequada, sugira CRIAR APENAS A SUBCATEGORIA dentro da categoria existente (retorne found=true com category_id, mas sem subcategory_id, e coloque suggested_subcategory_name).
+4. Só sugira criar uma NOVA CATEGORIA (found=false) quando realmente não existir nenhuma categoria que faça sentido para o tipo de despesa/receita.
+5. Sempre forneça uma explicação clara e curta do porquê da sugestão.
+6. A confiança deve ser:
    - "alta": quando a correspondência é óbvia
-   - "media": quando há correspondência parcial
+   - "media": quando há correspondência parcial ou só a categoria corresponde
    - "baixa": quando é uma suposição ou não há correspondência clara`;
 
     const userPrompt = `Analise esta ${type === "expense" ? "despesa" : "receita"} e sugira a melhor categoria e subcategoria:

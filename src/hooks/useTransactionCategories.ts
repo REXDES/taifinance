@@ -182,6 +182,24 @@ export function useTransactionCategories(companyId: string | null) {
     }
   }, [fetchCategories, toast]);
 
+  const moveSubcategory = useCallback(async (subcategoryId: string, newCategoryId: string) => {
+    try {
+      const { error } = await supabase
+        .from('transaction_subcategories')
+        .update({ category_id: newCategoryId })
+        .eq('id', subcategoryId);
+
+      if (error) throw error;
+      
+      await fetchCategories();
+      toast({ title: 'Subcategoria movida com sucesso' });
+      return true;
+    } catch (error: any) {
+      toast({ title: 'Erro ao mover subcategoria', description: error.message, variant: 'destructive' });
+      return false;
+    }
+  }, [fetchCategories, toast]);
+
   const deleteSubcategory = useCallback(async (id: string) => {
     try {
       const { error } = await supabase
@@ -208,6 +226,7 @@ export function useTransactionCategories(companyId: string | null) {
     deleteCategory,
     createSubcategory,
     updateSubcategory,
+    moveSubcategory,
     deleteSubcategory,
     refetch: fetchCategories,
   };

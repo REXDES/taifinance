@@ -267,21 +267,9 @@ export function CategoryReportPage({ companyId }: CategoryReportPageProps) {
     setExpandedCategories(newExpanded);
   };
 
-  // Auto-expand categories with subcategories on first load
-  if (!hasInitializedExpanded && reportData.length > 0 && reportData[0].categories.length > 0) {
-    const catsWithSubs = new Set<string>();
-    reportData.forEach(period => {
-      period.categories.forEach(cat => {
-        if (cat.subcategories.length > 0) {
-          catsWithSubs.add(cat.id);
-        }
-      });
-    });
-    if (catsWithSubs.size > 0) {
-      setExpandedCategories(catsWithSubs);
-    } else {
-      setExpandedCategories(new Set());
-    }
+  // Initialize with all categories collapsed
+  if (!hasInitializedExpanded && reportData.length > 0) {
+    setExpandedCategories(new Set());
     setHasInitializedExpanded(true);
   }
 

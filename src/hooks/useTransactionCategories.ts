@@ -195,15 +195,32 @@ export function useTransactionCategories(companyId: string | null) {
 
   const moveSubcategory = useCallback(async (subcategoryId: string, newCategoryId: string) => {
     try {
-      const { error } = await supabase
+      // Update the subcategory's parent category
+      const { error: subError } = await supabase
         .from('transaction_subcategories')
         .update({ category_id: newCategoryId })
         .eq('id', subcategoryId);
 
-      if (error) throw error;
+      if (subError) throw subError;
+
+      // Update all transactions that use this subcategory to the new category
+      const { error: txError } = await supabase
+        .from('transactions')
+        .update({ category_id: newCategoryId })
+        .eq('subcategory_id', subcategoryId);
+
+      if (txError) throw txError;
+
+      // Update all payables/receivables that use this subcategory to the new category
+      const { error: prError } = await supabase
+        .from('payables_receivables')
+        .update({ category_id: newCategoryId })
+        .eq('subcategory_id', subcategoryId);
+
+      if (prError) throw prError;
       
       await fetchCategories();
-      toast({ title: 'Subcategoria movida com sucesso' });
+      toast({ title: 'Subcategoria movida com sucesso', description: 'Todos os registros foram atualizados para a nova categoria.' });
       return true;
     } catch (error: any) {
       toast({ title: 'Erro ao mover subcategoria', description: error.message, variant: 'destructive' });

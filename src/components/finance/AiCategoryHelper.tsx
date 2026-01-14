@@ -293,7 +293,7 @@ export function AiCategoryHelper({
                         } else {
                           toast({
                             title: 'Categoria sugerida',
-                            description: `Crie a categoria "${suggestion.suggested_category_name}"${suggestion.suggested_subcategory_name ? ` com subcategoria "${suggestion.suggested_subcategory_name}"` : ''} em Configurações → Categorias`,
+                            description: `Crie a categoria "${suggestion.suggested_category_name}"${suggestion.suggested_subcategory_name ? ` com subcategoria "${suggestion.suggested_subcategory_name}"` : ''} em Cadastros → Categorias`,
                           });
                           handleClose();
                         }

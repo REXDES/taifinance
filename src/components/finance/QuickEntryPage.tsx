@@ -307,7 +307,14 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
                   setSelectedSubcategoryId(subcategoryId);
                   setShowMoreSubcategories(false);
                 } else if (categoryId) {
-                  // Category selected but no subcategory - show subcategory selector
+                  // Category selected but no subcategory - show subcategory selector with toast
+                  const category = filteredCategories.find(c => c.id === categoryId);
+                  if (category) {
+                    toast({
+                      title: `Categoria: ${category.name}`,
+                      description: 'Selecione uma subcategoria abaixo ou crie uma nova.',
+                    });
+                  }
                   setShowMoreSubcategories(true);
                 }
               }}

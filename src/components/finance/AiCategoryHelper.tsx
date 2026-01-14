@@ -286,12 +286,23 @@ export function AiCategoryHelper({
                       Usar esta categoria
                     </Button>
                   ) : (
-                    onSuggestCreate && (
-                      <Button onClick={handleCreateNew} className="flex-1">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Criar categoria
-                      </Button>
-                    )
+                    <Button 
+                      onClick={() => {
+                        if (onSuggestCreate) {
+                          handleCreateNew();
+                        } else {
+                          toast({
+                            title: 'Categoria sugerida',
+                            description: `Crie a categoria "${suggestion.suggested_category_name}"${suggestion.suggested_subcategory_name ? ` com subcategoria "${suggestion.suggested_subcategory_name}"` : ''} em Configurações → Categorias`,
+                          });
+                          handleClose();
+                        }
+                      }} 
+                      className="flex-1"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {onSuggestCreate ? 'Criar categoria' : 'Entendi, vou criar'}
+                    </Button>
                   )}
                   <Button
                     variant="outline"

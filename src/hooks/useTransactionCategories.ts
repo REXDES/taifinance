@@ -131,7 +131,18 @@ export function useTransactionCategories(companyId: string | null) {
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        // Check for foreign key constraint violation
+        if (error.code === '23503') {
+          toast({ 
+            title: 'Não é possível excluir esta categoria', 
+            description: 'Esta categoria está sendo usada em lançamentos ou contas a pagar/receber. Remova os vínculos primeiro.', 
+            variant: 'destructive' 
+          });
+          return false;
+        }
+        throw error;
+      }
       
       await fetchCategories();
       toast({ title: 'Categoria excluída com sucesso' });

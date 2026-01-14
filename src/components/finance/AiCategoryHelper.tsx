@@ -250,17 +250,30 @@ export function AiCategoryHelper({
                 </div>
 
                 {/* Suggestion details */}
-                {suggestion.found ? (
+                {suggestion.found && suggestion.subcategory_id ? (
+                  // Found exact match with subcategory
                   <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
                     <div className="font-medium text-foreground">
                       {suggestion.category_name}
-                      {suggestion.subcategory_name && (
-                        <span className="text-muted-foreground"> → {suggestion.subcategory_name}</span>
-                      )}
+                      <span className="text-muted-foreground"> → {suggestion.subcategory_name}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{suggestion.explanation}</p>
+                  </div>
+                ) : suggestion.found && suggestion.category_id && suggestion.suggested_subcategory_name ? (
+                  // Found category but suggests creating subcategory
+                  <div className="p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-lg space-y-2">
+                    <div className="font-medium text-foreground flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Sugestão:
+                    </div>
+                    <div className="text-sm">
+                      <div>Categoria existente: <strong>{suggestion.category_name}</strong></div>
+                      <div>Criar subcategoria: <strong>{suggestion.suggested_subcategory_name}</strong></div>
                     </div>
                     <p className="text-sm text-muted-foreground">{suggestion.explanation}</p>
                   </div>
                 ) : (
+                  // Suggests creating new category
                   <div className="p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-lg space-y-2">
                     <div className="font-medium text-foreground flex items-center gap-2">
                       <Plus className="w-4 h-4" />
@@ -280,28 +293,40 @@ export function AiCategoryHelper({
 
                 {/* Action buttons */}
                 <div className="flex gap-2">
-                  {suggestion.found ? (
+                  {suggestion.found && suggestion.subcategory_id ? (
+                    // Use existing category + subcategory
                     <Button onClick={handleUseSuggestion} className="flex-1">
                       <Check className="w-4 h-4 mr-2" />
                       Usar esta categoria
                     </Button>
                   ) : (
+                    // Suggest to create (either subcategory or full category)
                     <Button 
                       onClick={() => {
                         if (onSuggestCreate) {
                           handleCreateNew();
                         } else {
-                          toast({
-                            title: 'Categoria sugerida',
-                            description: `Crie a categoria "${suggestion.suggested_category_name}"${suggestion.suggested_subcategory_name ? ` com subcategoria "${suggestion.suggested_subcategory_name}"` : ''} em Cadastros → Categorias`,
-                          });
+                          const isNewSubcategoryOnly = suggestion.found && suggestion.category_id;
+                          if (isNewSubcategoryOnly) {
+                            toast({
+                              title: 'Criar subcategoria',
+                              description: `Crie a subcategoria "${suggestion.suggested_subcategory_name}" em Cadastros → Categorias → ${suggestion.category_name}`,
+                            });
+                          } else {
+                            toast({
+                              title: 'Criar categoria',
+                              description: `Crie a categoria "${suggestion.suggested_category_name}"${suggestion.suggested_subcategory_name ? ` com subcategoria "${suggestion.suggested_subcategory_name}"` : ''} em Cadastros → Categorias`,
+                            });
+                          }
                           handleClose();
                         }
                       }} 
                       className="flex-1"
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      {onSuggestCreate ? 'Criar categoria' : 'Entendi, vou criar'}
+                      {suggestion.found && suggestion.category_id 
+                        ? 'Criar subcategoria' 
+                        : (onSuggestCreate ? 'Criar categoria' : 'Entendi, vou criar')}
                     </Button>
                   )}
                   <Button

@@ -165,30 +165,32 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
               placeholder="0,00"
               value={amount}
               onChange={(e) => {
-                // Remove non-numeric characters except comma and dot
-                let value = e.target.value.replace(/[^\d,\.]/g, '');
-                // Replace dot with comma for Brazilian format (user input)
-                value = value.replace('.', ',');
-                // Remove existing thousand separators to get clean number
-                const cleanValue = value.replace(/\./g, '');
-                // Split by comma
-                const parts = cleanValue.split(',');
-                // Only allow one comma
-                if (parts.length > 2) {
-                  parts[1] = parts.slice(1).join('');
-                  parts.length = 2;
-                }
-                // Limit decimal places to 2
-                if (parts.length === 2 && parts[1].length > 2) {
-                  parts[1] = parts[1].slice(0, 2);
-                }
-                // Format thousands with dots
-                let intPart = parts[0];
+                // Get only digits and comma from input
+                let value = e.target.value;
+                
+                // First, remove all thousand separators (dots used for formatting)
+                // and keep only digits and commas
+                const digitsAndComma = value.replace(/\./g, '').replace(/[^\d,]/g, '');
+                
+                // Split by comma to separate integer and decimal parts
+                const parts = digitsAndComma.split(',');
+                
+                // Get integer part (remove leading zeros except for "0")
+                let intPart = parts[0].replace(/^0+/, '') || '';
+                
+                // Get decimal part (limit to 2 digits)
+                let decPart = parts.length > 1 ? parts.slice(1).join('').slice(0, 2) : '';
+                
+                // Format integer part with thousand separators (dots)
                 if (intPart.length > 3) {
                   intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
                 }
-                value = parts.length > 1 ? intPart + ',' + parts[1] : intPart;
-                setAmount(value);
+                
+                // Combine parts: if user typed comma, always show it
+                const hasComma = value.includes(',');
+                const formattedValue = hasComma ? intPart + ',' + decPart : intPart;
+                
+                setAmount(formattedValue);
               }}
               style={{ fontSize: '3.5rem' }}
               className="font-bold text-center bg-transparent border-0 outline-none focus:ring-0 w-full max-w-[320px] text-foreground placeholder:text-muted-foreground/50"

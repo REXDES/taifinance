@@ -243,10 +243,10 @@ export default function Auth() {
     }
 
     setIsLoading(true);
-    const { error } = await signIn(loginEmail, loginPassword);
-    setIsLoading(false);
-
+    const { error, data } = await signIn(loginEmail, loginPassword);
+    
     if (error) {
+      setIsLoading(false);
       toast({
         title: 'Erro ao entrar',
         description: error.message === 'Invalid login credentials' 
@@ -254,14 +254,47 @@ export default function Auth() {
           : error.message,
         variant: 'destructive',
       });
+      return;
+    }
+
+    // After successful login, check for pending invitations and process them
+    const inviteId = searchParams.get('invite');
+    if (inviteId && data?.user) {
+      try {
+        const { data: accepted, error: acceptError } = await supabase
+          .rpc('accept_invitation', { 
+            _invitation_id: inviteId, 
+            _user_id: data.user.id 
+          });
+        
+        if (accepted && !acceptError) {
+          toast({
+            title: 'Bem-vindo!',
+            description: 'Login realizado e permissões do convite aplicadas.',
+          });
+        } else {
+          toast({
+            title: 'Bem-vindo!',
+            description: 'Login realizado com sucesso.',
+          });
+        }
+      } catch (err) {
+        console.error('Error processing invitation after login:', err);
+        toast({
+          title: 'Bem-vindo!',
+          description: 'Login realizado com sucesso.',
+        });
+      }
     } else {
       toast({
         title: 'Bem-vindo!',
         description: 'Login realizado com sucesso.',
       });
-      // Navigation will happen via useEffect after user state updates
-      // This allows us to show install prompt if available
     }
+    
+    setIsLoading(false);
+    // Navigation will happen via useEffect after user state updates
+    // This allows us to show install prompt if available
   };
 
   const handleSignup = async (e: React.FormEvent) => {

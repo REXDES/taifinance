@@ -1439,6 +1439,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: {
+        Args: { _invitation_id: string; _user_id: string }
+        Returns: boolean
+      }
+      check_invitation_status: {
+        Args: { _invitation_id: string }
+        Returns: {
+          invitation_exists: boolean
+          invitation_name: string
+          is_expired: boolean
+          is_used: boolean
+          user_email: string
+          user_exists: boolean
+        }[]
+      }
       generate_invitation_token: { Args: never; Returns: string }
       get_invitation_by_id: {
         Args: { _invitation_id: string }

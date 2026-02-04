@@ -191,7 +191,7 @@ const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => 
         canCreateCompany={canCreateCompany}
         companyLimit={userRole?.companyLimit ?? null}
         companiesCreated={userRole?.companiesCreated ?? 0}
-        canInvite={isSupervisor || (isGerente && userRole?.invitationLimit !== null && userRole.invitationLimit > 0)}
+        canInvite={isSupervisor || (isGerente && userRole?.invitationLimit !== null && (userRole?.invitationsCreated ?? 0) < (userRole?.invitationLimit ?? 0))}
         invitationLimit={userRole?.invitationLimit ?? null}
         invitationsCreated={userRole?.invitationsCreated ?? 0}
         onCreateCompany={() => setIsCreateCompanyOpen(true)}

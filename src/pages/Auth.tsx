@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, DollarSign } from 'lucide-react';
+import { Loader2, DollarSign, Download, CheckCircle } from 'lucide-react';
 
 interface InvitationData {
   id: string;
@@ -20,6 +20,15 @@ interface InvitationData {
   token_hash: string | null;
 }
 
+interface InvitationStatus {
+  invitation_exists: boolean;
+  is_used: boolean;
+  is_expired: boolean;
+  user_exists: boolean;
+  user_email: string;
+  invitation_name: string;
+}
+
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, user, loading } = useAuth();
@@ -29,26 +38,106 @@ export default function Auth() {
 
   // Invitation state
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
+  const [invitationStatus, setInvitationStatus] = useState<InvitationStatus | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+
+  // PWA Install state
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
     if (!loading && user) {
+      // Check if we should show install prompt
+      if (deferredPrompt) {
+        setShowInstallPrompt(true);
+        // Auto-hide after 10 seconds if user doesn't interact
+        const timer = setTimeout(() => setShowInstallPrompt(false), 10000);
+        return () => clearTimeout(timer);
+      }
       navigate('/');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, deferredPrompt]);
+
+  // Listen for PWA install prompt
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   // Check for invitation parameter
   useEffect(() => {
     const inviteId = searchParams.get('invite');
     if (inviteId) {
-      fetchInvitation(inviteId);
+      checkInvitationStatus(inviteId);
     }
   }, [searchParams]);
 
-  const fetchInvitation = async (inviteId: string) => {
+  const checkInvitationStatus = async (inviteId: string) => {
     setInviteLoading(true);
+    try {
+      // First check the full status using our new RPC function
+      const { data: statusData, error: statusError } = await supabase
+        .rpc('check_invitation_status', { _invitation_id: inviteId });
+
+      if (statusError) {
+        console.error('Error checking invitation status:', statusError);
+      }
+
+      const status = statusData?.[0] as InvitationStatus | undefined;
+      
+      if (status) {
+        setInvitationStatus(status);
+        
+        // If invitation doesn't exist
+        if (!status.invitation_exists) {
+          toast({
+            title: 'Convite inválido',
+            description: 'O convite não foi encontrado.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // If user already exists for this email (account already created)
+        if (status.user_exists || status.is_used) {
+          setActiveTab('login');
+          toast({
+            title: 'Conta já criada!',
+            description: `Use seu email ${status.user_email} para fazer login.`,
+          });
+          setLoginEmail(status.user_email);
+          return;
+        }
+
+        // If invitation is expired
+        if (status.is_expired) {
+          toast({
+            title: 'Convite expirado',
+            description: 'Este convite não é mais válido. Solicite um novo convite.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+
+      // If all checks pass, fetch full invitation details
+      await fetchInvitation(inviteId);
+    } catch (err) {
+      console.error('Error checking invitation:', err);
+      // Fallback to direct fetch if status check fails
+      await fetchInvitation(inviteId);
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const fetchInvitation = async (inviteId: string) => {
     try {
       // Use secure RPC function instead of direct table query
       const { data, error } = await (supabase.rpc as any)('get_invitation_by_id', { _invitation_id: inviteId });
@@ -76,9 +165,10 @@ export default function Auth() {
       if (invitation.is_used) {
         toast({
           title: 'Convite já utilizado',
-          description: 'Este convite já foi usado para criar uma conta.',
-          variant: 'destructive',
+          description: 'Este convite já foi usado para criar uma conta. Faça login com seu email.',
         });
+        setActiveTab('login');
+        setLoginEmail(invitation.email);
         return;
       }
 
@@ -105,8 +195,6 @@ export default function Auth() {
       setActiveTab('signup');
     } catch (err) {
       console.error('Error fetching invitation:', err);
-    } finally {
-      setInviteLoading(false);
     }
   };
 
@@ -120,6 +208,27 @@ export default function Auth() {
   const [signupName, setSignupName] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [invitePassword, setInvitePassword] = useState('');
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        toast({
+          title: 'App instalado!',
+          description: 'O atalho foi adicionado à sua área de trabalho.',
+        });
+      }
+      setDeferredPrompt(null);
+      setShowInstallPrompt(false);
+    }
+    navigate('/');
+  };
+
+  const handleSkipInstall = () => {
+    setShowInstallPrompt(false);
+    navigate('/');
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +259,8 @@ export default function Auth() {
         title: 'Bem-vindo!',
         description: 'Login realizado com sucesso.',
       });
-      navigate('/');
+      // Navigation will happen via useEffect after user state updates
+      // This allows us to show install prompt if available
     }
   };
 
@@ -238,6 +348,36 @@ export default function Auth() {
     }
   };
 
+  // Show install prompt after successful login
+  if (showInstallPrompt && user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="p-3 bg-primary/10 rounded-full">
+                <CheckCircle className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-xl">Login realizado com sucesso!</CardTitle>
+            <CardDescription>
+              Deseja criar um atalho na área de trabalho para acessar o TAI Finance rapidamente?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button onClick={handleInstallApp} className="w-full" size="lg">
+              <Download className="mr-2 h-5 w-5" />
+              Criar atalho na área de trabalho
+            </Button>
+            <Button variant="outline" onClick={handleSkipInstall} className="w-full">
+              Não, obrigado
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -269,6 +409,13 @@ export default function Auth() {
                 <div className="mt-4 p-3 bg-primary/10 rounded-md text-sm">
                   <p className="font-medium">Você foi convidado!</p>
                   <p className="text-muted-foreground">Complete seu cadastro para acessar a empresa.</p>
+                </div>
+              )}
+              
+              {invitationStatus?.user_exists && (
+                <div className="mt-4 p-3 bg-primary/10 rounded-md text-sm">
+                  <p className="font-medium text-primary">Sua conta já está ativa!</p>
+                  <p className="text-muted-foreground">Use seu email e senha para entrar.</p>
                 </div>
               )}
               

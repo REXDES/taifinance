@@ -1,4 +1,5 @@
 import { User } from '@supabase/supabase-js';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -7,7 +8,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User as UserIcon, Users } from 'lucide-react';
+import { LogOut, User as UserIcon, Users, Download } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 interface FinanceHeaderProps {
   user: User | null;
@@ -19,6 +26,36 @@ interface FinanceHeaderProps {
 
 export function FinanceHeader({ user, onSignOut, companyName, onOpenUsers, showUsersButton }: FinanceHeaderProps) {
   const initials = user?.email?.substring(0, 2).toUpperCase() || 'U';
+  const { toast } = useToast();
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) {
+      toast({
+        title: 'Instalação não disponível',
+        description: 'O app já está instalado ou seu navegador não suporta instalação.',
+      });
+      return;
+    }
+
+    await installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      toast({ title: 'App instalado com sucesso!' });
+      setInstallPrompt(null);
+    }
+  };
 
   return (
     <header className="h-14 border-b border-border bg-card px-4 flex items-center justify-between">
@@ -31,6 +68,15 @@ export function FinanceHeader({ user, onSignOut, companyName, onOpenUsers, showU
       </div>
 
       <div className="flex items-center gap-4">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleInstallClick} 
+          title="Instalar aplicativo"
+          className={installPrompt ? 'text-primary' : 'text-muted-foreground'}
+        >
+          <Download className="h-5 w-5" />
+        </Button>
         {showUsersButton && onOpenUsers && (
           <Button variant="ghost" size="icon" onClick={onOpenUsers} title="Gerenciar Usuários">
             <Users className="h-5 w-5" />

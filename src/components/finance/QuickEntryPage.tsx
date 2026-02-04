@@ -11,7 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Check, Loader2, Plus, Wallet, Tags, Sparkles } from 'lucide-react';
+import { Check, Loader2, Plus, Wallet, Tags, Sparkles, CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { AiCategoryHelper } from './AiCategoryHelper';
 import { cn } from '@/lib/utils';
 import { useRecentSelections } from '@/hooks/useRecentSelections';
@@ -39,6 +43,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const [showMoreAccounts, setShowMoreAccounts] = useState(false);
   const [showMoreSubcategories, setShowMoreSubcategories] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const activeAccounts = accounts.filter(a => a.is_active);
   const filteredCategories = categories.filter(c => c.type === (isIncome ? 'income' : 'expense') || c.type === 'both');
@@ -102,7 +107,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         amount: numAmount,
         type: isIncome ? 'income' : 'expense',
         description: description || (isIncome ? 'Receita rápida' : 'Despesa rápida'),
-        date: new Date().toISOString().split('T')[0],
+        date: selectedDate.toISOString().split('T')[0],
       });
 
       toast({ title: 'Lançamento registrado com sucesso!' });
@@ -114,6 +119,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       setSelectedSubcategoryId(null);
       setShowMoreAccounts(false);
       setShowMoreSubcategories(false);
+      setSelectedDate(new Date());
       
       // Refetch recent selections
       refetchRecent();
@@ -199,14 +205,35 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         </CardContent>
       </Card>
 
-      {/* Description Input */}
-      <div>
+      {/* Description and Date Input */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           placeholder="Descrição (opcional)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           className="text-center"
         />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className="justify-start text-left font-normal"
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              initialFocus
+              locale={ptBR}
+              className="pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Recent Accounts */}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useAccountStatement } from '@/hooks/useAccountStatement';
+import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,10 +13,17 @@ interface StatementPageProps { companyId: string; }
 
 export function StatementPage({ companyId }: StatementPageProps) {
   const { accounts } = useAccounts(companyId);
+  const { categories } = useTransactionCategories(companyId);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const { entries, account, loading, totals } = useAccountStatement(selectedAccountId || null, startDate || undefined, endDate || undefined);
+  const { entries, account, loading, totals } = useAccountStatement(
+    selectedAccountId || null, 
+    startDate || undefined, 
+    endDate || undefined,
+    selectedCategoryId || undefined
+  );
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const getIcon = (type: string) => {
     if (type === 'income') return <TrendingUp className="w-4 h-4 text-green-600" />;
@@ -30,6 +38,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
       <Card><CardContent className="pt-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div><Label>Conta *</Label><Select value={selectedAccountId} onValueChange={setSelectedAccountId}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select></div>
+          <div><Label>Categoria</Label><Select value={selectedCategoryId || 'all'} onValueChange={(v) => setSelectedCategoryId(v === 'all' ? '' : v)}><SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger><SelectContent><SelectItem value="all">Todas as categorias</SelectItem>{categories.map((c) => <SelectItem key={c.id} value={c.id}><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />{c.name}</div></SelectItem>)}</SelectContent></Select></div>
           <div><Label>Data Inicial</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
           <div><Label>Data Final</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
         </div>

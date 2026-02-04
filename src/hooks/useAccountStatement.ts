@@ -14,7 +14,7 @@ export interface StatementEntry {
   relatedAccount?: string;
 }
 
-export function useAccountStatement(accountId: string | null, startDate?: string, endDate?: string) {
+export function useAccountStatement(accountId: string | null, startDate?: string, endDate?: string, categoryId?: string) {
   const [entries, setEntries] = useState<StatementEntry[]>([]);
   const [account, setAccount] = useState<{ id: string; name: string; initial_balance: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +53,7 @@ export function useAccountStatement(accountId: string | null, startDate?: string
 
       if (startDate) transactionsQuery = transactionsQuery.gte('date', startDate);
       if (endDate) transactionsQuery = transactionsQuery.lte('date', endDate);
+      if (categoryId) transactionsQuery = transactionsQuery.eq('category_id', categoryId);
 
       // Fetch transfers (incoming)
       let transfersInQuery = supabase
@@ -193,7 +194,7 @@ export function useAccountStatement(accountId: string | null, startDate?: string
     } finally {
       setLoading(false);
     }
-  }, [accountId, startDate, endDate, toast]);
+  }, [accountId, startDate, endDate, categoryId, toast]);
 
   useEffect(() => {
     fetchStatement();

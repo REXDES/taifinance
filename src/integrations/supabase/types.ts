@@ -1454,7 +1454,12 @@ export type Database = {
           user_exists: boolean
         }[]
       }
+      count_companies_created_by: {
+        Args: { _user_id: string }
+        Returns: number
+      }
       generate_invitation_token: { Args: never; Returns: string }
+      get_company_limit: { Args: { _user_id: string }; Returns: number }
       get_invitation_by_id: {
         Args: { _invitation_id: string }
         Returns: {

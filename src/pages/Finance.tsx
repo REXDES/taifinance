@@ -117,13 +117,7 @@ const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => 
   const handleCreateCompany = async (name: string, color: string) => {
     const result = await createCompany(name, color);
     if (result) {
-      // Also add user to this company
-      if (user?.id) {
-        await supabase.from('user_companies').insert({
-          user_id: user.id,
-          company_id: result.id
-        });
-      }
+      // user_companies is automatically populated by the database trigger
       await refetchCompanies();
       setSelectedCompanyId(result.id);
       return true;

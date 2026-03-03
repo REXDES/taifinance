@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useAccountStatement } from '@/hooks/useAccountStatement';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface StatementPageProps { companyId: string; }
 
@@ -16,13 +18,30 @@ export function StatementPage({ companyId }: StatementPageProps) {
   const { categories } = useTransactionCategories(companyId);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  const { data: subcategories = [] } = useQuery({
+    queryKey: ['subcategories', selectedCategoryId],
+    queryFn: async () => {
+      if (!selectedCategoryId) return [];
+      const { data, error } = await supabase
+        .from('transaction_subcategories')
+        .select('id, name, category_id')
+        .eq('category_id', selectedCategoryId)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedCategoryId,
+  });
   const { entries, account, loading, totals } = useAccountStatement(
     selectedAccountId || null, 
     startDate || undefined, 
     endDate || undefined,
-    selectedCategoryId || undefined
+    selectedCategoryId || undefined,
+    selectedSubcategoryId || undefined
   );
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const getIcon = (type: string) => {
@@ -36,9 +55,10 @@ export function StatementPage({ companyId }: StatementPageProps) {
     <div className="space-y-6">
       <div><h1 className="text-2xl font-bold text-foreground">Extrato</h1><p className="text-muted-foreground">Acompanhe as movimentações com saldo acumulado</p></div>
       <Card><CardContent className="pt-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <div><Label>Conta *</Label><Select value={selectedAccountId} onValueChange={setSelectedAccountId}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select></div>
-          <div><Label>Categoria</Label><Select value={selectedCategoryId || 'all'} onValueChange={(v) => setSelectedCategoryId(v === 'all' ? '' : v)}><SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger><SelectContent><SelectItem value="all">Todas as categorias</SelectItem>{categories.map((c) => <SelectItem key={c.id} value={c.id}><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />{c.name}</div></SelectItem>)}</SelectContent></Select></div>
+          <div><Label>Categoria</Label><Select value={selectedCategoryId || 'all'} onValueChange={(v) => { setSelectedCategoryId(v === 'all' ? '' : v); setSelectedSubcategoryId(''); }}><SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger><SelectContent><SelectItem value="all">Todas as categorias</SelectItem>{categories.map((c) => <SelectItem key={c.id} value={c.id}><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />{c.name}</div></SelectItem>)}</SelectContent></Select></div>
+          <div><Label>Subcategoria</Label><Select value={selectedSubcategoryId || 'all'} onValueChange={(v) => setSelectedSubcategoryId(v === 'all' ? '' : v)} disabled={!selectedCategoryId}><SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger><SelectContent><SelectItem value="all">Todas as subcategorias</SelectItem>{subcategories.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></div>
           <div><Label>Data Inicial</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
           <div><Label>Data Final</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
         </div>

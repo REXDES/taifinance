@@ -208,8 +208,9 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
   }, [accounts, transactions, transfers, startDate, endDate, loading, users]);
 
   const totals = useMemo(() => {
-    const totalIncome = flowData.reduce((sum, e) => sum + e.income, 0);
-    const totalExpense = flowData.reduce((sum, e) => sum + e.expense, 0);
+    const periodEntries = flowData.filter(e => !e.isInitialBalance);
+    const totalIncome = periodEntries.reduce((sum, e) => sum + e.income, 0);
+    const totalExpense = periodEntries.reduce((sum, e) => sum + e.expense, 0);
     const initialBalances = flowData.filter(e => e.isInitialBalance);
     const totalInitial = initialBalances.reduce((sum, e) => sum + e.income - e.expense, 0);
     
@@ -259,9 +260,9 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
     // Footer with totals
     const footerData = [
       [],
-      ['', '', '', 'TOTAIS:', formatCurrencyPlain(totals.expense), formatCurrencyPlain(totals.income - totals.initialBalance), formatCurrencyPlain(totals.finalBalance), ''],
+      ['', '', '', 'TOTAIS:', formatCurrencyPlain(totals.expense), formatCurrencyPlain(totals.income), formatCurrencyPlain(totals.finalBalance), ''],
       [`Saldo Inicial: ${formatCurrency(totals.initialBalance)}`],
-      [`Total Entradas: ${formatCurrency(totals.income - totals.initialBalance)}`],
+      [`Total Entradas: ${formatCurrency(totals.income)}`],
       [`Total Saídas: ${formatCurrency(totals.expense)}`],
       [`Saldo Final: ${formatCurrency(totals.finalBalance)}`],
       [],
@@ -331,7 +332,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
     tableData.push([
       '', '', '', 'TOTAIS:',
       formatCurrencyPlain(totals.expense),
-      formatCurrencyPlain(totals.income - totals.initialBalance),
+      formatCurrencyPlain(totals.income),
       formatCurrencyPlain(totals.finalBalance),
       ''
     ]);
@@ -346,7 +347,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
       bodyStyles: { fillColor: [255, 255, 255] }, // White for other rows
       foot: [[
         { content: `Saldo Inicial: ${formatCurrency(totals.initialBalance)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
-        { content: `Total Entradas: ${formatCurrency(totals.income - totals.initialBalance)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
+        { content: `Total Entradas: ${formatCurrency(totals.income)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
         { content: `Total Saídas: ${formatCurrency(totals.expense)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
         { content: `Saldo Final: ${formatCurrency(totals.finalBalance)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
       ]],
@@ -456,7 +457,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              {formatCurrency(totals.income - totals.initialBalance)}
+              {formatCurrency(totals.income)}
             </div>
           </CardContent>
         </Card>

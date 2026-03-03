@@ -457,7 +457,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              {formatCurrency(totals.income - totals.initialBalance)}
+              {formatCurrency(totals.income)}
             </div>
           </CardContent>
         </Card>

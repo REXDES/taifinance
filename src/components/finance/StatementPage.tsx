@@ -40,7 +40,8 @@ export function StatementPage({ companyId }: StatementPageProps) {
     selectedAccountId || null, 
     startDate || undefined, 
     endDate || undefined,
-    selectedCategoryId || undefined
+    selectedCategoryId || undefined,
+    selectedSubcategoryId || undefined
   );
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const getIcon = (type: string) => {

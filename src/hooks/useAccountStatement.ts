@@ -14,7 +14,7 @@ export interface StatementEntry {
   relatedAccount?: string;
 }
 
-export function useAccountStatement(accountId: string | null, startDate?: string, endDate?: string, categoryId?: string) {
+export function useAccountStatement(accountId: string | null, startDate?: string, endDate?: string, categoryId?: string, subcategoryId?: string) {
   const [entries, setEntries] = useState<StatementEntry[]>([]);
   const [account, setAccount] = useState<{ id: string; name: string; initial_balance: number } | null>(null);
   const [loading, setLoading] = useState(true);

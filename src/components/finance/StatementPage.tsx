@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useAccountStatement } from '@/hooks/useAccountStatement';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface StatementPageProps { companyId: string; }
 
@@ -16,8 +18,24 @@ export function StatementPage({ companyId }: StatementPageProps) {
   const { categories } = useTransactionCategories(companyId);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  const { data: subcategories = [] } = useQuery({
+    queryKey: ['subcategories', selectedCategoryId],
+    queryFn: async () => {
+      if (!selectedCategoryId) return [];
+      const { data, error } = await supabase
+        .from('transaction_subcategories')
+        .select('id, name, category_id')
+        .eq('category_id', selectedCategoryId)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedCategoryId,
+  });
   const { entries, account, loading, totals } = useAccountStatement(
     selectedAccountId || null, 
     startDate || undefined, 

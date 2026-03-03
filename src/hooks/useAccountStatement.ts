@@ -54,6 +54,7 @@ export function useAccountStatement(accountId: string | null, startDate?: string
       if (startDate) transactionsQuery = transactionsQuery.gte('date', startDate);
       if (endDate) transactionsQuery = transactionsQuery.lte('date', endDate);
       if (categoryId) transactionsQuery = transactionsQuery.eq('category_id', categoryId);
+      if (subcategoryId) transactionsQuery = transactionsQuery.eq('subcategory_id', subcategoryId);
 
       // Fetch transfers (incoming)
       let transfersInQuery = supabase

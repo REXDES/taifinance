@@ -208,8 +208,9 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
   }, [accounts, transactions, transfers, startDate, endDate, loading, users]);
 
   const totals = useMemo(() => {
-    const totalIncome = flowData.reduce((sum, e) => sum + e.income, 0);
-    const totalExpense = flowData.reduce((sum, e) => sum + e.expense, 0);
+    const periodEntries = flowData.filter(e => !e.isInitialBalance);
+    const totalIncome = periodEntries.reduce((sum, e) => sum + e.income, 0);
+    const totalExpense = periodEntries.reduce((sum, e) => sum + e.expense, 0);
     const initialBalances = flowData.filter(e => e.isInitialBalance);
     const totalInitial = initialBalances.reduce((sum, e) => sum + e.income - e.expense, 0);
     

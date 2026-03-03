@@ -260,9 +260,9 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
     // Footer with totals
     const footerData = [
       [],
-      ['', '', '', 'TOTAIS:', formatCurrencyPlain(totals.expense), formatCurrencyPlain(totals.income - totals.initialBalance), formatCurrencyPlain(totals.finalBalance), ''],
+      ['', '', '', 'TOTAIS:', formatCurrencyPlain(totals.expense), formatCurrencyPlain(totals.income), formatCurrencyPlain(totals.finalBalance), ''],
       [`Saldo Inicial: ${formatCurrency(totals.initialBalance)}`],
-      [`Total Entradas: ${formatCurrency(totals.income - totals.initialBalance)}`],
+      [`Total Entradas: ${formatCurrency(totals.income)}`],
       [`Total Saídas: ${formatCurrency(totals.expense)}`],
       [`Saldo Final: ${formatCurrency(totals.finalBalance)}`],
       [],

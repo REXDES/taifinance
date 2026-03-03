@@ -347,7 +347,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
       bodyStyles: { fillColor: [255, 255, 255] }, // White for other rows
       foot: [[
         { content: `Saldo Inicial: ${formatCurrency(totals.initialBalance)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
-        { content: `Total Entradas: ${formatCurrency(totals.income - totals.initialBalance)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
+        { content: `Total Entradas: ${formatCurrency(totals.income)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
         { content: `Total Saídas: ${formatCurrency(totals.expense)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
         { content: `Saldo Final: ${formatCurrency(totals.finalBalance)}`, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 8 } },
       ]],

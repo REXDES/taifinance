@@ -195,7 +195,7 @@ export function useAccountStatement(accountId: string | null, startDate?: string
     } finally {
       setLoading(false);
     }
-  }, [accountId, startDate, endDate, categoryId, toast]);
+  }, [accountId, startDate, endDate, categoryId, subcategoryId, toast]);
 
   useEffect(() => {
     fetchStatement();

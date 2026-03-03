@@ -332,7 +332,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
     tableData.push([
       '', '', '', 'TOTAIS:',
       formatCurrencyPlain(totals.expense),
-      formatCurrencyPlain(totals.income - totals.initialBalance),
+      formatCurrencyPlain(totals.income),
       formatCurrencyPlain(totals.finalBalance),
       ''
     ]);

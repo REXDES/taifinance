@@ -48,6 +48,7 @@ export function AiCategoryHelper({
   onSelectCategory,
   onSuggestCreate,
   trigger,
+  initialDescription,
 }: AiCategoryHelperProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);

@@ -39,6 +39,7 @@ interface AiCategoryHelperProps {
   onSelectCategory: (categoryId: string, subcategoryId?: string) => void;
   onSuggestCreate?: (categoryName: string, subcategoryName?: string) => void;
   trigger?: React.ReactNode;
+  initialDescription?: string;
 }
 
 export function AiCategoryHelper({

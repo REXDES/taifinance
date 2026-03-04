@@ -171,7 +171,7 @@ export function AiCategoryHelper({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setOpen(true)}
+          onClick={() => { setDescription(initialDescription || ''); setOpen(true); }}
           className="gap-2"
         >
           <Sparkles className="w-4 h-4" />

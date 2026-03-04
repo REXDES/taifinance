@@ -720,6 +720,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                   <AiCategoryHelper
                     type={formData.type === 'payable' ? 'expense' : 'income'}
                     categories={filteredCategories}
+                    initialDescription={formData.description}
                     onSelectCategory={(categoryId, subcategoryId) => {
                       if (subcategoryId) {
                         setFormData(prev => ({

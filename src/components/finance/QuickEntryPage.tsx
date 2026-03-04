@@ -331,6 +331,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
             <AiCategoryHelper
               type={isIncome ? 'income' : 'expense'}
               categories={filteredCategories}
+              initialDescription={description}
               onSelectCategory={(categoryId, subcategoryId) => {
                 if (subcategoryId) {
                   setSelectedSubcategoryId(subcategoryId);

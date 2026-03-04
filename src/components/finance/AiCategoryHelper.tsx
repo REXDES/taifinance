@@ -165,7 +165,7 @@ export function AiCategoryHelper({
   return (
     <>
       {trigger ? (
-        <div onClick={() => setOpen(true)}>{trigger}</div>
+        <div onClick={() => { setDescription(initialDescription || ''); setOpen(true); }}>{trigger}</div>
       ) : (
         <Button
           type="button"

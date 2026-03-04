@@ -39,6 +39,7 @@ interface AiCategoryHelperProps {
   onSelectCategory: (categoryId: string, subcategoryId?: string) => void;
   onSuggestCreate?: (categoryName: string, subcategoryName?: string) => void;
   trigger?: React.ReactNode;
+  initialDescription?: string;
 }
 
 export function AiCategoryHelper({
@@ -47,6 +48,7 @@ export function AiCategoryHelper({
   onSelectCategory,
   onSuggestCreate,
   trigger,
+  initialDescription,
 }: AiCategoryHelperProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -163,13 +165,13 @@ export function AiCategoryHelper({
   return (
     <>
       {trigger ? (
-        <div onClick={() => setOpen(true)}>{trigger}</div>
+        <div onClick={() => { setDescription(initialDescription || ''); setOpen(true); }}>{trigger}</div>
       ) : (
         <Button
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setOpen(true)}
+          onClick={() => { setDescription(initialDescription || ''); setOpen(true); }}
           className="gap-2"
         >
           <Sparkles className="w-4 h-4" />

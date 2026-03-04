@@ -293,6 +293,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                       <AiCategoryHelper
                         type={form.type}
                         categories={filteredCategories}
+                        initialDescription={form.description}
                         onSelectCategory={(categoryId, subcategoryId) => {
                           if (subcategoryId) {
                             setForm({

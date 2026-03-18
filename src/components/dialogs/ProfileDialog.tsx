@@ -58,7 +58,8 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     await updateProfile({
       full_name: fullName || null,
       avatar_url: avatarUrl || null,
-    });
+      whatsapp_phone: whatsappPhone || null,
+    } as any);
     setSaving(false);
     onOpenChange(false);
   };

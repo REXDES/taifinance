@@ -25,6 +25,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
   const { toast } = useToast();
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [whatsappPhone, setWhatsappPhone] = useState('');
   const [saving, setSaving] = useState(false);
   
   // Password change state
@@ -38,6 +39,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     if (profile) {
       setFullName(profile.full_name || '');
       setAvatarUrl(profile.avatar_url || '');
+      setWhatsappPhone((profile as any).whatsapp_phone || '');
     }
   }, [profile]);
 
@@ -56,7 +58,8 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     await updateProfile({
       full_name: fullName || null,
       avatar_url: avatarUrl || null,
-    });
+      whatsapp_phone: whatsappPhone || null,
+    } as any);
     setSaving(false);
     onOpenChange(false);
   };
@@ -158,6 +161,16 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                   value={avatarUrl}
                   onChange={(e) => setAvatarUrl(e.target.value)}
                   placeholder="https://..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="whatsappPhone">WhatsApp</Label>
+                <Input
+                  id="whatsappPhone"
+                  value={whatsappPhone}
+                  onChange={(e) => setWhatsappPhone(e.target.value)}
+                  placeholder="+55 11 99999-9999"
                 />
               </div>
             </div>

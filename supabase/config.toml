@@ -2,3 +2,6 @@ project_id = "ignhvbtqhcyxkwnsqpue"
 
 [functions.suggest-category]
 verify_jwt = false
+
+[functions.notify-whatsapp]
+verify_jwt = false

@@ -39,6 +39,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     if (profile) {
       setFullName(profile.full_name || '');
       setAvatarUrl(profile.avatar_url || '');
+      setWhatsappPhone((profile as any).whatsapp_phone || '');
     }
   }, [profile]);
 

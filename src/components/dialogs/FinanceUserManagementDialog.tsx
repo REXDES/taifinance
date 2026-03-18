@@ -24,7 +24,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFinanceUserAccess } from '@/hooks/useFinanceUserAccess';
 import { useCompanies } from '@/hooks/useCompanies';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Shield, Building2, Wallet, Layers, ChevronDown, ChevronRight, Users, Settings } from 'lucide-react';
+import { Loader2, Shield, Building2, Wallet, Layers, ChevronDown, ChevronRight, Users, Settings, UserPen, Save } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -85,12 +86,15 @@ export function FinanceUserManagementDialog({
   } = useFinanceUserAccess(userId);
 
   const { companies } = useCompanies();
+  const { toast } = useToast();
   const [groupsWithAccounts, setGroupsWithAccounts] = useState<GroupWithAccounts[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [loadingData, setLoadingData] = useState(false);
   const [companyLimitInput, setCompanyLimitInput] = useState<string>('');
   const [invitationLimitInput, setInvitationLimitInput] = useState<string>('');
-  
+  const [profileFullName, setProfileFullName] = useState(userName);
+  const [profileWhatsapp, setProfileWhatsapp] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
   const isSupervisor = currentUserRole === 'supervisor';
   const isGerente = currentUserRole === 'gerente';
   const canManageAccounts = isSupervisor || isGerente;
@@ -104,6 +108,23 @@ export function FinanceUserManagementDialog({
       setInvitationLimitInput(roleInfo.invitation_limit?.toString() ?? '');
     }
   }, [roleInfo]);
+
+  // Fetch profile data for editing
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!open || !userId) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, whatsapp_phone')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (data) {
+        setProfileFullName(data.full_name || '');
+        setProfileWhatsapp((data as any).whatsapp_phone || '');
+      }
+    };
+    fetchProfile();
+  }, [open, userId]);
 
   // Fetch all groups and accounts
   useEffect(() => {
@@ -232,6 +253,25 @@ export function FinanceUserManagementDialog({
     return companies.find(c => c.id === companyId)?.name || 'Empresa';
   };
 
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profileFullName || null,
+          whatsapp_phone: profileWhatsapp || null,
+        } as any)
+        .eq('user_id', userId);
+      if (error) throw error;
+      toast({ title: 'Cadastro atualizado com sucesso' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao atualizar cadastro', description: error.message, variant: 'destructive' });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   // Filter groups by accessible companies for display
   const accessibleCompanyIds = companyAccess.map(c => c.company_id);
   const isSupervisorRole = roleInfo?.role === 'supervisor';
@@ -258,7 +298,11 @@ export function FinanceUserManagementDialog({
           </div>
         ) : (
           <Tabs defaultValue="role" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="profile" className="flex items-center gap-1">
+                <UserPen className="h-4 w-4" />
+                Cadastro
+              </TabsTrigger>
               <TabsTrigger value="role" className="flex items-center gap-1">
                 <Settings className="h-4 w-4" />
                 Cargo
@@ -272,6 +316,52 @@ export function FinanceUserManagementDialog({
                 Contas
               </TabsTrigger>
             </TabsList>
+
+            {/* Profile Tab */}
+            <TabsContent value="profile" className="flex-1 overflow-auto space-y-4 pt-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="profileName">Nome Completo</Label>
+                  <Input
+                    id="profileName"
+                    value={profileFullName}
+                    onChange={(e) => setProfileFullName(e.target.value)}
+                    placeholder="Nome do usuário"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="profileEmail">Email</Label>
+                  <Input
+                    id="profileEmail"
+                    value={userEmail}
+                    disabled
+                    className="opacity-60"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    O email não pode ser alterado
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="profileWhatsapp">WhatsApp</Label>
+                  <Input
+                    id="profileWhatsapp"
+                    value={profileWhatsapp}
+                    onChange={(e) => setProfileWhatsapp(e.target.value)}
+                    placeholder="+55 11 99999-9999"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Número usado para notificações via WhatsApp
+                  </p>
+                </div>
+
+                <Button onClick={handleSaveProfile} disabled={savingProfile} className="w-full gap-2">
+                  {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Salvar Cadastro
+                </Button>
+              </div>
+            </TabsContent>
 
             {/* Role Tab */}
             <TabsContent value="role" className="flex-1 overflow-auto space-y-4 pt-4">

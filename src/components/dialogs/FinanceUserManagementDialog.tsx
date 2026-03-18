@@ -253,6 +253,25 @@ export function FinanceUserManagementDialog({
     return companies.find(c => c.id === companyId)?.name || 'Empresa';
   };
 
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profileFullName || null,
+          whatsapp_phone: profileWhatsapp || null,
+        } as any)
+        .eq('user_id', userId);
+      if (error) throw error;
+      toast({ title: 'Cadastro atualizado com sucesso' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao atualizar cadastro', description: error.message, variant: 'destructive' });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   // Filter groups by accessible companies for display
   const accessibleCompanyIds = companyAccess.map(c => c.company_id);
   const isSupervisorRole = roleInfo?.role === 'supervisor';

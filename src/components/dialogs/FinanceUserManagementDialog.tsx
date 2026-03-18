@@ -109,6 +109,23 @@ export function FinanceUserManagementDialog({
     }
   }, [roleInfo]);
 
+  // Fetch profile data for editing
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!open || !userId) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, whatsapp_phone')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (data) {
+        setProfileFullName(data.full_name || '');
+        setProfileWhatsapp((data as any).whatsapp_phone || '');
+      }
+    };
+    fetchProfile();
+  }, [open, userId]);
+
   // Fetch all groups and accounts
   useEffect(() => {
     const fetchGroupsAndAccounts = async () => {

@@ -153,6 +153,62 @@ export type Database = {
           },
         ]
       }
+      bank_connections: {
+        Row: {
+          account_id: string | null
+          account_number: string | null
+          agency: string | null
+          client_id: string
+          client_secret: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          last_sync_at: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          account_number?: string | null
+          agency?: string | null
+          client_id: string
+          client_secret: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          account_number?: string | null
+          agency?: string | null
+          client_id?: string
+          client_secret?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_connections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients_suppliers: {
         Row: {
           company_id: string

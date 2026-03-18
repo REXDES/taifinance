@@ -19,6 +19,7 @@ import { PayablesReceivablesCalendarPage } from '@/components/finance/PayablesRe
 import { PayablesReceivablesFlowPage } from '@/components/finance/PayablesReceivablesFlowPage';
 import { QuickEntryPage } from '@/components/finance/QuickEntryPage';
 import { ClientsSuppliersPage } from '@/components/finance/ClientsSuppliersPage';
+import { BankDigitalPage } from '@/components/finance/BankDigitalPage';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
@@ -27,7 +28,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
-export type FinanceView = 'dashboard' | 'quick-entry' | 'accounts' | 'transactions' | 'transfers' | 'payables-receivables' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow' | 'payables-receivables-report' | 'payables-receivables-calendar' | 'payables-receivables-flow' | 'audit-logs' | 'clients-suppliers';
+export type FinanceView = 'dashboard' | 'quick-entry' | 'accounts' | 'transactions' | 'transfers' | 'payables-receivables' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow' | 'payables-receivables-report' | 'payables-receivables-calendar' | 'payables-receivables-flow' | 'audit-logs' | 'clients-suppliers' | 'bank-digital';
 
 interface UserRoleInfo {
   role: AppRole;
@@ -167,6 +168,8 @@ const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => 
         return <AuditLogsPage />;
       case 'clients-suppliers':
         return <ClientsSuppliersPage companyId={selectedCompanyId} />;
+      case 'bank-digital':
+        return <BankDigitalPage companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }

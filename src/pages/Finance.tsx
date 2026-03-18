@@ -19,6 +19,7 @@ import { PayablesReceivablesCalendarPage } from '@/components/finance/PayablesRe
 import { PayablesReceivablesFlowPage } from '@/components/finance/PayablesReceivablesFlowPage';
 import { QuickEntryPage } from '@/components/finance/QuickEntryPage';
 import { ClientsSuppliersPage } from '@/components/finance/ClientsSuppliersPage';
+import { BankDigitalPage } from '@/components/finance/BankDigitalPage';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';

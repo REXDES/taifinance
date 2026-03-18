@@ -80,6 +80,7 @@ interface FinanceSidebarProps {
 const mainMenuItems: { view: FinanceView; label: string; icon: React.ReactNode }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: <Home className="w-4 h-4" /> },
   { view: 'quick-entry', label: 'Lance Rápido', icon: <Zap className="w-4 h-4" /> },
+  { view: 'bank-digital', label: 'Banco Digital', icon: <Landmark className="w-4 h-4" /> },
 ];
 
 // Sub-menu items for "Transações"

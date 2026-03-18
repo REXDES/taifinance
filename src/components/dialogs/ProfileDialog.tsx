@@ -163,6 +163,16 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                   placeholder="https://..."
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="whatsappPhone">WhatsApp</Label>
+                <Input
+                  id="whatsappPhone"
+                  value={whatsappPhone}
+                  onChange={(e) => setWhatsappPhone(e.target.value)}
+                  placeholder="+55 11 99999-9999"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-2">

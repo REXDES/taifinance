@@ -168,6 +168,8 @@ const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => 
         return <AuditLogsPage />;
       case 'clients-suppliers':
         return <ClientsSuppliersPage companyId={selectedCompanyId} />;
+      case 'bank-digital':
+        return <BankDigitalPage companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }

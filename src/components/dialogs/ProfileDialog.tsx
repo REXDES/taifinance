@@ -25,6 +25,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
   const { toast } = useToast();
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [whatsappPhone, setWhatsappPhone] = useState('');
   const [saving, setSaving] = useState(false);
   
   // Password change state

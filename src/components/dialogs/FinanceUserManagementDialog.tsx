@@ -86,12 +86,15 @@ export function FinanceUserManagementDialog({
   } = useFinanceUserAccess(userId);
 
   const { companies } = useCompanies();
+  const { toast } = useToast();
   const [groupsWithAccounts, setGroupsWithAccounts] = useState<GroupWithAccounts[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [loadingData, setLoadingData] = useState(false);
   const [companyLimitInput, setCompanyLimitInput] = useState<string>('');
   const [invitationLimitInput, setInvitationLimitInput] = useState<string>('');
-  
+  const [profileFullName, setProfileFullName] = useState(userName);
+  const [profileWhatsapp, setProfileWhatsapp] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
   const isSupervisor = currentUserRole === 'supervisor';
   const isGerente = currentUserRole === 'gerente';
   const canManageAccounts = isSupervisor || isGerente;

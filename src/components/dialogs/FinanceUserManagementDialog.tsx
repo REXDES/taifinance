@@ -298,7 +298,11 @@ export function FinanceUserManagementDialog({
           </div>
         ) : (
           <Tabs defaultValue="role" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="profile" className="flex items-center gap-1">
+                <UserPen className="h-4 w-4" />
+                Cadastro
+              </TabsTrigger>
               <TabsTrigger value="role" className="flex items-center gap-1">
                 <Settings className="h-4 w-4" />
                 Cargo
@@ -312,6 +316,52 @@ export function FinanceUserManagementDialog({
                 Contas
               </TabsTrigger>
             </TabsList>
+
+            {/* Profile Tab */}
+            <TabsContent value="profile" className="flex-1 overflow-auto space-y-4 pt-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="profileName">Nome Completo</Label>
+                  <Input
+                    id="profileName"
+                    value={profileFullName}
+                    onChange={(e) => setProfileFullName(e.target.value)}
+                    placeholder="Nome do usuário"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="profileEmail">Email</Label>
+                  <Input
+                    id="profileEmail"
+                    value={userEmail}
+                    disabled
+                    className="opacity-60"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    O email não pode ser alterado
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="profileWhatsapp">WhatsApp</Label>
+                  <Input
+                    id="profileWhatsapp"
+                    value={profileWhatsapp}
+                    onChange={(e) => setProfileWhatsapp(e.target.value)}
+                    placeholder="+55 11 99999-9999"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Número usado para notificações via WhatsApp
+                  </p>
+                </div>
+
+                <Button onClick={handleSaveProfile} disabled={savingProfile} className="w-full gap-2">
+                  {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Salvar Cadastro
+                </Button>
+              </div>
+            </TabsContent>
 
             {/* Role Tab */}
             <TabsContent value="role" className="flex-1 overflow-auto space-y-4 pt-4">

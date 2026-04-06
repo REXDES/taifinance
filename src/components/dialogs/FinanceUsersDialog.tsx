@@ -125,8 +125,8 @@ export function FinanceUsersDialog({ open, onOpenChange, companyId, isSupervisor
                       {roleLabels[user.role]}
                     </Badge>
                     
-                    {/* Gerentes não podem gerenciar supervisores */}
-                    {(isSupervisor || (currentUserRole === 'gerente' && user.role !== 'supervisor')) && user.user_id !== currentUser?.id && (
+                    {/* Gerentes não podem gerenciar supervisores, mas podem gerenciar a si mesmos */}
+                    {(isSupervisor || (currentUserRole === 'gerente' && (user.user_id === currentUser?.id || user.role !== 'supervisor'))) && (
                       <>
                         <Button
                           variant="outline"
@@ -142,14 +142,16 @@ export function FinanceUsersDialog({ open, onOpenChange, companyId, isSupervisor
                           <Settings2 className="h-4 w-4" />
                           Gerenciar
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setUserToRemove(user.user_id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {user.user_id !== currentUser?.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setUserToRemove(user.user_id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>

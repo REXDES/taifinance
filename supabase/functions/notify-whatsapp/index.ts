@@ -49,7 +49,9 @@ serve(async (req) => {
     const todayStr = today.toISOString().split("T")[0];
     const in3daysStr = in3days.toISOString().split("T")[0];
 
-    // Find status_configs named "Concluído" to exclude completed tasks
+    let sent = 0;
+
+    // ========== 1. TASK NOTIFICATIONS ==========
     const { data: completedStatuses } = await supabase
       .from("status_configs")
       .select("id")
@@ -57,37 +59,41 @@ serve(async (req) => {
 
     const excludeStatusIds = (completedStatuses ?? []).map((s: any) => s.id);
 
-    // Fetch tasks with end_date between today and +3 days
-    let query = supabase
+    const { data: tasks, error: tasksError } = await supabase
       .from("tasks")
-      .select(
-        `
-        id,
-        name,
-        end_date,
-        responsible_id,
-        status_id
-      `
-      )
+      .select("id, name, end_date, responsible_id, status_id")
       .gte("end_date", todayStr)
       .lte("end_date", in3daysStr)
       .not("responsible_id", "is", null);
 
-    const { data: tasks, error } = await query;
+    if (tasksError) throw tasksError;
 
-    if (error) throw error;
-
-    // Filter out completed tasks
     const pendingTasks = (tasks ?? []).filter(
       (t: any) => !excludeStatusIds.includes(t.status_id)
     );
 
-    // Get unique responsible_ids and fetch their profiles
-    const responsibleIds = [
+    const taskUserIds = [
       ...new Set(pendingTasks.map((t: any) => t.responsible_id)),
     ];
 
-    if (responsibleIds.length === 0) {
+    // ========== 2. PAYABLES/RECEIVABLES NOTIFICATIONS ==========
+    const { data: prItems, error: prError } = await supabase
+      .from("payables_receivables")
+      .select("id, description, amount, type, due_date, status, created_by, is_amount_pending")
+      .eq("due_date", todayStr)
+      .eq("status", "pending")
+      .not("created_by", "is", null);
+
+    if (prError) throw prError;
+
+    const prUserIds = [
+      ...new Set((prItems ?? []).map((item: any) => item.created_by)),
+    ];
+
+    // ========== FETCH ALL NEEDED PROFILES ==========
+    const allUserIds = [...new Set([...taskUserIds, ...prUserIds])];
+
+    if (allUserIds.length === 0) {
       return new Response(
         JSON.stringify({ success: true, notificationsSent: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -97,13 +103,13 @@ serve(async (req) => {
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, full_name, whatsapp_phone")
-      .in("user_id", responsibleIds);
+      .in("user_id", allUserIds);
 
     const profileMap = new Map(
       (profiles ?? []).map((p: any) => [p.user_id, p])
     );
 
-    let sent = 0;
+    // ========== SEND TASK NOTIFICATIONS ==========
     for (const task of pendingTasks) {
       const profile = profileMap.get(task.responsible_id);
       if (!profile?.whatsapp_phone) continue;
@@ -124,6 +130,31 @@ serve(async (req) => {
         `📋 *Tarefa:* ${task.name}\n` +
         `📆 *Data limite:* ${endDate.toLocaleDateString("pt-BR")}\n\n` +
         `Acesse o TAI Finance para mais detalhes.`;
+
+      await sendWhatsApp(profile.whatsapp_phone, msg);
+      sent++;
+    }
+
+    // ========== SEND PAYABLES/RECEIVABLES NOTIFICATIONS ==========
+    for (const item of (prItems ?? [])) {
+      const profile = profileMap.get(item.created_by);
+      if (!profile?.whatsapp_phone) continue;
+
+      const tipoLabel = item.type === "payable" ? "Conta a Pagar" : "Conta a Receber";
+      const tipoEmoji = item.type === "payable" ? "💸" : "💰";
+      const valorStr = item.is_amount_pending
+        ? "A definir"
+        : `R$ ${Number(item.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+
+      const dueDate = new Date(item.due_date + "T00:00:00-03:00");
+
+      const msg =
+        `🔔 *TAI Finance — ${tipoLabel} Vence Hoje*\n\n` +
+        `⚠️ *VENCE HOJE*\n\n` +
+        `${tipoEmoji} *Descrição:* ${item.description}\n` +
+        `💵 *Valor:* ${valorStr}\n` +
+        `📆 *Vencimento:* ${dueDate.toLocaleDateString("pt-BR")}\n\n` +
+        `Acesse o TAI Finance para efetuar o ${item.type === "payable" ? "pagamento" : "recebimento"}.`;
 
       await sendWhatsApp(profile.whatsapp_phone, msg);
       sent++;

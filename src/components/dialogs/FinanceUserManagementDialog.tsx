@@ -95,7 +95,7 @@ export function FinanceUserManagementDialog({
   const [profileFullName, setProfileFullName] = useState(userName);
   const [profileWhatsapp, setProfileWhatsapp] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
-  const isSupervisor = currentUserRole === 'supervisor';
+  const [sendingTest, setSendingTest] = useState(false);
   const isGerente = currentUserRole === 'gerente';
   const canManageAccounts = isSupervisor || isGerente;
 

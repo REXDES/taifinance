@@ -325,7 +325,7 @@ serve(async (req) => {
 
         const sendNotification = async (phone: string) => {
           if (pixPayload && qrBase64) {
-            const copyLink = buildPixCopyLink(pixPayload);
+            const copyLink = buildPixCopyLink(pixPayload, item.description, Number(item.amount), company.name);
             const caption =
               `${tipoEmoji} *${company.name} — Cobrança PIX*\n\n` +
               `${urgencia}\n\n` +

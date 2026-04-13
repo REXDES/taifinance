@@ -122,7 +122,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Configurações da Empresa</DialogTitle>
         </DialogHeader>

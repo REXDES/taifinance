@@ -10,6 +10,11 @@ const EVOLUTION_API_URL =
   "https://evolution-api-production-a169.up.railway.app";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
 const EVOLUTION_INSTANCE = "taifinance";
+const PIX_COPY_BASE_URL = "https://taifinance.lovable.app/pix/copiar";
+
+function buildPixCopyLink(pixCode: string): string {
+  return `${PIX_COPY_BASE_URL}?code=${encodeURIComponent(pixCode)}`;
+}
 
 async function generateQrCodeBase64(data: string): Promise<string> {
   const url = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(data)}`;
@@ -79,11 +84,11 @@ serve(async (req) => {
     }
 
     const number = phone.replace(/\D/g, "");
+    const copyLink = buildPixCopyLink(pixCode);
     const valorStr = amount
       ? `R$ ${Number(amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
       : "Valor não informado";
 
-    // Generate QR Code as base64 PNG via external API
     console.log("Generating QR code for PIX payload...");
     const qrBase64 = await generateQrCodeBase64(pixCode);
     console.log("QR code generated, base64 length:", qrBase64.length);
@@ -92,16 +97,15 @@ serve(async (req) => {
       `💰 *${companyName || "Empresa"} — Cobrança PIX*\n\n` +
       `📋 *Descrição:* ${description}\n` +
       `💵 *Valor:* ${valorStr}\n\n` +
-      `📱 Escaneie o QR Code acima ou copie o código abaixo:`;
+      `📱 Escaneie o QR Code acima ou use o link de cópia enviado na próxima mensagem.`;
 
-    // Send QR code image first
     console.log("Sending QR code image via WhatsApp...");
     const imageResult = await sendImageMessage(number, qrBase64, caption);
 
-    // Then send the copy-paste code as text
     const textMsg =
       `📱 *Pix Copia e Cola:*\n\n${pixCode}\n\n` +
-      `Copie o código acima e cole no seu app do banco para efetuar o pagamento. 🏦`;
+      `🔗 *Copiar no celular:*\n${copyLink}\n\n` +
+      `Toque no link acima para abrir a página e copiar automaticamente.`;
 
     const textResponse = await sendTextMessage(number, textMsg);
     const textData = await textResponse.json();

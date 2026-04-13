@@ -232,6 +232,14 @@ const Finance = () => {
           invitationsCreated={userRole?.invitationsCreated ?? 0}
         />
       )}
+
+      {selectedCompanyId && (
+        <CompanySettingsDialog
+          open={showCompanySettings}
+          onOpenChange={setShowCompanySettings}
+          companyId={selectedCompanyId}
+        />
+      )}
     </div>
   );
 };

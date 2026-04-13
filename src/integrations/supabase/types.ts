@@ -264,49 +264,73 @@ export type Database = {
       }
       companies: {
         Row: {
+          address: string | null
+          city: string | null
+          cnpj: string | null
           color: string
           created_at: string
           created_by: string | null
+          email: string | null
+          fantasy_name: string | null
           id: string
           name: string
+          phone: string | null
           pix_city: string | null
           pix_holder_name: string | null
           pix_key: string | null
           pix_key_type: string | null
+          state: string | null
           updated_at: string
           whatsapp_notify_days_before: number[]
           whatsapp_notify_enabled: boolean
           whatsapp_notify_time: string
+          zip_code: string | null
         }
         Insert: {
+          address?: string | null
+          city?: string | null
+          cnpj?: string | null
           color?: string
           created_at?: string
           created_by?: string | null
+          email?: string | null
+          fantasy_name?: string | null
           id?: string
           name: string
+          phone?: string | null
           pix_city?: string | null
           pix_holder_name?: string | null
           pix_key?: string | null
           pix_key_type?: string | null
+          state?: string | null
           updated_at?: string
           whatsapp_notify_days_before?: number[]
           whatsapp_notify_enabled?: boolean
           whatsapp_notify_time?: string
+          zip_code?: string | null
         }
         Update: {
+          address?: string | null
+          city?: string | null
+          cnpj?: string | null
           color?: string
           created_at?: string
           created_by?: string | null
+          email?: string | null
+          fantasy_name?: string | null
           id?: string
           name?: string
+          phone?: string | null
           pix_city?: string | null
           pix_holder_name?: string | null
           pix_key?: string | null
           pix_key_type?: string | null
+          state?: string | null
           updated_at?: string
           whatsapp_notify_days_before?: number[]
           whatsapp_notify_enabled?: boolean
           whatsapp_notify_time?: string
+          zip_code?: string | null
         }
         Relationships: []
       }

@@ -273,6 +273,31 @@ export function FinanceUserManagementDialog({
     }
   };
 
+  const handleTestWhatsapp = async () => {
+    if (!profileWhatsapp) {
+      toast({ title: 'Informe o número do WhatsApp primeiro', variant: 'destructive' });
+      return;
+    }
+    setSendingTest(true);
+    try {
+      const companyName = selectedCompanyId
+        ? companies.find(c => c.id === selectedCompanyId)?.name || 'sua empresa'
+        : companyAccess.length > 0
+          ? companies.find(c => c.id === companyAccess[0].company_id)?.name || 'sua empresa'
+          : 'sua empresa';
+
+      const response = await supabase.functions.invoke('test-whatsapp', {
+        body: { phone: profileWhatsapp, companyName },
+      });
+      if (response.error) throw response.error;
+      toast({ title: 'Mensagem de teste enviada com sucesso!' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao enviar mensagem', description: error.message, variant: 'destructive' });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   // Filter groups by accessible companies for display
   const accessibleCompanyIds = companyAccess.map(c => c.company_id);
   const isSupervisorRole = roleInfo?.role === 'supervisor';

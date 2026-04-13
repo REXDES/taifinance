@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFinanceUserAccess } from '@/hooks/useFinanceUserAccess';
 import { useCompanies } from '@/hooks/useCompanies';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Shield, Building2, Wallet, Layers, ChevronDown, ChevronRight, Users, Settings, UserPen, Save } from 'lucide-react';
+import { Loader2, Shield, Building2, Wallet, Layers, ChevronDown, ChevronRight, Users, Settings, UserPen, Save, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -95,6 +95,7 @@ export function FinanceUserManagementDialog({
   const [profileFullName, setProfileFullName] = useState(userName);
   const [profileWhatsapp, setProfileWhatsapp] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
   const isSupervisor = currentUserRole === 'supervisor';
   const isGerente = currentUserRole === 'gerente';
   const canManageAccounts = isSupervisor || isGerente;
@@ -272,6 +273,31 @@ export function FinanceUserManagementDialog({
     }
   };
 
+  const handleTestWhatsapp = async () => {
+    if (!profileWhatsapp) {
+      toast({ title: 'Informe o número do WhatsApp primeiro', variant: 'destructive' });
+      return;
+    }
+    setSendingTest(true);
+    try {
+      const companyName = selectedCompanyId
+        ? companies.find(c => c.id === selectedCompanyId)?.name || 'sua empresa'
+        : companyAccess.length > 0
+          ? companies.find(c => c.id === companyAccess[0].company_id)?.name || 'sua empresa'
+          : 'sua empresa';
+
+      const response = await supabase.functions.invoke('test-whatsapp', {
+        body: { phone: profileWhatsapp, companyName },
+      });
+      if (response.error) throw response.error;
+      toast({ title: 'Mensagem de teste enviada com sucesso!' });
+    } catch (error: any) {
+      toast({ title: 'Erro ao enviar mensagem', description: error.message, variant: 'destructive' });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   // Filter groups by accessible companies for display
   const accessibleCompanyIds = companyAccess.map(c => c.company_id);
   const isSupervisorRole = roleInfo?.role === 'supervisor';
@@ -345,12 +371,24 @@ export function FinanceUserManagementDialog({
 
                 <div className="space-y-2">
                   <Label htmlFor="profileWhatsapp">WhatsApp</Label>
-                  <Input
-                    id="profileWhatsapp"
-                    value={profileWhatsapp}
-                    onChange={(e) => setProfileWhatsapp(e.target.value)}
-                    placeholder="+55 11 99999-9999"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="profileWhatsapp"
+                      value={profileWhatsapp}
+                      onChange={(e) => setProfileWhatsapp(e.target.value)}
+                      placeholder="+55 11 99999-9999"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleTestWhatsapp}
+                      disabled={sendingTest || !profileWhatsapp}
+                      title="Enviar mensagem de teste"
+                    >
+                      {sendingTest ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Número usado para notificações via WhatsApp
                   </p>

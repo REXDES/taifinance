@@ -18,8 +18,12 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 );
 
-function buildPixCopyLink(pixCode: string): string {
-  return `${PIX_COPY_BASE_URL}?code=${encodeURIComponent(pixCode)}`;
+function buildPixCopyLink(pixCode: string, description?: string, amount?: number, companyName?: string): string {
+  const params = new URLSearchParams({ code: pixCode });
+  if (description) params.set("desc", description);
+  if (amount) params.set("amount", String(amount));
+  if (companyName) params.set("company", companyName);
+  return `${PIX_COPY_BASE_URL}?${params.toString()}`;
 }
 
 function pad(id: string, value: string): string {
@@ -321,7 +325,7 @@ serve(async (req) => {
 
         const sendNotification = async (phone: string) => {
           if (pixPayload && qrBase64) {
-            const copyLink = buildPixCopyLink(pixPayload);
+            const copyLink = buildPixCopyLink(pixPayload, item.description, Number(item.amount), company.name);
             const caption =
               `${tipoEmoji} *${company.name} — Cobrança PIX*\n\n` +
               `${urgencia}\n\n` +

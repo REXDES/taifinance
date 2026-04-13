@@ -222,6 +222,7 @@ export type Database = {
           phone: string | null
           type: string
           updated_at: string
+          whatsapp_phone: string | null
         }
         Insert: {
           company_id: string
@@ -235,6 +236,7 @@ export type Database = {
           phone?: string | null
           type: string
           updated_at?: string
+          whatsapp_phone?: string | null
         }
         Update: {
           company_id?: string
@@ -248,6 +250,7 @@ export type Database = {
           phone?: string | null
           type?: string
           updated_at?: string
+          whatsapp_phone?: string | null
         }
         Relationships: [
           {
@@ -266,7 +269,14 @@ export type Database = {
           created_by: string | null
           id: string
           name: string
+          pix_city: string | null
+          pix_holder_name: string | null
+          pix_key: string | null
+          pix_key_type: string | null
           updated_at: string
+          whatsapp_notify_days_before: number[]
+          whatsapp_notify_enabled: boolean
+          whatsapp_notify_time: string
         }
         Insert: {
           color?: string
@@ -274,7 +284,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           name: string
+          pix_city?: string | null
+          pix_holder_name?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
           updated_at?: string
+          whatsapp_notify_days_before?: number[]
+          whatsapp_notify_enabled?: boolean
+          whatsapp_notify_time?: string
         }
         Update: {
           color?: string
@@ -282,7 +299,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           name?: string
+          pix_city?: string | null
+          pix_holder_name?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
           updated_at?: string
+          whatsapp_notify_days_before?: number[]
+          whatsapp_notify_enabled?: boolean
+          whatsapp_notify_time?: string
         }
         Relationships: []
       }

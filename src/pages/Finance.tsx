@@ -50,6 +50,7 @@ const Finance = () => {
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const [showInvitations, setShowInvitations] = useState(false);
+  const [showCompanySettings, setShowCompanySettings] = useState(false);
 
   const isSupervisor = userRole?.role === 'supervisor';
   const isGerente = userRole?.role === 'gerente';

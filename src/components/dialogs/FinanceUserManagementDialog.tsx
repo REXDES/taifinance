@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFinanceUserAccess } from '@/hooks/useFinanceUserAccess';
 import { useCompanies } from '@/hooks/useCompanies';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Shield, Building2, Wallet, Layers, ChevronDown, ChevronRight, Users, Settings, UserPen, Save } from 'lucide-react';
+import { Loader2, Shield, Building2, Wallet, Layers, ChevronDown, ChevronRight, Users, Settings, UserPen, Save, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 

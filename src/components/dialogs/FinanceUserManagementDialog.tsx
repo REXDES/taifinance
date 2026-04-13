@@ -371,12 +371,24 @@ export function FinanceUserManagementDialog({
 
                 <div className="space-y-2">
                   <Label htmlFor="profileWhatsapp">WhatsApp</Label>
-                  <Input
-                    id="profileWhatsapp"
-                    value={profileWhatsapp}
-                    onChange={(e) => setProfileWhatsapp(e.target.value)}
-                    placeholder="+55 11 99999-9999"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="profileWhatsapp"
+                      value={profileWhatsapp}
+                      onChange={(e) => setProfileWhatsapp(e.target.value)}
+                      placeholder="+55 11 99999-9999"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleTestWhatsapp}
+                      disabled={sendingTest || !profileWhatsapp}
+                      title="Enviar mensagem de teste"
+                    >
+                      {sendingTest ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Número usado para notificações via WhatsApp
                   </p>

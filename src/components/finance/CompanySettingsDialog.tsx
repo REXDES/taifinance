@@ -247,7 +247,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
                 )}
               </div>
             </div>
-          </ScrollArea>
+          </div>
         )}
 
         <DialogFooter className="flex-shrink-0 mt-4">

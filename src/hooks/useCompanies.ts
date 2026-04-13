@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,10 +15,20 @@ export interface Company {
 export function useCompanies() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { logAction } = useAuditLog();
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
+    if (authLoading) return;
+
+    if (!user?.id) {
+      setCompanies([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
     try {
       const { data, error } = await supabase
         .from('companies')
@@ -33,7 +43,7 @@ export function useCompanies() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user?.id]);
 
   const createCompany = async (name: string, color: string) => {
     try {
@@ -45,7 +55,6 @@ export function useCompanies() {
 
       if (error) throw error;
       
-      // Log audit action
       await logAction({
         action: 'company_created',
         entity_type: 'company',
@@ -75,7 +84,6 @@ export function useCompanies() {
 
       if (error) throw error;
 
-      // Log audit action
       await logAction({
         action: 'company_updated',
         entity_type: 'company',
@@ -103,7 +111,6 @@ export function useCompanies() {
 
       if (error) throw error;
 
-      // Log audit action
       await logAction({
         action: 'company_deleted',
         entity_type: 'company',
@@ -123,7 +130,7 @@ export function useCompanies() {
 
   useEffect(() => {
     fetchCompanies();
-  }, []);
+  }, [fetchCompanies]);
 
   return { companies, loading, createCompany, updateCompany, deleteCompany, refetch: fetchCompanies };
 }

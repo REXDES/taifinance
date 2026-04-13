@@ -39,9 +39,9 @@ interface UserRoleInfo {
 }
 
 const Finance = () => {
-  const { user, signOut } = useAuth();
-  const { companies, createCompany, refetch: refetchCompanies } = useCompanies();
-const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => {
+  const { user, signOut, loading: authLoading } = useAuth();
+  const { companies, loading: companiesLoading, createCompany, refetch: refetchCompanies } = useCompanies();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => {
     return localStorage.getItem('tai-finance-last-company') || null;
   });
   const [currentView, setCurrentView] = useState<FinanceView>('dashboard');
@@ -55,30 +55,26 @@ const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => 
   const canAccessUserManagement = isSupervisor || isGerente;
   const canCreateCompany = isSupervisor || (isGerente && userRole.companyLimit !== null && userRole.companiesCreated < userRole.companyLimit);
 
-  // Check user role and limits
   useEffect(() => {
     const checkUserRole = async () => {
-      if (!user?.id) return;
-      
-      // Get role, company_limit and invitation_limit
+      if (authLoading || !user?.id) return;
+
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role, company_limit, invitation_limit')
         .eq('user_id', user.id)
         .maybeSingle();
-      
-      // Count companies this user has access to (includes invited companies)
+
       const { count: companiesCount } = await supabase
         .from('user_companies')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
-      
-      // Count invitations created by this user
+
       const { count: invitationsCount } = await supabase
         .from('invitations')
         .select('*', { count: 'exact', head: true })
         .eq('invited_by', user.id);
-      
+
       setUserRole({
         role: roleData?.role || 'operador',
         companyLimit: roleData?.company_limit ?? null,
@@ -87,26 +83,25 @@ const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => 
         invitationsCreated: invitationsCount || 0,
       });
     };
-    checkUserRole();
-  }, [user?.id]);
 
-  // Auto-select company (prefer last selected, fallback to first)
+    checkUserRole();
+  }, [authLoading, user?.id]);
+
   useEffect(() => {
-    if (companies.length > 0) {
-      const lastCompanyId = localStorage.getItem('tai-finance-last-company');
-      const lastCompanyExists = lastCompanyId && companies.some(c => c.id === lastCompanyId);
-      
-      if (!selectedCompanyId || !companies.some(c => c.id === selectedCompanyId)) {
-        if (lastCompanyExists) {
-          setSelectedCompanyId(lastCompanyId);
-        } else {
-          setSelectedCompanyId(companies[0].id);
-        }
+    if (companiesLoading || companies.length === 0) return;
+
+    const lastCompanyId = localStorage.getItem('tai-finance-last-company');
+    const lastCompanyExists = lastCompanyId && companies.some(c => c.id === lastCompanyId);
+
+    if (!selectedCompanyId || !companies.some(c => c.id === selectedCompanyId)) {
+      if (lastCompanyExists) {
+        setSelectedCompanyId(lastCompanyId);
+      } else {
+        setSelectedCompanyId(companies[0].id);
       }
     }
-  }, [companies, selectedCompanyId]);
+  }, [companies, companiesLoading, selectedCompanyId]);
 
-  // Persist selected company to localStorage
   useEffect(() => {
     if (selectedCompanyId) {
       localStorage.setItem('tai-finance-last-company', selectedCompanyId);
@@ -118,7 +113,6 @@ const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => 
   const handleCreateCompany = async (name: string, color: string) => {
     const result = await createCompany(name, color);
     if (result) {
-      // user_companies is automatically populated by the database trigger
       await refetchCompanies();
       setSelectedCompanyId(result.id);
       return true;
@@ -215,22 +209,26 @@ const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => 
         onSubmit={handleCreateCompany}
       />
 
-      <FinanceUsersDialog
-        open={showUsers}
-        onOpenChange={setShowUsers}
-        companyId={selectedCompanyId}
-        isSupervisor={isSupervisor}
-        currentUserRole={userRole?.role || 'operador'}
-      />
+      {showUsers && (
+        <FinanceUsersDialog
+          open={showUsers}
+          onOpenChange={setShowUsers}
+          companyId={selectedCompanyId}
+          isSupervisor={isSupervisor}
+          currentUserRole={userRole?.role || 'operador'}
+        />
+      )}
 
-      <FinanceInvitationsDialog
-        open={showInvitations}
-        onOpenChange={setShowInvitations}
-        companyId={selectedCompanyId}
-        currentUserRole={userRole?.role || 'operador'}
-        invitationLimit={userRole?.invitationLimit ?? null}
-        invitationsCreated={userRole?.invitationsCreated ?? 0}
-      />
+      {showInvitations && (
+        <FinanceInvitationsDialog
+          open={showInvitations}
+          onOpenChange={setShowInvitations}
+          companyId={selectedCompanyId}
+          currentUserRole={userRole?.role || 'operador'}
+          invitationLimit={userRole?.invitationLimit ?? null}
+          invitationsCreated={userRole?.invitationsCreated ?? 0}
+        />
+      )}
     </div>
   );
 };

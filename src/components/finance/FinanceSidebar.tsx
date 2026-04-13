@@ -566,6 +566,7 @@ export function FinanceSidebar({
                     </TooltipTrigger>
                     <TooltipContent side="right">Config. da Empresa</TooltipContent>
                   </Tooltip>
+                )}
                 {isSupervisor && (
                   <Tooltip>
                     <TooltipTrigger asChild>

@@ -631,6 +631,16 @@ export function FinanceSidebar({
                       Gerenciar Empresas
                     </Button>
                   )}
+                  {selectedCompanyId && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onOpenCompanySettings}
+                    >
+                      <FolderCog className="w-4 h-4" />
+                      Config. da Empresa
+                    </Button>
+                  )}
                   {isSupervisor && (
                     <Button 
                       variant="ghost" 

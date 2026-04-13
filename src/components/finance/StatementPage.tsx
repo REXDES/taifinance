@@ -1,15 +1,18 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAccounts } from '@/hooks/useAccounts';
-import { useAccountStatement } from '@/hooks/useAccountStatement';
+import { useAccountStatement, StatementEntry } from '@/hooks/useAccountStatement';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, TrendingDown, ArrowRightLeft, FileDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface StatementPageProps { companyId: string; }
 

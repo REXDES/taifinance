@@ -79,7 +79,6 @@ serve(async (req) => {
     }
 
     const number = phone.replace(/\D/g, "");
-    const copyLink = buildPixCopyLink(pixCode, description, amount ? Number(amount) : undefined, companyName);
     const valorStr = amount
       ? `R$ ${Number(amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
       : "Valor não informado";

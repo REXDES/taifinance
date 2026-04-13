@@ -101,15 +101,16 @@ serve(async (req) => {
       `💰 *${companyName || "Empresa"} — Cobrança PIX*\n\n` +
       `📋 *Descrição:* ${description}\n` +
       `💵 *Valor:* ${valorStr}\n\n` +
-      `📱 Escaneie o QR Code acima ou use o link de cópia enviado na próxima mensagem.`;
+      `📱 Escaneie o QR Code acima ou copie o código PIX na próxima mensagem.`;
 
     console.log("Sending QR code image via WhatsApp...");
     const imageResult = await sendImageMessage(number, qrBase64, caption);
 
     const textMsg =
-      `📱 *Pix Copia e Cola:*\n\n${pixCode}\n\n` +
-      `🔗 *Copiar no celular:*\n${copyLink}\n\n` +
-      `Toque no link acima para abrir a página e copiar automaticamente.`;
+      `📱 *Pix Copia e Cola:*\n\n` +
+      `Segure o código abaixo para copiar:\n\n` +
+      `${pixCode}\n\n` +
+      `Cole no app do seu banco na opção *Pix Copia e Cola* para pagar. 🏦`;
 
     const textResponse = await sendTextMessage(number, textMsg);
     const textData = await textResponse.json();

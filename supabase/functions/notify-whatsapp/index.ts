@@ -325,21 +325,21 @@ serve(async (req) => {
 
         const sendNotification = async (phone: string) => {
           if (pixPayload && qrBase64) {
-            const copyLink = buildPixCopyLink(pixPayload, item.description, Number(item.amount), company.name);
             const caption =
               `${tipoEmoji} *${company.name} — Cobrança PIX*\n\n` +
               `${urgencia}\n\n` +
               `📋 *Descrição:* ${item.description}\n` +
               `💵 *Valor:* ${valorStr}\n` +
               `📆 *Vencimento:* ${dueDate.toLocaleDateString("pt-BR")}\n\n` +
-              `📱 Escaneie o QR Code ou use o link de cópia enviado na próxima mensagem.`;
+              `📱 Escaneie o QR Code ou copie o código PIX na próxima mensagem.`;
 
             await sendWhatsAppImage(phone, qrBase64, caption);
 
             const pixText =
-              `📱 *Pix Copia e Cola:*\n\n${pixPayload}\n\n` +
-              `🔗 *Copiar no celular:*\n${copyLink}\n\n` +
-              `Toque no link acima para abrir a página e copiar automaticamente.`;
+              `📱 *Pix Copia e Cola:*\n\n` +
+              `Segure o código abaixo para copiar:\n\n` +
+              `${pixPayload}\n\n` +
+              `Cole no app do seu banco na opção *Pix Copia e Cola* para pagar. 🏦`;
             await sendWhatsApp(phone, pixText);
           } else {
             await sendWhatsApp(phone, msg);

@@ -406,7 +406,11 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Contas a Pagar/Receber</h1>
-        <div className="flex gap-2">
+         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsSettingsOpen(true)} title="Configurações da empresa">
+            <Settings className="h-4 w-4 mr-2" />
+            Configurações
+          </Button>
           <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="h-4 w-4 mr-2" />
             Filtros

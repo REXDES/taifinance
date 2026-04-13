@@ -416,6 +416,11 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
           <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="h-4 w-4 mr-2" />
             Filtros
+            {(filters.type || filters.status.length > 0) && (
+              <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                {(filters.type ? 1 : 0) + (filters.status.length > 0 ? 1 : 0)}
+              </Badge>
+            )}
           </Button>
           <Button onClick={() => setIsDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />

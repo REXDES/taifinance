@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import QRCode from "https://esm.sh/qrcode@1.5.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +10,19 @@ const EVOLUTION_API_URL =
   "https://evolution-api-production-a169.up.railway.app";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
 const EVOLUTION_INSTANCE = "taifinance";
+
+async function generateQrCodeBase64(data: string): Promise<string> {
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(data)}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`QR API error: ${response.status}`);
+  const arrayBuffer = await response.arrayBuffer();
+  const uint8Array = new Uint8Array(arrayBuffer);
+  let binary = '';
+  for (const byte of uint8Array) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
 
 async function sendTextMessage(number: string, text: string) {
   return fetch(
@@ -27,7 +39,7 @@ async function sendTextMessage(number: string, text: string) {
 }
 
 async function sendImageMessage(number: string, base64: string, caption: string) {
-  return fetch(
+  const response = await fetch(
     `${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`,
     {
       method: "POST",
@@ -40,12 +52,15 @@ async function sendImageMessage(number: string, base64: string, caption: string)
         mediaMessage: {
           mediatype: "image",
           caption,
-          media: base64,
+          media: `data:image/png;base64,${base64}`,
           fileName: "pix-qrcode.png",
         },
       }),
     }
   );
+  const result = await response.json();
+  console.log("sendMedia response:", JSON.stringify(result));
+  return result;
 }
 
 serve(async (req) => {
@@ -68,10 +83,10 @@ serve(async (req) => {
       ? `R$ ${Number(amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
       : "Valor não informado";
 
-    // Generate QR Code as base64 PNG
-    const qrBase64 = await QRCode.toDataURL(pixCode, { width: 400, margin: 2 });
-    // Remove "data:image/png;base64," prefix
-    const base64Data = qrBase64.replace(/^data:image\/png;base64,/, "");
+    // Generate QR Code as base64 PNG via external API
+    console.log("Generating QR code for PIX payload...");
+    const qrBase64 = await generateQrCodeBase64(pixCode);
+    console.log("QR code generated, base64 length:", qrBase64.length);
 
     const caption =
       `💰 *${companyName || "Empresa"} — Cobrança PIX*\n\n` +
@@ -80,18 +95,19 @@ serve(async (req) => {
       `📱 Escaneie o QR Code acima ou copie o código abaixo:`;
 
     // Send QR code image first
-    await sendImageMessage(number, qrBase64, caption);
+    console.log("Sending QR code image via WhatsApp...");
+    const imageResult = await sendImageMessage(number, qrBase64, caption);
 
     // Then send the copy-paste code as text
     const textMsg =
       `📱 *Pix Copia e Cola:*\n\n${pixCode}\n\n` +
       `Copie o código acima e cole no seu app do banco para efetuar o pagamento. 🏦`;
 
-    const response = await sendTextMessage(number, textMsg);
-    const data = await response.json();
+    const textResponse = await sendTextMessage(number, textMsg);
+    const textData = await textResponse.json();
 
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, image: imageResult, text: textData }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

@@ -191,6 +191,7 @@ const Finance = () => {
         onManageCompanies={() => setIsCreateCompanyOpen(true)}
         onOpenUsers={() => setShowUsers(true)}
         onOpenInvitations={() => setShowInvitations(true)}
+        onOpenCompanySettings={() => setShowCompanySettings(true)}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <FinanceHeader

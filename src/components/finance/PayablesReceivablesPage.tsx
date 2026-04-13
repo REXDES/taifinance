@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings } from 'lucide-react';
 import { AiCategoryHelper } from './AiCategoryHelper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,8 @@ import { useClientsSuppliers } from '@/hooks/useClientsSuppliers';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useAuth } from '@/contexts/AuthContext';
+import { PixQrCodeDialog } from './PixQrCodeDialog';
+import { CompanySettingsDialog } from './CompanySettingsDialog';
 
 interface PayablesReceivablesPageProps {
   companyId: string;
@@ -107,6 +109,9 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
   } | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
+  const [pixRecord, setPixRecord] = useState<any>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     type: 'payable' as 'payable' | 'receivable',

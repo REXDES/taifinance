@@ -552,6 +552,20 @@ export function FinanceSidebar({
                     <TooltipContent side="right">Gerenciar Empresas</TooltipContent>
                   </Tooltip>
                 )}
+                {selectedCompanyId && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="w-full"
+                        onClick={onOpenCompanySettings}
+                      >
+                        <FolderCog className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Config. da Empresa</TooltipContent>
+                  </Tooltip>
                 {isSupervisor && (
                   <Tooltip>
                     <TooltipTrigger asChild>

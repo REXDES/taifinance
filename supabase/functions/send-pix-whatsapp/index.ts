@@ -96,11 +96,7 @@ serve(async (req) => {
     console.log("Sending QR code image via WhatsApp...");
     const imageResult = await sendImageMessage(number, qrBase64, caption);
 
-    const textMsg =
-      `📱 *Pix Copia e Cola:*\n\n` +
-      `Segure o código abaixo para copiar:\n\n` +
-      `${pixCode}\n\n` +
-      `Cole no app do seu banco na opção *Pix Copia e Cola* para pagar. 🏦`;
+    const textMsg = pixCode;
 
     const textResponse = await sendTextMessage(number, textMsg);
     const textData = await textResponse.json();

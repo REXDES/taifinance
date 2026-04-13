@@ -326,11 +326,7 @@ serve(async (req) => {
 
             await sendWhatsAppImage(phone, qrBase64, caption);
 
-            const pixText =
-              `📱 *Pix Copia e Cola:*\n\n` +
-              `Segure o código abaixo para copiar:\n\n` +
-              `${pixPayload}\n\n` +
-              `Cole no app do seu banco na opção *Pix Copia e Cola* para pagar. 🏦`;
+            const pixText = pixPayload;
             await sendWhatsApp(phone, pixText);
           } else {
             await sendWhatsApp(phone, msg);

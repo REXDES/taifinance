@@ -11,13 +11,16 @@ const EVOLUTION_API_URL =
   "https://evolution-api-production-a169.up.railway.app";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
 const EVOLUTION_INSTANCE = "taifinance";
+const PIX_COPY_BASE_URL = "https://taifinance.lovable.app/pix/copiar";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 );
 
-// ===== PIX Payload Generator (server-side copy) =====
+function buildPixCopyLink(pixCode: string): string {
+  return `${PIX_COPY_BASE_URL}?code=${encodeURIComponent(pixCode)}`;
+}
 
 function pad(id: string, value: string): string {
   const len = value.length.toString().padStart(2, '0');
@@ -76,8 +79,6 @@ function generatePixPayload(params: {
   return payload + calculateCRC16(payload);
 }
 
-// ===== QR Code Generation =====
-
 async function generateQrCodeBase64(data: string): Promise<string> {
   const url = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(data)}`;
   const response = await fetch(url);
@@ -90,8 +91,6 @@ async function generateQrCodeBase64(data: string): Promise<string> {
   }
   return btoa(binary);
 }
-
-// ===== WhatsApp Sending =====
 
 async function sendWhatsApp(phone: string, message: string) {
   const number = phone.replace(/\D/g, "");
@@ -146,7 +145,6 @@ serve(async (req) => {
     const todayStr = today.toISOString().split("T")[0];
     let sent = 0;
 
-    // ========== 1. TASK NOTIFICATIONS ==========
     const in3days = new Date(today);
     in3days.setDate(today.getDate() + 3);
     const in3daysStr = in3days.toISOString().split("T")[0];
@@ -205,8 +203,6 @@ serve(async (req) => {
       }
     }
 
-    // ========== 2. PAYABLES/RECEIVABLES NOTIFICATIONS ==========
-
     const { data: companies } = await supabase
       .from("companies")
       .select("id, name, pix_key, pix_key_type, pix_holder_name, pix_city, whatsapp_notify_enabled, whatsapp_notify_days_before, whatsapp_notify_time");
@@ -238,7 +234,6 @@ serve(async (req) => {
 
       if (!prItems || prItems.length === 0) continue;
 
-      // Get client/supplier WhatsApp phones
       const csIds = [...new Set(
         (prItems ?? []).filter((item: any) => item.client_supplier_id).map((item: any) => item.client_supplier_id)
       )];
@@ -257,7 +252,6 @@ serve(async (req) => {
         }
       }
 
-      // Creator profiles for fallback
       const creatorIds = [...new Set(
         (prItems ?? []).filter((item: any) => item.created_by).map((item: any) => item.created_by)
       )];
@@ -276,7 +270,6 @@ serve(async (req) => {
         }
       }
 
-      // Check if company has PIX configured
       const hasPixConfig = (company as any).pix_key && (company as any).pix_holder_name;
 
       for (const item of prItems) {
@@ -302,7 +295,6 @@ serve(async (req) => {
           `📆 *Vencimento:* ${dueDate.toLocaleDateString("pt-BR")}\n\n` +
           `Acesse o TAI Finance para mais detalhes.`;
 
-        // Generate PIX QR code for receivables with amount defined and PIX configured
         let pixPayload: string | null = null;
         let qrBase64: string | null = null;
 
@@ -327,24 +319,23 @@ serve(async (req) => {
           }
         }
 
-        // Helper to send notification (text + optional QR)
         const sendNotification = async (phone: string) => {
           if (pixPayload && qrBase64) {
-            // Send QR code image with caption
+            const copyLink = buildPixCopyLink(pixPayload);
             const caption =
               `${tipoEmoji} *${company.name} — Cobrança PIX*\n\n` +
               `${urgencia}\n\n` +
               `📋 *Descrição:* ${item.description}\n` +
               `💵 *Valor:* ${valorStr}\n` +
               `📆 *Vencimento:* ${dueDate.toLocaleDateString("pt-BR")}\n\n` +
-              `📱 Escaneie o QR Code ou copie o código abaixo:`;
+              `📱 Escaneie o QR Code ou use o link de cópia enviado na próxima mensagem.`;
 
-            await sendWhatsAppImage(phone, qrBase64!, caption);
+            await sendWhatsAppImage(phone, qrBase64, caption);
 
-            // Send pix copia e cola as text
             const pixText =
               `📱 *Pix Copia e Cola:*\n\n${pixPayload}\n\n` +
-              `Copie o código acima e cole no seu app do banco para efetuar o pagamento. 🏦`;
+              `🔗 *Copiar no celular:*\n${copyLink}\n\n` +
+              `Toque no link acima para abrir a página e copiar automaticamente.`;
             await sendWhatsApp(phone, pixText);
           } else {
             await sendWhatsApp(phone, msg);
@@ -352,12 +343,10 @@ serve(async (req) => {
           sent++;
         };
 
-        // Send to client/supplier
         if (item.client_supplier_id && csPhoneMap.has(item.client_supplier_id)) {
           await sendNotification(csPhoneMap.get(item.client_supplier_id)!);
         }
 
-        // Send to creator (without PIX QR, just notification)
         if (item.created_by && creatorPhoneMap.has(item.created_by)) {
           await sendWhatsApp(creatorPhoneMap.get(item.created_by)!, msg);
           sent++;

@@ -1000,6 +1000,19 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PixQrCodeDialog
+        open={isPixDialogOpen}
+        onOpenChange={setIsPixDialogOpen}
+        companyId={companyId}
+        record={pixRecord}
+      />
+
+      <CompanySettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        companyId={companyId}
+      />
     </div>
   );
 }

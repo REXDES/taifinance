@@ -34,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Plus, MoreHorizontal, Pencil, Trash2, Search, Users } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, Search, Users, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 
@@ -57,6 +57,7 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
     document: '',
     email: '',
     phone: '',
+    whatsapp_phone: '',
     notes: '',
   });
 
@@ -67,6 +68,7 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
       document: '',
       email: '',
       phone: '',
+      whatsapp_phone: '',
       notes: '',
     });
     setEditingItem(null);
@@ -81,6 +83,7 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
         document: item.document || '',
         email: item.email || '',
         phone: item.phone || '',
+        whatsapp_phone: (item as any).whatsapp_phone || '',
         notes: item.notes || '',
       });
     } else {
@@ -108,8 +111,9 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
           document: formData.document.trim() || null,
           email: formData.email.trim() || null,
           phone: formData.phone.trim() || null,
+          whatsapp_phone: formData.whatsapp_phone.trim() || null,
           notes: formData.notes.trim() || null,
-        });
+        } as any);
         toast.success('Cliente/Fornecedor atualizado');
       } else {
         await createClientSupplier({
@@ -119,9 +123,10 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
           document: formData.document.trim() || null,
           email: formData.email.trim() || null,
           phone: formData.phone.trim() || null,
+          whatsapp_phone: formData.whatsapp_phone.trim() || null,
           notes: formData.notes.trim() || null,
           created_by: null,
-        });
+        } as any);
         toast.success('Cliente/Fornecedor criado');
       }
       handleCloseDialog();
@@ -238,8 +243,9 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
                   <TableHead>Nome</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Documento</TableHead>
-                  <TableHead>Email</TableHead>
+                   <TableHead>Email</TableHead>
                   <TableHead>Telefone</TableHead>
+                  <TableHead>WhatsApp</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -255,6 +261,14 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
                     <TableCell className="text-muted-foreground">{item.document || '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{item.email || '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{item.phone || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {(item as any).whatsapp_phone ? (
+                        <span className="flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-green-600" />
+                          {(item as any).whatsapp_phone}
+                        </span>
+                      ) : '-'}
+                    </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

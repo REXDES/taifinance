@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import QRCode from "https://esm.sh/qrcode@1.5.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,6 +76,21 @@ function generatePixPayload(params: {
   return payload + calculateCRC16(payload);
 }
 
+// ===== QR Code Generation =====
+
+async function generateQrCodeBase64(data: string): Promise<string> {
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(data)}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`QR API error: ${response.status}`);
+  const arrayBuffer = await response.arrayBuffer();
+  const uint8Array = new Uint8Array(arrayBuffer);
+  let binary = '';
+  for (const byte of uint8Array) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
 // ===== WhatsApp Sending =====
 
 async function sendWhatsApp(phone: string, message: string) {
@@ -116,7 +130,9 @@ async function sendWhatsAppImage(phone: string, base64: string, caption: string)
       }),
     }
   );
-  return response.json();
+  const result = await response.json();
+  console.log("sendMedia response:", JSON.stringify(result));
+  return result;
 }
 
 serve(async (req) => {
@@ -305,7 +321,7 @@ serve(async (req) => {
               amount: Number(item.amount),
               txId: item.id.substring(0, 25).replace(/-/g, ""),
             });
-            qrBase64 = await QRCode.toDataURL(pixPayload, { width: 400, margin: 2 });
+            qrBase64 = await generateQrCodeBase64(pixPayload);
           } catch (e) {
             console.error("Error generating PIX QR:", e);
           }

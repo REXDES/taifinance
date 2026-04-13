@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,9 +21,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, QrCode, MessageSquare } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Loader2, QrCode, MessageSquare, Building2 } from 'lucide-react';
 
 interface CompanySettingsDialogProps {
   open: boolean;
@@ -39,15 +40,33 @@ const NOTIFY_DAYS_OPTIONS = [
   { value: 7, label: '7 dias antes' },
 ];
 
+const UF_OPTIONS = [
+  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA',
+  'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
+];
+
 export function CompanySettingsDialog({ open, onOpenChange, companyId }: CompanySettingsDialogProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Dados cadastrais
+  const [companyName, setCompanyName] = useState('');
+  const [fantasyName, setFantasyName] = useState('');
+  const [cnpj, setCnpj] = useState('');
+  const [companyEmail, setCompanyEmail] = useState('');
+  const [companyPhone, setCompanyPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
+
+  // PIX
   const [pixKey, setPixKey] = useState('');
   const [pixKeyType, setPixKeyType] = useState('');
   const [pixHolderName, setPixHolderName] = useState('');
   const [pixCity, setPixCity] = useState('');
 
+  // WhatsApp
   const [whatsappNotifyEnabled, setWhatsappNotifyEnabled] = useState(false);
   const [whatsappNotifyDaysBefore, setWhatsappNotifyDaysBefore] = useState<number[]>([0]);
   const [whatsappNotifyTime, setWhatsappNotifyTime] = useState('08:00');
@@ -63,20 +82,30 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('pix_key, pix_key_type, pix_holder_name, pix_city, whatsapp_notify_enabled, whatsapp_notify_days_before, whatsapp_notify_time')
+        .select('*')
         .eq('id', companyId)
         .single();
 
       if (error) throw error;
 
       if (data) {
-        setPixKey((data as any).pix_key || '');
-        setPixKeyType((data as any).pix_key_type || '');
-        setPixHolderName((data as any).pix_holder_name || '');
-        setPixCity((data as any).pix_city || '');
-        setWhatsappNotifyEnabled((data as any).whatsapp_notify_enabled || false);
-        setWhatsappNotifyDaysBefore((data as any).whatsapp_notify_days_before || [0]);
-        setWhatsappNotifyTime((data as any).whatsapp_notify_time || '08:00');
+        const d = data as any;
+        setCompanyName(d.name || '');
+        setFantasyName(d.fantasy_name || '');
+        setCnpj(d.cnpj || '');
+        setCompanyEmail(d.email || '');
+        setCompanyPhone(d.phone || '');
+        setAddress(d.address || '');
+        setCity(d.city || '');
+        setState(d.state || '');
+        setZipCode(d.zip_code || '');
+        setPixKey(d.pix_key || '');
+        setPixKeyType(d.pix_key_type || '');
+        setPixHolderName(d.pix_holder_name || '');
+        setPixCity(d.pix_city || '');
+        setWhatsappNotifyEnabled(d.whatsapp_notify_enabled || false);
+        setWhatsappNotifyDaysBefore(d.whatsapp_notify_days_before || [0]);
+        setWhatsappNotifyTime(d.whatsapp_notify_time || '08:00');
       }
     } catch (error) {
       console.error('Error loading company settings:', error);
@@ -86,11 +115,25 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
   };
 
   const handleSave = async () => {
+    if (!companyName.trim()) {
+      toast.error('Nome da empresa é obrigatório');
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
         .from('companies')
         .update({
+          name: companyName,
+          fantasy_name: fantasyName || null,
+          cnpj: cnpj || null,
+          email: companyEmail || null,
+          phone: companyPhone || null,
+          address: address || null,
+          city: city || null,
+          state: state || null,
+          zip_code: zipCode || null,
           pix_key: pixKey || null,
           pix_key_type: pixKeyType || null,
           pix_holder_name: pixHolderName || null,
@@ -122,9 +165,12 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Configurações da Empresa</DialogTitle>
+          <DialogTitle>Gerenciar Empresa</DialogTitle>
+          <DialogDescription>
+            Configure os dados cadastrais, PIX e notificações da empresa.
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -132,14 +178,117 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: '60vh' }}>
-            <div className="space-y-6">
-              {/* PIX Settings */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <QrCode className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">Dados PIX</h3>
+          <Tabs defaultValue="cadastro" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+              <TabsTrigger value="cadastro" className="flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5" />
+                Cadastro
+              </TabsTrigger>
+              <TabsTrigger value="pix" className="flex items-center gap-1.5">
+                <QrCode className="w-3.5 h-3.5" />
+                PIX
+              </TabsTrigger>
+              <TabsTrigger value="whatsapp" className="flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5" />
+                WhatsApp
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex-1 overflow-y-auto mt-4" style={{ maxHeight: '55vh' }}>
+              <TabsContent value="cadastro" className="mt-0 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Razão Social *</Label>
+                    <Input
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      placeholder="Razão social da empresa"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nome Fantasia</Label>
+                    <Input
+                      value={fantasyName}
+                      onChange={(e) => setFantasyName(e.target.value)}
+                      placeholder="Nome fantasia"
+                    />
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>CNPJ</Label>
+                    <Input
+                      value={cnpj}
+                      onChange={(e) => setCnpj(e.target.value)}
+                      placeholder="00.000.000/0001-00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>E-mail</Label>
+                    <Input
+                      type="email"
+                      value={companyEmail}
+                      onChange={(e) => setCompanyEmail(e.target.value)}
+                      placeholder="empresa@email.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <Input
+                    value={companyPhone}
+                    onChange={(e) => setCompanyPhone(e.target.value)}
+                    placeholder="(00) 0000-0000"
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label>Endereço</Label>
+                  <Input
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Rua, número, complemento"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Cidade</Label>
+                    <Input
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="Cidade"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Estado (UF)</Label>
+                    <Select value={state} onValueChange={setState}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="UF" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UF_OPTIONS.map(uf => (
+                          <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>CEP</Label>
+                    <Input
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value)}
+                      placeholder="00000-000"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="pix" className="mt-0 space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Configure os dados PIX para gerar cobranças nas contas a receber.
                 </p>
@@ -186,16 +335,9 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
                     placeholder="Cidade do titular"
                   />
                 </div>
-              </div>
+              </TabsContent>
 
-              <Separator />
-
-              {/* WhatsApp Notification Settings */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">Notificações WhatsApp</h3>
-                </div>
+              <TabsContent value="whatsapp" className="mt-0 space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Configure lembretes automáticos por WhatsApp para contas a pagar e receber.
                 </p>
@@ -245,9 +387,9 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
                     </div>
                   </>
                 )}
-              </div>
+              </TabsContent>
             </div>
-          </div>
+          </Tabs>
         )}
 
         <DialogFooter className="flex-shrink-0 mt-4">

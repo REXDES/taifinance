@@ -43,15 +43,17 @@ serve(async (req) => {
 
   try {
     const today = new Date();
-    const in3days = new Date(today);
-    in3days.setDate(today.getDate() + 3);
+    const currentHour = today.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false });
 
     const todayStr = today.toISOString().split("T")[0];
-    const in3daysStr = in3days.toISOString().split("T")[0];
 
     let sent = 0;
 
-    // ========== 1. TASK NOTIFICATIONS ==========
+    // ========== 1. TASK NOTIFICATIONS (unchanged) ==========
+    const in3days = new Date(today);
+    in3days.setDate(today.getDate() + 3);
+    const in3daysStr = in3days.toISOString().split("T")[0];
+
     const { data: completedStatuses } = await supabase
       .from("status_configs")
       .select("id")
@@ -76,88 +78,159 @@ serve(async (req) => {
       ...new Set(pendingTasks.map((t: any) => t.responsible_id)),
     ];
 
-    // ========== 2. PAYABLES/RECEIVABLES NOTIFICATIONS ==========
-    const { data: prItems, error: prError } = await supabase
-      .from("payables_receivables")
-      .select("id, description, amount, type, due_date, status, created_by, is_amount_pending")
-      .eq("due_date", todayStr)
-      .eq("status", "pending")
-      .not("created_by", "is", null);
+    // Fetch profiles for task notifications
+    if (taskUserIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, whatsapp_phone")
+        .in("user_id", taskUserIds);
 
-    if (prError) throw prError;
-
-    const prUserIds = [
-      ...new Set((prItems ?? []).map((item: any) => item.created_by)),
-    ];
-
-    // ========== FETCH ALL NEEDED PROFILES ==========
-    const allUserIds = [...new Set([...taskUserIds, ...prUserIds])];
-
-    if (allUserIds.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, notificationsSent: 0 }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, full_name, whatsapp_phone")
-      .in("user_id", allUserIds);
-
-    const profileMap = new Map(
-      (profiles ?? []).map((p: any) => [p.user_id, p])
-    );
-
-    // ========== SEND TASK NOTIFICATIONS ==========
-    for (const task of pendingTasks) {
-      const profile = profileMap.get(task.responsible_id);
-      if (!profile?.whatsapp_phone) continue;
-
-      const endDate = new Date(task.end_date + "T00:00:00-03:00");
-      const diffDays = Math.ceil(
-        (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      const profileMap = new Map(
+        (profiles ?? []).map((p: any) => [p.user_id, p])
       );
 
-      let urgencia = "";
-      if (diffDays <= 0) urgencia = "⚠️ *VENCE HOJE*";
-      else if (diffDays === 1) urgencia = "⏰ *Vence amanhã*";
-      else urgencia = `📅 Vence em ${diffDays} dias`;
+      for (const task of pendingTasks) {
+        const profile = profileMap.get(task.responsible_id);
+        if (!profile?.whatsapp_phone) continue;
 
-      const msg =
-        `🔔 *TAI Finance — Lembrete de Tarefa*\n\n` +
-        `${urgencia}\n\n` +
-        `📋 *Tarefa:* ${task.name}\n` +
-        `📆 *Data limite:* ${endDate.toLocaleDateString("pt-BR")}\n\n` +
-        `Acesse o TAI Finance para mais detalhes.`;
+        const endDate = new Date(task.end_date + "T00:00:00-03:00");
+        const diffDays = Math.ceil(
+          (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
 
-      await sendWhatsApp(profile.whatsapp_phone, msg);
-      sent++;
+        let urgencia = "";
+        if (diffDays <= 0) urgencia = "⚠️ *VENCE HOJE*";
+        else if (diffDays === 1) urgencia = "⏰ *Vence amanhã*";
+        else urgencia = `📅 Vence em ${diffDays} dias`;
+
+        const msg =
+          `🔔 *TAI Finance — Lembrete de Tarefa*\n\n` +
+          `${urgencia}\n\n` +
+          `📋 *Tarefa:* ${task.name}\n` +
+          `📆 *Data limite:* ${endDate.toLocaleDateString("pt-BR")}\n\n` +
+          `Acesse o TAI Finance para mais detalhes.`;
+
+        await sendWhatsApp(profile.whatsapp_phone, msg);
+        sent++;
+      }
     }
 
-    // ========== SEND PAYABLES/RECEIVABLES NOTIFICATIONS ==========
-    for (const item of (prItems ?? [])) {
-      const profile = profileMap.get(item.created_by);
-      if (!profile?.whatsapp_phone) continue;
+    // ========== 2. PAYABLES/RECEIVABLES NOTIFICATIONS (company-based) ==========
+    
+    // Fetch companies with notifications enabled
+    const { data: companies } = await supabase
+      .from("companies")
+      .select("id, name, whatsapp_notify_enabled, whatsapp_notify_days_before, whatsapp_notify_time");
 
-      const tipoLabel = item.type === "payable" ? "Conta a Pagar" : "Conta a Receber";
-      const tipoEmoji = item.type === "payable" ? "💸" : "💰";
-      const valorStr = item.is_amount_pending
-        ? "A definir"
-        : `R$ ${Number(item.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+    for (const company of (companies ?? [])) {
+      if (!(company as any).whatsapp_notify_enabled) continue;
 
-      const dueDate = new Date(item.due_date + "T00:00:00-03:00");
+      const notifyDays: number[] = (company as any).whatsapp_notify_days_before || [0];
+      const notifyTime: string = (company as any).whatsapp_notify_time || "08:00";
 
-      const msg =
-        `🔔 *TAI Finance — ${tipoLabel} Vence Hoje*\n\n` +
-        `⚠️ *VENCE HOJE*\n\n` +
-        `${tipoEmoji} *Descrição:* ${item.description}\n` +
-        `💵 *Valor:* ${valorStr}\n` +
-        `📆 *Vencimento:* ${dueDate.toLocaleDateString("pt-BR")}\n\n` +
-        `Acesse o TAI Finance para efetuar o ${item.type === "payable" ? "pagamento" : "recebimento"}.`;
+      // Check if current hour matches configured time (within 1 hour window)
+      const [configH] = notifyTime.split(":").map(Number);
+      const [currentH] = currentHour.split(":").map(Number);
+      if (Math.abs(configH - currentH) > 0) continue;
 
-      await sendWhatsApp(profile.whatsapp_phone, msg);
-      sent++;
+      // Calculate target due dates based on configured days
+      const targetDates: string[] = notifyDays.map((days: number) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() + days);
+        return d.toISOString().split("T")[0];
+      });
+
+      if (targetDates.length === 0) continue;
+
+      // Fetch pending payables/receivables for these due dates
+      const { data: prItems } = await supabase
+        .from("payables_receivables")
+        .select("id, description, amount, type, due_date, status, client_supplier_id, is_amount_pending, created_by")
+        .eq("company_id", company.id)
+        .eq("status", "pending")
+        .in("due_date", targetDates);
+
+      if (!prItems || prItems.length === 0) continue;
+
+      // Get client/supplier WhatsApp phones
+      const csIds = [...new Set(
+        (prItems ?? [])
+          .filter((item: any) => item.client_supplier_id)
+          .map((item: any) => item.client_supplier_id)
+      )];
+
+      let csPhoneMap = new Map<string, string>();
+      if (csIds.length > 0) {
+        const { data: csData } = await supabase
+          .from("clients_suppliers")
+          .select("id, name, whatsapp_phone")
+          .in("id", csIds);
+
+        for (const cs of (csData ?? [])) {
+          if ((cs as any).whatsapp_phone) {
+            csPhoneMap.set(cs.id, (cs as any).whatsapp_phone);
+          }
+        }
+      }
+
+      // Also get creator profiles for fallback
+      const creatorIds = [...new Set(
+        (prItems ?? [])
+          .filter((item: any) => item.created_by)
+          .map((item: any) => item.created_by)
+      )];
+
+      let creatorPhoneMap = new Map<string, string>();
+      if (creatorIds.length > 0) {
+        const { data: creatorProfiles } = await supabase
+          .from("profiles")
+          .select("user_id, whatsapp_phone")
+          .in("user_id", creatorIds);
+
+        for (const p of (creatorProfiles ?? [])) {
+          if (p.whatsapp_phone) {
+            creatorPhoneMap.set(p.user_id, p.whatsapp_phone);
+          }
+        }
+      }
+
+      for (const item of prItems) {
+        const dueDate = new Date(item.due_date + "T00:00:00-03:00");
+        const diffDays = Math.ceil(
+          (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        let urgencia = "";
+        if (diffDays <= 0) urgencia = "⚠️ *VENCE HOJE*";
+        else if (diffDays === 1) urgencia = "⏰ *Vence amanhã*";
+        else urgencia = `📅 Vence em ${diffDays} dias`;
+
+        const tipoLabel = item.type === "payable" ? "Conta a Pagar" : "Conta a Receber";
+        const tipoEmoji = item.type === "payable" ? "💸" : "💰";
+        const valorStr = item.is_amount_pending
+          ? "A definir"
+          : `R$ ${Number(item.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+
+        const msg =
+          `🔔 *${company.name} — ${tipoLabel}*\n\n` +
+          `${urgencia}\n\n` +
+          `${tipoEmoji} *Descrição:* ${item.description}\n` +
+          `💵 *Valor:* ${valorStr}\n` +
+          `📆 *Vencimento:* ${dueDate.toLocaleDateString("pt-BR")}\n\n` +
+          `Acesse o TAI Finance para mais detalhes.`;
+
+        // Send to client/supplier if they have WhatsApp
+        if (item.client_supplier_id && csPhoneMap.has(item.client_supplier_id)) {
+          await sendWhatsApp(csPhoneMap.get(item.client_supplier_id)!, msg);
+          sent++;
+        }
+
+        // Also send to creator
+        if (item.created_by && creatorPhoneMap.has(item.created_by)) {
+          await sendWhatsApp(creatorPhoneMap.get(item.created_by)!, msg);
+          sent++;
+        }
+      }
     }
 
     return new Response(

@@ -132,7 +132,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : (
-          <ScrollArea className="flex-1 pr-4">
+          <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: '60vh' }}>
             <div className="space-y-6">
               {/* PIX Settings */}
               <div className="space-y-4">
@@ -247,7 +247,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
                 )}
               </div>
             </div>
-          </ScrollArea>
+          </div>
         )}
 
         <DialogFooter className="flex-shrink-0 mt-4">

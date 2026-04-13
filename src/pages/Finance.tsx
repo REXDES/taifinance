@@ -20,6 +20,7 @@ import { PayablesReceivablesFlowPage } from '@/components/finance/PayablesReceiv
 import { QuickEntryPage } from '@/components/finance/QuickEntryPage';
 import { ClientsSuppliersPage } from '@/components/finance/ClientsSuppliersPage';
 import { BankDigitalPage } from '@/components/finance/BankDigitalPage';
+import { CompanySettingsDialog } from '@/components/finance/CompanySettingsDialog';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
@@ -49,6 +50,7 @@ const Finance = () => {
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const [showInvitations, setShowInvitations] = useState(false);
+  const [showCompanySettings, setShowCompanySettings] = useState(false);
 
   const isSupervisor = userRole?.role === 'supervisor';
   const isGerente = userRole?.role === 'gerente';
@@ -189,6 +191,7 @@ const Finance = () => {
         onManageCompanies={() => setIsCreateCompanyOpen(true)}
         onOpenUsers={() => setShowUsers(true)}
         onOpenInvitations={() => setShowInvitations(true)}
+        onOpenCompanySettings={() => setShowCompanySettings(true)}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <FinanceHeader
@@ -227,6 +230,14 @@ const Finance = () => {
           currentUserRole={userRole?.role || 'operador'}
           invitationLimit={userRole?.invitationLimit ?? null}
           invitationsCreated={userRole?.invitationsCreated ?? 0}
+        />
+      )}
+
+      {selectedCompanyId && (
+        <CompanySettingsDialog
+          open={showCompanySettings}
+          onOpenChange={setShowCompanySettings}
+          companyId={selectedCompanyId}
         />
       )}
     </div>

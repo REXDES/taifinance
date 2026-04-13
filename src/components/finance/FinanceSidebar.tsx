@@ -74,6 +74,7 @@ interface FinanceSidebarProps {
   onManageCompanies?: () => void;
   onOpenUsers?: () => void;
   onOpenInvitations?: () => void;
+  onOpenCompanySettings?: () => void;
 }
 
 // Main menu items (not in submenus)
@@ -137,6 +138,7 @@ export function FinanceSidebar({
   onManageCompanies,
   onOpenUsers,
   onOpenInvitations,
+  onOpenCompanySettings,
 }: FinanceSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
@@ -550,6 +552,21 @@ export function FinanceSidebar({
                     <TooltipContent side="right">Gerenciar Empresas</TooltipContent>
                   </Tooltip>
                 )}
+                {selectedCompanyId && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="w-full"
+                        onClick={onOpenCompanySettings}
+                      >
+                        <FolderCog className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Config. da Empresa</TooltipContent>
+                  </Tooltip>
+                )}
                 {isSupervisor && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -627,6 +644,16 @@ export function FinanceSidebar({
                     >
                       <Building2 className="w-4 h-4" />
                       Gerenciar Empresas
+                    </Button>
+                  )}
+                  {selectedCompanyId && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onOpenCompanySettings}
+                    >
+                      <FolderCog className="w-4 h-4" />
+                      Config. da Empresa
                     </Button>
                   )}
                   {isSupervisor && (

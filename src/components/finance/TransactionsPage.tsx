@@ -65,6 +65,13 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showBudget, setShowBudget] = useState(false);
+  const [searchText, setSearchText] = useState('');
+
+  const filteredTransactions = useMemo(() => {
+    if (!searchText.trim()) return transactions;
+    const term = searchText.toLowerCase().trim();
+    return transactions.filter(t => t.description.toLowerCase().includes(term));
+  }, [transactions, searchText]);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
 
@@ -383,7 +390,16 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
       {showFilters && (
         <Card>
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
+                <Label>Descrição</Label>
+                <Input
+                  type="text"
+                  placeholder="Buscar por descrição..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                />
+              </div>
               <div>
                 <Label>Data Inicial</Label>
                 <Input
@@ -535,7 +551,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.map((transaction) => (
+                {filteredTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell>{new Date(transaction.date + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
                     <TableCell>

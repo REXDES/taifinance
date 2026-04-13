@@ -10,15 +10,6 @@ const EVOLUTION_API_URL =
   "https://evolution-api-production-a169.up.railway.app";
 const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
 const EVOLUTION_INSTANCE = "taifinance";
-const PIX_COPY_BASE_URL = "https://taifinance.lovable.app/pix/copiar";
-
-function buildPixCopyLink(pixCode: string, description?: string, amount?: number, companyName?: string): string {
-  const params = new URLSearchParams({ code: pixCode });
-  if (description) params.set("desc", description);
-  if (amount) params.set("amount", String(amount));
-  if (companyName) params.set("company", companyName);
-  return `${PIX_COPY_BASE_URL}?${params.toString()}`;
-}
 
 async function generateQrCodeBase64(data: string): Promise<string> {
   const url = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(data)}`;
@@ -88,7 +79,6 @@ serve(async (req) => {
     }
 
     const number = phone.replace(/\D/g, "");
-    const copyLink = buildPixCopyLink(pixCode, description, amount ? Number(amount) : undefined, companyName);
     const valorStr = amount
       ? `R$ ${Number(amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
       : "Valor não informado";
@@ -101,15 +91,16 @@ serve(async (req) => {
       `💰 *${companyName || "Empresa"} — Cobrança PIX*\n\n` +
       `📋 *Descrição:* ${description}\n` +
       `💵 *Valor:* ${valorStr}\n\n` +
-      `📱 Escaneie o QR Code acima ou use o link de cópia enviado na próxima mensagem.`;
+      `📱 Escaneie o QR Code acima ou copie o código PIX na próxima mensagem.`;
 
     console.log("Sending QR code image via WhatsApp...");
     const imageResult = await sendImageMessage(number, qrBase64, caption);
 
     const textMsg =
-      `📱 *Pix Copia e Cola:*\n\n${pixCode}\n\n` +
-      `🔗 *Copiar no celular:*\n${copyLink}\n\n` +
-      `Toque no link acima para abrir a página e copiar automaticamente.`;
+      `📱 *Pix Copia e Cola:*\n\n` +
+      `Segure o código abaixo para copiar:\n\n` +
+      `${pixCode}\n\n` +
+      `Cole no app do seu banco na opção *Pix Copia e Cola* para pagar. 🏦`;
 
     const textResponse = await sendTextMessage(number, textMsg);
     const textData = await textResponse.json();

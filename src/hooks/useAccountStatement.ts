@@ -11,33 +11,48 @@ export interface StatementEntry {
   balance: number;
   category?: string;
   subcategory?: string;
+  accountName?: string;
   relatedAccount?: string;
 }
 
-export function useAccountStatement(accountId: string | null, startDate?: string, endDate?: string, categoryId?: string, subcategoryId?: string) {
+export function useAccountStatement(
+  accountId: string | null,
+  startDate?: string,
+  endDate?: string,
+  categoryId?: string,
+  subcategoryId?: string,
+  companyId?: string | null
+) {
   const [entries, setEntries] = useState<StatementEntry[]>([]);
   const [account, setAccount] = useState<{ id: string; name: string; initial_balance: number } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const hasFilter = !!accountId || !!categoryId || !!subcategoryId;
+
   const fetchStatement = useCallback(async () => {
-    if (!accountId) {
+    if (!hasFilter) {
       setEntries([]);
       setAccount(null);
       setLoading(false);
       return;
     }
 
-    try {
-      // Fetch account info
-      const { data: accountData, error: accountError } = await supabase
-        .from('accounts')
-        .select('id, name, initial_balance')
-        .eq('id', accountId)
-        .single();
+    setLoading(true);
 
-      if (accountError) throw accountError;
-      setAccount(accountData);
+    try {
+      // If filtering by account, fetch account info
+      if (accountId) {
+        const { data: accountData, error: accountError } = await supabase
+          .from('accounts')
+          .select('id, name, initial_balance')
+          .eq('id', accountId)
+          .single();
+        if (accountError) throw accountError;
+        setAccount(accountData);
+      } else {
+        setAccount(null);
+      }
 
       // Fetch transactions
       let transactionsQuery = supabase
@@ -45,148 +60,129 @@ export function useAccountStatement(accountId: string | null, startDate?: string
         .select(`
           id, date, description, type, amount,
           category:transaction_categories(name),
-          subcategory:transaction_subcategories(name)
+          subcategory:transaction_subcategories(name),
+          account:accounts(name)
         `)
-        .eq('account_id', accountId)
         .order('date', { ascending: true })
         .order('created_at', { ascending: true });
 
+      if (accountId) transactionsQuery = transactionsQuery.eq('account_id', accountId);
+      else if (companyId) transactionsQuery = transactionsQuery.eq('company_id', companyId);
       if (startDate) transactionsQuery = transactionsQuery.gte('date', startDate);
       if (endDate) transactionsQuery = transactionsQuery.lte('date', endDate);
       if (categoryId) transactionsQuery = transactionsQuery.eq('category_id', categoryId);
       if (subcategoryId) transactionsQuery = transactionsQuery.eq('subcategory_id', subcategoryId);
 
-      // Fetch transfers (incoming)
-      let transfersInQuery = supabase
-        .from('transfers')
-        .select(`
-          id, date, description, amount,
-          from_account:accounts!transfers_from_account_id_fkey(name)
-        `)
-        .eq('to_account_id', accountId)
-        .order('date', { ascending: true });
-
-      if (startDate) transfersInQuery = transfersInQuery.gte('date', startDate);
-      if (endDate) transfersInQuery = transfersInQuery.lte('date', endDate);
-
-      // Fetch transfers (outgoing)
-      let transfersOutQuery = supabase
-        .from('transfers')
-        .select(`
-          id, date, description, amount,
-          to_account:accounts!transfers_to_account_id_fkey(name)
-        `)
-        .eq('from_account_id', accountId)
-        .order('date', { ascending: true });
-
-      if (startDate) transfersOutQuery = transfersOutQuery.gte('date', startDate);
-      if (endDate) transfersOutQuery = transfersOutQuery.lte('date', endDate);
-
-      const [transactionsRes, transfersInRes, transfersOutRes] = await Promise.all([
-        transactionsQuery,
-        transfersInQuery,
-        transfersOutQuery,
-      ]);
-
-      if (transactionsRes.error) throw transactionsRes.error;
-      if (transfersInRes.error) throw transfersInRes.error;
-      if (transfersOutRes.error) throw transfersOutRes.error;
-
-      // Combine and format entries
       const allEntries: StatementEntry[] = [];
 
-      // Add transactions
-      (transactionsRes.data || []).forEach((t: any) => {
-        allEntries.push({
-          id: t.id,
-          date: t.date,
-          description: t.description,
-          type: t.type as 'income' | 'expense',
-          amount: Number(t.amount),
-          balance: 0, // Will calculate later
-          category: t.category?.name,
-          subcategory: t.subcategory?.name,
-        });
-      });
+      if (accountId) {
+        // With account: include transfers and calculate running balance
+        let transfersInQuery = supabase
+          .from('transfers')
+          .select(`id, date, description, amount, from_account:accounts!transfers_from_account_id_fkey(name)`)
+          .eq('to_account_id', accountId)
+          .order('date', { ascending: true });
+        if (startDate) transfersInQuery = transfersInQuery.gte('date', startDate);
+        if (endDate) transfersInQuery = transfersInQuery.lte('date', endDate);
 
-      // Add incoming transfers
-      (transfersInRes.data || []).forEach((t: any) => {
-        allEntries.push({
-          id: `transfer-in-${t.id}`,
-          date: t.date,
-          description: t.description || `Transferência de ${t.from_account?.name}`,
-          type: 'transfer_in',
-          amount: Number(t.amount),
-          balance: 0,
-          relatedAccount: t.from_account?.name,
-        });
-      });
+        let transfersOutQuery = supabase
+          .from('transfers')
+          .select(`id, date, description, amount, to_account:accounts!transfers_to_account_id_fkey(name)`)
+          .eq('from_account_id', accountId)
+          .order('date', { ascending: true });
+        if (startDate) transfersOutQuery = transfersOutQuery.gte('date', startDate);
+        if (endDate) transfersOutQuery = transfersOutQuery.lte('date', endDate);
 
-      // Add outgoing transfers
-      (transfersOutRes.data || []).forEach((t: any) => {
-        allEntries.push({
-          id: `transfer-out-${t.id}`,
-          date: t.date,
-          description: t.description || `Transferência para ${t.to_account?.name}`,
-          type: 'transfer_out',
-          amount: Number(t.amount),
-          balance: 0,
-          relatedAccount: t.to_account?.name,
+        // Only include transfers if not filtering by category
+        const shouldIncludeTransfers = !categoryId && !subcategoryId;
+
+        const [transactionsRes, transfersInRes, transfersOutRes] = await Promise.all([
+          transactionsQuery,
+          shouldIncludeTransfers ? transfersInQuery : Promise.resolve({ data: [], error: null }),
+          shouldIncludeTransfers ? transfersOutQuery : Promise.resolve({ data: [], error: null }),
+        ]);
+
+        if (transactionsRes.error) throw transactionsRes.error;
+        if (transfersInRes.error) throw transfersInRes.error;
+        if (transfersOutRes.error) throw transfersOutRes.error;
+
+        (transactionsRes.data || []).forEach((t: any) => {
+          allEntries.push({
+            id: t.id, date: t.date, description: t.description,
+            type: t.type as 'income' | 'expense', amount: Number(t.amount), balance: 0,
+            category: t.category?.name, subcategory: t.subcategory?.name,
+          });
         });
-      });
+
+        (transfersInRes.data || []).forEach((t: any) => {
+          allEntries.push({
+            id: `transfer-in-${t.id}`, date: t.date,
+            description: t.description || `Transferência de ${t.from_account?.name}`,
+            type: 'transfer_in', amount: Number(t.amount), balance: 0,
+            relatedAccount: t.from_account?.name,
+          });
+        });
+
+        (transfersOutRes.data || []).forEach((t: any) => {
+          allEntries.push({
+            id: `transfer-out-${t.id}`, date: t.date,
+            description: t.description || `Transferência para ${t.to_account?.name}`,
+            type: 'transfer_out', amount: Number(t.amount), balance: 0,
+            relatedAccount: t.to_account?.name,
+          });
+        });
+      } else {
+        // Without account: only transactions (category/subcategory filter)
+        const transactionsRes = await transactionsQuery;
+        if (transactionsRes.error) throw transactionsRes.error;
+
+        (transactionsRes.data || []).forEach((t: any) => {
+          allEntries.push({
+            id: t.id, date: t.date, description: t.description,
+            type: t.type as 'income' | 'expense', amount: Number(t.amount), balance: 0,
+            category: t.category?.name, subcategory: t.subcategory?.name,
+            accountName: t.account?.name,
+          });
+        });
+      }
 
       // Sort by date
       allEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-      // Calculate running balance
-      let runningBalance = Number(accountData.initial_balance);
-      
-      // If we have a start date filter, we need to calculate the balance up to that date
-      if (startDate) {
-        const { data: priorTransactions } = await supabase
-          .from('transactions')
-          .select('type, amount')
-          .eq('account_id', accountId)
-          .lt('date', startDate);
+      // Calculate running balance only when filtering by account
+      if (accountId) {
+        const { data: accountData } = await supabase
+          .from('accounts')
+          .select('initial_balance')
+          .eq('id', accountId)
+          .single();
 
-        const { data: priorTransfersIn } = await supabase
-          .from('transfers')
-          .select('amount')
-          .eq('to_account_id', accountId)
-          .lt('date', startDate);
+        let runningBalance = Number(accountData?.initial_balance || 0);
 
-        const { data: priorTransfersOut } = await supabase
-          .from('transfers')
-          .select('amount')
-          .eq('from_account_id', accountId)
-          .lt('date', startDate);
+        if (startDate) {
+          const { data: priorTransactions } = await supabase
+            .from('transactions').select('type, amount').eq('account_id', accountId).lt('date', startDate);
+          const { data: priorTransfersIn } = await supabase
+            .from('transfers').select('amount').eq('to_account_id', accountId).lt('date', startDate);
+          const { data: priorTransfersOut } = await supabase
+            .from('transfers').select('amount').eq('from_account_id', accountId).lt('date', startDate);
 
-        (priorTransactions || []).forEach((t: any) => {
-          if (t.type === 'income') {
-            runningBalance += Number(t.amount);
+          (priorTransactions || []).forEach((t: any) => {
+            runningBalance += t.type === 'income' ? Number(t.amount) : -Number(t.amount);
+          });
+          (priorTransfersIn || []).forEach((t: any) => { runningBalance += Number(t.amount); });
+          (priorTransfersOut || []).forEach((t: any) => { runningBalance -= Number(t.amount); });
+        }
+
+        allEntries.forEach(entry => {
+          if (entry.type === 'income' || entry.type === 'transfer_in') {
+            runningBalance += entry.amount;
           } else {
-            runningBalance -= Number(t.amount);
+            runningBalance -= entry.amount;
           }
-        });
-
-        (priorTransfersIn || []).forEach((t: any) => {
-          runningBalance += Number(t.amount);
-        });
-
-        (priorTransfersOut || []).forEach((t: any) => {
-          runningBalance -= Number(t.amount);
+          entry.balance = runningBalance;
         });
       }
-
-      // Apply running balance to entries
-      allEntries.forEach(entry => {
-        if (entry.type === 'income' || entry.type === 'transfer_in') {
-          runningBalance += entry.amount;
-        } else {
-          runningBalance -= entry.amount;
-        }
-        entry.balance = runningBalance;
-      });
 
       setEntries(allEntries);
     } catch (error: any) {
@@ -195,7 +191,7 @@ export function useAccountStatement(accountId: string | null, startDate?: string
     } finally {
       setLoading(false);
     }
-  }, [accountId, startDate, endDate, categoryId, subcategoryId, toast]);
+  }, [accountId, startDate, endDate, categoryId, subcategoryId, companyId, hasFilter, toast]);
 
   useEffect(() => {
     fetchStatement();
@@ -211,11 +207,5 @@ export function useAccountStatement(accountId: string | null, startDate?: string
     return { income, expense, net: income - expense };
   }, [entries]);
 
-  return {
-    entries,
-    account,
-    loading,
-    totals,
-    refetch: fetchStatement,
-  };
+  return { entries, account, loading, totals, refetch: fetchStatement };
 }

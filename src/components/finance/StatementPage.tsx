@@ -152,6 +152,11 @@ export function StatementPage({ companyId }: StatementPageProps) {
         <h1 className="text-2xl font-bold text-foreground">Extrato</h1>
         <p className="text-muted-foreground">Filtre por conta ou categoria/subcategoria para visualizar movimentações</p>
       </div>
+      {hasValidFilter && entries.length > 0 && !loading && (
+        <Button variant="outline" onClick={exportPDF} className="flex items-center gap-2">
+          <FileDown className="w-4 h-4" /> Exportar PDF
+        </Button>
+      )}
 
       <Card><CardContent className="pt-4">
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">

@@ -52,6 +52,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
   );
 
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+  const formatCurrencyPlain = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const getIcon = (type: string) => {
     if (type === 'income') return <TrendingUp className="w-4 h-4 text-green-600" />;
     if (type === 'expense') return <TrendingDown className="w-4 h-4 text-red-600" />;
@@ -67,6 +68,83 @@ export function StatementPage({ companyId }: StatementPageProps) {
     : selectedCategoryId
       ? `Movimentações por Categoria`
       : 'Movimentações';
+
+  const exportPDF = useCallback(() => {
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Title
+    doc.setFontSize(16);
+    doc.text('Extrato Financeiro', 14, 18);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const subtitle = account ? `Conta: ${account.name}` : 'Todas as contas';
+    const dateRange = startDate || endDate
+      ? `Período: ${startDate ? new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR') : 'início'} a ${endDate ? new Date(endDate + 'T12:00:00').toLocaleDateString('pt-BR') : 'hoje'}`
+      : '';
+    doc.text([subtitle, dateRange].filter(Boolean).join('  |  '), 14, 25);
+    doc.setTextColor(0);
+
+    // Table headers
+    const headers: string[] = ['Data', 'Descrição'];
+    if (showAccountColumn) headers.push('Conta');
+    headers.push('Categoria', 'Valor');
+    if (showBalanceColumn) headers.push('Saldo');
+
+    // Table rows
+    const rows = entries.map((e) => {
+      const row: string[] = [
+        new Date(e.date).toLocaleDateString('pt-BR'),
+        e.description,
+      ];
+      if (showAccountColumn) row.push(e.accountName || '-');
+      row.push(e.category ? `${e.category}${e.subcategory ? ` / ${e.subcategory}` : ''}` : e.relatedAccount || '-');
+      const sign = e.type === 'income' || e.type === 'transfer_in' ? '+' : '-';
+      row.push(`${sign} ${formatCurrencyPlain(e.amount)}`);
+      if (showBalanceColumn) row.push(formatCurrencyPlain(e.balance));
+      return row;
+    });
+
+    autoTable(doc, {
+      startY: 30,
+      head: [headers],
+      body: rows,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        [headers.indexOf('Valor')]: { halign: 'right' },
+        ...(showBalanceColumn ? { [headers.indexOf('Saldo')]: { halign: 'right' } } : {}),
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === headers.indexOf('Valor')) {
+          const val = String(data.cell.raw);
+          data.cell.styles.textColor = val.startsWith('+') ? [22, 163, 74] : [220, 38, 38];
+        }
+        if (data.section === 'body' && showBalanceColumn && data.column.index === headers.indexOf('Saldo')) {
+          const val = String(data.cell.raw);
+          data.cell.styles.textColor = val.includes('-') ? [220, 38, 38] : [22, 163, 74];
+        }
+      },
+    });
+
+    // Footer totals
+    const finalY = (doc as any).lastAutoTable?.finalY || 200;
+    const footerY = finalY + 10;
+    doc.setFontSize(10);
+    doc.setTextColor(22, 163, 74);
+    doc.text(`Entradas: ${formatCurrencyPlain(totals.income)}`, 14, footerY);
+    doc.setTextColor(220, 38, 38);
+    doc.text(`Saídas: ${formatCurrencyPlain(totals.expense)}`, 100, footerY);
+    const netColor = totals.net >= 0 ? [22, 163, 74] : [220, 38, 38];
+    doc.setTextColor(netColor[0], netColor[1], netColor[2]);
+    doc.text(`Resultado: ${formatCurrencyPlain(totals.net)}`, 186, footerY);
+
+    doc.setTextColor(150);
+    doc.setFontSize(7);
+    doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, pageWidth - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+
+    doc.save(`extrato_${new Date().toISOString().slice(0, 10)}.pdf`);
+  }, [entries, totals, account, showAccountColumn, showBalanceColumn, startDate, endDate]);
 
   return (
     <div className="space-y-6">

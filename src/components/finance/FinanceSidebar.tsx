@@ -74,6 +74,7 @@ interface FinanceSidebarProps {
   onManageCompanies?: () => void;
   onOpenUsers?: () => void;
   onOpenInvitations?: () => void;
+  onOpenCompanySettings?: () => void;
 }
 
 // Main menu items (not in submenus)

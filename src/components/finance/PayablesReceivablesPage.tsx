@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings } from 'lucide-react';
 import { AiCategoryHelper } from './AiCategoryHelper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,8 @@ import { useClientsSuppliers } from '@/hooks/useClientsSuppliers';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useAuth } from '@/contexts/AuthContext';
+import { PixQrCodeDialog } from './PixQrCodeDialog';
+import { CompanySettingsDialog } from './CompanySettingsDialog';
 
 interface PayablesReceivablesPageProps {
   companyId: string;
@@ -107,6 +109,9 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
   } | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [isPixDialogOpen, setIsPixDialogOpen] = useState(false);
+  const [pixRecord, setPixRecord] = useState<any>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     type: 'payable' as 'payable' | 'receivable',
@@ -401,7 +406,11 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Contas a Pagar/Receber</h1>
-        <div className="flex gap-2">
+         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsSettingsOpen(true)} title="Configurações da empresa">
+            <Settings className="h-4 w-4 mr-2" />
+            Configurações
+          </Button>
           <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="h-4 w-4 mr-2" />
             Filtros
@@ -564,6 +573,20 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                   <TableCell className="text-right">
                     {record.status === 'pending' && (
                       <div className="flex justify-end gap-2">
+                        {record.type === 'receivable' && !record.is_amount_pending && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-primary hover:text-primary"
+                            onClick={() => {
+                              setPixRecord(record);
+                              setIsPixDialogOpen(true);
+                            }}
+                            title="Gerar PIX"
+                          >
+                            <QrCode className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
@@ -977,6 +1000,19 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PixQrCodeDialog
+        open={isPixDialogOpen}
+        onOpenChange={setIsPixDialogOpen}
+        companyId={companyId}
+        record={pixRecord}
+      />
+
+      <CompanySettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        companyId={companyId}
+      />
     </div>
   );
 }

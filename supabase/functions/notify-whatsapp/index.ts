@@ -321,7 +321,7 @@ serve(async (req) => {
               amount: Number(item.amount),
               txId: item.id.substring(0, 25).replace(/-/g, ""),
             });
-            qrBase64 = await QRCode.toDataURL(pixPayload, { width: 400, margin: 2 });
+            qrBase64 = await generateQrCodeBase64(pixPayload);
           } catch (e) {
             console.error("Error generating PIX QR:", e);
           }

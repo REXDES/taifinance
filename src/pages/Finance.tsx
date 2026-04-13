@@ -20,6 +20,7 @@ import { PayablesReceivablesFlowPage } from '@/components/finance/PayablesReceiv
 import { QuickEntryPage } from '@/components/finance/QuickEntryPage';
 import { ClientsSuppliersPage } from '@/components/finance/ClientsSuppliersPage';
 import { BankDigitalPage } from '@/components/finance/BankDigitalPage';
+import { CompanySettingsDialog } from '@/components/finance/CompanySettingsDialog';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';

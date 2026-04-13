@@ -12,8 +12,12 @@ const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
 const EVOLUTION_INSTANCE = "taifinance";
 const PIX_COPY_BASE_URL = "https://taifinance.lovable.app/pix/copiar";
 
-function buildPixCopyLink(pixCode: string): string {
-  return `${PIX_COPY_BASE_URL}?code=${encodeURIComponent(pixCode)}`;
+function buildPixCopyLink(pixCode: string, description?: string, amount?: number, companyName?: string): string {
+  const params = new URLSearchParams({ code: pixCode });
+  if (description) params.set("desc", description);
+  if (amount) params.set("amount", String(amount));
+  if (companyName) params.set("company", companyName);
+  return `${PIX_COPY_BASE_URL}?${params.toString()}`;
 }
 
 async function generateQrCodeBase64(data: string): Promise<string> {

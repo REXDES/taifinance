@@ -79,10 +79,13 @@ export function StatementPage({ companyId }: StatementPageProps) {
     doc.setFontSize(10);
     doc.setTextColor(100);
     const subtitle = account ? `Conta: ${account.name}` : 'Todas as contas';
+    const selectedCat = categories.find(c => c.id === selectedCategoryId);
+    const selectedSub = subcategories.find((s: any) => s.id === selectedSubcategoryId);
+    const catLabel = selectedCat ? `Categoria: ${selectedCat.name}${selectedSub ? ` / ${selectedSub.name}` : ''}` : '';
     const dateRange = startDate || endDate
       ? `Período: ${startDate ? new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR') : 'início'} a ${endDate ? new Date(endDate + 'T12:00:00').toLocaleDateString('pt-BR') : 'hoje'}`
       : '';
-    doc.text([subtitle, dateRange].filter(Boolean).join('  |  '), 14, 25);
+    doc.text([subtitle, catLabel, dateRange].filter(Boolean).join('  |  '), 14, 25);
     doc.setTextColor(0);
 
     // Table headers

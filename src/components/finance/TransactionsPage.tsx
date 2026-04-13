@@ -390,7 +390,16 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
       {showFilters && (
         <Card>
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
+                <Label>Descrição</Label>
+                <Input
+                  type="text"
+                  placeholder="Buscar por descrição..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                />
+              </div>
               <div>
                 <Label>Data Inicial</Label>
                 <Input

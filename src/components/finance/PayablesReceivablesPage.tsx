@@ -573,6 +573,20 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                   <TableCell className="text-right">
                     {record.status === 'pending' && (
                       <div className="flex justify-end gap-2">
+                        {record.type === 'receivable' && !record.is_amount_pending && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-primary hover:text-primary"
+                            onClick={() => {
+                              setPixRecord(record);
+                              setIsPixDialogOpen(true);
+                            }}
+                            title="Gerar PIX"
+                          >
+                            <QrCode className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"

@@ -56,8 +56,10 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     return defaultFilters;
   };
 
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState(getInitialFilters);
+  const initialFilters = getInitialFilters();
+  const hasActiveFilters = initialFilters.type !== '' || initialFilters.status.length > 0;
+  const [showFilters, setShowFilters] = useState(hasActiveFilters);
+  const [filters, setFilters] = useState(initialFilters);
 
   // Persist filter preferences
   const updateFilters = (newFilters: typeof filters) => {

@@ -378,6 +378,7 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
               <p className="text-xs text-muted-foreground">Número com código do país (ex: 5511999999999)</p>
             </div>
 
+            <div className="space-y-2">
               <Label htmlFor="notes">Observações</Label>
               <Textarea
                 id="notes"

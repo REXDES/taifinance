@@ -192,10 +192,15 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
 
                 {/* Pix Copia e Cola */}
                 <div className="w-full">
-                  <p className="text-xs text-muted-foreground mb-1">Pix Copia e Cola:</p>
-                  <div className="bg-muted rounded p-2 text-xs break-all font-mono max-h-20 overflow-y-auto text-foreground">
+                  <p className="text-xs text-muted-foreground mb-1">Pix Copia e Cola (clique para copiar):</p>
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="w-full text-left bg-muted hover:bg-muted/80 rounded p-2 text-xs break-all font-mono max-h-20 overflow-y-auto text-primary underline cursor-pointer transition-colors"
+                    title="Clique para copiar"
+                  >
                     {pixPayload}
-                  </div>
+                  </button>
                 </div>
 
                 {/* Actions */}

@@ -124,7 +124,7 @@ async function sendWhatsAppImage(phone: string, base64: string, caption: string)
         mediaMessage: {
           mediatype: "image",
           caption,
-          media: `data:image/png;base64,${base64}`,
+          media: base64,
           fileName: "pix-qrcode.png",
         },
       }),

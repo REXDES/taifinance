@@ -188,7 +188,7 @@ const Finance = () => {
         invitationLimit={userRole?.invitationLimit ?? null}
         invitationsCreated={userRole?.invitationsCreated ?? 0}
         onCreateCompany={() => setIsCreateCompanyOpen(true)}
-        onManageCompanies={() => setIsCreateCompanyOpen(true)}
+        onManageCompanies={() => setShowCompanySettings(true)}
         onOpenUsers={() => setShowUsers(true)}
         onOpenInvitations={() => setShowInvitations(true)}
         onOpenCompanySettings={() => setShowCompanySettings(true)}

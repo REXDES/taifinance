@@ -65,6 +65,13 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showBudget, setShowBudget] = useState(false);
+  const [searchText, setSearchText] = useState('');
+
+  const filteredTransactions = useMemo(() => {
+    if (!searchText.trim()) return transactions;
+    const term = searchText.toLowerCase().trim();
+    return transactions.filter(t => t.description.toLowerCase().includes(term));
+  }, [transactions, searchText]);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
 

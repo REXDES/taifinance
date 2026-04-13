@@ -368,6 +368,16 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="whatsapp_phone">WhatsApp</Label>
+              <Input
+                id="whatsapp_phone"
+                value={formData.whatsapp_phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, whatsapp_phone: e.target.value }))}
+                placeholder="5511999999999"
+              />
+              <p className="text-xs text-muted-foreground">Número com código do país (ex: 5511999999999)</p>
+            </div>
+
               <Label htmlFor="notes">Observações</Label>
               <Textarea
                 id="notes"

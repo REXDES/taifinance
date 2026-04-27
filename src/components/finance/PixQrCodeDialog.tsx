@@ -102,13 +102,19 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
   };
 
   const handleSendWhatsApp = async () => {
-    if (!clientPhone || !pixPayload || !record) return;
+    const phoneToUse = clientPhone || manualPhone.replace(/\D/g, '');
+    if (!phoneToUse || !pixPayload || !record) return;
+
+    if (!clientPhone && phoneToUse.length < 10) {
+      toast.error('Informe um número de WhatsApp válido (com DDD)');
+      return;
+    }
 
     setSending(true);
     try {
       const { error } = await supabase.functions.invoke('send-pix-whatsapp', {
         body: {
-          phone: clientPhone,
+          phone: phoneToUse,
           pixCode: pixPayload,
           description: record.description,
           amount: record.amount,
@@ -117,7 +123,22 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
       });
 
       if (error) throw error;
-      toast.success('Cobrança enviada por WhatsApp!');
+
+      // Salvar telefone no cadastro do cliente, se solicitado
+      if (!clientPhone && savePhone && record.client_supplier?.id) {
+        const { error: updateErr } = await supabase
+          .from('clients_suppliers')
+          .update({ whatsapp_phone: phoneToUse })
+          .eq('id', record.client_supplier.id);
+        if (!updateErr) {
+          setClientPhone(phoneToUse);
+          toast.success('Cobrança enviada e WhatsApp salvo no cadastro!');
+        } else {
+          toast.success('Cobrança enviada por WhatsApp!');
+        }
+      } else {
+        toast.success('Cobrança enviada por WhatsApp!');
+      }
     } catch (error) {
       console.error('Error sending PIX via WhatsApp:', error);
       toast.error('Erro ao enviar por WhatsApp');

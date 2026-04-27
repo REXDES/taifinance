@@ -228,30 +228,67 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
                   </button>
                 </div>
 
+                {/* WhatsApp do cliente — destacado */}
+                {clientPhone ? (
+                  <div className="w-full rounded-md border border-green-500/30 bg-green-500/10 p-3 flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    <div className="flex-1 text-sm">
+                      <p className="text-xs text-muted-foreground">WhatsApp do cliente</p>
+                      <p className="font-medium text-foreground">{clientPhone}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full rounded-md border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                      <p className="text-xs text-amber-700 font-medium">
+                        {record.client_supplier?.name
+                          ? `Sem WhatsApp cadastrado para ${record.client_supplier.name}`
+                          : 'Informe o número para envio'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="manual-phone" className="text-xs">Número do WhatsApp (com DDD)</Label>
+                      <Input
+                        id="manual-phone"
+                        placeholder="Ex: 11999998888"
+                        value={manualPhone}
+                        onChange={(e) => setManualPhone(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    {record.client_supplier?.id && (
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={savePhone}
+                          onChange={(e) => setSavePhone(e.target.checked)}
+                        />
+                        Salvar este número no cadastro do cliente
+                      </label>
+                    )}
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="flex gap-2 w-full">
                   <Button variant="outline" className="flex-1" onClick={handleCopy}>
                     <Copy className="w-4 h-4 mr-2" />
                     Copiar
                   </Button>
-                  {clientPhone && (
-                    <Button className="flex-1" onClick={handleSendWhatsApp} disabled={sending}>
-                      {sending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4 mr-2" />
-                      )}
-                      Enviar WhatsApp
-                    </Button>
-                  )}
+                  <Button
+                    className="flex-1"
+                    onClick={handleSendWhatsApp}
+                    disabled={sending || (!clientPhone && manualPhone.replace(/\D/g, '').length < 10)}
+                  >
+                    {sending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
+                    Enviar WhatsApp
+                  </Button>
                 </div>
-
-                {!clientPhone && record.client_supplier?.name && (
-                  <p className="text-xs text-amber-600 text-center">
-                    WhatsApp não cadastrado para {record.client_supplier.name}. 
-                    Cadastre na página de Clientes/Fornecedores.
-                  </p>
-                )}
               </div>
             )}
           </div>

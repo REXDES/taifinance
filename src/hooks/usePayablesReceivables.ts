@@ -62,7 +62,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
           *,
           category:transaction_categories(id, name, color),
           subcategory:transaction_subcategories(id, name),
-          client_supplier:clients_suppliers(id, name, type),
+          client_supplier:clients_suppliers(id, name, type, whatsapp_phone),
           account:accounts(id, name)
         `)
         .eq('company_id', companyId)

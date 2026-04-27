@@ -38,6 +38,8 @@ interface CompanyPixConfig {
 export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQrCodeDialogProps) {
   const [pixConfig, setPixConfig] = useState<CompanyPixConfig | null>(null);
   const [clientPhone, setClientPhone] = useState<string | null>(null);
+  const [manualPhone, setManualPhone] = useState<string>('');
+  const [savePhone, setSavePhone] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [pixPayload, setPixPayload] = useState<string>('');

@@ -28,7 +28,7 @@ export interface PayableReceivable {
   is_amount_pending: boolean;
   category?: { id: string; name: string; color: string } | null;
   subcategory?: { id: string; name: string } | null;
-  client_supplier?: { id: string; name: string; type: string } | null;
+  client_supplier?: { id: string; name: string; type: string; whatsapp_phone?: string | null } | null;
   account?: { id: string; name: string } | null;
 }
 

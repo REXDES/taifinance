@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings, MessageCircle } from 'lucide-react';
 import { AiCategoryHelper } from './AiCategoryHelper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

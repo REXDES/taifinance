@@ -9,7 +9,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Copy, Send, Loader2, QrCode, AlertCircle } from 'lucide-react';
+import { Copy, Send, Loader2, QrCode, AlertCircle, MessageCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { generatePixPayload, type PixParams } from '@/lib/pixUtils';
 
 interface PixQrCodeDialogProps {
@@ -36,6 +38,8 @@ interface CompanyPixConfig {
 export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQrCodeDialogProps) {
   const [pixConfig, setPixConfig] = useState<CompanyPixConfig | null>(null);
   const [clientPhone, setClientPhone] = useState<string | null>(null);
+  const [manualPhone, setManualPhone] = useState<string>('');
+  const [savePhone, setSavePhone] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [pixPayload, setPixPayload] = useState<string>('');
@@ -98,13 +102,19 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
   };
 
   const handleSendWhatsApp = async () => {
-    if (!clientPhone || !pixPayload || !record) return;
+    const phoneToUse = clientPhone || manualPhone.replace(/\D/g, '');
+    if (!phoneToUse || !pixPayload || !record) return;
+
+    if (!clientPhone && phoneToUse.length < 10) {
+      toast.error('Informe um número de WhatsApp válido (com DDD)');
+      return;
+    }
 
     setSending(true);
     try {
       const { error } = await supabase.functions.invoke('send-pix-whatsapp', {
         body: {
-          phone: clientPhone,
+          phone: phoneToUse,
           pixCode: pixPayload,
           description: record.description,
           amount: record.amount,
@@ -113,7 +123,22 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
       });
 
       if (error) throw error;
-      toast.success('Cobrança enviada por WhatsApp!');
+
+      // Salvar telefone no cadastro do cliente, se solicitado
+      if (!clientPhone && savePhone && record.client_supplier?.id) {
+        const { error: updateErr } = await supabase
+          .from('clients_suppliers')
+          .update({ whatsapp_phone: phoneToUse })
+          .eq('id', record.client_supplier.id);
+        if (!updateErr) {
+          setClientPhone(phoneToUse);
+          toast.success('Cobrança enviada e WhatsApp salvo no cadastro!');
+        } else {
+          toast.success('Cobrança enviada por WhatsApp!');
+        }
+      } else {
+        toast.success('Cobrança enviada por WhatsApp!');
+      }
     } catch (error) {
       console.error('Error sending PIX via WhatsApp:', error);
       toast.error('Erro ao enviar por WhatsApp');
@@ -203,30 +228,67 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
                   </button>
                 </div>
 
+                {/* WhatsApp do cliente — destacado */}
+                {clientPhone ? (
+                  <div className="w-full rounded-md border border-green-500/30 bg-green-500/10 p-3 flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    <div className="flex-1 text-sm">
+                      <p className="text-xs text-muted-foreground">WhatsApp do cliente</p>
+                      <p className="font-medium text-foreground">{clientPhone}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full rounded-md border border-amber-500/30 bg-amber-500/10 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                      <p className="text-xs text-amber-700 font-medium">
+                        {record.client_supplier?.name
+                          ? `Sem WhatsApp cadastrado para ${record.client_supplier.name}`
+                          : 'Informe o número para envio'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="manual-phone" className="text-xs">Número do WhatsApp (com DDD)</Label>
+                      <Input
+                        id="manual-phone"
+                        placeholder="Ex: 11999998888"
+                        value={manualPhone}
+                        onChange={(e) => setManualPhone(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    {record.client_supplier?.id && (
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={savePhone}
+                          onChange={(e) => setSavePhone(e.target.checked)}
+                        />
+                        Salvar este número no cadastro do cliente
+                      </label>
+                    )}
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="flex gap-2 w-full">
                   <Button variant="outline" className="flex-1" onClick={handleCopy}>
                     <Copy className="w-4 h-4 mr-2" />
                     Copiar
                   </Button>
-                  {clientPhone && (
-                    <Button className="flex-1" onClick={handleSendWhatsApp} disabled={sending}>
-                      {sending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4 mr-2" />
-                      )}
-                      Enviar WhatsApp
-                    </Button>
-                  )}
+                  <Button
+                    className="flex-1"
+                    onClick={handleSendWhatsApp}
+                    disabled={sending || (!clientPhone && manualPhone.replace(/\D/g, '').length < 10)}
+                  >
+                    {sending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
+                    Enviar WhatsApp
+                  </Button>
                 </div>
-
-                {!clientPhone && record.client_supplier?.name && (
-                  <p className="text-xs text-amber-600 text-center">
-                    WhatsApp não cadastrado para {record.client_supplier.name}. 
-                    Cadastre na página de Clientes/Fornecedores.
-                  </p>
-                )}
               </div>
             )}
           </div>

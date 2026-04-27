@@ -28,7 +28,7 @@ export interface PayableReceivable {
   is_amount_pending: boolean;
   category?: { id: string; name: string; color: string } | null;
   subcategory?: { id: string; name: string } | null;
-  client_supplier?: { id: string; name: string; type: string } | null;
+  client_supplier?: { id: string; name: string; type: string; whatsapp_phone?: string | null } | null;
   account?: { id: string; name: string } | null;
 }
 
@@ -62,7 +62,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
           *,
           category:transaction_categories(id, name, color),
           subcategory:transaction_subcategories(id, name),
-          client_supplier:clients_suppliers(id, name, type),
+          client_supplier:clients_suppliers(id, name, type, whatsapp_phone),
           account:accounts(id, name)
         `)
         .eq('company_id', companyId)

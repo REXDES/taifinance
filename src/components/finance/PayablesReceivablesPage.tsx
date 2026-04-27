@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings, MessageCircle } from 'lucide-react';
 import { AiCategoryHelper } from './AiCategoryHelper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -554,7 +554,24 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                     )}
                   </TableCell>
                   <TableCell>{getTypeBadge(record.type)}</TableCell>
-                  <TableCell>{record.client_supplier?.name || '-'}</TableCell>
+                  <TableCell>
+                    {record.client_supplier?.name ? (
+                      <div className="flex flex-col gap-0.5">
+                        <span>{record.client_supplier.name}</span>
+                        {record.client_supplier.whatsapp_phone ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                            <MessageCircle className="h-3 w-3" />
+                            {record.client_supplier.whatsapp_phone}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-amber-600">
+                            <MessageCircle className="h-3 w-3" />
+                            Sem WhatsApp
+                          </span>
+                        )}
+                      </div>
+                    ) : '-'}
+                  </TableCell>
                   <TableCell>
                     {record.category && (
                       <div className="flex items-center gap-2">

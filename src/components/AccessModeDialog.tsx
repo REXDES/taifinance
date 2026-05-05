@@ -30,9 +30,6 @@ export function AccessModeDialog({ open }: AccessModeDialogProps) {
           >
             <Shield className="h-8 w-8 text-primary" />
             <span className="font-semibold">Modo Administrativo</span>
-            <span className="text-xs text-muted-foreground text-center">
-              Configurações, empresas, usuários e auditoria
-            </span>
           </Button>
 
           <Button
@@ -42,9 +39,6 @@ export function AccessModeDialog({ open }: AccessModeDialogProps) {
           >
             <User className="h-8 w-8 text-primary" />
             <span className="font-semibold">Modo Normal</span>
-            <span className="text-xs text-muted-foreground text-center">
-              Operações financeiras, lançamentos e relatórios
-            </span>
           </Button>
         </div>
       </DialogContent>

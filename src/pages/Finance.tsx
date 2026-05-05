@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAccessMode } from '@/contexts/AccessModeContext';
 import { useCompanies } from '@/hooks/useCompanies';
 import { FinanceSidebar } from '@/components/finance/FinanceSidebar';
 import { FinanceHeader } from '@/components/finance/FinanceHeader';
@@ -10,6 +11,7 @@ import { BalanceSheetPage } from '@/components/finance/BalanceSheetPage';
 import { StatementPage } from '@/components/finance/StatementPage';
 import { CategoriesPage } from '@/components/finance/CategoriesPage';
 import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
+import { AdminDashboard } from '@/components/finance/AdminDashboard';
 import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
 import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
 import { AuditLogsPage } from '@/components/finance/AuditLogsPage';
@@ -24,12 +26,51 @@ import { CompanySettingsDialog } from '@/components/finance/CompanySettingsDialo
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
+import { AccessModeDialog } from '@/components/AccessModeDialog';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
-export type FinanceView = 'dashboard' | 'quick-entry' | 'accounts' | 'transactions' | 'transfers' | 'payables-receivables' | 'balance' | 'statement' | 'categories' | 'category-report' | 'cash-flow' | 'payables-receivables-report' | 'payables-receivables-calendar' | 'payables-receivables-flow' | 'audit-logs' | 'clients-suppliers' | 'bank-digital';
+export type FinanceView =
+  | 'dashboard'
+  | 'admin-dashboard'
+  | 'quick-entry'
+  | 'accounts'
+  | 'transactions'
+  | 'transfers'
+  | 'payables-receivables'
+  | 'balance'
+  | 'statement'
+  | 'categories'
+  | 'category-report'
+  | 'cash-flow'
+  | 'payables-receivables-report'
+  | 'payables-receivables-calendar'
+  | 'payables-receivables-flow'
+  | 'audit-logs'
+  | 'clients-suppliers'
+  | 'bank-digital';
+
+const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital'];
+// Views available only in normal mode for supervisors
+const NORMAL_ONLY_VIEWS: FinanceView[] = [
+  'dashboard',
+  'quick-entry',
+  'accounts',
+  'transactions',
+  'transfers',
+  'payables-receivables',
+  'balance',
+  'statement',
+  'categories',
+  'category-report',
+  'cash-flow',
+  'payables-receivables-report',
+  'payables-receivables-calendar',
+  'payables-receivables-flow',
+  'clients-suppliers',
+];
 
 interface UserRoleInfo {
   role: AppRole;
@@ -41,6 +82,7 @@ interface UserRoleInfo {
 
 const Finance = () => {
   const { user, signOut, loading: authLoading } = useAuth();
+  const { mode: accessMode, setMode: setAccessMode, resetMode } = useAccessMode();
   const { companies, loading: companiesLoading, createCompany, refetch: refetchCompanies } = useCompanies();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => {
     return localStorage.getItem('tai-finance-last-company') || null;
@@ -55,7 +97,33 @@ const Finance = () => {
   const isSupervisor = userRole?.role === 'supervisor';
   const isGerente = userRole?.role === 'gerente';
   const canAccessUserManagement = isSupervisor || isGerente;
-  const canCreateCompany = isSupervisor || (isGerente && userRole.companyLimit !== null && userRole.companiesCreated < userRole.companyLimit);
+  const canCreateCompany = isSupervisor || (isGerente && userRole?.companyLimit !== null && (userRole?.companiesCreated ?? 0) < (userRole?.companyLimit ?? 0));
+
+  // Force non-supervisors to "normal" mode automatically
+  useEffect(() => {
+    if (!userRole) return;
+    if (!isSupervisor && accessMode !== 'normal') {
+      setAccessMode('normal');
+    }
+  }, [userRole, isSupervisor, accessMode, setAccessMode]);
+
+  const showAccessModeDialog = !!userRole && isSupervisor && accessMode === null;
+  const effectiveMode: 'admin' | 'normal' = accessMode === 'admin' && isSupervisor ? 'admin' : 'normal';
+
+  // Sync default view to mode
+  useEffect(() => {
+    if (showAccessModeDialog) return;
+    if (effectiveMode === 'admin') {
+      if (!ADMIN_VIEWS.includes(currentView)) {
+        setCurrentView('admin-dashboard');
+      }
+    } else {
+      if (!NORMAL_ONLY_VIEWS.includes(currentView) && currentView !== 'bank-digital') {
+        setCurrentView('dashboard');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveMode, showAccessModeDialog]);
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -123,6 +191,10 @@ const Finance = () => {
   };
 
   const renderContent = () => {
+    if (effectiveMode === 'admin' && currentView === 'admin-dashboard') {
+      return <AdminDashboard />;
+    }
+
     if (!selectedCompanyId) {
       return (
         <div className="flex-1 flex items-center justify-center">
@@ -181,6 +253,7 @@ const Finance = () => {
         onChangeView={setCurrentView}
         isSupervisor={isSupervisor}
         isGerente={isGerente}
+        accessMode={effectiveMode}
         canCreateCompany={canCreateCompany}
         companyLimit={userRole?.companyLimit ?? null}
         companiesCreated={userRole?.companiesCreated ?? 0}
@@ -199,12 +272,17 @@ const Finance = () => {
           onSignOut={signOut}
           companyName={selectedCompany?.name}
           onOpenUsers={() => setShowUsers(true)}
-          showUsersButton={!!selectedCompanyId && canAccessUserManagement}
+          showUsersButton={!!selectedCompanyId && canAccessUserManagement && effectiveMode === 'normal'}
+          isAdminMode={effectiveMode === 'admin'}
+          canSwitchMode={isSupervisor}
+          onSwitchMode={resetMode}
         />
         <main className="flex-1 overflow-auto p-6">
           {renderContent()}
         </main>
       </div>
+
+      <AccessModeDialog open={showAccessModeDialog} />
 
       <CreateCompanyDialog
         open={isCreateCompanyOpen}

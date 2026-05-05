@@ -8,7 +8,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User as UserIcon, Users, Download } from 'lucide-react';
+import { LogOut, User as UserIcon, Users, Download, Shield, RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -22,9 +23,12 @@ interface FinanceHeaderProps {
   companyName?: string;
   onOpenUsers?: () => void;
   showUsersButton?: boolean;
+  isAdminMode?: boolean;
+  canSwitchMode?: boolean;
+  onSwitchMode?: () => void;
 }
 
-export function FinanceHeader({ user, onSignOut, companyName, onOpenUsers, showUsersButton }: FinanceHeaderProps) {
+export function FinanceHeader({ user, onSignOut, companyName, onOpenUsers, showUsersButton, isAdminMode, canSwitchMode, onSwitchMode }: FinanceHeaderProps) {
   const initials = user?.email?.substring(0, 2).toUpperCase() || 'U';
   const { toast } = useToast();
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -59,11 +63,15 @@ export function FinanceHeader({ user, onSignOut, companyName, onOpenUsers, showU
 
   return (
     <header className="h-14 border-b border-border bg-card px-4 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        {companyName && (
-          <span className="text-sm text-muted-foreground">
-            {companyName}
-          </span>
+      <div className="flex items-center gap-3">
+        {isAdminMode && (
+          <Badge variant="default" className="gap-1 bg-primary/15 text-primary hover:bg-primary/20">
+            <Shield className="h-3 w-3" />
+            Modo Administrativo
+          </Badge>
+        )}
+        {companyName && !isAdminMode && (
+          <span className="text-sm text-muted-foreground">{companyName}</span>
         )}
       </div>
 

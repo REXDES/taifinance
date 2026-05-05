@@ -1,102 +1,90 @@
+## Modo Administrativo para Supervisor
 
+Criar um "modo de acesso" para o supervisor escolher após o login: **Modo Administrativo** ou **Modo Normal**. Os dois usam a mesma base de dados e as mesmas credenciais — muda apenas a interface, os menus disponíveis e o Dashboard. O modo Administrativo será o local exclusivo das configurações do sistema (e ponto de partida para futuras funcionalidades só-admin).
 
-## Plano Completo: Cobrança PIX + Notificações WhatsApp (Contas a Pagar/Receber)
+### Como vai funcionar (visão do usuário)
 
-### Resumo
+1. Supervisor faz login normalmente em `/auth`.
+2. Logo após autenticar, aparece um **dialog** centralizado:
+   - "Como deseja acessar o sistema?"
+   - Botão **Modo Administrativo** (ícone escudo)
+   - Botão **Modo Normal** (ícone usuário)
+3. A escolha fica salva em `localStorage` (`tai.accessMode = 'admin' | 'normal'`) e pode ser trocada a qualquer momento por um botão no header ("Trocar modo de acesso").
+4. Usuários **Gerente** e **Operador** não veem o dialog — entram direto no Modo Normal.
 
-Implementar três funcionalidades integradas: (1) geração de cobrança PIX com QR Code nas contas a receber, (2) configuração de notificações WhatsApp por empresa para lembretes de contas a pagar/receber, e (3) campo WhatsApp no cadastro de clientes/fornecedores.
+### Diferenças entre os modos (Supervisor)
 
----
+**Modo Normal** (operacional do dia a dia)
+- Dashboard operacional (atual, da empresa selecionada)
+- Lance Rápido, Banco Digital
+- Transações (Lançamentos, Transferências, Contas a Pagar/Receber)
+- Relatórios (Balancete, Extrato, Categoria, Fluxo, etc.)
+- Cadastros operacionais (Contas, Categorias, Clientes/Fornecedores)
+- **Sem** seção de Configurações
 
-### 1. Migração do Banco de Dados
+**Modo Administrativo** (gestão da plataforma)
+- **Dashboard Admin (novo)** — abre por padrão, com estatísticas globais de todas as empresas
+- Configurações da Empresa (Cadastro, PIX, WhatsApp)
+- Gerenciar Empresas (criar/editar/excluir)
+- Usuários e Permissões
+- Convites
+- Logs de Auditoria
+- Banco Digital (configuração de credenciais/conexões)
+- Sidebar visualmente diferenciada (badge "ADMIN") para deixar claro o contexto
 
-**Tabela `companies`** — adicionar campos:
-- `pix_key` (text, nullable)
-- `pix_key_type` (text, nullable) — cpf, cnpj, email, phone, random
-- `pix_holder_name` (text, nullable)
-- `pix_city` (text, nullable)
-- `whatsapp_notify_enabled` (boolean, default false)
-- `whatsapp_notify_days_before` (integer[], default '{0}')
-- `whatsapp_notify_time` (text, default '08:00')
+A barra superior mostrará um badge **"Modo Administrativo"** quando ativo, com botão para trocar.
 
-**Tabela `clients_suppliers`** — adicionar campo:
-- `whatsapp_phone` (text, nullable)
+### Dashboard Admin (novo) — estatísticas globais
 
----
+Cards e gráficos consolidando **todas as empresas**:
+- Total de empresas, total de usuários ativos, total de convites pendentes
+- Saldo consolidado (soma de `current_balance` de todas as contas, separando Ativo/Passivo)
+- Total de receitas e despesas do mês corrente (todas as empresas)
+- Contas a pagar/receber pendentes (totais e vencidas)
+- Top 5 empresas por movimentação no mês
+- Gráfico de evolução patrimonial consolidada (últimos 6 meses)
+- Lista de últimas ações (a partir de `audit_logs`)
 
-### 2. Cadastro de Clientes/Fornecedores — Campo WhatsApp
+Como o supervisor já tem `is_supervisor = true`, as RLS atuais permitem ler dados de todas as empresas — não há mudança de banco.
 
-Adicionar campo "WhatsApp" no formulário de criação/edição em `ClientsSuppliersPage.tsx`. Atualizar o hook `useClientsSuppliers` para incluir o novo campo.
+### Onde os itens de menu vão (resumo)
 
----
+| Item                                          | Modo Normal | Modo Admin |
+|-----------------------------------------------|:-----------:|:----------:|
+| Dashboard operacional                         | Sim         | Não        |
+| **Dashboard Admin (estatísticas globais)**    | Não         | Sim        |
+| Lance Rápido                                  | Sim         | Não        |
+| Transações / Transferências                   | Sim         | Não        |
+| Contas a Pagar/Receber                        | Sim         | Não        |
+| Todos os Relatórios                           | Sim         | Não        |
+| Contas, Categorias, Clientes/Fornecedores     | Sim         | Não        |
+| **Configurações da Empresa (PIX/WhatsApp)**   | Não         | Sim        |
+| **Gerenciar Empresas**                        | Não         | Sim        |
+| **Usuários / Convites**                       | Não         | Sim        |
+| **Logs de Auditoria**                         | Não         | Sim        |
+| Banco Digital                                 | Sim (uso)   | Sim (config) |
 
-### 3. Configurações da Empresa — PIX + Notificações WhatsApp
+### Detalhes técnicos
 
-Criar novo componente `CompanySettingsDialog.tsx` com duas seções:
+- **Sem mudanças no banco de dados.** O modo é apenas uma preferência de UI; as RLS já garantem segurança real por role.
+- Novo contexto `AccessModeContext` (`mode: 'admin' | 'normal' | null`, `setMode`, `resetMode`) com persistência em `localStorage`.
+- Novo componente `AccessModeDialog` exibido em `Finance.tsx` quando `isSupervisor && mode === null`.
+- `FinanceSidebar.tsx`: receber `accessMode` e renderizar dois conjuntos de menus distintos. View padrão por modo (Dashboard normal ou Dashboard Admin).
+- `FinanceHeader.tsx`: badge "Modo Administrativo" + botão "Trocar Modo" (limpa preferência e reabre o dialog).
+- Novo componente `AdminDashboard.tsx` com os cards/gráficos globais e novo hook `useAdminGlobalStats.ts` para consolidar dados de todas as empresas (`companies`, `accounts`, `transactions`, `payables_receivables`, `audit_logs`).
+- Para gerente/operador: `accessMode` forçado para `'normal'`, dialog nunca aparece.
+- Se o supervisor abrir uma view fora do modo atual, redireciona para a view padrão do modo.
 
-**Seção PIX:**
-- Tipo da chave PIX (select: CPF, CNPJ, E-mail, Telefone, Aleatória)
-- Chave PIX (input)
-- Nome do titular (input)
-- Cidade (input)
+### Arquivos que serão criados/alterados
 
-**Seção Notificações WhatsApp:**
-- Toggle ativar/desativar notificações
-- Checkboxes para dias de antecedência: "No dia do vencimento", "1 dia antes", "2 dias antes", "3 dias antes", "5 dias antes", "7 dias antes"
-- Campo de horário (input time HH:mm) para definir quando as mensagens são enviadas
+**Criar:**
+- `src/contexts/AccessModeContext.tsx`
+- `src/components/AccessModeDialog.tsx`
+- `src/components/finance/AdminDashboard.tsx`
+- `src/hooks/useAdminGlobalStats.ts`
 
-Acessível via sidebar em Configurações ou via ícone na página de Contas a Pagar/Receber.
-
----
-
-### 4. Gerador de Payload PIX (BR Code EMV)
-
-Criar `src/lib/pixUtils.ts` com:
-- Função `generatePixPayload()` que monta o payload EMV padrão do BACEN (tags 00, 01, 26, 52, 53, 54, 58, 59, 60, 62, 63)
-- Cálculo CRC16-CCITT em TypeScript puro
-- Retorna string "Pix Copia e Cola" pronta para QR Code
-
----
-
-### 5. Botão "Gerar PIX" nas Contas a Receber
-
-Na tabela de Contas a Pagar/Receber (`PayablesReceivablesPage.tsx`):
-- Botão/ícone "Gerar PIX" nas linhas do tipo "receivable" (a receber) com status pendente
-- Dialog com:
-  - QR Code renderizado (instalar `qrcode.react`)
-  - Código "Pix Copia e Cola" copiável
-  - Dados do pagamento (valor, descrição, beneficiário)
-  - Botão "Copiar código"
-  - Botão "Enviar por WhatsApp" (se cliente tem WhatsApp cadastrado) — envia mensagem com dados da cobrança e código Pix via edge function
-
----
-
-### 6. Edge Function `send-pix-whatsapp`
-
-Nova edge function que recebe: phone, pixCode, description, amount, companyName. Envia mensagem formatada via Evolution API com dados da cobrança e o código "Pix Copia e Cola".
-
----
-
-### 7. Atualizar Edge Function `notify-whatsapp`
-
-Modificar a função existente para:
-- Ler configurações de cada empresa (`whatsapp_notify_enabled`, `whatsapp_notify_days_before`, `whatsapp_notify_time`)
-- Para cada empresa com notificações ativas, buscar contas a pagar/receber pendentes cujo vencimento coincida com os dias configurados
-- Enviar notificação para o WhatsApp do cliente/fornecedor vinculado (campo `whatsapp_phone` da tabela `clients_suppliers`)
-- Respeitar o horário configurado (comparar hora atual com `whatsapp_notify_time`)
-- Mensagens diferenciadas: lembrete de vencimento para contas a pagar, cobrança para contas a receber
-
----
-
-### 8. Instalar Dependência
-
-- `qrcode.react` para renderizar QR Codes no frontend
-
----
-
-### Limitações
-
-- QR Code PIX estático: sem confirmação automática de pagamento
-- O cron job existente deve rodar a cada hora; a função verifica se está na janela de horário configurada
-- Sem rastreamento individual de pagamentos sem PSP
-
+**Editar:**
+- `src/App.tsx` (envolver com `AccessModeProvider`)
+- `src/pages/Finance.tsx` (mostrar dialog, controlar view padrão por modo, rotear `admin-dashboard`)
+- `src/components/finance/FinanceSidebar.tsx` (renderização condicional por modo + visual admin)
+- `src/components/finance/FinanceHeader.tsx` (badge + botão "Trocar Modo")

@@ -90,6 +90,11 @@ export function FinanceHeader({ user, onSignOut, companyName, onOpenUsers, showU
             <Users className="h-5 w-5" />
           </Button>
         )}
+        {canSwitchMode && onSwitchMode && (
+          <Button variant="ghost" size="icon" onClick={onSwitchMode} title="Trocar modo de acesso">
+            <RefreshCw className="h-5 w-5" />
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">

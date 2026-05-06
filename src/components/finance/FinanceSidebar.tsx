@@ -30,6 +30,7 @@ import {
   Landmark,
   Shield,
   LayoutDashboard,
+  Barcode,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -92,6 +93,7 @@ const transacoesMenuItems: MenuItem[] = [
   { view: 'transactions', label: 'Lançamentos', icon: <ArrowUpDown className="w-4 h-4" /> },
   { view: 'transfers', label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" /> },
   { view: 'payables-receivables', label: 'Contas a Pagar/Receber', icon: <CreditCard className="w-4 h-4" /> },
+  { view: 'boletos', label: 'Boletos', icon: <Barcode className="w-4 h-4" /> },
 ];
 
 const relatoriosMainItems: MenuItem[] = [

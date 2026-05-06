@@ -177,7 +177,7 @@ export function FinanceSidebar({
   return (
     <TooltipProvider delayDuration={0}>
       <aside className={cn(
-        "h-screen bg-card border-r border-border flex flex-col transition-all duration-300",
+        "h-full bg-card border-r border-border flex flex-col transition-all duration-300",
         collapsed ? "w-14" : "w-64",
         isAdminMode && "border-r-primary/30"
       )}>

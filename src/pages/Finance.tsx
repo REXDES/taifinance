@@ -4,6 +4,8 @@ import { useAccessMode } from '@/contexts/AccessModeContext';
 import { useCompanies } from '@/hooks/useCompanies';
 import { FinanceSidebar } from '@/components/finance/FinanceSidebar';
 import { FinanceHeader } from '@/components/finance/FinanceHeader';
+import { MobileBottomNav } from '@/components/finance/MobileBottomNav';
+import { MobileMenuSheet } from '@/components/finance/MobileMenuSheet';
 import { AccountsPage } from '@/components/finance/AccountsPage';
 import { TransactionsPage } from '@/components/finance/TransactionsPage';
 import { TransfersPage } from '@/components/finance/TransfersPage';
@@ -53,7 +55,6 @@ export type FinanceView =
   | 'bank-digital';
 
 const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital'];
-// Views available only in normal mode for supervisors
 const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'dashboard',
   'quick-entry',
@@ -93,13 +94,13 @@ const Finance = () => {
   const [showUsers, setShowUsers] = useState(false);
   const [showInvitations, setShowInvitations] = useState(false);
   const [showCompanySettings, setShowCompanySettings] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isSupervisor = userRole?.role === 'supervisor';
   const isGerente = userRole?.role === 'gerente';
   const canAccessUserManagement = isSupervisor || isGerente;
   const canCreateCompany = isSupervisor || (isGerente && userRole?.companyLimit !== null && (userRole?.companiesCreated ?? 0) < (userRole?.companyLimit ?? 0));
 
-  // Force non-supervisors to "normal" mode automatically
   useEffect(() => {
     if (!userRole) return;
     if (!isSupervisor && accessMode !== 'normal') {
@@ -110,7 +111,6 @@ const Finance = () => {
   const showAccessModeDialog = !!userRole && isSupervisor && accessMode === null;
   const effectiveMode: 'admin' | 'normal' = accessMode === 'admin' && isSupervisor ? 'admin' : 'normal';
 
-  // Sync default view to mode
   useEffect(() => {
     if (showAccessModeDialog) return;
     if (effectiveMode === 'admin') {
@@ -190,6 +190,28 @@ const Finance = () => {
     return false;
   };
 
+  const sharedSidebarProps = {
+    companies,
+    selectedCompanyId,
+    onSelectCompany: setSelectedCompanyId,
+    currentView,
+    onChangeView: setCurrentView,
+    isSupervisor,
+    isGerente,
+    accessMode: effectiveMode,
+    canCreateCompany,
+    companyLimit: userRole?.companyLimit ?? null,
+    companiesCreated: userRole?.companiesCreated ?? 0,
+    canInvite: isSupervisor || (isGerente && userRole?.invitationLimit !== null && (userRole?.invitationsCreated ?? 0) < (userRole?.invitationLimit ?? 0)),
+    invitationLimit: userRole?.invitationLimit ?? null,
+    invitationsCreated: userRole?.invitationsCreated ?? 0,
+    onCreateCompany: () => setIsCreateCompanyOpen(true),
+    onManageCompanies: () => setShowCompanySettings(true),
+    onOpenUsers: () => setShowUsers(true),
+    onOpenInvitations: () => setShowInvitations(true),
+    onOpenCompanySettings: () => setShowCompanySettings(true),
+  };
+
   const renderContent = () => {
     if (effectiveMode === 'admin' && currentView === 'admin-dashboard') {
       return <AdminDashboard />;
@@ -244,29 +266,14 @@ const Finance = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
-      <FinanceSidebar
-        companies={companies}
-        selectedCompanyId={selectedCompanyId}
-        onSelectCompany={setSelectedCompanyId}
-        currentView={currentView}
-        onChangeView={setCurrentView}
-        isSupervisor={isSupervisor}
-        isGerente={isGerente}
-        accessMode={effectiveMode}
-        canCreateCompany={canCreateCompany}
-        companyLimit={userRole?.companyLimit ?? null}
-        companiesCreated={userRole?.companiesCreated ?? 0}
-        canInvite={isSupervisor || (isGerente && userRole?.invitationLimit !== null && (userRole?.invitationsCreated ?? 0) < (userRole?.invitationLimit ?? 0))}
-        invitationLimit={userRole?.invitationLimit ?? null}
-        invitationsCreated={userRole?.invitationsCreated ?? 0}
-        onCreateCompany={() => setIsCreateCompanyOpen(true)}
-        onManageCompanies={() => setShowCompanySettings(true)}
-        onOpenUsers={() => setShowUsers(true)}
-        onOpenInvitations={() => setShowInvitations(true)}
-        onOpenCompanySettings={() => setShowCompanySettings(true)}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex h-[100dvh] bg-background overflow-hidden">
+      {/* Desktop sidebar — hidden on mobile */}
+      <div className="hidden md:block shrink-0">
+        <FinanceSidebar {...sharedSidebarProps} />
+      </div>
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <FinanceHeader
           user={user}
           onSignOut={signOut}
@@ -276,11 +283,28 @@ const Finance = () => {
           isAdminMode={effectiveMode === 'admin'}
           canSwitchMode={isSupervisor}
           onSwitchMode={resetMode}
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
-        <main className="flex-1 overflow-auto p-6">
+        {/* pb-16 on mobile to clear the bottom nav bar */}
+        <main className="flex-1 overflow-auto p-3 md:p-6 pb-20 md:pb-6">
           {renderContent()}
         </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <MobileBottomNav
+        currentView={currentView}
+        onChangeView={setCurrentView}
+        onOpenMenu={() => setMobileMenuOpen(true)}
+        isAdminMode={effectiveMode === 'admin'}
+      />
+
+      {/* Mobile full menu drawer */}
+      <MobileMenuSheet
+        open={mobileMenuOpen}
+        onOpenChange={setMobileMenuOpen}
+        {...sharedSidebarProps}
+      />
 
       <AccessModeDialog open={showAccessModeDialog} />
 

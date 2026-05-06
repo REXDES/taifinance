@@ -24,6 +24,7 @@ import { PayablesReceivablesFlowPage } from '@/components/finance/PayablesReceiv
 import { QuickEntryPage } from '@/components/finance/QuickEntryPage';
 import { ClientsSuppliersPage } from '@/components/finance/ClientsSuppliersPage';
 import { BankDigitalPage } from '@/components/finance/BankDigitalPage';
+import { BoletosPage } from '@/components/finance/BoletosPage';
 import { CompanySettingsDialog } from '@/components/finance/CompanySettingsDialog';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
@@ -52,7 +53,8 @@ export type FinanceView =
   | 'payables-receivables-flow'
   | 'audit-logs'
   | 'clients-suppliers'
-  | 'bank-digital';
+  | 'bank-digital'
+  | 'boletos';
 
 const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital'];
 const NORMAL_ONLY_VIEWS: FinanceView[] = [
@@ -71,6 +73,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'payables-receivables-calendar',
   'payables-receivables-flow',
   'clients-suppliers',
+  'boletos',
 ];
 
 interface UserRoleInfo {
@@ -260,6 +263,8 @@ const Finance = () => {
         return <ClientsSuppliersPage companyId={selectedCompanyId} />;
       case 'bank-digital':
         return <BankDigitalPage companyId={selectedCompanyId} />;
+      case 'boletos':
+        return <BoletosPage companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }

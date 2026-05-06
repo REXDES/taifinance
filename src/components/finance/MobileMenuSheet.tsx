@@ -46,6 +46,7 @@ import {
   LayoutDashboard,
   ChevronDown,
   ChevronRight,
+  Barcode,
 } from 'lucide-react';
 import { FinanceView } from '@/pages/Finance';
 
@@ -91,6 +92,7 @@ const transacoesMenuItems: MenuItem[] = [
   { view: 'transactions', label: 'Lançamentos', icon: <ArrowUpDown className="w-4 h-4" /> },
   { view: 'transfers', label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" /> },
   { view: 'payables-receivables', label: 'Contas a Pagar/Receber', icon: <CreditCard className="w-4 h-4" /> },
+  { view: 'boletos', label: 'Boletos', icon: <Barcode className="w-4 h-4" /> },
 ];
 
 const relatoriosMainItems: MenuItem[] = [

@@ -128,11 +128,13 @@ export function useRentals(companyId: string | null) {
 export function useCompanyMachinesFlag(companyId: string | null) {
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
+  const refetch = useCallback(async () => {
     if (!companyId) { setEnabled(false); setLoading(false); return; }
     setLoading(true);
-    (supabase as any).from('companies').select('machines_module_enabled').eq('id', companyId).maybeSingle()
-      .then(({ data }: any) => { setEnabled(!!data?.machines_module_enabled); setLoading(false); });
+    const { data } = await (supabase as any).from('companies').select('machines_module_enabled').eq('id', companyId).maybeSingle();
+    setEnabled(!!data?.machines_module_enabled);
+    setLoading(false);
   }, [companyId]);
-  return { enabled, loading };
+  useEffect(() => { refetch(); }, [refetch]);
+  return { enabled, loading, refetch };
 }

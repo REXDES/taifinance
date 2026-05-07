@@ -100,6 +100,7 @@ export function MachinesPage({ companyId }: Props) {
       company_id: companyId, name: form.name, brand: form.brand || null, model: form.model || null,
       year: form.year ? parseInt(form.year) : null, destination: form.destination || null,
       type_id: form.type_id !== 'none' ? form.type_id : null,
+      category: form.category,
       acquisition_value: parseFloat(form.acquisition_value || '0'),
       acquisition_date: form.acquisition_date || null,
       acquisition_source: form.acquisition_source,

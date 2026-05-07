@@ -159,6 +159,19 @@ export function FinanceSidebar({
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
 
+  // Accordion state for top-level groups in normal mode (only one open at a time)
+  type TopGroup = 'transacoes' | 'relatorios' | 'cadastros' | 'machines';
+  const initialOpenGroup: TopGroup | null =
+    transacoesMenuItems.some(i => currentView === i.view) ? 'transacoes'
+    : allRelatoriosItems.some(i => currentView === i.view) ? 'relatorios'
+    : cadastrosMenuItems.some(i => currentView === i.view) ? 'cadastros'
+    : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
+    : null;
+  const [openGroup, setOpenGroup] = useState<TopGroup | null>(initialOpenGroup);
+  const toggleGroup = (g: TopGroup) => (open: boolean) => setOpenGroup(open ? g : (prev => prev === g ? null : prev) as any);
+  // simpler setter
+  const setGroup = (g: TopGroup) => (open: boolean) => setOpenGroup(open ? g : null);
+
   const renderMenuItem = (item: MenuItem) => (
     collapsed ? (
       <Tooltip key={item.view}>

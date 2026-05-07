@@ -35,6 +35,7 @@ import {
   HardHat,
   ClipboardCheck,
   Hammer,
+  Briefcase,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -90,7 +91,7 @@ type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };
 
 const mainMenuItems: MenuItem[] = [
   { view: 'dashboard', label: 'Dashboard', icon: <Home className="w-4 h-4" /> },
-  { view: 'quick-entry', label: 'Lance Rápido', icon: <Zap className="w-4 h-4" /> },
+  { view: 'quick-entry', label: 'Lance Rápido (Finanças)', icon: <Zap className="w-4 h-4" /> },
   { view: 'bank-digital', label: 'Banco Digital', icon: <Landmark className="w-4 h-4" /> },
 ];
 
@@ -160,15 +161,25 @@ export function FinanceSidebar({
   const isAdminMode = accessMode === 'admin';
 
   // Accordion state for top-level groups in normal mode (only one open at a time)
-  type TopGroup = 'transacoes' | 'relatorios' | 'cadastros' | 'machines';
+  type TopGroup = 'gestao' | 'machines';
+  type SubGroup = 'transacoes' | 'relatorios' | 'cadastros';
+  const isInGestao =
+    transacoesMenuItems.some(i => currentView === i.view) ||
+    allRelatoriosItems.some(i => currentView === i.view) ||
+    cadastrosMenuItems.some(i => currentView === i.view);
   const initialOpenGroup: TopGroup | null =
+    isInGestao ? 'gestao'
+    : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
+    : null;
+  const initialOpenSub: SubGroup | null =
     transacoesMenuItems.some(i => currentView === i.view) ? 'transacoes'
     : allRelatoriosItems.some(i => currentView === i.view) ? 'relatorios'
     : cadastrosMenuItems.some(i => currentView === i.view) ? 'cadastros'
-    : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
     : null;
   const [openGroup, setOpenGroup] = useState<TopGroup | null>(initialOpenGroup);
+  const [openSubGroup, setOpenSubGroup] = useState<SubGroup | null>(initialOpenSub);
   const setGroup = (g: TopGroup) => (open: boolean) => setOpenGroup(open ? g : null);
+  const setSubGroup = (g: SubGroup) => (open: boolean) => setOpenSubGroup(open ? g : null);
 
   const renderMenuItem = (item: MenuItem) => (
     collapsed ? (
@@ -431,92 +442,102 @@ export function FinanceSidebar({
               <>
                 {mainMenuItems.map(renderMenuItem)}
 
-                {/* Transações */}
+                {/* Gestão Financeira (engloba Transações, Relatórios, Cadastros) */}
                 {collapsed ? (
-                  transacoesMenuItems.map(renderMenuItem)
+                  <>
+                    {transacoesMenuItems.map(renderMenuItem)}
+                    {allRelatoriosItems.map(renderMenuItem)}
+                    {cadastrosMenuItems.map(renderMenuItem)}
+                  </>
                 ) : (
-                  <Collapsible open={openGroup === 'transacoes'} onOpenChange={setGroup('transacoes')}>
+                  <Collapsible open={openGroup === 'gestao'} onOpenChange={setGroup('gestao')}>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                         <span className="flex items-center gap-2">
-                          <Receipt className="w-4 h-4" />
-                          Transações
+                          <Briefcase className="w-4 h-4" />
+                          Gestão Financeira
                         </span>
                         <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                      {transacoesMenuItems.map(renderMenuItem)}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
-
-                {/* Relatórios */}
-                {collapsed ? (
-                  allRelatoriosItems.map(renderMenuItem)
-                ) : (
-                  <Collapsible open={openGroup === 'relatorios'} onOpenChange={setGroup('relatorios')}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
-                        <span className="flex items-center gap-2">
-                          <ClipboardList className="w-4 h-4" />
-                          Relatórios
-                        </span>
-                        <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                      {relatoriosMainItems.map(renderMenuItem)}
-
-                      <Collapsible defaultOpen={movimentacoesMenuItems.some(item => currentView === item.view)}>
+                      {/* Transações */}
+                      <Collapsible open={openSubGroup === 'transacoes'} onOpenChange={setSubGroup('transacoes')}>
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                             <span className="flex items-center gap-2">
-                              <Activity className="w-4 h-4" />
-                              Movimentações
+                              <Receipt className="w-4 h-4" />
+                              Transações
                             </span>
                             <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                          {movimentacoesMenuItems.map(renderMenuItem)}
+                          {transacoesMenuItems.map(renderMenuItem)}
                         </CollapsibleContent>
                       </Collapsible>
 
-                      <Collapsible defaultOpen={pagarReceberMenuItems.some(item => currentView === item.view)}>
+                      {/* Relatórios */}
+                      <Collapsible open={openSubGroup === 'relatorios'} onOpenChange={setSubGroup('relatorios')}>
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                             <span className="flex items-center gap-2">
-                              <CreditCard className="w-4 h-4" />
-                              Pagar/Receber
+                              <ClipboardList className="w-4 h-4" />
+                              Relatórios
                             </span>
                             <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                          {pagarReceberMenuItems.map(renderMenuItem)}
+                          {relatoriosMainItems.map(renderMenuItem)}
+
+                          <Collapsible defaultOpen={movimentacoesMenuItems.some(item => currentView === item.view)}>
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                                <span className="flex items-center gap-2">
+                                  <Activity className="w-4 h-4" />
+                                  Movimentações
+                                </span>
+                                <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                              {movimentacoesMenuItems.map(renderMenuItem)}
+                            </CollapsibleContent>
+                          </Collapsible>
+
+                          <Collapsible defaultOpen={pagarReceberMenuItems.some(item => currentView === item.view)}>
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                                <span className="flex items-center gap-2">
+                                  <CreditCard className="w-4 h-4" />
+                                  Pagar/Receber
+                                </span>
+                                <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                              {pagarReceberMenuItems.map(renderMenuItem)}
+                            </CollapsibleContent>
+                          </Collapsible>
                         </CollapsibleContent>
                       </Collapsible>
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
 
-                {/* Cadastros */}
-                {collapsed ? (
-                  cadastrosMenuItems.map(renderMenuItem)
-                ) : (
-                  <Collapsible open={openGroup === 'cadastros'} onOpenChange={setGroup('cadastros')}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
-                        <span className="flex items-center gap-2">
-                          <FolderCog className="w-4 h-4" />
-                          Cadastros
-                        </span>
-                        <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                      {cadastrosMenuItems.map(renderMenuItem)}
+                      {/* Cadastros */}
+                      <Collapsible open={openSubGroup === 'cadastros'} onOpenChange={setSubGroup('cadastros')}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                            <span className="flex items-center gap-2">
+                              <FolderCog className="w-4 h-4" />
+                              Cadastros
+                            </span>
+                            <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                          {cadastrosMenuItems.map(renderMenuItem)}
+                        </CollapsibleContent>
+                      </Collapsible>
                     </CollapsibleContent>
                   </Collapsible>
                 )}

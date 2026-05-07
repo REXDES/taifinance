@@ -296,6 +296,7 @@ const Finance = () => {
         onOpenUsers={() => setShowUsers(true)}
         onOpenInvitations={() => setShowInvitations(true)}
         onOpenCompanySettings={() => setShowCompanySettings(true)}
+        machinesEnabled={machinesEnabled}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <FinanceHeader

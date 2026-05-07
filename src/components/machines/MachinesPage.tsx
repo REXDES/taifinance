@@ -281,26 +281,29 @@ export function MachinesPage({ companyId }: Props) {
         <CardContent className="p-0">
           <Table>
             <TableHeader><TableRow>
-              <TableHead>Nome</TableHead><TableHead>Categoria</TableHead><TableHead>Marca/Modelo</TableHead><TableHead>Ano</TableHead>
-              <TableHead>Horímetro</TableHead><TableHead>Origem</TableHead><TableHead>Status</TableHead>
+              <TableHead>Nome</TableHead><TableHead>Categoria</TableHead><TableHead>Marca/Modelo</TableHead>
+              <TableHead>Local</TableHead>
+              <TableHead>Status comercial</TableHead><TableHead>Status técnico</TableHead>
+              <TableHead>Horímetro</TableHead><TableHead>Origem</TableHead>
               <TableHead>Valor</TableHead><TableHead className="w-40"></TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {loading ? <TableRow><TableCell colSpan={9}>Carregando...</TableCell></TableRow> :
-                filtered.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum item encontrado</TableCell></TableRow> :
+              {loading ? <TableRow><TableCell colSpan={10}>Carregando...</TableCell></TableRow> :
+                filtered.length === 0 ? <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhum item encontrado</TableCell></TableRow> :
                 filtered.map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
                     <TableCell><Badge variant="secondary">{CATEGORY_LABEL[m.category || 'equipamento']}</Badge></TableCell>
                     <TableCell>{[m.brand, m.model].filter(Boolean).join(' ') || '-'}</TableCell>
-                    <TableCell>{m.year || '-'}</TableCell>
+                    <TableCell>{(m as any).location || '-'}</TableCell>
+                    <TableCell><Badge variant="outline">{STATUS_LABEL[m.status] || m.status}</Badge></TableCell>
+                    <TableCell><Badge variant="outline">{TECH_STATUS_LABEL[(m as any).technical_status || 'operacional']}</Badge></TableCell>
                     <TableCell>{Number(m.current_horimeter).toFixed(1)}h</TableCell>
                     <TableCell>
                       <Badge variant={m.acquisition_source === 'pre_existing' ? 'secondary' : 'default'}>
                         {m.acquisition_source === 'pre_existing' ? 'Pré-existente' : 'Adquirida'}
                       </Badge>
                     </TableCell>
-                    <TableCell><Badge variant="outline">{STATUS_LABEL[m.status]}</Badge></TableCell>
                     <TableCell>R$ {Number(m.acquisition_value).toFixed(2)}</TableCell>
                     <TableCell>
                       <Button size="icon" variant="ghost" onClick={() => openPrices(m)} title="Preços de venda e locação"><Tag className="w-4 h-4" /></Button>

@@ -195,17 +195,62 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
     );
   };
 
+  const selectedFromList = companiesList.find(c => c.id === pickedId);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Gerenciar Empresa</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {showPicker && pickedId && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPickedId(null)}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            {showList
+              ? 'Selecionar Empresa'
+              : selectedFromList
+                ? `Configurações — ${selectedFromList.name}`
+                : 'Gerenciar Empresa'}
+          </DialogTitle>
           <DialogDescription>
-            Configure os dados cadastrais, PIX e notificações da empresa.
+            {showList
+              ? 'Escolha uma empresa para configurar.'
+              : 'Configure os dados cadastrais, PIX e notificações da empresa.'}
           </DialogDescription>
         </DialogHeader>
 
-        {loading ? (
+        {showList ? (
+          <div className="flex-1 overflow-y-auto -mx-6 px-6 py-2 space-y-2">
+            {companiesList.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhuma empresa cadastrada.</p>
+            ) : (
+              companiesList.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setPickedId(c.id)}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition-colors text-left"
+                >
+                  <div
+                    className="w-9 h-9 rounded flex items-center justify-center text-sm font-bold text-primary-foreground flex-shrink-0"
+                    style={{ backgroundColor: c.color?.startsWith('#') ? c.color : `hsl(${c.color})` }}
+                  >
+                    {c.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-foreground truncate">{c.name}</div>
+                    {(c.fantasy_name || c.cnpj) && (
+                      <div className="text-xs text-muted-foreground truncate">
+                        {c.fantasy_name}{c.fantasy_name && c.cnpj ? ' • ' : ''}{c.cnpj}
+                      </div>
+                    )}
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </button>
+              ))
+            )}
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>

@@ -175,22 +175,40 @@ export function MaintenancePage({ companyId }: Props) {
               <div><Label>Custo total (R$)</Label><Input type="number" step="0.01" value={form.total_cost} onChange={e => setForm({ ...form, total_cost: e.target.value })} /></div>
             </div>
             {!editing && (
-              <div className="grid grid-cols-2 gap-3">
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Forma de pagamento</Label>
+                    <Select value={form.payment_mode} onValueChange={(v: any) => setForm({ ...form, payment_mode: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">À vista</SelectItem>
+                        <SelectItem value="installments">Parcelado (Contas a Pagar)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.payment_mode === 'installments' && (
+                    <div><Label>Nº de parcelas</Label><Input type="number" min="1" value={form.installments} onChange={e => setForm({ ...form, installments: e.target.value })} /></div>
+                  )}
+                </div>
                 <div>
-                  <Label>Forma de pagamento</Label>
-                  <Select value={form.payment_mode} onValueChange={(v: any) => setForm({ ...form, payment_mode: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Label>Conta de pagamento</Label>
+                  <Select value={form.paid_account_id} onValueChange={v => setForm({ ...form, paid_account_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cash">À vista (Contas a Pagar 1x)</SelectItem>
-                      <SelectItem value="installments">Parcelado</SelectItem>
-                      <SelectItem value="none">Sem efeito financeiro</SelectItem>
+                      <SelectItem value="none">Não lançar no financeiro</SelectItem>
+                      {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {form.paid_account_id === 'none'
+                      ? 'Sem conta selecionada, nenhum lançamento será gerado.'
+                      : form.payment_mode === 'cash'
+                        ? 'A despesa será lançada nesta conta na data de início.'
+                        : 'Conta padrão para baixa das parcelas a pagar.'}
+                  </p>
                 </div>
-                {form.payment_mode === 'installments' && (
-                  <div><Label>Nº de parcelas</Label><Input type="number" min="1" value={form.installments} onChange={e => setForm({ ...form, installments: e.target.value })} /></div>
-                )}
-              </div>
+              </>
             )}
             <div>
               <Label>Status</Label>

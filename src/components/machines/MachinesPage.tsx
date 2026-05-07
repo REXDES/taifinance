@@ -364,11 +364,45 @@ export function MachinesPage({ companyId }: Props) {
                 </Select>
               </div>
               <div>
-                <Label>Status</Label>
+                <Label>Local</Label>
+                <Select value={form.location || '__none'} onValueChange={(v) => {
+                  if (v === '__add') {
+                    const name = window.prompt('Nome do novo local:');
+                    if (!name?.trim()) return;
+                    (supabase as any).from('machine_locations').insert({ company_id: companyId, name: name.trim() }).then(({ error }: any) => {
+                      if (error) toast.error(error.message);
+                      else { fetchLocations(); setForm(f => ({ ...f, location: name.trim() })); }
+                    });
+                    return;
+                  }
+                  setForm({ ...form, location: v === '__none' ? '' : v });
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Local" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Sem local</SelectItem>
+                    {allLocationNames.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                    <SelectItem value="__add">+ Novo local…</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Status comercial</Label>
                 <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Status técnico</Label>
+                <Select value={form.technical_status} onValueChange={(v: any) => setForm({ ...form, technical_status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TECH_STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

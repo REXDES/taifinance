@@ -19,11 +19,14 @@ interface Props { companyId: string; }
 const STATUS_LABEL: Record<string, string> = { available: 'Disponível', rented: 'Locada', maintenance: 'Em manutenção', sold: 'Vendida' };
 
 type MachineExt = Machine & {
+  category?: string | null;
   sale_price?: number | null;
   rental_price_daily?: number | null;
   rental_price_weekly?: number | null;
   rental_price_monthly?: number | null;
 };
+
+const CATEGORY_LABEL: Record<string, string> = { maquina: 'Máquina', equipamento: 'Equipamento', ferramenta: 'Ferramenta' };
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 

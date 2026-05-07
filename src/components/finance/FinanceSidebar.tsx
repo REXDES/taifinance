@@ -30,6 +30,11 @@ import {
   Landmark,
   Shield,
   LayoutDashboard,
+  Wrench,
+  Truck,
+  HardHat,
+  ClipboardCheck,
+  Hammer,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -78,6 +83,7 @@ interface FinanceSidebarProps {
   onOpenUsers?: () => void;
   onOpenInvitations?: () => void;
   onOpenCompanySettings?: () => void;
+  machinesEnabled?: boolean;
 }
 
 type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };
@@ -118,6 +124,15 @@ const cadastrosMenuItems: MenuItem[] = [
   { view: 'clients-suppliers', label: 'Clientes/Fornecedores', icon: <Users className="w-4 h-4" /> },
 ];
 
+const machinesMenuItems: MenuItem[] = [
+  { view: 'machines-inventory', label: 'Inventário', icon: <Truck className="w-4 h-4" /> },
+  { view: 'machines-rentals', label: 'Locações', icon: <ClipboardCheck className="w-4 h-4" /> },
+  { view: 'machines-rentals-report', label: 'Relatório de Locações', icon: <FileSearch className="w-4 h-4" /> },
+  { view: 'machines-maintenance', label: 'Manutenções', icon: <Hammer className="w-4 h-4" /> },
+  { view: 'machines-operators', label: 'Operadores', icon: <HardHat className="w-4 h-4" /> },
+  { view: 'machines-mechanics', label: 'Mecânicos', icon: <Wrench className="w-4 h-4" /> },
+];
+
 export function FinanceSidebar({
   companies,
   selectedCompanyId,
@@ -138,6 +153,7 @@ export function FinanceSidebar({
   onOpenUsers,
   onOpenInvitations,
   onOpenCompanySettings,
+  machinesEnabled = false,
 }: FinanceSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
@@ -512,6 +528,28 @@ export function FinanceSidebar({
                       {cadastrosMenuItems.map(renderMenuItem)}
                     </CollapsibleContent>
                   </Collapsible>
+                )}
+
+                {/* Máquinas & Locação (módulo opcional por empresa) */}
+                {machinesEnabled && (
+                  collapsed ? (
+                    machinesMenuItems.map(renderMenuItem)
+                  ) : (
+                    <Collapsible defaultOpen={machinesMenuItems.some(item => currentView === item.view)}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                          <span className="flex items-center gap-2">
+                            <Truck className="w-4 h-4" />
+                            Máquinas & Locação
+                          </span>
+                          <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                        {machinesMenuItems.map(renderMenuItem)}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )
                 )}
               </>
             )}

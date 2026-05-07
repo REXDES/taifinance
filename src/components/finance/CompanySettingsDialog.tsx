@@ -23,7 +23,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, QrCode, MessageSquare, Building2 } from 'lucide-react';
+import { Loader2, QrCode, MessageSquare, Building2, Wrench } from 'lucide-react';
 
 interface CompanySettingsDialogProps {
   open: boolean;
@@ -71,6 +71,9 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
   const [whatsappNotifyDaysBefore, setWhatsappNotifyDaysBefore] = useState<number[]>([0]);
   const [whatsappNotifyTime, setWhatsappNotifyTime] = useState('08:00');
 
+  // Módulos
+  const [machinesModuleEnabled, setMachinesModuleEnabled] = useState(false);
+
   useEffect(() => {
     if (open && companyId) {
       loadSettings();
@@ -106,6 +109,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
         setWhatsappNotifyEnabled(d.whatsapp_notify_enabled || false);
         setWhatsappNotifyDaysBefore(d.whatsapp_notify_days_before || [0]);
         setWhatsappNotifyTime(d.whatsapp_notify_time || '08:00');
+        setMachinesModuleEnabled(!!d.machines_module_enabled);
       }
     } catch (error) {
       console.error('Error loading company settings:', error);
@@ -141,6 +145,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
           whatsapp_notify_enabled: whatsappNotifyEnabled,
           whatsapp_notify_days_before: whatsappNotifyDaysBefore,
           whatsapp_notify_time: whatsappNotifyTime,
+          machines_module_enabled: machinesModuleEnabled,
         } as any)
         .eq('id', companyId);
 
@@ -179,7 +184,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
           </div>
         ) : (
           <Tabs defaultValue="cadastro" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
               <TabsTrigger value="cadastro" className="flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5" />
                 Cadastro
@@ -191,6 +196,10 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
               <TabsTrigger value="whatsapp" className="flex items-center gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5" />
                 WhatsApp
+              </TabsTrigger>
+              <TabsTrigger value="modulos" className="flex items-center gap-1.5">
+                <Wrench className="w-3.5 h-3.5" />
+                Módulos
               </TabsTrigger>
             </TabsList>
 
@@ -387,6 +396,27 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
                     </div>
                   </>
                 )}
+              </TabsContent>
+
+              <TabsContent value="modulos" className="mt-0 space-y-4">
+                <div className="rounded-lg border border-border p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-base flex items-center gap-2">
+                        <Wrench className="w-4 h-4" />
+                        Máquinas & Locação
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Habilita o módulo de gestão de máquinas, equipamentos, ferramentas, manutenções, operadores, mecânicos e locações.
+                        Quando ativo, surge uma nova seção no menu lateral. Compras e manutenções geram contas a pagar; locações geram contas a receber (à vista ou parceladas).
+                      </p>
+                    </div>
+                    <Switch
+                      checked={machinesModuleEnabled}
+                      onCheckedChange={setMachinesModuleEnabled}
+                    />
+                  </div>
+                </div>
               </TabsContent>
             </div>
           </Tabs>

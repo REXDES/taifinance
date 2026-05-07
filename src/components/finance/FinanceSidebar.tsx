@@ -531,6 +531,29 @@ export function FinanceSidebar({
                     </Collapsible>
                   )
                 )}
+
+                {/* Configurações da Empresa (supervisor e gerente) */}
+                {selectedCompanyId && onOpenCompanySettings && (isSupervisor || isGerente) && (
+                  collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="w-full" onClick={onOpenCompanySettings}>
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Configurações da Empresa</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onOpenCompanySettings}
+                    >
+                      <Settings className="w-4 h-4" />
+                      Configurações da Empresa
+                    </Button>
+                  )
+                )}
               </>
             )}
           </div>

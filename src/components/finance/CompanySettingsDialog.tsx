@@ -496,12 +496,14 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
 
         <DialogFooter className="flex-shrink-0 mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {showList ? 'Fechar' : 'Cancelar'}
           </Button>
-          <Button onClick={handleSave} disabled={saving || loading}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Salvar
-          </Button>
+          {!showList && (
+            <Button onClick={handleSave} disabled={saving || loading}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Salvar
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

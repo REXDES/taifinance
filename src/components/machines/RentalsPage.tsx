@@ -170,7 +170,7 @@ export function RentalsPage({ companyId }: Props) {
         machineIds.map(mid => ({ rental_id: rental.id, machine_id: mid }))
       );
       for (const mid of machineIds) {
-        await (supabase as any).from('machines').update({ status: 'rented' }).eq('id', mid);
+        await (supabase as any).from('machines').update({ status: 'locada' }).eq('id', mid);
       }
       if (form.horimeter_start) {
         await (supabase as any).from('machine_horimeter_logs').insert(
@@ -241,7 +241,7 @@ export function RentalsPage({ companyId }: Props) {
     if (r.payment_mode === 'installments') { try { await deletePendingInstallments({ rentalId: r.id }); } catch {} }
     else if (r.transaction_id) { await (supabase as any).from('transactions').delete().eq('id', r.transaction_id); }
     const { data: rms } = await (supabase as any).from('rental_machines').select('machine_id').eq('rental_id', r.id);
-    if (rms) for (const rm of rms) await (supabase as any).from('machines').update({ status: 'available' }).eq('id', rm.machine_id);
+    if (rms) for (const rm of rms) await (supabase as any).from('machines').update({ status: 'disponivel' }).eq('id', rm.machine_id);
     toast.success('Locação cancelada'); refetch();
   };
 
@@ -258,7 +258,7 @@ export function RentalsPage({ companyId }: Props) {
     const { data: rms } = await (supabase as any).from('rental_machines').select('machine_id').eq('rental_id', closing.id);
     if (rms) {
       for (const rm of rms) {
-        await (supabase as any).from('machines').update({ status: 'available' }).eq('id', rm.machine_id);
+        await (supabase as any).from('machines').update({ status: 'disponivel' }).eq('id', rm.machine_id);
         if (horimeterEnd) {
           await (supabase as any).from('machine_horimeter_logs').insert({
             machine_id: rm.machine_id, reading: parseFloat(horimeterEnd), source: 'rental_end', reference_id: closing.id,
@@ -285,7 +285,7 @@ export function RentalsPage({ companyId }: Props) {
       }
       // Libera máquinas e remove vínculos
       const { data: rms } = await (supabase as any).from('rental_machines').select('machine_id').eq('rental_id', deleting.id);
-      if (rms) for (const rm of rms) await (supabase as any).from('machines').update({ status: 'available' }).eq('id', rm.machine_id);
+      if (rms) for (const rm of rms) await (supabase as any).from('machines').update({ status: 'disponivel' }).eq('id', rm.machine_id);
       await (supabase as any).from('rental_machines').delete().eq('rental_id', deleting.id);
       // Transação à vista (se houver)
       if (deleting.transaction_id) await (supabase as any).from('transactions').delete().eq('id', deleting.transaction_id);
@@ -444,7 +444,7 @@ export function RentalsPage({ companyId }: Props) {
               <div>
                 <Label>Máquinas / Implementos</Label>
                 <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded p-2">
-                  {machines.filter(m => m.status === 'available').map(m => (
+                  {machines.filter(m => m.status === 'disponivel').map(m => (
                     <label key={m.id} className="flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={form.machine_ids.includes(m.id)}
                         onChange={e => setForm({
@@ -456,7 +456,7 @@ export function RentalsPage({ companyId }: Props) {
                       {m.name}
                     </label>
                   ))}
-                  {machines.filter(m => m.status === 'available').length === 0 && <span className="text-xs text-muted-foreground col-span-2">Nenhuma máquina disponível</span>}
+                  {machines.filter(m => m.status === 'disponivel').length === 0 && <span className="text-xs text-muted-foreground col-span-2">Nenhuma máquina disponível</span>}
                 </div>
               </div>
             )}

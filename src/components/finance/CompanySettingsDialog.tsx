@@ -109,6 +109,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
         setWhatsappNotifyEnabled(d.whatsapp_notify_enabled || false);
         setWhatsappNotifyDaysBefore(d.whatsapp_notify_days_before || [0]);
         setWhatsappNotifyTime(d.whatsapp_notify_time || '08:00');
+        setMachinesModuleEnabled(!!d.machines_module_enabled);
       }
     } catch (error) {
       console.error('Error loading company settings:', error);

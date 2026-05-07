@@ -32,6 +32,7 @@ interface CompanySettingsDialogProps {
   companyId: string | null;
   showPicker?: boolean; // se true, força exibir lista de empresas para escolher (modo admin)
   showModulesTab?: boolean; // só admin/supervisor pode ver/alterar módulos
+  onSaved?: () => void;
 }
 
 const NOTIFY_DAYS_OPTIONS = [
@@ -48,7 +49,7 @@ const UF_OPTIONS = [
   'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
 ];
 
-export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicker = false, showModulesTab = false }: CompanySettingsDialogProps) {
+export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicker = false, showModulesTab = false, onSaved }: CompanySettingsDialogProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [companiesList, setCompaniesList] = useState<Array<{ id: string; name: string; fantasy_name: string | null; cnpj: string | null; color: string }>>([]);
@@ -196,6 +197,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
 
       if (error) throw error;
       toast.success('Configurações salvas com sucesso!');
+      onSaved?.();
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving company settings:', error);

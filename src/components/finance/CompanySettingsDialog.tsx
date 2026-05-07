@@ -23,7 +23,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, QrCode, MessageSquare, Building2 } from 'lucide-react';
+import { Loader2, QrCode, MessageSquare, Building2, Wrench } from 'lucide-react';
 
 interface CompanySettingsDialogProps {
   open: boolean;

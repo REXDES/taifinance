@@ -263,10 +263,21 @@ export function MachinesPage({ companyId }: Props) {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl overflow-y-auto max-h-[85vh]">
-          <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nova'} Máquina</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Novo'} Item</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div><Label>Nome *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+              <div>
+                <Label>Categoria *</Label>
+                <Select value={form.category} onValueChange={(v: any) => setForm({ ...form, category: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="maquina">Máquina</SelectItem>
+                    <SelectItem value="equipamento">Equipamento</SelectItem>
+                    <SelectItem value="ferramenta">Ferramenta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label>Tipo</Label>
                 <div className="flex gap-2">

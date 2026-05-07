@@ -215,10 +215,24 @@ export function MachinesPage({ companyId }: Props) {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Status comercial" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
+            <SelectItem value="all">Todos status comerc.</SelectItem>
             {Object.entries(STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={techStatusFilter} onValueChange={setTechStatusFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Status técnico" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos status técn.</SelectItem>
+            {Object.entries(TECH_STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={locationFilter} onValueChange={setLocationFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Local" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os locais</SelectItem>
+            {allLocationNames.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
@@ -229,6 +243,7 @@ export function MachinesPage({ companyId }: Props) {
             <SelectItem value="pre_existing">Pré-existentes</SelectItem>
           </SelectContent>
         </Select>
+        <Button variant="outline" size="sm" onClick={() => setLocDialogOpen(true)}><MapPin className="w-4 h-4 mr-1" />Locais</Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

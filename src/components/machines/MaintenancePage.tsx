@@ -74,18 +74,27 @@ export function MaintenancePage({ companyId }: Props) {
       const { data, error } = await (supabase as any).from('maintenance_records').insert(payload).select().single();
       if (error) return toast.error(error.message);
       await (supabase as any).from('machines').update({ technical_status: techStatus }).eq('id', form.machine_id);
-      // Generate financial entries
-      if (cost > 0 && form.payment_mode !== 'none') {
-        const inst = form.payment_mode === 'installments' ? Math.max(1, parseInt(form.installments || '1')) : 1;
+      // Lançamento financeiro só se conta de pagamento foi informada
+      if (cost > 0 && form.paid_account_id !== 'none') {
         try {
-          await generateMaintenancePayables({
-            companyId, maintenanceId: data.id,
-            description: `Manutenção: ${form.description || 'sem descrição'}`,
-            totalAmount: cost, startDate: form.start_date, installments: inst, userId: user?.id,
-          });
-        } catch (e: any) { toast.error('Erro nas parcelas: ' + e.message); }
+          if (form.payment_mode === 'cash') {
+            const { data: tx } = await (supabase as any).from('transactions').insert({
+              company_id: companyId, account_id: form.paid_account_id, type: 'expense',
+              amount: cost, description: `Manutenção: ${form.description || 'sem descrição'}`,
+              date: form.start_date, created_by: user?.id ?? null,
+            }).select().single();
+            if (tx) await (supabase as any).from('maintenance_records').update({ transaction_id: tx.id }).eq('id', data.id);
+          } else {
+            const inst = Math.max(1, parseInt(form.installments || '1'));
+            await generateMaintenancePayables({
+              companyId, maintenanceId: data.id,
+              description: `Manutenção: ${form.description || 'sem descrição'}`,
+              totalAmount: cost, startDate: form.start_date, installments: inst, userId: user?.id,
+            });
+          }
+        } catch (e: any) { toast.error('Erro no lançamento financeiro: ' + e.message); }
       }
-      toast.success('Manutenção registrada');
+      toast.success(form.paid_account_id === 'none' ? 'Manutenção registrada (sem lançamento financeiro)' : 'Manutenção registrada');
     }
     setOpen(false); refetch();
   };

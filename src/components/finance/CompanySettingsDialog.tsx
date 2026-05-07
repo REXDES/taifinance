@@ -30,6 +30,7 @@ interface CompanySettingsDialogProps {
   onOpenChange: (open: boolean) => void;
   companyId: string | null;
   showPicker?: boolean; // se true, força exibir lista de empresas para escolher (modo admin)
+  showModulesTab?: boolean; // só admin/supervisor pode ver/alterar módulos
 }
 
 const NOTIFY_DAYS_OPTIONS = [
@@ -46,7 +47,7 @@ const UF_OPTIONS = [
   'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
 ];
 
-export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicker = false }: CompanySettingsDialogProps) {
+export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicker = false, showModulesTab = false }: CompanySettingsDialogProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [companiesList, setCompaniesList] = useState<Array<{ id: string; name: string; fantasy_name: string | null; cnpj: string | null; color: string }>>([]);
@@ -256,7 +257,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           </div>
         ) : (
           <Tabs defaultValue="cadastro" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+            <TabsList className={`grid w-full ${showModulesTab ? 'grid-cols-4' : 'grid-cols-3'} flex-shrink-0`}>
               <TabsTrigger value="cadastro" className="flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5" />
                 Cadastro
@@ -269,10 +270,12 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                 <MessageSquare className="w-3.5 h-3.5" />
                 WhatsApp
               </TabsTrigger>
-              <TabsTrigger value="modulos" className="flex items-center gap-1.5">
-                <Wrench className="w-3.5 h-3.5" />
-                Módulos
-              </TabsTrigger>
+              {showModulesTab && (
+                <TabsTrigger value="modulos" className="flex items-center gap-1.5">
+                  <Wrench className="w-3.5 h-3.5" />
+                  Módulos
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <div className="flex-1 overflow-y-auto mt-4" style={{ maxHeight: '55vh' }}>
@@ -470,26 +473,28 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                 )}
               </TabsContent>
 
-              <TabsContent value="modulos" className="mt-0 space-y-4">
-                <div className="rounded-lg border border-border p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <Label className="text-base flex items-center gap-2">
-                        <Wrench className="w-4 h-4" />
-                        Máquinas & Locação
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Habilita o módulo de gestão de máquinas, equipamentos, ferramentas, manutenções, operadores, mecânicos e locações.
-                        Quando ativo, surge uma nova seção no menu lateral. Compras e manutenções geram contas a pagar; locações geram contas a receber (à vista ou parceladas).
-                      </p>
+              {showModulesTab && (
+                <TabsContent value="modulos" className="mt-0 space-y-4">
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-base flex items-center gap-2">
+                          <Wrench className="w-4 h-4" />
+                          Máquinas & Locação
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Habilita o módulo de gestão de máquinas, equipamentos, ferramentas, manutenções, operadores, mecânicos e locações.
+                          Quando ativo, surge uma nova seção no menu lateral. Compras e manutenções geram contas a pagar; locações geram contas a receber (à vista ou parceladas).
+                        </p>
+                      </div>
+                      <Switch
+                        checked={machinesModuleEnabled}
+                        onCheckedChange={setMachinesModuleEnabled}
+                      />
                     </div>
-                    <Switch
-                      checked={machinesModuleEnabled}
-                      onCheckedChange={setMachinesModuleEnabled}
-                    />
                   </div>
-                </div>
-              </TabsContent>
+                </TabsContent>
+              )}
             </div>
           </Tabs>
         )}

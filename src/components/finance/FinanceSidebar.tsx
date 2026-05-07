@@ -161,15 +161,25 @@ export function FinanceSidebar({
   const isAdminMode = accessMode === 'admin';
 
   // Accordion state for top-level groups in normal mode (only one open at a time)
-  type TopGroup = 'transacoes' | 'relatorios' | 'cadastros' | 'machines';
+  type TopGroup = 'gestao' | 'machines';
+  type SubGroup = 'transacoes' | 'relatorios' | 'cadastros';
+  const isInGestao =
+    transacoesMenuItems.some(i => currentView === i.view) ||
+    allRelatoriosItems.some(i => currentView === i.view) ||
+    cadastrosMenuItems.some(i => currentView === i.view);
   const initialOpenGroup: TopGroup | null =
+    isInGestao ? 'gestao'
+    : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
+    : null;
+  const initialOpenSub: SubGroup | null =
     transacoesMenuItems.some(i => currentView === i.view) ? 'transacoes'
     : allRelatoriosItems.some(i => currentView === i.view) ? 'relatorios'
     : cadastrosMenuItems.some(i => currentView === i.view) ? 'cadastros'
-    : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
     : null;
   const [openGroup, setOpenGroup] = useState<TopGroup | null>(initialOpenGroup);
+  const [openSubGroup, setOpenSubGroup] = useState<SubGroup | null>(initialOpenSub);
   const setGroup = (g: TopGroup) => (open: boolean) => setOpenGroup(open ? g : null);
+  const setSubGroup = (g: SubGroup) => (open: boolean) => setOpenSubGroup(open ? g : null);
 
   const renderMenuItem = (item: MenuItem) => (
     collapsed ? (

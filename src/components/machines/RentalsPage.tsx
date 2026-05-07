@@ -513,18 +513,23 @@ export function RentalsPage({ companyId }: Props) {
               </Select>
             </div>
 
-            {form.payment_mode === 'cash' ? (
-              <div>
-                <Label>Conta de recebimento</Label>
-                <Select value={form.paid_account_id} onValueChange={v => setForm({ ...form, paid_account_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">—</SelectItem>
-                    {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
+            <div>
+              <Label>Conta de recebimento *</Label>
+              <Select value={form.paid_account_id} onValueChange={v => setForm({ ...form, paid_account_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {form.payment_mode === 'cash'
+                  ? 'A receita será lançada nesta conta na data de início.'
+                  : 'Conta padrão para baixa das parcelas a receber.'}
+              </p>
+            </div>
+
+            {form.payment_mode === 'installments' && (
               <div className="border rounded p-3 space-y-3 bg-muted/30">
                 <div className="text-sm font-medium">Cobrança recorrente</div>
                 <div className="grid grid-cols-2 gap-3">

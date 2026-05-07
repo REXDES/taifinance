@@ -529,6 +529,28 @@ export function FinanceSidebar({
                     </CollapsibleContent>
                   </Collapsible>
                 )}
+
+                {/* Máquinas & Locação (módulo opcional por empresa) */}
+                {machinesEnabled && (
+                  collapsed ? (
+                    machinesMenuItems.map(renderMenuItem)
+                  ) : (
+                    <Collapsible defaultOpen={machinesMenuItems.some(item => currentView === item.view)}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                          <span className="flex items-center gap-2">
+                            <Truck className="w-4 h-4" />
+                            Máquinas & Locação
+                          </span>
+                          <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                        {machinesMenuItems.map(renderMenuItem)}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )
+                )}
               </>
             )}
           </div>

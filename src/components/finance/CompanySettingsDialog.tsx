@@ -30,6 +30,7 @@ interface CompanySettingsDialogProps {
   onOpenChange: (open: boolean) => void;
   companyId: string | null;
   showPicker?: boolean; // se true, força exibir lista de empresas para escolher (modo admin)
+  showModulesTab?: boolean; // só admin/supervisor pode ver/alterar módulos
 }
 
 const NOTIFY_DAYS_OPTIONS = [

@@ -24,6 +24,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Loader2, QrCode, MessageSquare, Building2, Wrench, ArrowLeft, ChevronRight } from 'lucide-react';
+import { normalizePixKey, validatePixKey, type PixKeyType } from '@/lib/pixUtils';
 
 interface CompanySettingsDialogProps {
   open: boolean;

@@ -737,6 +737,7 @@ export type Database = {
           acquisition_source: string
           acquisition_value: number
           brand: string | null
+          category: string
           company_id: string
           created_at: string
           created_by: string | null
@@ -761,6 +762,7 @@ export type Database = {
           acquisition_source?: string
           acquisition_value?: number
           brand?: string | null
+          category?: string
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -785,6 +787,7 @@ export type Database = {
           acquisition_source?: string
           acquisition_value?: number
           brand?: string | null
+          category?: string
           company_id?: string
           created_at?: string
           created_by?: string | null

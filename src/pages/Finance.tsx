@@ -56,7 +56,13 @@ export type FinanceView =
   | 'payables-receivables-flow'
   | 'audit-logs'
   | 'clients-suppliers'
-  | 'bank-digital';
+  | 'bank-digital'
+  | 'machines-inventory'
+  | 'machines-maintenance'
+  | 'machines-rentals'
+  | 'machines-rentals-report'
+  | 'machines-operators'
+  | 'machines-mechanics';
 
 const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital'];
 // Views available only in normal mode for supervisors

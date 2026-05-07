@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, Package, Wallet, Percent } from 'lucide-react';
 import { useMachines, useMachineTypes, Machine } from '@/hooks/useMachinesModule';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -18,13 +18,24 @@ interface Props { companyId: string; }
 
 const STATUS_LABEL: Record<string, string> = { available: 'Disponível', rented: 'Locada', maintenance: 'Em manutenção', sold: 'Vendida' };
 
+type MachineExt = Machine & {
+  sale_price?: number | null;
+  rental_price_daily?: number | null;
+  rental_price_weekly?: number | null;
+  rental_price_monthly?: number | null;
+};
+
+const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 export function MachinesPage({ companyId }: Props) {
-  const { machines, refetch, loading } = useMachines(companyId);
+  const { machines, refetch, loading } = useMachines(companyId) as { machines: MachineExt[]; refetch: () => void; loading: boolean };
   const { types, refetch: refetchTypes } = useMachineTypes(companyId);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Machine | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Machine | null>(null);
+  const [editing, setEditing] = useState<MachineExt | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MachineExt | null>(null);
   const [filter, setFilter] = useState<'all' | 'new_purchase' | 'pre_existing'>('all');
+  const [priceTarget, setPriceTarget] = useState<MachineExt | null>(null);
+  const [priceForm, setPriceForm] = useState({ sale_price: '', rental_price_daily: '', rental_price_weekly: '', rental_price_monthly: '' });
 
   const empty = {
     name: '', brand: '', model: '', year: '', destination: '', type_id: 'none',
@@ -35,7 +46,7 @@ export function MachinesPage({ companyId }: Props) {
   const [form, setForm] = useState(empty);
 
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
-  const openEdit = (m: Machine) => {
+  const openEdit = (m: MachineExt) => {
     setEditing(m);
     setForm({
       name: m.name, brand: m.brand || '', model: m.model || '', year: m.year?.toString() || '',
@@ -48,6 +59,31 @@ export function MachinesPage({ companyId }: Props) {
       status: m.status, notes: m.notes || '',
     });
     setOpen(true);
+  };
+
+  const openPrices = (m: MachineExt) => {
+    setPriceTarget(m);
+    setPriceForm({
+      sale_price: m.sale_price?.toString() || '',
+      rental_price_daily: m.rental_price_daily?.toString() || '',
+      rental_price_weekly: m.rental_price_weekly?.toString() || '',
+      rental_price_monthly: m.rental_price_monthly?.toString() || '',
+    });
+  };
+
+  const savePrices = async () => {
+    if (!priceTarget) return;
+    const payload: any = {
+      sale_price: priceForm.sale_price ? parseFloat(priceForm.sale_price) : null,
+      rental_price_daily: priceForm.rental_price_daily ? parseFloat(priceForm.rental_price_daily) : null,
+      rental_price_weekly: priceForm.rental_price_weekly ? parseFloat(priceForm.rental_price_weekly) : null,
+      rental_price_monthly: priceForm.rental_price_monthly ? parseFloat(priceForm.rental_price_monthly) : null,
+    };
+    const { error } = await (supabase as any).from('machines').update(payload).eq('id', priceTarget.id);
+    if (error) return toast.error(error.message);
+    toast.success('Preços atualizados');
+    setPriceTarget(null);
+    refetch();
   };
 
   const save = async () => {
@@ -92,6 +128,14 @@ export function MachinesPage({ companyId }: Props) {
 
   const filtered = machines.filter(m => filter === 'all' ? true : m.acquisition_source === filter);
 
+  const stats = useMemo(() => {
+    const totalValue = machines.reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
+    const total = machines.length;
+    const rented = machines.filter(m => m.status === 'rented').length;
+    const pct = total > 0 ? (rented / total) * 100 : 0;
+    return { totalValue, total, rented, pct };
+  }, [machines]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -109,13 +153,44 @@ export function MachinesPage({ companyId }: Props) {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Valor total</CardTitle>
+            <Wallet className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{fmtBRL(stats.totalValue)}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Itens cadastrados</CardTitle>
+            <Package className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats.total}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Itens locados</CardTitle>
+            <Tag className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats.rented}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">% locado</CardTitle>
+            <Percent className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats.pct.toFixed(1)}%</div></CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader><TableRow>
               <TableHead>Nome</TableHead><TableHead>Marca/Modelo</TableHead><TableHead>Ano</TableHead>
               <TableHead>Horímetro</TableHead><TableHead>Origem</TableHead><TableHead>Status</TableHead>
-              <TableHead>Valor</TableHead><TableHead className="w-32"></TableHead>
+              <TableHead>Valor</TableHead><TableHead className="w-40"></TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {loading ? <TableRow><TableCell colSpan={8}>Carregando...</TableCell></TableRow> :
@@ -134,6 +209,7 @@ export function MachinesPage({ companyId }: Props) {
                     <TableCell><Badge variant="outline">{STATUS_LABEL[m.status]}</Badge></TableCell>
                     <TableCell>R$ {Number(m.acquisition_value).toFixed(2)}</TableCell>
                     <TableCell>
+                      <Button size="icon" variant="ghost" onClick={() => openPrices(m)} title="Preços de venda e locação"><Tag className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => setDeleteTarget(m)}><Trash2 className="w-4 h-4" /></Button>
                     </TableCell>
@@ -214,6 +290,30 @@ export function MachinesPage({ companyId }: Props) {
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={save}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!priceTarget} onOpenChange={(o) => !o && setPriceTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Preços sugeridos — {priceTarget?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Preço de venda</Label>
+              <Input type="number" step="0.01" value={priceForm.sale_price} onChange={e => setPriceForm({ ...priceForm, sale_price: e.target.value })} />
+            </div>
+            <div className="border-t pt-3">
+              <div className="text-sm font-medium mb-2">Locação</div>
+              <div className="grid grid-cols-3 gap-2">
+                <div><Label className="text-xs">Diária</Label><Input type="number" step="0.01" value={priceForm.rental_price_daily} onChange={e => setPriceForm({ ...priceForm, rental_price_daily: e.target.value })} /></div>
+                <div><Label className="text-xs">Semanal</Label><Input type="number" step="0.01" value={priceForm.rental_price_weekly} onChange={e => setPriceForm({ ...priceForm, rental_price_weekly: e.target.value })} /></div>
+                <div><Label className="text-xs">Mensal</Label><Input type="number" step="0.01" value={priceForm.rental_price_monthly} onChange={e => setPriceForm({ ...priceForm, rental_price_monthly: e.target.value })} /></div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPriceTarget(null)}>Cancelar</Button>
+            <Button onClick={savePrices}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

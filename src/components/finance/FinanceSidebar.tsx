@@ -153,6 +153,7 @@ export function FinanceSidebar({
   onOpenUsers,
   onOpenInvitations,
   onOpenCompanySettings,
+  machinesEnabled = false,
 }: FinanceSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);

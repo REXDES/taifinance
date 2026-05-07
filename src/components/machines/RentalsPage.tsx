@@ -138,7 +138,7 @@ export function RentalsPage({ companyId }: Props) {
     if (form.kit_id === 'none' && form.machine_ids.length === 0) return toast.error('Selecione ao menos uma máquina ou kit');
     const total = parseFloat(form.total_amount || '') || calcTotal();
     if (total <= 0) return toast.error('Valor total deve ser maior que zero');
-    if (form.payment_mode === 'cash' && form.paid_account_id === 'none') return toast.error('Selecione a conta de recebimento');
+    if (form.paid_account_id === 'none') return toast.error('Selecione a conta de recebimento');
 
     const rentalPayload: any = {
       company_id: companyId,
@@ -153,7 +153,7 @@ export function RentalsPage({ companyId }: Props) {
       payment_mode: form.payment_mode,
       installments_count: form.payment_mode === 'installments' ? parseInt(form.installments_count) : null,
       billing_frequency: form.payment_mode === 'installments' ? form.billing_frequency : null,
-      paid_account_id: form.payment_mode === 'cash' && form.paid_account_id !== 'none' ? form.paid_account_id : null,
+      paid_account_id: form.paid_account_id !== 'none' ? form.paid_account_id : null,
       notes: form.notes || null, status: 'active', created_by: user?.id ?? null,
     };
 

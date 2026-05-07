@@ -27,6 +27,12 @@ import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
 import { AccessModeDialog } from '@/components/AccessModeDialog';
+import { MachinesPage } from '@/components/machines/MachinesPage';
+import { MaintenancePage } from '@/components/machines/MaintenancePage';
+import { RentalsPage } from '@/components/machines/RentalsPage';
+import { RentalsReportPage } from '@/components/machines/RentalsReportPage';
+import { PeoplePage } from '@/components/machines/PeoplePage';
+import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 

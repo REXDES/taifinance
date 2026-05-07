@@ -257,7 +257,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           </div>
         ) : (
           <Tabs defaultValue="cadastro" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+            <TabsList className={`grid w-full ${showModulesTab ? 'grid-cols-4' : 'grid-cols-3'} flex-shrink-0`}>
               <TabsTrigger value="cadastro" className="flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5" />
                 Cadastro
@@ -270,10 +270,12 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                 <MessageSquare className="w-3.5 h-3.5" />
                 WhatsApp
               </TabsTrigger>
-              <TabsTrigger value="modulos" className="flex items-center gap-1.5">
-                <Wrench className="w-3.5 h-3.5" />
-                Módulos
-              </TabsTrigger>
+              {showModulesTab && (
+                <TabsTrigger value="modulos" className="flex items-center gap-1.5">
+                  <Wrench className="w-3.5 h-3.5" />
+                  Módulos
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <div className="flex-1 overflow-y-auto mt-4" style={{ maxHeight: '55vh' }}>

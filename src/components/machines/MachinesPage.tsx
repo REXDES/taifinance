@@ -467,6 +467,36 @@ export function MachinesPage({ companyId }: Props) {
         title="Excluir máquina"
         description={`Excluir "${deleteTarget?.name}"?`}
       />
+
+      <Dialog open={locDialogOpen} onOpenChange={setLocDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Locais</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input placeholder="Novo local" value={newLocName} onChange={e => setNewLocName(e.target.value)} />
+              <Button onClick={async () => {
+                if (!newLocName.trim()) return;
+                const { error } = await (supabase as any).from('machine_locations').insert({ company_id: companyId, name: newLocName.trim() });
+                if (error) return toast.error(error.message);
+                setNewLocName(''); fetchLocations();
+              }}><Plus className="w-4 h-4" /></Button>
+            </div>
+            <div className="text-xs text-muted-foreground">Padrões: {DEFAULT_LOCATIONS.join(', ')}</div>
+            <div className="space-y-1">
+              {locations.map(l => (
+                <div key={l.id} className="flex items-center justify-between border rounded px-2 py-1">
+                  <span>{l.name}</span>
+                  <Button size="icon" variant="ghost" onClick={async () => {
+                    await (supabase as any).from('machine_locations').delete().eq('id', l.id);
+                    fetchLocations();
+                  }}><Trash2 className="w-4 h-4" /></Button>
+                </div>
+              ))}
+              {locations.length === 0 && <div className="text-sm text-muted-foreground">Nenhum local personalizado</div>}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

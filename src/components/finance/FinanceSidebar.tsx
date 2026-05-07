@@ -330,28 +330,8 @@ export function FinanceSidebar({
                   )
                 )}
 
-                {/* Gerenciar Empresas (supervisor) */}
-                {isSupervisor && onManageCompanies && (
-                  collapsed ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="w-full" onClick={onManageCompanies}>
-                          <Building2 className="w-4 h-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">Gerenciar Empresas</TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
-                      onClick={onManageCompanies}
-                    >
-                      <Building2 className="w-4 h-4" />
-                      Gerenciar Empresas
-                    </Button>
-                  )
-                )}
+                {/* "Gerenciar Empresas" removido — era duplicata de "Configurações da Empresa".
+                    Use o seletor de empresa no topo do sidebar para escolher qual empresa configurar. */}
 
                 {/* Nova Empresa */}
                 {canCreateCompany && onCreateCompany && (

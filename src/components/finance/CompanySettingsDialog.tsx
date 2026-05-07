@@ -145,6 +145,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
           whatsapp_notify_enabled: whatsappNotifyEnabled,
           whatsapp_notify_days_before: whatsappNotifyDaysBefore,
           whatsapp_notify_time: whatsappNotifyTime,
+          machines_module_enabled: machinesModuleEnabled,
         } as any)
         .eq('id', companyId);
 

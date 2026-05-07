@@ -159,6 +159,17 @@ export function FinanceSidebar({
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
 
+  // Accordion state for top-level groups in normal mode (only one open at a time)
+  type TopGroup = 'transacoes' | 'relatorios' | 'cadastros' | 'machines';
+  const initialOpenGroup: TopGroup | null =
+    transacoesMenuItems.some(i => currentView === i.view) ? 'transacoes'
+    : allRelatoriosItems.some(i => currentView === i.view) ? 'relatorios'
+    : cadastrosMenuItems.some(i => currentView === i.view) ? 'cadastros'
+    : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
+    : null;
+  const [openGroup, setOpenGroup] = useState<TopGroup | null>(initialOpenGroup);
+  const setGroup = (g: TopGroup) => (open: boolean) => setOpenGroup(open ? g : null);
+
   const renderMenuItem = (item: MenuItem) => (
     collapsed ? (
       <Tooltip key={item.view}>
@@ -424,7 +435,7 @@ export function FinanceSidebar({
                 {collapsed ? (
                   transacoesMenuItems.map(renderMenuItem)
                 ) : (
-                  <Collapsible defaultOpen={transacoesMenuItems.some(item => currentView === item.view)}>
+                  <Collapsible open={openGroup === 'transacoes'} onOpenChange={setGroup('transacoes')}>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                         <span className="flex items-center gap-2">
@@ -444,7 +455,7 @@ export function FinanceSidebar({
                 {collapsed ? (
                   allRelatoriosItems.map(renderMenuItem)
                 ) : (
-                  <Collapsible defaultOpen={allRelatoriosItems.some(item => currentView === item.view)}>
+                  <Collapsible open={openGroup === 'relatorios'} onOpenChange={setGroup('relatorios')}>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                         <span className="flex items-center gap-2">
@@ -494,7 +505,7 @@ export function FinanceSidebar({
                 {collapsed ? (
                   cadastrosMenuItems.map(renderMenuItem)
                 ) : (
-                  <Collapsible defaultOpen={cadastrosMenuItems.some(item => currentView === item.view)}>
+                  <Collapsible open={openGroup === 'cadastros'} onOpenChange={setGroup('cadastros')}>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                         <span className="flex items-center gap-2">
@@ -515,7 +526,7 @@ export function FinanceSidebar({
                   collapsed ? (
                     machinesMenuItems.map(renderMenuItem)
                   ) : (
-                    <Collapsible defaultOpen={machinesMenuItems.some(item => currentView === item.view)}>
+                    <Collapsible open={openGroup === 'machines'} onOpenChange={setGroup('machines')}>
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                           <span className="flex items-center gap-2">

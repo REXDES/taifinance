@@ -81,19 +81,39 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
   // Módulos
   const [machinesModuleEnabled, setMachinesModuleEnabled] = useState(false);
 
+  // Reset picked when dialog reopens in picker mode
   useEffect(() => {
-    if (open && companyId) {
+    if (open && showPicker) {
+      setPickedId(null);
+    }
+  }, [open, showPicker]);
+
+  // Load companies list for picker
+  useEffect(() => {
+    if (!open || !showList) return;
+    (async () => {
+      const { data } = await supabase
+        .from('companies')
+        .select('id, name, fantasy_name, cnpj, color')
+        .order('name');
+      setCompaniesList((data as any) || []);
+    })();
+  }, [open, showList]);
+
+  useEffect(() => {
+    if (open && effectiveCompanyId) {
       loadSettings();
     }
-  }, [open, companyId]);
+  }, [open, effectiveCompanyId]);
 
   const loadSettings = async () => {
+    if (!effectiveCompanyId) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('companies')
         .select('*')
-        .eq('id', companyId)
+        .eq('id', effectiveCompanyId)
         .single();
 
       if (error) throw error;

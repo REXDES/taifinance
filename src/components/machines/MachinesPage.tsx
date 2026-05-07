@@ -16,10 +16,18 @@ import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 
 interface Props { companyId: string; }
 
-const STATUS_LABEL: Record<string, string> = { available: 'Disponível', rented: 'Locada', maintenance: 'Em manutenção', sold: 'Vendida' };
+const STATUS_LABEL: Record<string, string> = {
+  disponivel: 'Disponível', locada: 'Locada', vendida: 'Vendida', reservada: 'Reservada', demonstracao: 'Demonstração',
+};
+const TECH_STATUS_LABEL: Record<string, string> = {
+  operacional: 'Operacional', em_manutencao: 'Em manutenção', em_teste: 'Em teste', descarte: 'Descarte',
+};
+const DEFAULT_LOCATIONS = ['No pátio', 'Em trânsito', 'No cliente'];
 
 type MachineExt = Machine & {
   category?: string | null;
+  technical_status?: string | null;
+  location?: string | null;
   sale_price?: number | null;
   rental_price_daily?: number | null;
   rental_price_weekly?: number | null;

@@ -239,8 +239,8 @@ export function FinanceSidebar({
           </div>
         </div>
 
-        {/* Company Selector — hidden in admin mode (admin trabalha global) */}
-        {!isAdminMode && !collapsed && companies.length > 0 && (
+        {/* Company Selector — também visível em admin mode para permitir editar configurações da empresa selecionada */}
+        {!collapsed && companies.length > 0 && (
           <div className="p-2 border-b border-border">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

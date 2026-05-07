@@ -747,6 +747,10 @@ export type Database = {
           name: string
           notes: string | null
           preventive_maintenance_interval_hours: number | null
+          rental_price_daily: number | null
+          rental_price_monthly: number | null
+          rental_price_weekly: number | null
+          sale_price: number | null
           status: string
           type_id: string | null
           updated_at: string
@@ -767,6 +771,10 @@ export type Database = {
           name: string
           notes?: string | null
           preventive_maintenance_interval_hours?: number | null
+          rental_price_daily?: number | null
+          rental_price_monthly?: number | null
+          rental_price_weekly?: number | null
+          sale_price?: number | null
           status?: string
           type_id?: string | null
           updated_at?: string
@@ -787,6 +795,10 @@ export type Database = {
           name?: string
           notes?: string | null
           preventive_maintenance_interval_hours?: number | null
+          rental_price_daily?: number | null
+          rental_price_monthly?: number | null
+          rental_price_weekly?: number | null
+          sale_price?: number | null
           status?: string
           type_id?: string | null
           updated_at?: string

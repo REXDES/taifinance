@@ -343,13 +343,12 @@ const Finance = () => {
         />
       )}
 
-      {selectedCompanyId && (
-        <CompanySettingsDialog
-          open={showCompanySettings}
-          onOpenChange={setShowCompanySettings}
-          companyId={selectedCompanyId}
-        />
-      )}
+      <CompanySettingsDialog
+        open={showCompanySettings}
+        onOpenChange={setShowCompanySettings}
+        companyId={effectiveMode === 'admin' ? null : selectedCompanyId}
+        showPicker={effectiveMode === 'admin'}
+      />
     </div>
   );
 };

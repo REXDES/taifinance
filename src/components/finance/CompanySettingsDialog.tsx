@@ -49,7 +49,7 @@ const UF_OPTIONS = [
   'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
 ];
 
-export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicker = false, showModulesTab = false }: CompanySettingsDialogProps) {
+export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicker = false, showModulesTab = false, onSaved }: CompanySettingsDialogProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [companiesList, setCompaniesList] = useState<Array<{ id: string; name: string; fantasy_name: string | null; cnpj: string | null; color: string }>>([]);

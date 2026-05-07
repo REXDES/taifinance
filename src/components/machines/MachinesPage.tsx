@@ -19,11 +19,14 @@ interface Props { companyId: string; }
 const STATUS_LABEL: Record<string, string> = { available: 'Disponível', rented: 'Locada', maintenance: 'Em manutenção', sold: 'Vendida' };
 
 type MachineExt = Machine & {
+  category?: string | null;
   sale_price?: number | null;
   rental_price_daily?: number | null;
   rental_price_weekly?: number | null;
   rental_price_monthly?: number | null;
 };
+
+const CATEGORY_LABEL: Record<string, string> = { maquina: 'Máquina', equipamento: 'Equipamento', ferramenta: 'Ferramenta' };
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -34,11 +37,15 @@ export function MachinesPage({ companyId }: Props) {
   const [editing, setEditing] = useState<MachineExt | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MachineExt | null>(null);
   const [filter, setFilter] = useState<'all' | 'new_purchase' | 'pre_existing'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'maquina' | 'equipamento' | 'ferramenta'>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | Machine['status']>('all');
   const [priceTarget, setPriceTarget] = useState<MachineExt | null>(null);
   const [priceForm, setPriceForm] = useState({ sale_price: '', rental_price_daily: '', rental_price_weekly: '', rental_price_monthly: '' });
 
   const empty = {
     name: '', brand: '', model: '', year: '', destination: '', type_id: 'none',
+    category: 'equipamento' as 'maquina' | 'equipamento' | 'ferramenta',
     acquisition_value: '', acquisition_date: '', acquisition_source: 'pre_existing' as 'new_purchase' | 'pre_existing',
     current_horimeter: '', preventive_maintenance_interval_hours: '',
     status: 'available' as Machine['status'], notes: '',
@@ -51,6 +58,7 @@ export function MachinesPage({ companyId }: Props) {
     setForm({
       name: m.name, brand: m.brand || '', model: m.model || '', year: m.year?.toString() || '',
       destination: m.destination || '', type_id: m.type_id || 'none',
+      category: ((m as any).category || 'equipamento') as any,
       acquisition_value: m.acquisition_value?.toString() || '',
       acquisition_date: m.acquisition_date || '',
       acquisition_source: m.acquisition_source,
@@ -92,6 +100,7 @@ export function MachinesPage({ companyId }: Props) {
       company_id: companyId, name: form.name, brand: form.brand || null, model: form.model || null,
       year: form.year ? parseInt(form.year) : null, destination: form.destination || null,
       type_id: form.type_id !== 'none' ? form.type_id : null,
+      category: form.category,
       acquisition_value: parseFloat(form.acquisition_value || '0'),
       acquisition_date: form.acquisition_date || null,
       acquisition_source: form.acquisition_source,
@@ -126,31 +135,62 @@ export function MachinesPage({ companyId }: Props) {
     toast.success('Excluída'); setDeleteTarget(null); refetch();
   };
 
-  const filtered = machines.filter(m => filter === 'all' ? true : m.acquisition_source === filter);
+  const filtered = machines.filter(m => {
+    if (filter !== 'all' && m.acquisition_source !== filter) return false;
+    if (categoryFilter !== 'all' && (m.category || 'equipamento') !== categoryFilter) return false;
+    if (typeFilter !== 'all' && (m.type_id || 'none') !== typeFilter) return false;
+    if (statusFilter !== 'all' && m.status !== statusFilter) return false;
+    return true;
+  });
 
   const stats = useMemo(() => {
-    const totalValue = machines.reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
-    const total = machines.length;
-    const rented = machines.filter(m => m.status === 'rented').length;
+    const totalValue = filtered.reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
+    const total = filtered.length;
+    const rented = filtered.filter(m => m.status === 'rented').length;
     const pct = total > 0 ? (rented / total) * 100 : 0;
     return { totalValue, total, rented, pct };
-  }, [machines]);
+  }, [filtered]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Máquinas, Equipamentos e Ferramentas</h1>
-        <div className="flex gap-2">
-          <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="new_purchase">Adquiridas (novas)</SelectItem>
-              <SelectItem value="pre_existing">Pré-existentes</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Nova</Button>
-        </div>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-2xl font-semibold">Inventário</h1>
+        <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Novo item</Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Select value={categoryFilter} onValueChange={(v: any) => setCategoryFilter(v)}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas categorias</SelectItem>
+            <SelectItem value="maquina">Máquina</SelectItem>
+            <SelectItem value="equipamento">Equipamento</SelectItem>
+            <SelectItem value="ferramenta">Ferramenta</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os tipos</SelectItem>
+            <SelectItem value="none">Sem tipo</SelectItem>
+            {types.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os status</SelectItem>
+            {Object.entries(STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+          <SelectTrigger className="w-48"><SelectValue placeholder="Origem" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas origens</SelectItem>
+            <SelectItem value="new_purchase">Adquiridas (novas)</SelectItem>
+            <SelectItem value="pre_existing">Pré-existentes</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -188,16 +228,17 @@ export function MachinesPage({ companyId }: Props) {
         <CardContent className="p-0">
           <Table>
             <TableHeader><TableRow>
-              <TableHead>Nome</TableHead><TableHead>Marca/Modelo</TableHead><TableHead>Ano</TableHead>
+              <TableHead>Nome</TableHead><TableHead>Categoria</TableHead><TableHead>Marca/Modelo</TableHead><TableHead>Ano</TableHead>
               <TableHead>Horímetro</TableHead><TableHead>Origem</TableHead><TableHead>Status</TableHead>
               <TableHead>Valor</TableHead><TableHead className="w-40"></TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {loading ? <TableRow><TableCell colSpan={8}>Carregando...</TableCell></TableRow> :
-                filtered.length === 0 ? <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma máquina cadastrada</TableCell></TableRow> :
+              {loading ? <TableRow><TableCell colSpan={9}>Carregando...</TableCell></TableRow> :
+                filtered.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum item encontrado</TableCell></TableRow> :
                 filtered.map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell><Badge variant="secondary">{CATEGORY_LABEL[m.category || 'equipamento']}</Badge></TableCell>
                     <TableCell>{[m.brand, m.model].filter(Boolean).join(' ') || '-'}</TableCell>
                     <TableCell>{m.year || '-'}</TableCell>
                     <TableCell>{Number(m.current_horimeter).toFixed(1)}h</TableCell>
@@ -222,10 +263,21 @@ export function MachinesPage({ companyId }: Props) {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl overflow-y-auto max-h-[85vh]">
-          <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nova'} Máquina</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Novo'} Item</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div><Label>Nome *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+              <div>
+                <Label>Categoria *</Label>
+                <Select value={form.category} onValueChange={(v: any) => setForm({ ...form, category: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="maquina">Máquina</SelectItem>
+                    <SelectItem value="equipamento">Equipamento</SelectItem>
+                    <SelectItem value="ferramenta">Ferramenta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label>Tipo</Label>
                 <div className="flex gap-2">

@@ -79,7 +79,7 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
           merchantName: (company as any).pix_holder_name || company.name,
           merchantCity: (company as any).pix_city || 'SAO PAULO',
           amount: record.amount,
-          txId: record.id.substring(0, 25).replace(/-/g, ''),
+          txId: record.id.substring(0, 25).replace(/-/g, '').toUpperCase(),
         };
         setPixPayload(generatePixPayload(params));
       } else {

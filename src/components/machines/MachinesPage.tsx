@@ -94,7 +94,10 @@ export function MachinesPage({ companyId }: Props) {
       acquisition_source: m.acquisition_source,
       current_horimeter: m.current_horimeter?.toString() || '',
       preventive_maintenance_interval_hours: m.preventive_maintenance_interval_hours?.toString() || '',
-      status: m.status, notes: m.notes || '',
+      status: m.status,
+      technical_status: (m as any).technical_status || 'operacional',
+      location: (m as any).location || '',
+      notes: m.notes || '',
     });
     setOpen(true);
   };

@@ -58,6 +58,7 @@ export function MachinesPage({ companyId }: Props) {
     setForm({
       name: m.name, brand: m.brand || '', model: m.model || '', year: m.year?.toString() || '',
       destination: m.destination || '', type_id: m.type_id || 'none',
+      category: ((m as any).category || 'equipamento') as any,
       acquisition_value: m.acquisition_value?.toString() || '',
       acquisition_date: m.acquisition_date || '',
       acquisition_source: m.acquisition_source,

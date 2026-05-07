@@ -86,7 +86,7 @@ export function MachinesPage({ companyId }: Props) {
   const doDelete = async () => {
     if (!deleteTarget) return;
     const { error } = await (supabase as any).from('machines').delete().eq('id', deleteTarget.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success('Excluída'); setDeleteTarget(null); refetch();
   };
 

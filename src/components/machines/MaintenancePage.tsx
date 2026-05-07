@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useMaintenanceRecords, useMachines, useMechanics, MaintenanceRecord } from '@/hooks/useMachinesModule';
+import { useAccounts } from '@/hooks/useAccounts';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ export function MaintenancePage({ companyId }: Props) {
   const { records, refetch, loading } = useMaintenanceRecords(companyId);
   const { machines } = useMachines(companyId);
   const { mechanics } = useMechanics(companyId);
+  const { accounts } = useAccounts(companyId);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MaintenanceRecord | null>(null);
@@ -30,8 +32,9 @@ export function MaintenancePage({ companyId }: Props) {
   const empty = {
     machine_id: '', mechanic_id: 'none', start_date: new Date().toISOString().slice(0, 10),
     end_date: '', description: '', horimeter_at_service: '',
-    total_cost: '', payment_mode: 'cash' as 'cash' | 'installments' | 'none',
+    total_cost: '', payment_mode: 'cash' as 'cash' | 'installments',
     installments: '1', status: 'in_progress' as MaintenanceRecord['status'],
+    paid_account_id: 'none',
   };
   const [form, setForm] = useState(empty);
 
@@ -42,8 +45,9 @@ export function MaintenancePage({ companyId }: Props) {
       machine_id: r.machine_id, mechanic_id: r.mechanic_id || 'none',
       start_date: r.start_date, end_date: r.end_date || '',
       description: r.description || '', horimeter_at_service: r.horimeter_at_service?.toString() || '',
-      total_cost: r.total_cost?.toString() || '', payment_mode: r.payment_mode,
+      total_cost: r.total_cost?.toString() || '', payment_mode: (r.payment_mode === 'none' ? 'cash' : r.payment_mode) as 'cash' | 'installments',
       installments: '1', status: r.status,
+      paid_account_id: 'none',
     });
     setOpen(true);
   };
@@ -70,18 +74,27 @@ export function MaintenancePage({ companyId }: Props) {
       const { data, error } = await (supabase as any).from('maintenance_records').insert(payload).select().single();
       if (error) return toast.error(error.message);
       await (supabase as any).from('machines').update({ technical_status: techStatus }).eq('id', form.machine_id);
-      // Generate financial entries
-      if (cost > 0 && form.payment_mode !== 'none') {
-        const inst = form.payment_mode === 'installments' ? Math.max(1, parseInt(form.installments || '1')) : 1;
+      // Lançamento financeiro só se conta de pagamento foi informada
+      if (cost > 0 && form.paid_account_id !== 'none') {
         try {
-          await generateMaintenancePayables({
-            companyId, maintenanceId: data.id,
-            description: `Manutenção: ${form.description || 'sem descrição'}`,
-            totalAmount: cost, startDate: form.start_date, installments: inst, userId: user?.id,
-          });
-        } catch (e: any) { toast.error('Erro nas parcelas: ' + e.message); }
+          if (form.payment_mode === 'cash') {
+            const { data: tx } = await (supabase as any).from('transactions').insert({
+              company_id: companyId, account_id: form.paid_account_id, type: 'expense',
+              amount: cost, description: `Manutenção: ${form.description || 'sem descrição'}`,
+              date: form.start_date, created_by: user?.id ?? null,
+            }).select().single();
+            if (tx) await (supabase as any).from('maintenance_records').update({ transaction_id: tx.id }).eq('id', data.id);
+          } else {
+            const inst = Math.max(1, parseInt(form.installments || '1'));
+            await generateMaintenancePayables({
+              companyId, maintenanceId: data.id,
+              description: `Manutenção: ${form.description || 'sem descrição'}`,
+              totalAmount: cost, startDate: form.start_date, installments: inst, userId: user?.id,
+            });
+          }
+        } catch (e: any) { toast.error('Erro no lançamento financeiro: ' + e.message); }
       }
-      toast.success('Manutenção registrada');
+      toast.success(form.paid_account_id === 'none' ? 'Manutenção registrada (sem lançamento financeiro)' : 'Manutenção registrada');
     }
     setOpen(false); refetch();
   };
@@ -162,22 +175,40 @@ export function MaintenancePage({ companyId }: Props) {
               <div><Label>Custo total (R$)</Label><Input type="number" step="0.01" value={form.total_cost} onChange={e => setForm({ ...form, total_cost: e.target.value })} /></div>
             </div>
             {!editing && (
-              <div className="grid grid-cols-2 gap-3">
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Forma de pagamento</Label>
+                    <Select value={form.payment_mode} onValueChange={(v: any) => setForm({ ...form, payment_mode: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">À vista</SelectItem>
+                        <SelectItem value="installments">Parcelado (Contas a Pagar)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.payment_mode === 'installments' && (
+                    <div><Label>Nº de parcelas</Label><Input type="number" min="1" value={form.installments} onChange={e => setForm({ ...form, installments: e.target.value })} /></div>
+                  )}
+                </div>
                 <div>
-                  <Label>Forma de pagamento</Label>
-                  <Select value={form.payment_mode} onValueChange={(v: any) => setForm({ ...form, payment_mode: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Label>Conta de pagamento</Label>
+                  <Select value={form.paid_account_id} onValueChange={v => setForm({ ...form, paid_account_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cash">À vista (Contas a Pagar 1x)</SelectItem>
-                      <SelectItem value="installments">Parcelado</SelectItem>
-                      <SelectItem value="none">Sem efeito financeiro</SelectItem>
+                      <SelectItem value="none">Não lançar no financeiro</SelectItem>
+                      {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {form.paid_account_id === 'none'
+                      ? 'Sem conta selecionada, nenhum lançamento será gerado.'
+                      : form.payment_mode === 'cash'
+                        ? 'A despesa será lançada nesta conta na data de início.'
+                        : 'Conta padrão para baixa das parcelas a pagar.'}
+                  </p>
                 </div>
-                {form.payment_mode === 'installments' && (
-                  <div><Label>Nº de parcelas</Label><Input type="number" min="1" value={form.installments} onChange={e => setForm({ ...form, installments: e.target.value })} /></div>
-                )}
-              </div>
+              </>
             )}
             <div>
               <Label>Status</Label>

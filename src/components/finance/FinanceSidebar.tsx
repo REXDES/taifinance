@@ -505,7 +505,7 @@ export function FinanceSidebar({
                 {collapsed ? (
                   cadastrosMenuItems.map(renderMenuItem)
                 ) : (
-                  <Collapsible defaultOpen={cadastrosMenuItems.some(item => currentView === item.view)}>
+                  <Collapsible open={openGroup === 'cadastros'} onOpenChange={setGroup('cadastros')}>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                         <span className="flex items-center gap-2">

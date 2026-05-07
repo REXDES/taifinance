@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,11 +16,41 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { generateRentalReceivables } from '@/lib/machinesFinance';
+import { generateRentalReceivables, addDays, addMonths } from '@/lib/machinesFinance';
 
 interface Props { companyId: string; }
 
 const UNIT_LABEL: Record<string, string> = { hour: 'Hora', day: 'Dia', week: 'Semana', month: 'Mês' };
+
+function todayLocal(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function addByUnit(start: string, unit: Rental['unit'], qty: number): string {
+  if (unit === 'month') return addMonths(start, qty);
+  if (unit === 'week') return addDays(start, qty * 7);
+  if (unit === 'day') return addDays(start, qty);
+  // hour: tratamos como mesma data (não soma dias)
+  return start;
+}
+
+function defaultFrequency(unit: Rental['unit']): 'monthly' | 'weekly' | 'daily' {
+  if (unit === 'month') return 'monthly';
+  if (unit === 'week') return 'weekly';
+  return 'daily';
+}
+
+function suggestedInstallments(duration: number, unit: Rental['unit'], freq: 'monthly' | 'weekly' | 'daily'): number {
+  if (!duration || duration <= 0) return 1;
+  // Converte duração para dias aproximados
+  const durationDays = unit === 'month' ? duration * 30 : unit === 'week' ? duration * 7 : unit === 'day' ? duration : 0;
+  const periodDays = freq === 'monthly' ? 30 : freq === 'weekly' ? 7 : 1;
+  if (durationDays === 0) return 1;
+  return Math.max(1, Math.round(durationDays / periodDays));
+}
 
 export function RentalsPage({ companyId }: Props) {
   const { user } = useAuth();
@@ -34,18 +64,45 @@ export function RentalsPage({ companyId }: Props) {
   const [open, setOpen] = useState(false);
   const empty = {
     client_id: '', operator_id: 'none', kit_id: 'none', machine_ids: [] as string[],
-    start_date: new Date().toISOString().slice(0, 10), end_date: '',
-    unit: 'day' as Rental['unit'], qty: '1', unit_price: '', total_amount: '',
+    start_date: todayLocal(), end_date: '',
+    unit: 'day' as Rental['unit'], duration: '1', unit_price: '', total_amount: '',
     horimeter_start: '', payment_mode: 'cash' as 'cash' | 'installments',
-    installments_count: '1', billing_frequency: 'monthly' as 'monthly' | 'weekly' | 'daily',
+    installments_count: '1', installments_manual: false,
+    billing_frequency: 'daily' as 'monthly' | 'weekly' | 'daily',
+    first_due_offset: '1' as '0' | '1',
     paid_account_id: 'none', notes: '',
   };
   const [form, setForm] = useState(empty);
 
-  const openNew = () => { setForm(empty); setOpen(true); };
+  const openNew = () => { setForm({ ...empty, start_date: todayLocal() }); setOpen(true); };
+
+  // Calcula fim automaticamente a partir de início + duração + unidade
+  const computedEnd = useMemo(() => {
+    const dur = parseFloat(form.duration || '0');
+    if (!form.start_date || !dur) return '';
+    return addByUnit(form.start_date, form.unit, dur);
+  }, [form.start_date, form.unit, form.duration]);
+
+  // Mantém end_date sincronizado quando o usuário não editou manualmente
+  useEffect(() => {
+    setForm(f => ({ ...f, end_date: computedEnd }));
+  }, [computedEnd]);
+
+  // Quando a unidade muda, ajusta a periodicidade default
+  useEffect(() => {
+    setForm(f => ({ ...f, billing_frequency: defaultFrequency(f.unit) }));
+  }, [form.unit]);
+
+  // Sugere nº de parcelas se usuário não digitou manualmente
+  const suggestedQty = suggestedInstallments(parseFloat(form.duration || '0'), form.unit, form.billing_frequency);
+  useEffect(() => {
+    if (!form.installments_manual && form.payment_mode === 'installments') {
+      setForm(f => ({ ...f, installments_count: String(suggestedQty) }));
+    }
+  }, [suggestedQty, form.payment_mode, form.installments_manual]);
 
   const calcTotal = () => {
-    const q = parseFloat(form.qty || '0');
+    const q = parseFloat(form.duration || '0');
     const p = parseFloat(form.unit_price || '0');
     return q * p;
   };
@@ -63,7 +120,7 @@ export function RentalsPage({ companyId }: Props) {
       operator_id: form.operator_id !== 'none' ? form.operator_id : null,
       kit_id: form.kit_id !== 'none' ? form.kit_id : null,
       start_date: form.start_date, end_date: form.end_date || null,
-      unit: form.unit, qty: parseFloat(form.qty || '1'),
+      unit: form.unit, qty: parseFloat(form.duration || '1'),
       unit_price: parseFloat(form.unit_price || '0'),
       total_amount: total,
       horimeter_start: form.horimeter_start ? parseFloat(form.horimeter_start) : null,
@@ -77,7 +134,6 @@ export function RentalsPage({ companyId }: Props) {
     const { data: rental, error } = await (supabase as any).from('rentals').insert(rentalPayload).select().single();
     if (error) return toast.error(error.message);
 
-    // Link machines (or kit items)
     let machineIds = form.machine_ids;
     if (form.kit_id !== 'none') {
       const kit = kits.find(k => k.id === form.kit_id);
@@ -87,7 +143,6 @@ export function RentalsPage({ companyId }: Props) {
       await (supabase as any).from('rental_machines').insert(
         machineIds.map(mid => ({ rental_id: rental.id, machine_id: mid }))
       );
-      // Mark machines as rented + log horimeter
       for (const mid of machineIds) {
         await (supabase as any).from('machines').update({ status: 'rented' }).eq('id', mid);
       }
@@ -98,7 +153,6 @@ export function RentalsPage({ companyId }: Props) {
       }
     }
 
-    // Financial
     try {
       if (form.payment_mode === 'cash') {
         const { data: tx } = await (supabase as any).from('transactions').insert({
@@ -115,6 +169,7 @@ export function RentalsPage({ companyId }: Props) {
           installments: parseInt(form.installments_count || '1'),
           frequency: form.billing_frequency,
           clientId: form.client_id, userId: user?.id,
+          firstDueOffset: form.first_due_offset === '0' ? 0 : 1,
         });
       }
     } catch (e: any) { toast.error('Erro ao gerar lançamento financeiro: ' + e.message); }
@@ -212,31 +267,52 @@ export function RentalsPage({ companyId }: Props) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Início *</Label><Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>
-              <div><Label>Fim</Label><Input type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} /></div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label>Unidade</Label>
-                <Select value={form.unit} onValueChange={(v: any) => setForm({ ...form, unit: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.entries(UNIT_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-                </Select>
+            {/* === Contrato === */}
+            <div className="border rounded p-3 space-y-3 bg-muted/30">
+              <div className="text-sm font-medium">Contrato</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Início *</Label><Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} /></div>
+                <div>
+                  <Label>Fim (auto)</Label>
+                  <Input type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} />
+                </div>
               </div>
-              <div><Label>Quantidade</Label><Input type="number" step="0.5" value={form.qty} onChange={e => setForm({ ...form, qty: e.target.value })} /></div>
-              <div><Label>Preço unitário</Label><Input type="number" step="0.01" value={form.unit_price} onChange={e => setForm({ ...form, unit_price: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Duração *</Label>
+                  <Input type="number" step="0.5" min="0" value={form.duration}
+                    onChange={e => setForm({ ...form, duration: e.target.value, installments_manual: false })} />
+                </div>
+                <div>
+                  <Label>Unidade</Label>
+                  <Select value={form.unit} onValueChange={(v: any) => setForm({ ...form, unit: v, installments_manual: false })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{Object.entries(UNIT_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
 
+            {/* === Valores === */}
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Valor total</Label><Input type="number" step="0.01" value={form.total_amount || calcTotal().toFixed(2)} onChange={e => setForm({ ...form, total_amount: e.target.value })} /></div>
-              <div><Label>Horímetro inicial</Label><Input type="number" step="0.1" value={form.horimeter_start} onChange={e => setForm({ ...form, horimeter_start: e.target.value })} /></div>
+              <div>
+                <Label>Preço por {UNIT_LABEL[form.unit].toLowerCase()}</Label>
+                <Input type="number" step="0.01" value={form.unit_price} onChange={e => setForm({ ...form, unit_price: e.target.value, total_amount: '' })} />
+              </div>
+              <div>
+                <Label>Valor total</Label>
+                <Input type="number" step="0.01" value={form.total_amount || calcTotal().toFixed(2)} onChange={e => setForm({ ...form, total_amount: e.target.value })} />
+              </div>
+            </div>
+
+            <div>
+              <Label>Horímetro inicial</Label>
+              <Input type="number" step="0.1" value={form.horimeter_start} onChange={e => setForm({ ...form, horimeter_start: e.target.value })} />
             </div>
 
             <div>
               <Label>Forma de pagamento</Label>
-              <Select value={form.payment_mode} onValueChange={(v: any) => setForm({ ...form, payment_mode: v })}>
+              <Select value={form.payment_mode} onValueChange={(v: any) => setForm({ ...form, payment_mode: v, installments_manual: false })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">À vista (lança como receita)</SelectItem>
@@ -257,16 +333,37 @@ export function RentalsPage({ companyId }: Props) {
                 </Select>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Nº de parcelas</Label><Input type="number" min="1" value={form.installments_count} onChange={e => setForm({ ...form, installments_count: e.target.value })} /></div>
+              <div className="border rounded p-3 space-y-3 bg-muted/30">
+                <div className="text-sm font-medium">Cobrança recorrente</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Periodicidade</Label>
+                    <Select value={form.billing_frequency} onValueChange={(v: any) => setForm({ ...form, billing_frequency: v, installments_manual: false })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="daily">Diária</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Nº de parcelas</Label>
+                    <Input type="number" min="1" value={form.installments_count}
+                      onChange={e => setForm({ ...form, installments_count: e.target.value, installments_manual: true })} />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Sugerido pelo contrato: {suggestedQty}
+                      {form.installments_manual && <button type="button" className="ml-2 underline" onClick={() => setForm({ ...form, installments_manual: false, installments_count: String(suggestedQty) })}>usar sugestão</button>}
+                    </p>
+                  </div>
+                </div>
                 <div>
-                  <Label>Periodicidade</Label>
-                  <Select value={form.billing_frequency} onValueChange={(v: any) => setForm({ ...form, billing_frequency: v })}>
+                  <Label>1ª parcela vence</Label>
+                  <Select value={form.first_due_offset} onValueChange={(v: any) => setForm({ ...form, first_due_offset: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                      <SelectItem value="weekly">Semanal</SelectItem>
-                      <SelectItem value="daily">Diária</SelectItem>
+                      <SelectItem value="1">Após 1 período (recomendado)</SelectItem>
+                      <SelectItem value="0">Na data de início do contrato</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -273,6 +273,7 @@ export type Database = {
           email: string | null
           fantasy_name: string | null
           id: string
+          machines_module_enabled: boolean
           name: string
           phone: string | null
           pix_city: string | null
@@ -296,6 +297,7 @@ export type Database = {
           email?: string | null
           fantasy_name?: string | null
           id?: string
+          machines_module_enabled?: boolean
           name: string
           phone?: string | null
           pix_city?: string | null
@@ -319,6 +321,7 @@ export type Database = {
           email?: string | null
           fantasy_name?: string | null
           id?: string
+          machines_module_enabled?: boolean
           name?: string
           phone?: string | null
           pix_city?: string | null
@@ -663,6 +666,247 @@ export type Database = {
           },
         ]
       }
+      machine_horimeter_logs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          machine_id: string
+          notes: string | null
+          reading: number
+          reference_id: string | null
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          machine_id: string
+          notes?: string | null
+          reading: number
+          reference_id?: string | null
+          source: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          machine_id?: string
+          notes?: string | null
+          reading?: number
+          reference_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_horimeter_logs_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_types: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      machines: {
+        Row: {
+          acquisition_date: string | null
+          acquisition_source: string
+          acquisition_value: number
+          brand: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          current_horimeter: number
+          destination: string | null
+          id: string
+          model: string | null
+          name: string
+          notes: string | null
+          preventive_maintenance_interval_hours: number | null
+          status: string
+          type_id: string | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          acquisition_date?: string | null
+          acquisition_source?: string
+          acquisition_value?: number
+          brand?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          current_horimeter?: number
+          destination?: string | null
+          id?: string
+          model?: string | null
+          name: string
+          notes?: string | null
+          preventive_maintenance_interval_hours?: number | null
+          status?: string
+          type_id?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          acquisition_date?: string | null
+          acquisition_source?: string
+          acquisition_value?: number
+          brand?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          current_horimeter?: number
+          destination?: string | null
+          id?: string
+          model?: string | null
+          name?: string
+          notes?: string | null
+          preventive_maintenance_interval_hours?: number | null
+          status?: string
+          type_id?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machines_type_id_fkey"
+            columns: ["type_id"]
+            isOneToOne: false
+            referencedRelation: "machine_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_records: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          horimeter_at_service: number | null
+          id: string
+          machine_id: string
+          mechanic_id: string | null
+          payment_mode: string
+          start_date: string
+          status: string
+          total_cost: number
+          transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          horimeter_at_service?: number | null
+          id?: string
+          machine_id: string
+          mechanic_id?: string | null
+          payment_mode?: string
+          start_date: string
+          status?: string
+          total_cost?: number
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          horimeter_at_service?: number | null
+          id?: string
+          machine_id?: string
+          mechanic_id?: string | null
+          payment_mode?: string
+          start_date?: string
+          status?: string
+          total_cost?: number
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_records_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_records_mechanic_id_fkey"
+            columns: ["mechanic_id"]
+            isOneToOne: false
+            referencedRelation: "mechanics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mechanics: {
+        Row: {
+          company_id: string
+          created_at: string
+          document: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          specialty: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          document?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          specialty?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          document?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          specialty?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meetings: {
         Row: {
           created_at: string
@@ -740,6 +984,39 @@ export type Database = {
         }
         Relationships: []
       }
+      operators: {
+        Row: {
+          company_id: string
+          created_at: string
+          document: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          document?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          document?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payables_receivables: {
         Row: {
           amount: number | null
@@ -753,12 +1030,14 @@ export type Database = {
           id: string
           installment_number: number | null
           is_amount_pending: boolean
+          maintenance_id: string | null
           paid_account_id: string | null
           paid_amount: number | null
           paid_by: string | null
           paid_date: string | null
           parent_id: string | null
           payment_type: string
+          rental_id: string | null
           status: string
           subcategory_id: string | null
           total_installments: number | null
@@ -778,12 +1057,14 @@ export type Database = {
           id?: string
           installment_number?: number | null
           is_amount_pending?: boolean
+          maintenance_id?: string | null
           paid_account_id?: string | null
           paid_amount?: number | null
           paid_by?: string | null
           paid_date?: string | null
           parent_id?: string | null
           payment_type: string
+          rental_id?: string | null
           status?: string
           subcategory_id?: string | null
           total_installments?: number | null
@@ -803,12 +1084,14 @@ export type Database = {
           id?: string
           installment_number?: number | null
           is_amount_pending?: boolean
+          maintenance_id?: string | null
           paid_account_id?: string | null
           paid_amount?: number | null
           paid_by?: string | null
           paid_date?: string | null
           parent_id?: string | null
           payment_type?: string
+          rental_id?: string | null
           status?: string
           subcategory_id?: string | null
           total_installments?: number | null
@@ -968,6 +1251,265 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      rental_kit_items: {
+        Row: {
+          created_at: string
+          id: string
+          kit_id: string
+          machine_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kit_id: string
+          machine_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kit_id?: string
+          machine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_kit_items_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "rental_kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_kit_items_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_kits: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rental_machines: {
+        Row: {
+          created_at: string
+          id: string
+          machine_id: string
+          price_snapshot: number | null
+          rental_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          machine_id: string
+          price_snapshot?: number | null
+          rental_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          machine_id?: string
+          price_snapshot?: number | null
+          rental_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_machines_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_machines_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_price_tables: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          machine_id: string
+          max_qty: number | null
+          min_qty: number
+          price: number
+          unit: string
+          updated_at: string
+          valid_from: string | null
+          valid_to: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          machine_id: string
+          max_qty?: number | null
+          min_qty?: number
+          price: number
+          unit: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          machine_id?: string
+          max_qty?: number | null
+          min_qty?: number
+          price?: number
+          unit?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_price_tables_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rentals: {
+        Row: {
+          billing_frequency: string | null
+          client_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          horimeter_end: number | null
+          horimeter_start: number | null
+          id: string
+          installments_count: number | null
+          kit_id: string | null
+          notes: string | null
+          operator_id: string | null
+          paid_account_id: string | null
+          payment_mode: string
+          qty: number
+          start_date: string
+          status: string
+          total_amount: number
+          transaction_id: string | null
+          unit: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          billing_frequency?: string | null
+          client_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          horimeter_end?: number | null
+          horimeter_start?: number | null
+          id?: string
+          installments_count?: number | null
+          kit_id?: string | null
+          notes?: string | null
+          operator_id?: string | null
+          paid_account_id?: string | null
+          payment_mode?: string
+          qty?: number
+          start_date: string
+          status?: string
+          total_amount?: number
+          transaction_id?: string | null
+          unit: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_frequency?: string | null
+          client_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          horimeter_end?: number | null
+          horimeter_start?: number | null
+          id?: string
+          installments_count?: number | null
+          kit_id?: string | null
+          notes?: string | null
+          operator_id?: string | null
+          paid_account_id?: string | null
+          payment_mode?: string
+          qty?: number
+          start_date?: string
+          status?: string
+          total_amount?: number
+          transaction_id?: string | null
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rentals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rentals_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "rental_kits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rentals_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rentals_paid_account_id_fkey"
+            columns: ["paid_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
           },
         ]
       }

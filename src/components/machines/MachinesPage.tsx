@@ -139,7 +139,10 @@ export function MachinesPage({ companyId }: Props) {
       acquisition_source: form.acquisition_source,
       current_horimeter: parseFloat(form.current_horimeter || '0'),
       preventive_maintenance_interval_hours: form.preventive_maintenance_interval_hours ? parseFloat(form.preventive_maintenance_interval_hours) : null,
-      status: form.status, notes: form.notes || null,
+      status: form.status,
+      technical_status: form.technical_status,
+      location: form.location || null,
+      notes: form.notes || null,
     };
     if (editing) {
       const { error } = await (supabase as any).from('machines').update(payload).eq('id', editing.id);

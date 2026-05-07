@@ -30,7 +30,6 @@ import { AccessModeDialog } from '@/components/AccessModeDialog';
 import { MachinesPage } from '@/components/machines/MachinesPage';
 import { MaintenancePage } from '@/components/machines/MaintenancePage';
 import { RentalsPage } from '@/components/machines/RentalsPage';
-import { RentalsReportPage } from '@/components/machines/RentalsReportPage';
 import { PeoplePage } from '@/components/machines/PeoplePage';
 import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,7 +59,6 @@ export type FinanceView =
   | 'machines-inventory'
   | 'machines-maintenance'
   | 'machines-rentals'
-  | 'machines-rentals-report'
   | 'machines-operators'
   | 'machines-mechanics';
 
@@ -85,7 +83,6 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'machines-inventory',
   'machines-maintenance',
   'machines-rentals',
-  'machines-rentals-report',
   'machines-operators',
   'machines-mechanics',
 ];
@@ -263,8 +260,6 @@ const Finance = () => {
         return machinesEnabled ? <MaintenancePage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-rentals':
         return machinesEnabled ? <RentalsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'machines-rentals-report':
-        return machinesEnabled ? <RentalsReportPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-operators':
         return machinesEnabled ? <PeoplePage companyId={selectedCompanyId} kind="operator" /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-mechanics':

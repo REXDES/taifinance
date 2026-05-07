@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil, Ban, CheckCircle2, Trash2, Wallet, Boxes, CalendarClock } from 'lucide-react';
 import { useRentals, useMachines, useRentalKits, Rental } from '@/hooks/useMachinesModule';
 import { useClientsSuppliers } from '@/hooks/useClientsSuppliers';
 import { useOperators } from '@/hooks/useMachinesModule';
@@ -16,7 +16,8 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { generateRentalReceivables, addDays, addMonths } from '@/lib/machinesFinance';
+import { generateRentalReceivables, addDays, addMonths, recalculatePendingInstallments, deletePendingInstallments } from '@/lib/machinesFinance';
+import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 
 interface Props { companyId: string; }
 
@@ -33,7 +34,6 @@ function addByUnit(start: string, unit: Rental['unit'], qty: number): string {
   if (unit === 'month') return addMonths(start, qty);
   if (unit === 'week') return addDays(start, qty * 7);
   if (unit === 'day') return addDays(start, qty);
-  // hour: tratamos como mesma data (não soma dias)
   return start;
 }
 
@@ -45,7 +45,6 @@ function defaultFrequency(unit: Rental['unit']): 'monthly' | 'weekly' | 'daily' 
 
 function suggestedInstallments(duration: number, unit: Rental['unit'], freq: 'monthly' | 'weekly' | 'daily'): number {
   if (!duration || duration <= 0) return 1;
-  // Converte duração para dias aproximados
   const durationDays = unit === 'month' ? duration * 30 : unit === 'week' ? duration * 7 : unit === 'day' ? duration : 0;
   const periodDays = freq === 'monthly' ? 30 : freq === 'weekly' ? 7 : 1;
   if (durationDays === 0) return 1;
@@ -61,6 +60,43 @@ export function RentalsPage({ companyId }: Props) {
   const { clientsSuppliers } = useClientsSuppliers(companyId);
   const { accounts } = useAccounts(companyId);
 
+  // ---------- Filtros ----------
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [clientFilter, setClientFilter] = useState<string>('all');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
+
+  const filtered = useMemo(() => rentals.filter(r => {
+    if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+    if (clientFilter !== 'all' && r.client_id !== clientFilter) return false;
+    if (fromDate && r.start_date < fromDate) return false;
+    if (toDate && r.start_date > toDate) return false;
+    return true;
+  }), [rentals, statusFilter, clientFilter, fromDate, toDate]);
+
+  // ---------- Resumos ----------
+  const activeRentals = useMemo(() => rentals.filter(r => r.status === 'active'), [rentals]);
+  const totalActiveAmount = useMemo(() => activeRentals.reduce((s, r) => s + Number(r.total_amount || 0), 0), [activeRentals]);
+  const totalActiveItems = useMemo(() => activeRentals.reduce((s, r) => s + (r.rental_machines?.length || 0), 0), [activeRentals]);
+
+  const [monthReceivable, setMonthReceivable] = useState(0);
+  useEffect(() => {
+    (async () => {
+      const now = new Date();
+      const first = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const lastStr = `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
+      const { data } = await (supabase as any)
+        .from('payables_receivables')
+        .select('amount, is_amount_pending')
+        .eq('company_id', companyId).eq('type', 'receivable').eq('status', 'pending')
+        .not('rental_id', 'is', null).gte('due_date', first).lte('due_date', lastStr);
+      const total = (data || []).filter((r: any) => !r.is_amount_pending).reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
+      setMonthReceivable(total);
+    })();
+  }, [companyId, rentals]);
+
+  // ---------- Form Nova ----------
   const [open, setOpen] = useState(false);
   const empty = {
     client_id: '', operator_id: 'none', kit_id: 'none', machine_ids: [] as string[],
@@ -73,27 +109,17 @@ export function RentalsPage({ companyId }: Props) {
     paid_account_id: 'none', notes: '',
   };
   const [form, setForm] = useState(empty);
-
   const openNew = () => { setForm({ ...empty, start_date: todayLocal() }); setOpen(true); };
 
-  // Calcula fim automaticamente a partir de início + duração + unidade
   const computedEnd = useMemo(() => {
     const dur = parseFloat(form.duration || '0');
     if (!form.start_date || !dur) return '';
     return addByUnit(form.start_date, form.unit, dur);
   }, [form.start_date, form.unit, form.duration]);
 
-  // Mantém end_date sincronizado quando o usuário não editou manualmente
-  useEffect(() => {
-    setForm(f => ({ ...f, end_date: computedEnd }));
-  }, [computedEnd]);
+  useEffect(() => { setForm(f => ({ ...f, end_date: computedEnd })); }, [computedEnd]);
+  useEffect(() => { setForm(f => ({ ...f, billing_frequency: defaultFrequency(f.unit) })); }, [form.unit]);
 
-  // Quando a unidade muda, ajusta a periodicidade default
-  useEffect(() => {
-    setForm(f => ({ ...f, billing_frequency: defaultFrequency(f.unit) }));
-  }, [form.unit]);
-
-  // Sugere nº de parcelas se usuário não digitou manualmente
   const suggestedQty = suggestedInstallments(parseFloat(form.duration || '0'), form.unit, form.billing_frequency);
   useEffect(() => {
     if (!form.installments_manual && form.payment_mode === 'installments') {
@@ -178,6 +204,98 @@ export function RentalsPage({ companyId }: Props) {
     setOpen(false); refetch();
   };
 
+  // ---------- Editar ----------
+  const [editing, setEditing] = useState<Rental | null>(null);
+  const [editForm, setEditForm] = useState({ qty: '', unit_price: '', total_amount: '' });
+  const openEdit = (r: Rental) => {
+    setEditing(r);
+    setEditForm({ qty: r.qty.toString(), unit_price: r.unit_price.toString(), total_amount: r.total_amount.toString() });
+  };
+  const saveEdit = async () => {
+    if (!editing) return;
+    const newTotal = parseFloat(editForm.total_amount || '0') || (parseFloat(editForm.qty) * parseFloat(editForm.unit_price));
+    const { error } = await (supabase as any).from('rentals').update({
+      qty: parseFloat(editForm.qty), unit_price: parseFloat(editForm.unit_price), total_amount: newTotal,
+    }).eq('id', editing.id);
+    if (error) return toast.error(error.message);
+
+    if (editing.payment_mode === 'installments') {
+      try {
+        await recalculatePendingInstallments({ rentalId: editing.id, newTotal });
+        toast.success('Locação atualizada e parcelas pendentes recalculadas');
+      } catch (e: any) { toast.error('Erro ao recalcular: ' + e.message); }
+    } else {
+      if (editing.transaction_id) {
+        await (supabase as any).from('transactions').update({ amount: newTotal }).eq('id', editing.transaction_id);
+      }
+      toast.success('Locação atualizada');
+    }
+    setEditing(null); refetch();
+  };
+
+  // ---------- Cancelar / Encerrar / Excluir ----------
+  const cancel = async (r: Rental) => {
+    if (!window.confirm(`Cancelar a locação? ${r.payment_mode === 'installments' ? 'Parcelas pendentes serão removidas (parcelas pagas permanecem).' : 'A transação à vista será excluída.'}`)) return;
+    const { error } = await (supabase as any).from('rentals').update({ status: 'cancelled' }).eq('id', r.id);
+    if (error) return toast.error(error.message);
+    if (r.payment_mode === 'installments') { try { await deletePendingInstallments({ rentalId: r.id }); } catch {} }
+    else if (r.transaction_id) { await (supabase as any).from('transactions').delete().eq('id', r.transaction_id); }
+    const { data: rms } = await (supabase as any).from('rental_machines').select('machine_id').eq('rental_id', r.id);
+    if (rms) for (const rm of rms) await (supabase as any).from('machines').update({ status: 'available' }).eq('id', rm.machine_id);
+    toast.success('Locação cancelada'); refetch();
+  };
+
+  const [closing, setClosing] = useState<Rental | null>(null);
+  const [horimeterEnd, setHorimeterEnd] = useState('');
+  const finish = async () => {
+    if (!closing) return;
+    const { error } = await (supabase as any).from('rentals').update({
+      status: 'finished',
+      horimeter_end: horimeterEnd ? parseFloat(horimeterEnd) : null,
+      end_date: todayLocal(),
+    }).eq('id', closing.id);
+    if (error) return toast.error(error.message);
+    const { data: rms } = await (supabase as any).from('rental_machines').select('machine_id').eq('rental_id', closing.id);
+    if (rms) {
+      for (const rm of rms) {
+        await (supabase as any).from('machines').update({ status: 'available' }).eq('id', rm.machine_id);
+        if (horimeterEnd) {
+          await (supabase as any).from('machine_horimeter_logs').insert({
+            machine_id: rm.machine_id, reading: parseFloat(horimeterEnd), source: 'rental_end', reference_id: closing.id,
+          });
+          await (supabase as any).from('machines').update({ current_horimeter: parseFloat(horimeterEnd) }).eq('id', rm.machine_id);
+        }
+      }
+    }
+    toast.success('Locação encerrada'); setClosing(null); setHorimeterEnd(''); refetch();
+  };
+
+  const [deleting, setDeleting] = useState<Rental | null>(null);
+  const doDelete = async () => {
+    if (!deleting) return;
+    try {
+      // Remove parcelas pendentes a receber (preserva pagas)
+      await deletePendingInstallments({ rentalId: deleting.id });
+      // Verifica se ainda existem parcelas (pagas) ou transação à vista vinculadas
+      const { data: remaining } = await (supabase as any)
+        .from('payables_receivables').select('id').eq('rental_id', deleting.id).limit(1);
+      if (remaining && remaining.length > 0) {
+        toast.error('Existem parcelas pagas vinculadas. Não é possível excluir a locação.');
+        setDeleting(null); return;
+      }
+      // Libera máquinas e remove vínculos
+      const { data: rms } = await (supabase as any).from('rental_machines').select('machine_id').eq('rental_id', deleting.id);
+      if (rms) for (const rm of rms) await (supabase as any).from('machines').update({ status: 'available' }).eq('id', rm.machine_id);
+      await (supabase as any).from('rental_machines').delete().eq('rental_id', deleting.id);
+      // Transação à vista (se houver)
+      if (deleting.transaction_id) await (supabase as any).from('transactions').delete().eq('id', deleting.transaction_id);
+      const { error } = await (supabase as any).from('rentals').delete().eq('id', deleting.id);
+      if (error) throw error;
+      toast.success('Locação excluída');
+      setDeleting(null); refetch();
+    } catch (e: any) { toast.error('Erro ao excluir: ' + e.message); }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -185,25 +303,100 @@ export function RentalsPage({ companyId }: Props) {
         <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Nova Locação</Button>
       </div>
 
+      {/* Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Card><CardContent className="p-4 flex items-center gap-3">
+          <div className="p-2 rounded-md bg-primary/10 text-primary"><Wallet className="w-5 h-5" /></div>
+          <div>
+            <div className="text-xs text-muted-foreground">Contratos vigentes</div>
+            <div className="text-xl font-semibold">R$ {totalActiveAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <div className="text-[11px] text-muted-foreground">{activeRentals.length} ativa(s)</div>
+          </div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 flex items-center gap-3">
+          <div className="p-2 rounded-md bg-primary/10 text-primary"><Boxes className="w-5 h-5" /></div>
+          <div>
+            <div className="text-xs text-muted-foreground">Itens locados</div>
+            <div className="text-xl font-semibold">{totalActiveItems}</div>
+            <div className="text-[11px] text-muted-foreground">em contratos ativos</div>
+          </div>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 flex items-center gap-3">
+          <div className="p-2 rounded-md bg-primary/10 text-primary"><CalendarClock className="w-5 h-5" /></div>
+          <div>
+            <div className="text-xs text-muted-foreground">A receber este mês</div>
+            <div className="text-xl font-semibold">R$ {monthReceivable.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <div className="text-[11px] text-muted-foreground">parcelas pendentes</div>
+          </div>
+        </CardContent></Card>
+      </div>
+
+      {/* Filtros */}
+      <Card><CardContent className="p-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <Label className="text-xs">Status</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="active">Ativas</SelectItem>
+                <SelectItem value="finished">Encerradas</SelectItem>
+                <SelectItem value="cancelled">Canceladas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Cliente</Label>
+            <Select value={clientFilter} onValueChange={setClientFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {clientsSuppliers.filter(c => c.type !== 'supplier').map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Início de</Label>
+            <Input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Início até</Label>
+            <Input type="date" value={toDate} onChange={e => setToDate(e.target.value)} />
+          </div>
+        </div>
+      </CardContent></Card>
+
       <Card><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Cliente</TableHead><TableHead>Período</TableHead><TableHead>Unidade</TableHead>
+            <TableHead>Cliente</TableHead><TableHead>Período</TableHead><TableHead>Qtd</TableHead>
             <TableHead>Total</TableHead><TableHead>Pagamento</TableHead><TableHead>Status</TableHead>
+            <TableHead className="w-44">Ações</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {loading ? <TableRow><TableCell colSpan={6}>Carregando...</TableCell></TableRow> :
-              rentals.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhuma locação</TableCell></TableRow> :
-              rentals.map(r => {
+            {loading ? <TableRow><TableCell colSpan={7}>Carregando...</TableCell></TableRow> :
+              filtered.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma locação</TableCell></TableRow> :
+              filtered.map(r => {
                 const client = clientsSuppliers.find(c => c.id === r.client_id);
                 return (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{client?.name || '-'}</TableCell>
-                    <TableCell>{new Date(r.start_date + 'T00:00:00').toLocaleDateString('pt-BR')} {r.end_date ? `→ ${new Date(r.end_date + 'T00:00:00').toLocaleDateString('pt-BR')}` : ''}</TableCell>
+                    <TableCell className="text-xs">{new Date(r.start_date + 'T00:00:00').toLocaleDateString('pt-BR')}{r.end_date ? ` → ${new Date(r.end_date + 'T00:00:00').toLocaleDateString('pt-BR')}` : ''}</TableCell>
                     <TableCell>{r.qty} {UNIT_LABEL[r.unit]}</TableCell>
                     <TableCell>R$ {Number(r.total_amount).toFixed(2)}</TableCell>
                     <TableCell><Badge variant="outline">{r.payment_mode === 'cash' ? 'À vista' : `${r.installments_count}x ${r.billing_frequency === 'monthly' ? 'mensal' : r.billing_frequency === 'weekly' ? 'semanal' : 'diário'}`}</Badge></TableCell>
                     <TableCell><Badge>{r.status === 'active' ? 'Ativa' : r.status === 'finished' ? 'Encerrada' : 'Cancelada'}</Badge></TableCell>
+                    <TableCell>
+                      {r.status === 'active' && (
+                        <>
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(r)} title="Editar"><Pencil className="w-4 h-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => setClosing(r)} title="Encerrar"><CheckCircle2 className="w-4 h-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => cancel(r)} title="Cancelar"><Ban className="w-4 h-4" /></Button>
+                        </>
+                      )}
+                      <Button size="icon" variant="ghost" onClick={() => setDeleting(r)} title="Excluir"><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -211,6 +404,7 @@ export function RentalsPage({ companyId }: Props) {
         </Table>
       </CardContent></Card>
 
+      {/* Nova Locação */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl overflow-y-auto max-h-[85vh]">
           <DialogHeader><DialogTitle>Nova Locação</DialogTitle></DialogHeader>
@@ -267,7 +461,6 @@ export function RentalsPage({ companyId }: Props) {
               </div>
             )}
 
-            {/* === Contrato === */}
             <div className="border rounded p-3 space-y-3 bg-muted/30">
               <div className="text-sm font-medium">Contrato</div>
               <div className="grid grid-cols-2 gap-3">
@@ -293,7 +486,6 @@ export function RentalsPage({ companyId }: Props) {
               </div>
             </div>
 
-            {/* === Valores === */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Preço por {UNIT_LABEL[form.unit].toLowerCase()}</Label>
@@ -378,6 +570,53 @@ export function RentalsPage({ companyId }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Editar */}
+      <Dialog open={!!editing} onOpenChange={() => setEditing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar Locação</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+              {editing?.payment_mode === 'installments'
+                ? 'Alterar o valor recalculará apenas as parcelas pendentes (parcelas já pagas permanecem inalteradas).'
+                : 'A transação à vista vinculada será atualizada com o novo valor.'}
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div><Label>Quantidade</Label><Input type="number" step="0.5" value={editForm.qty} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} /></div>
+              <div><Label>Preço unit.</Label><Input type="number" step="0.01" value={editForm.unit_price} onChange={e => setEditForm({ ...editForm, unit_price: e.target.value })} /></div>
+              <div><Label>Total</Label><Input type="number" step="0.01" value={editForm.total_amount} onChange={e => setEditForm({ ...editForm, total_amount: e.target.value })} /></div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button onClick={saveEdit}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Encerrar */}
+      <Dialog open={!!closing} onOpenChange={() => setClosing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Encerrar Locação</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Horímetro final</Label><Input type="number" step="0.1" value={horimeterEnd} onChange={e => setHorimeterEnd(e.target.value)} /></div>
+            <p className="text-xs text-muted-foreground">As máquinas vinculadas voltarão a ficar disponíveis.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClosing(null)}>Cancelar</Button>
+            <Button onClick={finish}>Encerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Excluir */}
+      <DeleteConfirmDialog
+        open={!!deleting}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        onConfirm={doDelete}
+        title="Excluir locação"
+        description="A locação será removida permanentemente. As parcelas a receber pendentes vinculadas também serão excluídas. Parcelas já pagas impedirão a exclusão."
+      />
     </div>
   );
 }

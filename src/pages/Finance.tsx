@@ -348,6 +348,7 @@ const Finance = () => {
         onOpenChange={setShowCompanySettings}
         companyId={effectiveMode === 'admin' ? null : selectedCompanyId}
         showPicker={effectiveMode === 'admin'}
+        showModulesTab={effectiveMode === 'admin'}
       />
     </div>
   );

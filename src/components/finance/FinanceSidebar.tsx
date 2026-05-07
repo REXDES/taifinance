@@ -128,7 +128,6 @@ const cadastrosMenuItems: MenuItem[] = [
 const machinesMenuItems: MenuItem[] = [
   { view: 'machines-inventory', label: 'Inventário', icon: <Truck className="w-4 h-4" /> },
   { view: 'machines-rentals', label: 'Locações', icon: <ClipboardCheck className="w-4 h-4" /> },
-  { view: 'machines-rentals-report', label: 'Relatório de Locações', icon: <FileSearch className="w-4 h-4" /> },
   { view: 'machines-maintenance', label: 'Manutenções', icon: <Hammer className="w-4 h-4" /> },
   { view: 'machines-operators', label: 'Operadores', icon: <HardHat className="w-4 h-4" /> },
   { view: 'machines-mechanics', label: 'Mecânicos', icon: <Wrench className="w-4 h-4" /> },

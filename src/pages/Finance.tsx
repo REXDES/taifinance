@@ -256,6 +256,18 @@ const Finance = () => {
         return <ClientsSuppliersPage companyId={selectedCompanyId} />;
       case 'bank-digital':
         return <BankDigitalPage companyId={selectedCompanyId} />;
+      case 'machines-inventory':
+        return machinesEnabled ? <MachinesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'machines-maintenance':
+        return machinesEnabled ? <MaintenancePage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'machines-rentals':
+        return machinesEnabled ? <RentalsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'machines-rentals-report':
+        return machinesEnabled ? <RentalsReportPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'machines-operators':
+        return machinesEnabled ? <PeoplePage companyId={selectedCompanyId} kind="operator" /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'machines-mechanics':
+        return machinesEnabled ? <PeoplePage companyId={selectedCompanyId} kind="mechanic" /> : <FinanceDashboard companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }

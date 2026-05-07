@@ -37,11 +37,15 @@ export function MachinesPage({ companyId }: Props) {
   const [editing, setEditing] = useState<MachineExt | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MachineExt | null>(null);
   const [filter, setFilter] = useState<'all' | 'new_purchase' | 'pre_existing'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'maquina' | 'equipamento' | 'ferramenta'>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | Machine['status']>('all');
   const [priceTarget, setPriceTarget] = useState<MachineExt | null>(null);
   const [priceForm, setPriceForm] = useState({ sale_price: '', rental_price_daily: '', rental_price_weekly: '', rental_price_monthly: '' });
 
   const empty = {
     name: '', brand: '', model: '', year: '', destination: '', type_id: 'none',
+    category: 'equipamento' as 'maquina' | 'equipamento' | 'ferramenta',
     acquisition_value: '', acquisition_date: '', acquisition_source: 'pre_existing' as 'new_purchase' | 'pre_existing',
     current_horimeter: '', preventive_maintenance_interval_hours: '',
     status: 'available' as Machine['status'], notes: '',

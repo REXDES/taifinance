@@ -153,6 +153,21 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
       return;
     }
 
+    // Validar e normalizar chave PIX (se preenchida)
+    let normalizedPixKey: string | null = null;
+    if (pixKey.trim()) {
+      if (!pixKeyType) {
+        toast.error('Selecione o tipo da chave PIX');
+        return;
+      }
+      const err = validatePixKey(pixKey, pixKeyType as PixKeyType);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+      normalizedPixKey = normalizePixKey(pixKey, pixKeyType as PixKeyType);
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -167,7 +182,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           city: city || null,
           state: state || null,
           zip_code: zipCode || null,
-          pix_key: pixKey || null,
+          pix_key: normalizedPixKey,
           pix_key_type: pixKeyType || null,
           pix_holder_name: pixHolderName || null,
           pix_city: pixCity || null,
@@ -177,6 +192,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           machines_module_enabled: machinesModuleEnabled,
         } as any)
         .eq('id', effectiveCompanyId!);
+
 
       if (error) throw error;
       toast.success('Configurações salvas com sucesso!');

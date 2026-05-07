@@ -82,6 +82,12 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'payables-receivables-calendar',
   'payables-receivables-flow',
   'clients-suppliers',
+  'machines-inventory',
+  'machines-maintenance',
+  'machines-rentals',
+  'machines-rentals-report',
+  'machines-operators',
+  'machines-mechanics',
 ];
 
 interface UserRoleInfo {

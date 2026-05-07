@@ -83,6 +83,7 @@ interface FinanceSidebarProps {
   onOpenUsers?: () => void;
   onOpenInvitations?: () => void;
   onOpenCompanySettings?: () => void;
+  machinesEnabled?: boolean;
 }
 
 type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };

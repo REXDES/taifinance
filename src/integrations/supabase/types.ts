@@ -707,6 +707,27 @@ export type Database = {
           },
         ]
       }
+      machine_locations: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       machine_types: {
         Row: {
           company_id: string
@@ -744,6 +765,7 @@ export type Database = {
           current_horimeter: number
           destination: string | null
           id: string
+          location: string | null
           model: string | null
           name: string
           notes: string | null
@@ -753,6 +775,7 @@ export type Database = {
           rental_price_weekly: number | null
           sale_price: number | null
           status: string
+          technical_status: string
           type_id: string | null
           updated_at: string
           year: number | null
@@ -769,6 +792,7 @@ export type Database = {
           current_horimeter?: number
           destination?: string | null
           id?: string
+          location?: string | null
           model?: string | null
           name: string
           notes?: string | null
@@ -778,6 +802,7 @@ export type Database = {
           rental_price_weekly?: number | null
           sale_price?: number | null
           status?: string
+          technical_status?: string
           type_id?: string | null
           updated_at?: string
           year?: number | null
@@ -794,6 +819,7 @@ export type Database = {
           current_horimeter?: number
           destination?: string | null
           id?: string
+          location?: string | null
           model?: string | null
           name?: string
           notes?: string | null
@@ -803,6 +829,7 @@ export type Database = {
           rental_price_weekly?: number | null
           sale_price?: number | null
           status?: string
+          technical_status?: string
           type_id?: string | null
           updated_at?: string
           year?: number | null

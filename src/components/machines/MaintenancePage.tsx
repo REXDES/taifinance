@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useMaintenanceRecords, useMachines, useMechanics, MaintenanceRecord } from '@/hooks/useMachinesModule';
+import { useAccounts } from '@/hooks/useAccounts';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ export function MaintenancePage({ companyId }: Props) {
   const { records, refetch, loading } = useMaintenanceRecords(companyId);
   const { machines } = useMachines(companyId);
   const { mechanics } = useMechanics(companyId);
+  const { accounts } = useAccounts(companyId);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MaintenanceRecord | null>(null);
@@ -30,8 +32,9 @@ export function MaintenancePage({ companyId }: Props) {
   const empty = {
     machine_id: '', mechanic_id: 'none', start_date: new Date().toISOString().slice(0, 10),
     end_date: '', description: '', horimeter_at_service: '',
-    total_cost: '', payment_mode: 'cash' as 'cash' | 'installments' | 'none',
+    total_cost: '', payment_mode: 'cash' as 'cash' | 'installments',
     installments: '1', status: 'in_progress' as MaintenanceRecord['status'],
+    paid_account_id: 'none',
   };
   const [form, setForm] = useState(empty);
 
@@ -42,8 +45,9 @@ export function MaintenancePage({ companyId }: Props) {
       machine_id: r.machine_id, mechanic_id: r.mechanic_id || 'none',
       start_date: r.start_date, end_date: r.end_date || '',
       description: r.description || '', horimeter_at_service: r.horimeter_at_service?.toString() || '',
-      total_cost: r.total_cost?.toString() || '', payment_mode: r.payment_mode,
+      total_cost: r.total_cost?.toString() || '', payment_mode: (r.payment_mode === 'none' ? 'cash' : r.payment_mode) as 'cash' | 'installments',
       installments: '1', status: r.status,
+      paid_account_id: 'none',
     });
     setOpen(true);
   };

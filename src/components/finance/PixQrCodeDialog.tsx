@@ -79,7 +79,9 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
           merchantName: (company as any).pix_holder_name || company.name,
           merchantCity: (company as any).pix_city || 'SAO PAULO',
           amount: record.amount,
-          txId: record.id.substring(0, 25).replace(/-/g, '').toUpperCase(),
+          // Para QR estático, o padrão BACEN é txId = "***" (sem identificador).
+          // txIds customizados são frequentemente recusados pelo PSP destino.
+          txId: '***',
         };
         setPixPayload(generatePixPayload(params));
       } else {

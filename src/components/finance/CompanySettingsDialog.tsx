@@ -23,12 +23,13 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, QrCode, MessageSquare, Building2, Wrench } from 'lucide-react';
+import { Loader2, QrCode, MessageSquare, Building2, Wrench, ArrowLeft, ChevronRight } from 'lucide-react';
 
 interface CompanySettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  companyId: string;
+  companyId: string | null;
+  showPicker?: boolean; // se true, força exibir lista de empresas para escolher (modo admin)
 }
 
 const NOTIFY_DAYS_OPTIONS = [

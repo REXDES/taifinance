@@ -71,6 +71,9 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
   const [whatsappNotifyDaysBefore, setWhatsappNotifyDaysBefore] = useState<number[]>([0]);
   const [whatsappNotifyTime, setWhatsappNotifyTime] = useState('08:00');
 
+  // Módulos
+  const [machinesModuleEnabled, setMachinesModuleEnabled] = useState(false);
+
   useEffect(() => {
     if (open && companyId) {
       loadSettings();

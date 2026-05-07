@@ -455,7 +455,7 @@ export function FinanceSidebar({
                 {collapsed ? (
                   allRelatoriosItems.map(renderMenuItem)
                 ) : (
-                  <Collapsible defaultOpen={allRelatoriosItems.some(item => currentView === item.view)}>
+                  <Collapsible open={openGroup === 'relatorios'} onOpenChange={setGroup('relatorios')}>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                         <span className="flex items-center gap-2">

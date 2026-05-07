@@ -60,13 +60,16 @@ export function MaintenancePage({ companyId }: Props) {
       total_cost: cost, payment_mode: form.payment_mode,
       status: form.status, created_by: user?.id ?? null,
     };
+    const techStatus = form.status === 'in_progress' ? 'em_manutencao' : 'operacional';
     if (editing) {
       const { error } = await (supabase as any).from('maintenance_records').update(payload).eq('id', editing.id);
       if (error) return toast.error(error.message);
+      await (supabase as any).from('machines').update({ technical_status: techStatus }).eq('id', form.machine_id);
       toast.success('Atualizada');
     } else {
       const { data, error } = await (supabase as any).from('maintenance_records').insert(payload).select().single();
       if (error) return toast.error(error.message);
+      await (supabase as any).from('machines').update({ technical_status: techStatus }).eq('id', form.machine_id);
       // Generate financial entries
       if (cost > 0 && form.payment_mode !== 'none') {
         const inst = form.payment_mode === 'installments' ? Math.max(1, parseInt(form.installments || '1')) : 1;

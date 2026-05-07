@@ -1,36 +1,34 @@
-## Finalização do Módulo Máquinas & Locação
+## Correção do KRCode PIX rejeitado na liquidação
 
-As 5 páginas e a infraestrutura (11 tabelas, hooks, lógica financeira híbrida) já foram criadas. Falta integrar à navegação e ao toggle de configuração da empresa.
+### Mudanças
 
-### 1. Toggle no cadastro da empresa
-- Editar `src/components/finance/CompanySettingsDialog.tsx` (ou local equivalente do cadastro de empresa) para adicionar um switch **"Habilitar módulo Máquinas & Locação"** vinculado à coluna `companies.machines_module_enabled` (já existente).
-- Visível apenas para Supervisor/Gerente.
+**1. `src/lib/pixUtils.ts`** — adicionar normalização e validação:
 
-### 2. Sidebar — nova seção "Máquinas & Locação"
-- Editar `src/components/finance/FinanceSidebar.tsx` para incluir um grupo colapsável **"Máquinas & Locação"** que aparece somente quando `currentCompany.machines_module_enabled === true`.
-- Itens do grupo:
-  - Inventário (Máquinas/Equipamentos/Ferramentas)
-  - Locações
-  - Relatório de Locações
-  - Manutenções
-  - Operadores & Mecânicos
-  - Tabela de Preços / Kits (sub-aba dentro de Locações)
+- `normalizePixKey(key, type)`:
+  - `cpf`/`cnpj`: só dígitos
+  - `phone`: prefixar `+55` no padrão E.164 (ex: `+5511999998888`)
+  - `email`: trim + lowercase
+  - `random`: trim + lowercase (UUID)
+- `sanitizeAlphaNum(s, max)` para tags 59 (nome) e 60 (cidade): remove acentos, força MAIÚSCULAS, mantém apenas `[A-Z0-9 ]`, colapsa espaços e respeita o limite (25/15).
+- `sanitizeTxId(s)`: mantém apenas `[A-Za-z0-9]`, força MAIÚSCULAS, máx 25 chars; fallback `***`.
+- `generatePixPayload`: usa a chave normalizada na tag 26 e os helpers acima.
+- Nova `validatePixKey(key, type)` retornando mensagem de erro ou `null`.
 
-### 3. Rotas
-- Editar `src/pages/Finance.tsx` para registrar as rotas das páginas já criadas:
-  - `/finance/machines` → `MachinesPage`
-  - `/finance/machines/maintenance` → `MaintenancePage`
-  - `/finance/machines/rentals` → `RentalsPage`
-  - `/finance/machines/rentals-report` → `RentalsReportPage`
-  - `/finance/machines/people` → `PeoplePage`
-- Guard nas rotas: redireciona se `machines_module_enabled` for `false`.
+**2. `src/components/finance/PixQrCodeDialog.tsx`**
 
-### 4. Ajustes finos
-- Garantir que os hooks (`useMachinesModule`) respeitem `currentCompany.id` e bloqueiem fetch quando `initialSessionResolved` for falso (regra do projeto).
-- Validar que diálogos de formulário usam `overflow-y-auto max-h-[85vh]` (regra do projeto).
-- Adicionar `DeleteConfirmDialog` padronizado nas exclusões de máquinas/locações/manutenções.
+- Passar `txId` já sanitizado: `record.id.substring(0, 25).replace(/-/g, '').toUpperCase()`.
+- Mostrar a chave normalizada (via `normalizePixKey`) num pequeno texto abaixo do QR para facilitar conferência.
 
-### 5. Memória do projeto
-- Após implementação, salvar `mem://features/machines-rental-module` descrevendo: toggle por empresa, fluxo financeiro híbrido (compras/manutenções → contas a pagar; locações → contas a receber recorrentes), regras de edição/cancelamento (recalcula apenas parcelas futuras pendentes), aquisição `pre_existing` sem impacto financeiro.
+**3. `src/components/finance/CompanySettingsDialog.tsx` (aba PIX)**
 
-Resultado: módulo totalmente acessível na navegação, controlado pelo flag por empresa, com fluxos financeiros automáticos integrados a `transactions` e `payables_receivables`.
+- Ao salvar, chamar `validatePixKey` conforme o `pix_key_type`. Se inválida, exibir `toast.error` com a mensagem e abortar o save.
+- Salvar a chave já normalizada (`normalizePixKey`) em `pix_key`, evitando registros futuros com `(11) 99999-8888`, `123.456.789-00` etc.
+
+### Causa provável do erro
+
+O QR é lido (banco extrai o que dá), mas o PSP destino consulta o DICT pela string exata da chave da tag 26. Formatos como `(11) 99999-8888` ou `5511999998888` (sem `+`) não batem com o registro DICT (`+5511999998888`) e a transação é recusada na liquidação. Pagar manualmente funciona porque o app do banco normaliza antes de consultar o DICT.
+
+### Validação
+
+1. Reabrir Configurações da Empresa → PIX e re-salvar (a chave será normalizada).
+2. Gerar nova cobrança e pagar pelo banco — deve liquidar.

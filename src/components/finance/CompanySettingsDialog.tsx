@@ -23,12 +23,13 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, QrCode, MessageSquare, Building2, Wrench } from 'lucide-react';
+import { Loader2, QrCode, MessageSquare, Building2, Wrench, ArrowLeft, ChevronRight } from 'lucide-react';
 
 interface CompanySettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  companyId: string;
+  companyId: string | null;
+  showPicker?: boolean; // se true, força exibir lista de empresas para escolher (modo admin)
 }
 
 const NOTIFY_DAYS_OPTIONS = [
@@ -45,9 +46,15 @@ const UF_OPTIONS = [
   'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
 ];
 
-export function CompanySettingsDialog({ open, onOpenChange, companyId }: CompanySettingsDialogProps) {
+export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicker = false }: CompanySettingsDialogProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [companiesList, setCompaniesList] = useState<Array<{ id: string; name: string; fantasy_name: string | null; cnpj: string | null; color: string }>>([]);
+  const [pickedId, setPickedId] = useState<string | null>(null);
+
+  // companyId resolvido: o que vem da prop OU o escolhido na lista
+  const effectiveCompanyId = companyId ?? pickedId;
+  const showList = showPicker && !pickedId;
 
   // Dados cadastrais
   const [companyName, setCompanyName] = useState('');
@@ -74,19 +81,39 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
   // Módulos
   const [machinesModuleEnabled, setMachinesModuleEnabled] = useState(false);
 
+  // Reset picked when dialog reopens in picker mode
   useEffect(() => {
-    if (open && companyId) {
+    if (open && showPicker) {
+      setPickedId(null);
+    }
+  }, [open, showPicker]);
+
+  // Load companies list for picker
+  useEffect(() => {
+    if (!open || !showList) return;
+    (async () => {
+      const { data } = await supabase
+        .from('companies')
+        .select('id, name, fantasy_name, cnpj, color')
+        .order('name');
+      setCompaniesList((data as any) || []);
+    })();
+  }, [open, showList]);
+
+  useEffect(() => {
+    if (open && effectiveCompanyId) {
       loadSettings();
     }
-  }, [open, companyId]);
+  }, [open, effectiveCompanyId]);
 
   const loadSettings = async () => {
+    if (!effectiveCompanyId) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('companies')
         .select('*')
-        .eq('id', companyId)
+        .eq('id', effectiveCompanyId)
         .single();
 
       if (error) throw error;
@@ -147,7 +174,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
           whatsapp_notify_time: whatsappNotifyTime,
           machines_module_enabled: machinesModuleEnabled,
         } as any)
-        .eq('id', companyId);
+        .eq('id', effectiveCompanyId!);
 
       if (error) throw error;
       toast.success('Configurações salvas com sucesso!');
@@ -168,17 +195,62 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
     );
   };
 
+  const selectedFromList = companiesList.find(c => c.id === pickedId);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Gerenciar Empresa</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {showPicker && pickedId && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPickedId(null)}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            {showList
+              ? 'Selecionar Empresa'
+              : selectedFromList
+                ? `Configurações — ${selectedFromList.name}`
+                : 'Gerenciar Empresa'}
+          </DialogTitle>
           <DialogDescription>
-            Configure os dados cadastrais, PIX e notificações da empresa.
+            {showList
+              ? 'Escolha uma empresa para configurar.'
+              : 'Configure os dados cadastrais, PIX e notificações da empresa.'}
           </DialogDescription>
         </DialogHeader>
 
-        {loading ? (
+        {showList ? (
+          <div className="flex-1 overflow-y-auto -mx-6 px-6 py-2 space-y-2">
+            {companiesList.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhuma empresa cadastrada.</p>
+            ) : (
+              companiesList.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setPickedId(c.id)}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition-colors text-left"
+                >
+                  <div
+                    className="w-9 h-9 rounded flex items-center justify-center text-sm font-bold text-primary-foreground flex-shrink-0"
+                    style={{ backgroundColor: c.color?.startsWith('#') ? c.color : `hsl(${c.color})` }}
+                  >
+                    {c.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-foreground truncate">{c.name}</div>
+                    {(c.fantasy_name || c.cnpj) && (
+                      <div className="text-xs text-muted-foreground truncate">
+                        {c.fantasy_name}{c.fantasy_name && c.cnpj ? ' • ' : ''}{c.cnpj}
+                      </div>
+                    )}
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </button>
+              ))
+            )}
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
@@ -424,12 +496,14 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId }: Company
 
         <DialogFooter className="flex-shrink-0 mt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {showList ? 'Fechar' : 'Cancelar'}
           </Button>
-          <Button onClick={handleSave} disabled={saving || loading}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Salvar
-          </Button>
+          {!showList && (
+            <Button onClick={handleSave} disabled={saving || loading}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Salvar
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

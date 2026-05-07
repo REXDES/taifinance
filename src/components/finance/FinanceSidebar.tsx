@@ -272,7 +272,7 @@ export function FinanceSidebar({
           </div>
         )}
 
-        {!isAdminMode && collapsed && selectedCompany && (
+        {collapsed && selectedCompany && (
           <div className="p-2 border-b border-border">
             <Tooltip>
               <TooltipTrigger asChild>

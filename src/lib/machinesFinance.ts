@@ -27,10 +27,12 @@ interface RentalReceivablesArgs {
   frequency: 'monthly' | 'weekly' | 'daily';
   clientId: string | null;
   userId?: string | null;
+  /** 0 = primeira parcela vence na data de início; 1 = vence após 1 período (default) */
+  firstDueOffset?: 0 | 1;
 }
 
 export async function generateRentalReceivables(args: RentalReceivablesArgs) {
-  const { companyId, rentalId, description, totalAmount, startDate, installments, frequency, clientId, userId } = args;
+  const { companyId, rentalId, description, totalAmount, startDate, installments, frequency, clientId, userId, firstDueOffset = 1 } = args;
   const installmentValue = +(totalAmount / installments).toFixed(2);
   const rows = Array.from({ length: installments }).map((_, i) => ({
     company_id: companyId,
@@ -38,7 +40,7 @@ export async function generateRentalReceivables(args: RentalReceivablesArgs) {
     payment_type: installments > 1 ? 'installment' : 'single',
     description: installments > 1 ? `${description} (${i + 1}/${installments})` : description,
     amount: installmentValue,
-    due_date: dueDateForInstallment(startDate, frequency, i),
+    due_date: dueDateForInstallment(startDate, frequency, i + firstDueOffset),
     status: 'pending',
     client_supplier_id: clientId,
     rental_id: rentalId,

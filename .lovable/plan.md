@@ -1,34 +1,33 @@
-## Correção do KRCode PIX rejeitado na liquidação
+## Correções na criação de Locação
 
-### Mudanças
+### 1. Bug do vencimento (data de ontem)
+Em `src/components/machines/RentalsPage.tsx`, o default de `start_date` usa `new Date().toISOString().slice(0,10)`, que converte para UTC e pode devolver o dia anterior em fusos como Brasília. Trocar por uma função `todayLocal()` que monta `YYYY-MM-DD` a partir de `getFullYear/getMonth/getDate` (padrão já documentado em `mem://architecture/date-handling`).
 
-**1. `src/lib/pixUtils.ts`** — adicionar normalização e validação:
+### 2. Reorganizar formulário em torno do "tempo de contrato"
 
-- `normalizePixKey(key, type)`:
-  - `cpf`/`cnpj`: só dígitos
-  - `phone`: prefixar `+55` no padrão E.164 (ex: `+5511999998888`)
-  - `email`: trim + lowercase
-  - `random`: trim + lowercase (UUID)
-- `sanitizeAlphaNum(s, max)` para tags 59 (nome) e 60 (cidade): remove acentos, força MAIÚSCULAS, mantém apenas `[A-Z0-9 ]`, colapsa espaços e respeita o limite (25/15).
-- `sanitizeTxId(s)`: mantém apenas `[A-Za-z0-9]`, força MAIÚSCULAS, máx 25 chars; fallback `***`.
-- `generatePixPayload`: usa a chave normalizada na tag 26 e os helpers acima.
-- Nova `validatePixKey(key, type)` retornando mensagem de erro ou `null`.
+Bloco **Contrato** (substitui os campos atuais Início/Fim/Quantidade/Unidade):
+- `Início` (date)
+- `Duração` = input numérico + `Unidade` (Hora/Dia/Semana/Mês)
+- `Fim` calculado automaticamente (Início + Duração na unidade); editável — se editado, recalcula a duração
+- A `qty` salva no banco passa a ser a própria duração (elimina a duplicidade entre "quantidade contratual" e "quantidade para preço")
 
-**2. `src/components/finance/PixQrCodeDialog.tsx`**
+Bloco **Valores**:
+- `Preço unitário (por <unidade>)`
+- `Valor total` (auto = duração × preço, editável)
 
-- Passar `txId` já sanitizado: `record.id.substring(0, 25).replace(/-/g, '').toUpperCase()`.
-- Mostrar a chave normalizada (via `normalizePixKey`) num pequeno texto abaixo do QR para facilitar conferência.
+### 3. Periodicidade decorre do contrato
 
-**3. `src/components/finance/CompanySettingsDialog.tsx` (aba PIX)**
+No modo **A prazo**:
+- `Periodicidade de cobrança`: Mensal / Semanal / Diária — default conforme a unidade do contrato (Mês→Mensal, Semana→Semanal, Dia/Hora→Diária)
+- `Nº de parcelas`: **calculado automaticamente** a partir da duração + periodicidade (ex: 6 meses + Mensal → 6; 90 dias + Mensal → 3; 4 semanas + Semanal → 4). Campo permanece editável para sobrescrita manual, com texto auxiliar "Sugerido: N".
+- `1ª parcela vence`: toggle **"Após 1 período" (default)** ou **"Na data de início"**. Resolve o caso reportado em que a parcela única vencia no mesmo dia da locação.
 
-- Ao salvar, chamar `validatePixKey` conforme o `pix_key_type`. Se inválida, exibir `toast.error` com a mensagem e abortar o save.
-- Salvar a chave já normalizada (`normalizePixKey`) em `pix_key`, evitando registros futuros com `(11) 99999-8888`, `123.456.789-00` etc.
+No modo **À vista**: nenhuma alteração — segue lançando 1 receita na data de início.
 
-### Causa provável do erro
+### 4. Ajuste em `src/lib/machinesFinance.ts`
 
-O QR é lido (banco extrai o que dá), mas o PSP destino consulta o DICT pela string exata da chave da tag 26. Formatos como `(11) 99999-8888` ou `5511999998888` (sem `+`) não batem com o registro DICT (`+5511999998888`) e a transação é recusada na liquidação. Pagar manualmente funciona porque o app do banco normaliza antes de consultar o DICT.
+`generateRentalReceivables` recebe novo parâmetro opcional `firstDueOffset: 0 | 1` (default `1`). Loop usa `dueDateForInstallment(start, freq, i + firstDueOffset)`.
 
-### Validação
-
-1. Reabrir Configurações da Empresa → PIX e re-salvar (a chave será normalizada).
-2. Gerar nova cobrança e pagar pelo banco — deve liquidar.
+### Arquivos alterados
+- `src/components/machines/RentalsPage.tsx`
+- `src/lib/machinesFinance.ts`

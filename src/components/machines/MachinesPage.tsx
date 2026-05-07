@@ -176,13 +176,15 @@ export function MachinesPage({ companyId }: Props) {
     if (categoryFilter !== 'all' && (m.category || 'equipamento') !== categoryFilter) return false;
     if (typeFilter !== 'all' && (m.type_id || 'none') !== typeFilter) return false;
     if (statusFilter !== 'all' && m.status !== statusFilter) return false;
+    if (techStatusFilter !== 'all' && ((m as any).technical_status || 'operacional') !== techStatusFilter) return false;
+    if (locationFilter !== 'all' && ((m as any).location || '') !== locationFilter) return false;
     return true;
   });
 
   const stats = useMemo(() => {
     const totalValue = filtered.reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
     const total = filtered.length;
-    const rented = filtered.filter(m => m.status === 'rented').length;
+    const rented = filtered.filter(m => m.status === 'locada').length;
     const pct = total > 0 ? (rented / total) * 100 : 0;
     return { totalValue, total, rented, pct };
   }, [filtered]);

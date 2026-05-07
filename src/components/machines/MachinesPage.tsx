@@ -47,16 +47,38 @@ export function MachinesPage({ companyId }: Props) {
   const [filter, setFilter] = useState<'all' | 'new_purchase' | 'pre_existing'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'maquina' | 'equipamento' | 'ferramenta'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | Machine['status']>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [techStatusFilter, setTechStatusFilter] = useState<string>('all');
+  const [locationFilter, setLocationFilter] = useState<string>('all');
   const [priceTarget, setPriceTarget] = useState<MachineExt | null>(null);
   const [priceForm, setPriceForm] = useState({ sale_price: '', rental_price_daily: '', rental_price_weekly: '', rental_price_monthly: '' });
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [locDialogOpen, setLocDialogOpen] = useState(false);
+  const [newLocName, setNewLocName] = useState('');
+
+  const fetchLocations = useCallback(async () => {
+    if (!companyId) return;
+    const { data } = await (supabase as any).from('machine_locations').select('id, name').eq('company_id', companyId).order('name');
+    setLocations(data || []);
+  }, [companyId]);
+  useEffect(() => { fetchLocations(); }, [fetchLocations]);
+
+  const allLocationNames = useMemo(() => {
+    const set = new Set<string>(DEFAULT_LOCATIONS);
+    locations.forEach(l => set.add(l.name));
+    machines.forEach(m => { if (m.location) set.add(m.location); });
+    return Array.from(set);
+  }, [locations, machines]);
 
   const empty = {
     name: '', brand: '', model: '', year: '', destination: '', type_id: 'none',
     category: 'equipamento' as 'maquina' | 'equipamento' | 'ferramenta',
     acquisition_value: '', acquisition_date: '', acquisition_source: 'pre_existing' as 'new_purchase' | 'pre_existing',
     current_horimeter: '', preventive_maintenance_interval_hours: '',
-    status: 'available' as Machine['status'], notes: '',
+    status: 'disponivel' as string,
+    technical_status: 'operacional' as string,
+    location: '' as string,
+    notes: '',
   };
   const [form, setForm] = useState(empty);
 

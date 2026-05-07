@@ -174,7 +174,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           whatsapp_notify_time: whatsappNotifyTime,
           machines_module_enabled: machinesModuleEnabled,
         } as any)
-        .eq('id', companyId);
+        .eq('id', effectiveCompanyId!);
 
       if (error) throw error;
       toast.success('Configurações salvas com sucesso!');

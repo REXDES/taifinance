@@ -168,8 +168,6 @@ export function FinanceSidebar({
     : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
     : null;
   const [openGroup, setOpenGroup] = useState<TopGroup | null>(initialOpenGroup);
-  const toggleGroup = (g: TopGroup) => (open: boolean) => setOpenGroup(open ? g : (prev => prev === g ? null : prev) as any);
-  // simpler setter
   const setGroup = (g: TopGroup) => (open: boolean) => setOpenGroup(open ? g : null);
 
   const renderMenuItem = (item: MenuItem) => (

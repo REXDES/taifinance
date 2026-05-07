@@ -473,26 +473,28 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                 )}
               </TabsContent>
 
-              <TabsContent value="modulos" className="mt-0 space-y-4">
-                <div className="rounded-lg border border-border p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <Label className="text-base flex items-center gap-2">
-                        <Wrench className="w-4 h-4" />
-                        Máquinas & Locação
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Habilita o módulo de gestão de máquinas, equipamentos, ferramentas, manutenções, operadores, mecânicos e locações.
-                        Quando ativo, surge uma nova seção no menu lateral. Compras e manutenções geram contas a pagar; locações geram contas a receber (à vista ou parceladas).
-                      </p>
+              {showModulesTab && (
+                <TabsContent value="modulos" className="mt-0 space-y-4">
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-base flex items-center gap-2">
+                          <Wrench className="w-4 h-4" />
+                          Máquinas & Locação
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Habilita o módulo de gestão de máquinas, equipamentos, ferramentas, manutenções, operadores, mecânicos e locações.
+                          Quando ativo, surge uma nova seção no menu lateral. Compras e manutenções geram contas a pagar; locações geram contas a receber (à vista ou parceladas).
+                        </p>
+                      </div>
+                      <Switch
+                        checked={machinesModuleEnabled}
+                        onCheckedChange={setMachinesModuleEnabled}
+                      />
                     </div>
-                    <Switch
-                      checked={machinesModuleEnabled}
-                      onCheckedChange={setMachinesModuleEnabled}
-                    />
                   </div>
-                </div>
-              </TabsContent>
+                </TabsContent>
+              )}
             </div>
           </Tabs>
         )}

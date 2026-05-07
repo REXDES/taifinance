@@ -153,19 +153,44 @@ export function MachinesPage({ companyId }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Máquinas, Equipamentos e Ferramentas</h1>
-        <div className="flex gap-2">
-          <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="new_purchase">Adquiridas (novas)</SelectItem>
-              <SelectItem value="pre_existing">Pré-existentes</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Nova</Button>
-        </div>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-2xl font-semibold">Inventário</h1>
+        <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Novo item</Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Select value={categoryFilter} onValueChange={(v: any) => setCategoryFilter(v)}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas categorias</SelectItem>
+            <SelectItem value="maquina">Máquina</SelectItem>
+            <SelectItem value="equipamento">Equipamento</SelectItem>
+            <SelectItem value="ferramenta">Ferramenta</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os tipos</SelectItem>
+            <SelectItem value="none">Sem tipo</SelectItem>
+            {types.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os status</SelectItem>
+            {Object.entries(STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+          <SelectTrigger className="w-48"><SelectValue placeholder="Origem" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas origens</SelectItem>
+            <SelectItem value="new_purchase">Adquiridas (novas)</SelectItem>
+            <SelectItem value="pre_existing">Pré-existentes</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

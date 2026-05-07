@@ -197,6 +197,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
 
       if (error) throw error;
       toast.success('Configurações salvas com sucesso!');
+      onSaved?.();
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving company settings:', error);

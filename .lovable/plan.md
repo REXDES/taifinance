@@ -1,103 +1,36 @@
-## Módulo de Máquinas & Locação
+## Finalização do Módulo Máquinas & Locação
 
-Novo módulo para gestão de máquinas, ferramentas, equipamentos e implementos com inventário, manutenção, locações e integração financeira. Acesso controlado por flag na empresa (`machines_module_enabled`).
+As 5 páginas e a infraestrutura (11 tabelas, hooks, lógica financeira híbrida) já foram criadas. Falta integrar à navegação e ao toggle de configuração da empresa.
 
-### 1. Banco de dados (novas tabelas)
+### 1. Toggle no cadastro da empresa
+- Editar `src/components/finance/CompanySettingsDialog.tsx` (ou local equivalente do cadastro de empresa) para adicionar um switch **"Habilitar módulo Máquinas & Locação"** vinculado à coluna `companies.machines_module_enabled` (já existente).
+- Visível apenas para Supervisor/Gerente.
 
-Todas com `company_id` + RLS via `has_company_access`.
+### 2. Sidebar — nova seção "Máquinas & Locação"
+- Editar `src/components/finance/FinanceSidebar.tsx` para incluir um grupo colapsável **"Máquinas & Locação"** que aparece somente quando `currentCompany.machines_module_enabled === true`.
+- Itens do grupo:
+  - Inventário (Máquinas/Equipamentos/Ferramentas)
+  - Locações
+  - Relatório de Locações
+  - Manutenções
+  - Operadores & Mecânicos
+  - Tabela de Preços / Kits (sub-aba dentro de Locações)
 
-- **`machine_types`** — tipos configuráveis (Máquina, Trator, Implemento, Ferramenta, Equipamento, etc.) por empresa.
-- **`machines`** — `name, brand, model, year, type_id, destination, acquisition_value, acquisition_date, current_horimeter, preventive_maintenance_interval_hours, status` (`available | rented | maintenance | sold`), **`acquisition_source`** (`new_purchase | pre_existing`).
-- **`machine_horimeter_logs`** — histórico (origem: locação início/fim, manutenção, ajuste manual).
-- **`operators`** — cadastro de operadores (nome, documento, telefone, observações).
-- **`mechanics`** — cadastro de mecânicos (nome, documento, telefone, especialidade).
-- **`maintenance_records`** — `machine_id, mechanic_id, start_date, end_date, description, horimeter_at_service, total_cost, payment_mode` (`cash | installments`), `payable_id` (FK opcional), `transaction_id` (FK opcional).
-- **`rental_price_tables`** — tabela flexível por máquina/implemento com múltiplas faixas (`unit`: hora/dia/semana/mês, `min_qty, max_qty, price`, `valid_from, valid_to`).
-- **`rental_kits`** — kit nomeado (ex.: "Trator + Arado").
-- **`rental_kit_items`** — itens do kit (kit_id, machine_id).
-- **`rentals`** — `client_id, operator_id (opcional), kit_id (opcional), start_date, end_date, unit, qty, unit_price, total_amount, horimeter_start, horimeter_end, payment_mode` (`cash | installments`), `installments_count, billing_frequency` (`monthly | weekly | daily`), `status` (`active | finished | cancelled`), `notes`.
-- **`rental_machines`** — máquinas/implementos da locação (rental_id, machine_id, price_snapshot).
+### 3. Rotas
+- Editar `src/pages/Finance.tsx` para registrar as rotas das páginas já criadas:
+  - `/finance/machines` → `MachinesPage`
+  - `/finance/machines/maintenance` → `MaintenancePage`
+  - `/finance/machines/rentals` → `RentalsPage`
+  - `/finance/machines/rentals-report` → `RentalsReportPage`
+  - `/finance/machines/people` → `PeoplePage`
+- Guard nas rotas: redireciona se `machines_module_enabled` for `false`.
 
-### 2. Cadastro de máquinas: nova vs. pré-existente
+### 4. Ajustes finos
+- Garantir que os hooks (`useMachinesModule`) respeitem `currentCompany.id` e bloqueiem fetch quando `initialSessionResolved` for falso (regra do projeto).
+- Validar que diálogos de formulário usam `overflow-y-auto max-h-[85vh]` (regra do projeto).
+- Adicionar `DeleteConfirmDialog` padronizado nas exclusões de máquinas/locações/manutenções.
 
-No formulário de cadastro de máquina/equipamento/ferramenta, o usuário escolhe a **origem**:
+### 5. Memória do projeto
+- Após implementação, salvar `mem://features/machines-rental-module` descrevendo: toggle por empresa, fluxo financeiro híbrido (compras/manutenções → contas a pagar; locações → contas a receber recorrentes), regras de edição/cancelamento (recalcula apenas parcelas futuras pendentes), aquisição `pre_existing` sem impacto financeiro.
 
-- **Aquisição nova** (`new_purchase`) — gera lançamento financeiro:
-  - À vista → cria `transactions` (despesa).
-  - A prazo → cria N parcelas em `payables_receivables` (tipo "payable").
-- **Já existente no patrimônio** (`pre_existing`) — apenas inclui no inventário com todos os dados (nome, marca, modelo, ano, tipo, valor, horímetro atual, etc.). **Não cria nenhum lançamento financeiro.** O valor entra apenas como referência patrimonial/inventário.
-
-A diferença fica visível no inventário (badge "Pré-existente" vs "Adquirida em DD/MM/AAAA") e nos relatórios de inventário.
-
-### 3. Flag de acesso por empresa
-
-Migration adiciona coluna em `companies`:
-```
-machines_module_enabled boolean NOT NULL DEFAULT false
-```
-Sidebar só renderiza a seção "Máquinas & Locação" quando a empresa selecionada tem a flag ativa. Toggle disponível em **Configurações da Empresa** (modo Admin).
-
-### 4. Integração financeira (híbrida)
-
-Adicionar em `payables_receivables`:
-- `rental_id uuid` (FK opcional)
-- `maintenance_id uuid` (FK opcional)
-
-#### Compras de máquinas novas
-- À vista → `transactions` (despesa).
-- A prazo → N parcelas em `payables_receivables` (tipo "payable").
-- Máquinas pré-existentes: **sem efeito financeiro**.
-
-#### Manutenções (custo da própria empresa, NÃO é serviço prestado)
-- Sempre gera **Contas a Pagar** (ou transação à vista) — nunca a receber.
-- À vista → `transactions` (despesa) vinculada via `transaction_id`.
-- A prazo → N parcelas em `payables_receivables` (tipo "payable") vinculadas via `maintenance_id` + `parent_id`.
-- Cancelar/alterar manutenção remove ou ajusta as parcelas futuras pendentes (parcelas já pagas permanecem; aviso ao usuário).
-
-#### Locações
-- À vista → `transactions` (receita) na conta escolhida.
-- A prazo (recorrente) → cria N parcelas em `payables_receivables` (tipo "receivable"), uma por período (`billing_frequency`), usando `parent_id`, `installment_number`, `total_installments`. `due_date` calculado a partir de `start_date` + offset por período. Todas com `rental_id` preenchido.
-
-### 5. Relatório de Locações
-
-Nova página **Relatório de Locações** dentro do módulo. Funcionalidades:
-
-- Lista de locações com filtros: período, cliente, máquina, status, modalidade.
-- Colunas: cliente, máquina/kit, período, valor total, modalidade, parcelas (pagas/total), status.
-- Ações por linha:
-  - **Editar valor/quantidade/preço** → recalcula `total_amount`. Para a prazo: **recalcula apenas as parcelas futuras pendentes** (parcelas pagas ficam intactas). Novo valor das parcelas = (total_amount − soma já paga) ÷ qtd parcelas pendentes.
-  - **Cancelar locação** → status `cancelled`. Para a prazo: **exclui todas as parcelas futuras pendentes** em `payables_receivables`. Parcelas já pagas permanecem (com aviso). À vista: opção de estornar a transação.
-  - **Encerrar locação** (lançar horímetro final, marca `finished`).
-- Exportação PDF/Excel seguindo padrão dos demais relatórios.
-- Toda alteração/cancelamento registra entrada em `audit_logs`.
-
-### 6. Lógica de horímetro
-
-- Início de locação → registra leitura inicial e atualiza `machines.current_horimeter`.
-- Fim de locação → registra leitura final.
-- Manutenção → registra leitura no momento do serviço.
-- Alerta visual quando `current_horimeter − última manutenção ≥ preventive_maintenance_interval_hours`.
-
-### 7. UI / Navegação
-
-Nova seção na sidebar "Máquinas & Locação" (somente se flag ativa):
-- Máquinas (inventário, com filtro por origem nova/pré-existente)
-- Locações (operação)
-- Manutenções (histórico)
-- Relatório de Locações
-- Cadastros: Operadores, Mecânicos, Tipos de Máquina, Tabelas de Preço, Kits
-
-### 8. Arquivos a criar
-
-**Migrations:** tabelas acima + coluna `machines_module_enabled` em `companies` + colunas `rental_id`/`maintenance_id` em `payables_receivables`.
-
-**Hooks:** `useMachines`, `useMachineTypes`, `useOperators`, `useMechanics`, `useMaintenance`, `useRentals`, `useRentalKits`, `useRentalPriceTables`.
-
-**Componentes** em `src/components/machines/`:
-- `MachinesPage.tsx`, `MachineFormDialog.tsx` (com toggle nova/pré-existente)
-- `RentalsPage.tsx`, `RentalFormDialog.tsx`, `RentalsReportPage.tsx`
-- `MaintenancePage.tsx`, `MaintenanceFormDialog.tsx`
-- `OperatorsPage.tsx`, `MechanicsPage.tsx`
-- `MachineTypesPage.tsx`, `RentalPriceTablesPage.tsx`, `RentalKitsPage.tsx`
-
-**Editar:** `FinanceSidebar.tsx` (nova seção condicional), `Finance.tsx` (rotear novas views), `CompanySettingsDialog.tsx` (toggle do módulo).
+Resultado: módulo totalmente acessível na navegação, controlado pelo flag por empresa, com fluxos financeiros automáticos integrados a `transactions` e `payables_receivables`.

@@ -106,7 +106,6 @@ serve(async (req) => {
     // 1) Template (abre janela de conversa)
     const tpl = await sendTemplate(to, PIX_TEMPLATE, PIX_TEMPLATE_LANG, {
       empresa: companyName || "Empresa",
-      descricao: description || "Cobrança",
       valor: valorStr,
     });
     if (!tpl.ok) {

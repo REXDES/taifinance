@@ -104,11 +104,11 @@ serve(async (req) => {
       : "Valor não informado";
 
     // 1) Template (abre janela de conversa)
-    const tpl = await sendTemplate(to, PIX_TEMPLATE, PIX_TEMPLATE_LANG, [
-      companyName || "Empresa",
-      description || "Cobrança",
-      valorStr,
-    ]);
+    const tpl = await sendTemplate(to, PIX_TEMPLATE, PIX_TEMPLATE_LANG, {
+      empresa: companyName || "Empresa",
+      descricao: description || "Cobrança",
+      valor: valorStr,
+    });
     if (!tpl.ok) {
       console.error("Template send failed:", JSON.stringify(tpl.data));
       return new Response(

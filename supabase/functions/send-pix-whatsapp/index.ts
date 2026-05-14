@@ -32,7 +32,12 @@ async function waPost(path: string, body: any) {
   return { ok: res.ok, status: res.status, data };
 }
 
-async function sendTemplate(to: string, name: string, lang: string, bodyParams: string[]) {
+async function sendTemplate(
+  to: string,
+  name: string,
+  lang: string,
+  namedParams: Record<string, string>
+) {
   return waPost("/messages", {
     messaging_product: "whatsapp",
     to,
@@ -43,7 +48,11 @@ async function sendTemplate(to: string, name: string, lang: string, bodyParams: 
       components: [
         {
           type: "body",
-          parameters: bodyParams.map((t) => ({ type: "text", text: t })),
+          parameters: Object.entries(namedParams).map(([k, v]) => ({
+            type: "text",
+            parameter_name: k,
+            text: v,
+          })),
         },
       ],
     },
@@ -95,11 +104,10 @@ serve(async (req) => {
       : "Valor não informado";
 
     // 1) Template (abre janela de conversa)
-    const tpl = await sendTemplate(to, PIX_TEMPLATE, PIX_TEMPLATE_LANG, [
-      companyName || "Empresa",
-      description || "Cobrança",
-      valorStr,
-    ]);
+    const tpl = await sendTemplate(to, PIX_TEMPLATE, PIX_TEMPLATE_LANG, {
+      empresa: companyName || "Empresa",
+      valor: valorStr,
+    });
     if (!tpl.ok) {
       console.error("Template send failed:", JSON.stringify(tpl.data));
       return new Response(

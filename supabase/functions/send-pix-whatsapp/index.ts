@@ -32,7 +32,12 @@ async function waPost(path: string, body: any) {
   return { ok: res.ok, status: res.status, data };
 }
 
-async function sendTemplate(to: string, name: string, lang: string, bodyParams: string[]) {
+async function sendTemplate(
+  to: string,
+  name: string,
+  lang: string,
+  namedParams: Record<string, string>
+) {
   return waPost("/messages", {
     messaging_product: "whatsapp",
     to,
@@ -43,7 +48,11 @@ async function sendTemplate(to: string, name: string, lang: string, bodyParams: 
       components: [
         {
           type: "body",
-          parameters: bodyParams.map((t) => ({ type: "text", text: t })),
+          parameters: Object.entries(namedParams).map(([k, v]) => ({
+            type: "text",
+            parameter_name: k,
+            text: v,
+          })),
         },
       ],
     },

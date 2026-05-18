@@ -76,6 +76,30 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
     monthsBack: 6,
   });
 
+  // Top expenses by subcategory (or category when no subcategory) – current month
+  const topExpenses = (() => {
+    const map = new Map<string, { name: string; value: number; color: string }>();
+    transactions
+      .filter((t) => t.type === 'expense')
+      .forEach((t) => {
+        const name =
+          t.subcategory?.name ||
+          t.category?.name ||
+          'Sem categoria';
+        const color = t.category?.color || '#8B5CF6';
+        const key = name;
+        const existing = map.get(key);
+        if (existing) {
+          existing.value += Number(t.amount);
+        } else {
+          map.set(key, { name, value: Number(t.amount), color });
+        }
+      });
+    return Array.from(map.values())
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 7);
+  })();
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',

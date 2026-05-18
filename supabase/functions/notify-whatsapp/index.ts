@@ -215,6 +215,9 @@ serve(async (req) => {
       for (const item of prItems) {
         const dueDate = new Date(item.due_date + "T00:00:00-03:00");
         const venc = dueDate.toLocaleDateString("pt-BR");
+        const valorNumStr = item.is_amount_pending
+          ? "a definir"
+          : Number(item.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
         const valorStr = item.is_amount_pending
           ? "A definir"
           : `R$ ${Number(item.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
@@ -245,7 +248,7 @@ serve(async (req) => {
             const r = await sendTemplate(to, REMINDER_TEMPLATE, REMINDER_TEMPLATE_LANG, [
               recipientName,
               item.description,
-              valorStr,
+              valorNumStr,
               venc,
             ]);
             if (r.ok) sent++;

@@ -257,6 +257,58 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
         </CardContent>
       </Card>
 
+      {/* Top Expenses Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Maiores Despesas do Mês</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {topExpenses.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              Nenhuma despesa registrada neste mês.
+            </p>
+          ) : (
+            <div style={{ height: Math.max(220, topExpenses.length * 44) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={topExpenses}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatCurrencyShort}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12 }}
+                    width={140}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Bar dataKey="value" name="Despesa" radius={[0, 4, 4, 0]}>
+                    {topExpenses.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Patrimonial Evolution Chart */}
       <Card>
         <CardHeader>

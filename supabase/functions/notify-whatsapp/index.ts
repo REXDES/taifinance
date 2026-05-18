@@ -248,7 +248,7 @@ serve(async (req) => {
             const r = await sendTemplate(to, REMINDER_TEMPLATE, REMINDER_TEMPLATE_LANG, [
               recipientName,
               item.description,
-              valorStr,
+              valorNumStr,
               venc,
             ]);
             if (r.ok) sent++;

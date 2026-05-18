@@ -8,6 +8,9 @@ import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft, Calendar } from 'luci
 import { 
   LineChart, 
   Line, 
+  BarChart,
+  Bar,
+  Cell,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -72,6 +75,30 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
     transfers,
     monthsBack: 6,
   });
+
+  // Top expenses by subcategory (or category when no subcategory) – current month
+  const topExpenses = (() => {
+    const map = new Map<string, { name: string; value: number; color: string }>();
+    transactions
+      .filter((t) => t.type === 'expense')
+      .forEach((t) => {
+        const name =
+          t.subcategory?.name ||
+          t.category?.name ||
+          'Sem categoria';
+        const color = t.category?.color || '#8B5CF6';
+        const key = name;
+        const existing = map.get(key);
+        if (existing) {
+          existing.value += Number(t.amount);
+        } else {
+          map.set(key, { name, value: Number(t.amount), color });
+        }
+      });
+    return Array.from(map.values())
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 7);
+  })();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -226,6 +253,58 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
             <p className="text-muted-foreground text-center py-2 text-sm">
               Nenhuma conta pendente esta semana.
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Top Expenses Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Maiores Despesas do Mês</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {topExpenses.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              Nenhuma despesa registrada neste mês.
+            </p>
+          ) : (
+            <div style={{ height: Math.max(220, topExpenses.length * 44) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={topExpenses}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatCurrencyShort}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12 }}
+                    width={140}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Bar dataKey="value" name="Despesa" radius={[0, 4, 4, 0]}>
+                    {topExpenses.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </CardContent>
       </Card>

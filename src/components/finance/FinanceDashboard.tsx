@@ -8,6 +8,9 @@ import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft, Calendar } from 'luci
 import { 
   LineChart, 
   Line, 
+  BarChart,
+  Bar,
+  Cell,
   XAxis, 
   YAxis, 
   CartesianGrid, 

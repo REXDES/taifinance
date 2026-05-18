@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const WA_TOKEN = Deno.env.get("WHATSAPP_CLOUD_TOKEN") ?? "";
 const WA_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_CLOUD_PHONE_NUMBER_ID") ?? "";
-const PIX_TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_PIX") ?? "cobranca_pix";
+const PIX_TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_PIX") ?? "pix_pagamento_cobranca";
 const PIX_TEMPLATE_LANG = Deno.env.get("WHATSAPP_TEMPLATE_PIX_LANG") ?? "pt_BR";
 const GRAPH_VERSION = "v21.0";
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}/${WA_PHONE_NUMBER_ID}`;
@@ -36,7 +36,7 @@ async function sendTemplate(
   to: string,
   name: string,
   lang: string,
-  namedParams: Record<string, string>
+  bodyParams: string[]
 ) {
   return waPost("/messages", {
     messaging_product: "whatsapp",
@@ -48,11 +48,7 @@ async function sendTemplate(
       components: [
         {
           type: "body",
-          parameters: Object.entries(namedParams).map(([k, v]) => ({
-            type: "text",
-            parameter_name: k,
-            text: v,
-          })),
+          parameters: bodyParams.map((v) => ({ type: "text", text: v })),
         },
       ],
     },
@@ -91,47 +87,43 @@ serve(async (req) => {
     }
 
     const { phone, pixCode, description, amount, companyName } = await req.json();
-    if (!phone || !pixCode) {
+    if (!phone || !pixCode || !description) {
       return new Response(
-        JSON.stringify({ error: "Phone and pixCode are required" }),
+        JSON.stringify({ error: "phone, pixCode and description are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const to = normalizePhone(phone);
     const valorStr = amount
-      ? `R$ ${Number(amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-      : "Valor não informado";
+      ? Number(amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+      : "0,00";
 
-    // 1) Template (abre janela de conversa)
-    const tpl = await sendTemplate(to, PIX_TEMPLATE, PIX_TEMPLATE_LANG, {
-      empresa: companyName || "Empresa",
-      valor: valorStr,
-    });
+    // 1) Template (abre janela de conversa) — 4 variáveis posicionais
+    const tpl = await sendTemplate(to, PIX_TEMPLATE, PIX_TEMPLATE_LANG, [
+      companyName || "Empresa",
+      description,
+      valorStr,
+      pixCode,
+    ]);
     if (!tpl.ok) {
       console.error("Template send failed:", JSON.stringify(tpl.data));
       return new Response(
         JSON.stringify({
           success: false,
           error: tpl.data?.error?.message || "Falha ao enviar template",
-          hint: `Verifique se o template '${PIX_TEMPLATE}' (${PIX_TEMPLATE_LANG}) está aprovado na Meta com 3 variáveis no body: empresa, descrição, valor.`,
+          hint: `Verifique se o template '${PIX_TEMPLATE}' (${PIX_TEMPLATE_LANG}) está aprovado na Meta com 4 variáveis posicionais no body: {{1}} empresa, {{2}} descrição, {{3}} valor, {{4}} código PIX.`,
           details: tpl.data,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // 2) QR Code via URL pública (Meta baixa direto)
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(pixCode)}`;
-    const imgCaption =
-      `${companyName || "Empresa"} — Cobrança PIX\nDescrição: ${description}\nValor: ${valorStr}\n\nEscaneie o QR Code ou copie o código PIX abaixo.`;
-    const img = await sendImageByUrl(to, qrUrl, imgCaption);
-
-    // 3) Código copia-e-cola
+    // 2) Mensagem de texto isolada com o código PIX (facilita o "copiar" no WhatsApp)
     const txt = await sendText(to, pixCode);
 
     return new Response(
-      JSON.stringify({ success: true, template: tpl.data, image: img.data, text: txt.data }),
+      JSON.stringify({ success: true, template: tpl.data, text: txt.data }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

@@ -1,106 +1,42 @@
-# Migração WhatsApp: Evolution API → Cloud API oficial (Meta)
+## Ajuste do template `pix_pagamento_cobranca` e teste
 
-Substituir completamente a Evolution API pela WhatsApp Cloud API oficial em todos os fluxos (PIX, lembretes de vencimento, notificações de teste), usando uma única conta Meta global para todas as empresas.
+### Mudanças em `supabase/functions/send-pix-whatsapp/index.ts`
 
-## Pré-requisitos (responsabilidade do usuário, fora do código)
+1. Trocar default do template:
+   - `PIX_TEMPLATE` default = `pix_pagamento_cobranca` (mantém override por env var).
 
-1. Criar/verificar conta no **Meta Business Manager** (CNPJ).
-2. Criar app em **developers.facebook.com** e adicionar produto **WhatsApp**.
-3. Cadastrar um **número dedicado** (não pode estar ativo no app WhatsApp normal).
-4. Gerar um **System User Access Token permanente** (sem expiração).
-5. Submeter e aguardar aprovação dos **templates** (24h em média):
-   - `lembrete_vencimento` (utility) — variáveis: nome, valor, vencimento, link
-   - `cobranca_pix` (utility) — variáveis: nome, valor, descrição
-   - `notificacao_pagamento_recebido` (utility) — variáveis: nome, valor
+2. Atualizar `sendTemplate` para parâmetros posicionais (`{{1}}..{{4}}`):
+   - Trocar `namedParams: Record<string,string>` por `bodyParams: string[]`.
+   - Gerar `parameters` como `[{ type: "text", text: v }, ...]` (sem `parameter_name`).
 
-## Secrets a adicionar (globais)
+3. Chamada do template passa 4 valores na ordem:
+   1. `companyName` (empresa)
+   2. `description` (descrição) — obrigatório, validar no início
+   3. `valorStr` (R$ formatado)
+   4. `pixCode` (copia-e-cola)
 
-- `WHATSAPP_CLOUD_TOKEN` — System User Access Token permanente
-- `WHATSAPP_CLOUD_PHONE_NUMBER_ID` — ID do número emissor
-- `WHATSAPP_CLOUD_BUSINESS_ACCOUNT_ID` — WABA ID (opcional, para gerenciar templates)
+4. Remover o envio do **QR Code (imagem)** — o novo template não menciona QR, só código copia-e-cola.
 
-## Mudanças no backend (edge functions)
+5. Manter o envio adicional de **mensagem de texto apenas com o `pixCode`** logo após o template, para facilitar o "copiar" no WhatsApp (a string fica isolada em uma bolha própria).
 
-Reescrever as 3 funções para chamar `https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages`:
+6. Atualizar mensagem de `hint` no erro para refletir 4 variáveis posicionais.
 
-- **`send-pix-whatsapp`**: envia template `cobranca_pix` + imagem do QR Code (upload de mídia → media ID → mensagem image) + texto livre com PIX copia-e-cola.
-- **`notify-whatsapp`** (lembretes agendados de payables/receivables): envia template `lembrete_vencimento` com variáveis preenchidas.
-- **`test-whatsapp`**: envia template simples (`hello_world` ou um template de teste aprovado) para validar credenciais.
+### Validação
 
-Manter a interface (parâmetros de entrada) idêntica para não quebrar os chamadores existentes.
+- Adicionar `description` em `required` (junto com `phone` e `pixCode`).
 
-## Mudanças na UI
+### Teste
 
-- **Configurações da empresa → aba WhatsApp**: simplificar — remover campos de Evolution API por empresa. Mostrar apenas:
-  - Número do WhatsApp do remetente (somente leitura, vindo de configuração global)
-  - Status da conexão (botão "Testar conexão" → chama `test-whatsapp`)
-  - Lista dos templates disponíveis e seu status de aprovação
-- **Página de configurações globais (admin)**: nova seção "WhatsApp Cloud API" com:
-  - Indicador se as 3 secrets estão configuradas
-  - Mapeamento template-name por tipo de mensagem (caso o nome aprovado pela Meta seja diferente do default)
+1. Deploy da função.
+2. `curl_edge_functions` POST em `/send-pix-whatsapp` com:
+   - `phone: "+5511974980448"`
+   - `companyName: "Tai Finance"`
+   - `description: "Teste de cobrança"`
+   - `amount: 123.45`
+   - `pixCode: "<código PIX de teste>"`
+3. Verificar `success: true` no retorno e checar `edge_function_logs` em caso de falha.
+4. Confirmar contigo a chegada da mensagem no WhatsApp.
 
-## Limpeza
+### Observação
 
-- Remover variáveis e código relacionados a `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE` das 3 funções.
-- Manter o secret `EVOLUTION_API_KEY` no Supabase por enquanto (sem uso) para rollback rápido caso necessário; remover em segunda fase.
-- Atualizar memória `mem://integrations/evolution-api-status` substituindo por `mem://integrations/whatsapp-cloud-api`.
-
-## Detalhes técnicos
-
-**Endpoint base**: `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/messages`
-
-**Headers**:
-```
-Authorization: Bearer ${WHATSAPP_CLOUD_TOKEN}
-Content-Type: application/json
-```
-
-**Payload — template com variáveis**:
-```json
-{
-  "messaging_product": "whatsapp",
-  "to": "5511999999999",
-  "type": "template",
-  "template": {
-    "name": "lembrete_vencimento",
-    "language": { "code": "pt_BR" },
-    "components": [
-      { "type": "body", "parameters": [
-        { "type": "text", "text": "João" },
-        { "type": "text", "text": "R$ 1.250,00" },
-        { "type": "text", "text": "15/05/2026" }
-      ]}
-    ]
-  }
-}
-```
-
-**Payload — texto livre (só dentro de janela de 24h após resposta)**:
-```json
-{
-  "messaging_product": "whatsapp",
-  "to": "5511999999999",
-  "type": "text",
-  "text": { "body": "..." }
-}
-```
-
-**Upload de QR Code (PIX)**:
-1. POST `https://graph.facebook.com/v21.0/${PHONE_NUMBER_ID}/media` com form-data (file + messaging_product=whatsapp) → retorna `media_id`
-2. POST `/messages` com `type: "image"` e `image: { id: media_id, caption: "..." }`
-
-**Tratamento de erros**: a Meta retorna códigos específicos (131026 = number not on WhatsApp, 132001 = template não aprovado, 131047 = fora da janela de 24h). Mapear esses códigos para mensagens claras no toast.
-
-## Ordem de execução
-
-1. Adicionar as 3 secrets via `secrets--add_secret` (bloqueia até usuário preencher).
-2. Reescrever `send-pix-whatsapp/index.ts`.
-3. Reescrever `notify-whatsapp/index.ts`.
-4. Reescrever `test-whatsapp/index.ts`.
-5. Ajustar UI da aba WhatsApp em `CompanySettingsDialog.tsx`.
-6. Atualizar memórias de WhatsApp.
-7. Validar com botão "Testar conexão".
-
-## Observação sobre custo
-
-Cada conversa "utility" iniciada custa ~US$ 0,008 a US$ 0,03 (Brasil). Lembretes diários de vencimento podem virar volume — vale considerar uma agregação (1 mensagem por cliente/dia somando todos os títulos vencendo) em vez de 1 mensagem por título. Não está incluído neste plano, mas é uma otimização recomendada como segundo passo.
+O template diz "Em seguida você receberá o código PIX copia-e-cola", mas o próprio `{{4}}` já é o código. Vou enviar **template + uma segunda mensagem de texto contendo só o código** — assim o usuário consegue tocar e copiar facilmente, e o "em seguida" da mensagem faz sentido. Se preferires apenas o template (sem 2ª mensagem), me avisa antes que eu implemento.

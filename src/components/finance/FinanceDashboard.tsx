@@ -3,6 +3,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useTransfers } from '@/hooks/useTransfers';
 import { usePatrimonialEvolution } from '@/hooks/usePatrimonialEvolution';
 import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
+import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft, Calendar } from 'lucide-react';
 import { 

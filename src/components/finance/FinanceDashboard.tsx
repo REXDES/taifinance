@@ -81,7 +81,7 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
 
   // Top expenses by subcategory (or category when no subcategory) – current month
   const topExpenses = (() => {
-    const map = new Map<string, { name: string; value: number; color: string }>();
+    const map = new Map<string, { name: string; value: number; color: string; budget: number; categoryId?: string; hasSub: boolean }>();
     transactions
       .filter((t) => t.type === 'expense')
       .forEach((t) => {
@@ -96,13 +96,35 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
         if (existing) {
           existing.value += Number(t.amount);
         } else {
-          map.set(key, { name, value: Number(t.amount), color });
+          map.set(key, {
+            name,
+            value: Number(t.amount),
+            color,
+            budget: 0,
+            categoryId: (t as any).category_id,
+            hasSub: !!subName,
+          });
         }
       });
-    return Array.from(map.values())
+    // Attach category budget (only for bars representing the whole category)
+    const result = Array.from(map.values()).map((item) => {
+      if (!item.hasSub && item.categoryId) {
+        const cat = categories.find((c) => c.id === item.categoryId);
+        if (cat?.monthly_budget) item.budget = Number(cat.monthly_budget);
+      }
+      return item;
+    });
+    return result
       .sort((a, b) => b.value - a.value)
       .slice(0, 7);
   })();
+
+  const topExpensesMax = Math.max(
+    1,
+    ...topExpenses.flatMap((e) => [e.value, e.budget || 0])
+  );
+
+
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {

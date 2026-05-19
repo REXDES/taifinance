@@ -82,10 +82,11 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
     transactions
       .filter((t) => t.type === 'expense')
       .forEach((t) => {
-        const name =
-          t.subcategory?.name ||
-          t.category?.name ||
-          'Sem categoria';
+        const categoryName = t.category?.name;
+        const subName = t.subcategory?.name;
+        const name = subName
+          ? (categoryName ? `${categoryName}/${subName}` : subName)
+          : (categoryName || 'Sem categoria');
         const color = t.category?.color || '#8B5CF6';
         const key = name;
         const existing = map.get(key);

@@ -307,6 +307,7 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
                     className="text-xs fill-muted-foreground"
                     tick={{ fontSize: 12 }}
                     tickFormatter={formatCurrencyShort}
+                    domain={[0, topExpensesMax]}
                   />
                   <YAxis
                     type="category"
@@ -316,18 +317,67 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
                     width={140}
                   />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const p: any = payload[0].payload;
+                      const over = p.budget > 0 && p.value > p.budget;
+                      const diff = p.budget > 0 ? Math.abs(p.value - p.budget) : 0;
+                      return (
+                        <div className="rounded-md border bg-card p-2 text-xs shadow-md">
+                          <div className="font-medium mb-1">{p.name}</div>
+                          <div>Despesa: {formatCurrency(p.value)}</div>
+                          {p.budget > 0 && (
+                            <>
+                              <div>Orçamento: {formatCurrency(p.budget)}</div>
+                              <div className={over ? 'text-destructive font-medium' : 'text-primary font-medium'}>
+                                {over ? `Excedente: ${formatCurrency(diff)}` : `Disponível: ${formatCurrency(diff)}`}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
                     }}
                   />
-                  <Bar dataKey="value" name="Despesa" radius={[0, 4, 4, 0]}>
+                  <Bar
+                    dataKey="value"
+                    name="Despesa"
+                    radius={[0, 4, 4, 0]}
+                    background={{ fill: 'transparent' }}
+                    shape={(props: any) => {
+                      const { x, y, width, height, fill, payload, background } = props;
+                      const fullW = background?.width ?? width;
+                      const baseX = background?.x ?? x;
+                      const budget = payload?.budget ?? 0;
+                      const over = budget > 0 && payload.value > budget;
+                      return (
+                        <g>
+                          <rect x={x} y={y} width={Math.max(0, width)} height={height} fill={fill} rx={4} ry={4} />
+                          {budget > 0 && (() => {
+                            const bx = baseX + (budget / topExpensesMax) * fullW;
+                            return (
+                              <g>
+                                <line
+                                  x1={bx}
+                                  x2={bx}
+                                  y1={y - 4}
+                                  y2={y + height + 4}
+                                  stroke={over ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}
+                                  strokeWidth={2}
+                                  strokeDasharray="4 3"
+                                />
+                                <circle cx={bx} cy={y - 4} r={2.5} fill={over ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'} />
+                              </g>
+                            );
+                          })()}
+                        </g>
+                      );
+                    }}
+                  >
                     {topExpenses.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Bar>
+
                 </BarChart>
               </ResponsiveContainer>
             </div>

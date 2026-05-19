@@ -29,6 +29,8 @@ interface FinanceDashboardProps {
 export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
   const { accounts, groups, totalAtivo, totalPassivo, totalGeral, loading: accountsLoading } = useAccounts(companyId);
   
+  const { categories } = useTransactionCategories(companyId);
+
   // Get current month transactions
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];

@@ -106,9 +106,9 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
           });
         }
       });
-    // Attach category budget (only for bars representing the whole category)
+    // Attach category budget as reference on every bar belonging to a category with budget
     const result = Array.from(map.values()).map((item) => {
-      if (!item.hasSub && item.categoryId) {
+      if (item.categoryId) {
         const cat = categories.find((c) => c.id === item.categoryId);
         if (cat?.monthly_budget) item.budget = Number(cat.monthly_budget);
       }

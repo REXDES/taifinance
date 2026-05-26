@@ -184,12 +184,15 @@ function knockoutsFromReason(reason: string | null | undefined): string[] {
 
 /** Categorias de ocorrências negativas que queremos exibir detalhadas. */
 const OCCURRENCE_KEY_PATTERNS: Array<{ label: string; regex: RegExp }> = [
-  { label: 'Alertas / Restrições', regex: /ALERTA|RESTRIC/i },
+  { label: 'Alertas / Restrições', regex: /ALERTA|RESTRIC|CHAVEAMENTO|STATUS_CONSUMIDOR/i },
   { label: 'Protestos', regex: /PROTESTO/i },
   { label: 'Pendências Financeiras', regex: /PENDENCIA/i },
   { label: 'Cheques sem Fundo (CCF)', regex: /\bCCF\b|CHEQUE/i },
   { label: 'Ações Cíveis', regex: /ACAO_CIVE|ACOES_CIVE|AC_CIVEIS/i },
 ];
+
+/** Campos prioritários que descrevem a ocorrência (exibidos primeiro e em destaque). */
+const PRIORITY_FIELDS = ['TITULO', 'TIPO', 'DESCRICAO', 'OBSERVACOES', 'OBSERVACAO', 'MENSAGEM', 'MOTIVO', 'DESCRICAO_TIPO_INFORMACAO'];
 
 /** Walks the raw_response and collects records from arrays whose key matches a pattern. */
 function extractOccurrences(raw: any): Array<{ category: string; items: Array<Record<string, any>> }> {

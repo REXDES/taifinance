@@ -278,6 +278,8 @@ const Finance = () => {
         return creditEnabled ? <CreditAdminPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'credit-applications':
         return creditEnabled ? <CreditApplicationsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'credit-ignored':
+        return creditEnabled ? <CreditIgnoredOccurrencesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }

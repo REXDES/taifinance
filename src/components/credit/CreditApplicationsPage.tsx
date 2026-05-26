@@ -438,6 +438,12 @@ function ApplicationDetailDialog({ app, onClose }: { app: CreditApplication | nu
               </div>
             </TabsContent>
 
+            <TabsContent value="occurrences" className="flex-1 overflow-auto">
+              <OccurrencesList raw={consultation?.raw_response} />
+            </TabsContent>
+
+
+
             <TabsContent value="summary" className="flex-1 overflow-auto">
               {Object.keys(summary).length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">Sem resumo disponível.</p>

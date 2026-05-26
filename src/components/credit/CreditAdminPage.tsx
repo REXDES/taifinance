@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useCreditRules, type ScoreBand, DEFAULT_RULES, consultCredit, type ConsultResult } from '@/hooks/useCreditModule';
+import { useCreditRules, type ScoreBand, DEFAULT_RULES, consultCredit, type ConsultResult, CONFIANCA_OPTIONS, SUGESTAO_OPTIONS } from '@/hooks/useCreditModule';
+import { BureauAnalysisCard } from './BureauAnalysisCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

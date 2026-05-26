@@ -67,6 +67,10 @@ export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
   max_dependentes_bolsa_familia: 0,
   max_probabilidade_inadimplencia: 9,
   texto_inadimplencia_block_levels: [],
+  min_score_analise: 0,
+  use_bureau_limits: false,
+  min_nivel_confianca_levels: [],
+  sugestao_negocio_block_levels: [],
 };
 
 export interface CreditApplication {

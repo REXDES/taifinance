@@ -355,6 +355,7 @@ export type Database = {
           id: string
           nome: string | null
           score: number | null
+          simulation: Json | null
           status: string
           tipo_documento: string
           updated_at: string
@@ -373,6 +374,7 @@ export type Database = {
           id?: string
           nome?: string | null
           score?: number | null
+          simulation?: Json | null
           status?: string
           tipo_documento: string
           updated_at?: string
@@ -391,6 +393,7 @@ export type Database = {
           id?: string
           nome?: string | null
           score?: number | null
+          simulation?: Json | null
           status?: string
           tipo_documento?: string
           updated_at?: string

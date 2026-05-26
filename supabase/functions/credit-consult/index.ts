@@ -462,9 +462,11 @@ serve(async (req) => {
       engine,
       ignored_adjustments: ignoredAdjustments,
       pdf_data: pdfData,
+      pdf_disponivel: pdfDisponivel ?? null,
       texto_score_bucket: textoBucket,
       probabilidade_inadimplencia: probInadNum,
     };
+
 
     if (!test_only) {
       // Persiste consulta

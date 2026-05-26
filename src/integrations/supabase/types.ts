@@ -354,10 +354,12 @@ export type Database = {
           documento: string
           id: string
           nome: string | null
+          probabilidade_inadimplencia: number | null
           qualification_draft: Json | null
           score: number | null
           simulation: Json | null
           status: string
+          texto_score_bucket: string | null
           tipo_documento: string
           updated_at: string
         }
@@ -374,10 +376,12 @@ export type Database = {
           documento: string
           id?: string
           nome?: string | null
+          probabilidade_inadimplencia?: number | null
           qualification_draft?: Json | null
           score?: number | null
           simulation?: Json | null
           status?: string
+          texto_score_bucket?: string | null
           tipo_documento: string
           updated_at?: string
         }
@@ -394,10 +398,12 @@ export type Database = {
           documento?: string
           id?: string
           nome?: string | null
+          probabilidade_inadimplencia?: number | null
           qualification_draft?: Json | null
           score?: number | null
           simulation?: Json | null
           status?: string
+          texto_score_bucket?: string | null
           tipo_documento?: string
           updated_at?: string
         }
@@ -483,6 +489,7 @@ export type Database = {
           decision_reason: string | null
           documento: string
           id: string
+          pdf_data: string | null
           provider: string
           raw_response: Json | null
           score: number | null
@@ -499,6 +506,7 @@ export type Database = {
           decision_reason?: string | null
           documento: string
           id?: string
+          pdf_data?: string | null
           provider?: string
           raw_response?: Json | null
           score?: number | null
@@ -515,6 +523,7 @@ export type Database = {
           decision_reason?: string | null
           documento?: string
           id?: string
+          pdf_data?: string | null
           provider?: string
           raw_response?: Json | null
           score?: number | null

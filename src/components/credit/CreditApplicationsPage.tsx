@@ -28,6 +28,7 @@ import { BiometryStep } from './steps/BiometryStep';
 import { SimulationStep } from './steps/SimulationStep';
 import { ContractStep } from './steps/ContractStep';
 import { BoletosStep } from './steps/BoletosStep';
+import { PaymentProbabilityBadge } from './PaymentProbabilityBadge';
 
 interface Props { companyId: string }
 
@@ -193,7 +194,16 @@ export function CreditApplicationsPage({ companyId }: Props) {
                 {applications.map((a) => (
                   <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setDetailInitialStep(null); setDetailApp(a); }}>
                     <TableCell className="font-mono text-xs">{a.documento} <span className="text-muted-foreground">({a.tipo_documento})</span></TableCell>
-                    <TableCell>{a.nome || '—'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span>{a.nome || '—'}</span>
+                        <PaymentProbabilityBadge
+                          probabilidadeInadimplencia={a.probabilidade_inadimplencia}
+                          textoBucket={a.texto_score_bucket}
+                          compact
+                        />
+                      </div>
+                    </TableCell>
                     <TableCell>{a.score ?? '—'}{a.classification ? ` (${a.classification})` : ''}</TableCell>
                     <TableCell>{a.approved_limit != null ? `R$ ${Number(a.approved_limit).toLocaleString('pt-BR')}` : '—'}</TableCell>
                     <TableCell className="min-w-[220px]">
@@ -663,13 +673,22 @@ function ApplicationDetailDialog({
     <Dialog open={!!app} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-6 pt-5">
-          <DialogTitle className="flex items-center gap-3">
+          <DialogTitle className="flex items-center gap-3 flex-wrap">
             <span>{app.nome || '(sem nome)'}</span>
             <StatusBadge status={app.status} decision={app.decision} />
-            <Button size="sm" variant="outline" onClick={() => onReevaluate(app)} disabled={reevaluating} className="ml-auto">
-              {reevaluating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-              Reavaliar
-            </Button>
+            <PaymentProbabilityBadge
+              probabilidadeInadimplencia={app.probabilidade_inadimplencia}
+              textoBucket={app.texto_score_bucket}
+            />
+            <div className="ml-auto flex items-center gap-2">
+              {consultation?.pdf_data && (
+                <PdfEspelhoButton pdfData={consultation.pdf_data} />
+              )}
+              <Button size="sm" variant="outline" onClick={() => onReevaluate(app)} disabled={reevaluating}>
+                {reevaluating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Reavaliar
+              </Button>
+            </div>
           </DialogTitle>
           <DialogDescription className="font-mono text-xs">
             {app.documento} ({app.tipo_documento}) · Criada em {new Date(app.created_at).toLocaleString('pt-BR')}
@@ -692,6 +711,7 @@ function ApplicationDetailDialog({
                     <TabsTrigger value="occurrences">Ocorrências</TabsTrigger>
                     <TabsTrigger value="summary">Resumo</TabsTrigger>
                     <TabsTrigger value="raw">Resposta</TabsTrigger>
+                    {consultation?.pdf_data && <TabsTrigger value="espelho">Espelho (PDF)</TabsTrigger>}
                   </TabsList>
                   <TabsContent value="decision" className="flex-1 overflow-auto px-4 pb-4">
                     <div className="rounded-lg border p-4 space-y-3">
@@ -742,6 +762,11 @@ function ApplicationDetailDialog({
                       </pre>
                     </ScrollArea>
                   </TabsContent>
+                  {consultation?.pdf_data && (
+                    <TabsContent value="espelho" className="flex-1 overflow-hidden px-4 pb-4">
+                      <PdfEspelhoViewer pdfData={consultation.pdf_data} />
+                    </TabsContent>
+                  )}
                 </Tabs>
               )}
               {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={app.approved_limit} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
@@ -756,4 +781,52 @@ function ApplicationDetailDialog({
     </Dialog>
   );
 }
+
+// ---------- PDF "espelho" helpers ----------
+
+function buildPdfObjectUrl(pdfData: string): { url: string; revoke?: () => void } {
+  const s = pdfData.trim();
+  if (/^https?:\/\//i.test(s)) return { url: s };
+  // Strip optional data URL prefix
+  const base64 = s.replace(/^data:application\/pdf;base64,/, '');
+  try {
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    return { url, revoke: () => URL.revokeObjectURL(url) };
+  } catch {
+    return { url: s };
+  }
+}
+
+function PdfEspelhoButton({ pdfData }: { pdfData: string }) {
+  const openFullscreen = () => {
+    const { url } = buildPdfObjectUrl(pdfData);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+  return (
+    <Button size="sm" variant="outline" onClick={openFullscreen} title="Abrir espelho (PDF) em nova aba">
+      <FileSearch className="w-4 h-4 mr-2" />
+      Espelho PDF
+    </Button>
+  );
+}
+
+function PdfEspelhoViewer({ pdfData }: { pdfData: string }) {
+  const [obj] = useState(() => buildPdfObjectUrl(pdfData));
+  useEffect(() => () => { obj.revoke?.(); }, [obj]);
+  return (
+    <div className="h-[60vh] flex flex-col gap-2">
+      <div className="flex justify-end">
+        <Button size="sm" variant="outline" onClick={() => window.open(obj.url, '_blank', 'noopener,noreferrer')}>
+          Abrir em tela cheia
+        </Button>
+      </div>
+      <iframe src={obj.url} title="Espelho PDF da consulta" className="flex-1 w-full rounded border bg-muted/20" />
+    </div>
+  );
+}
+
 

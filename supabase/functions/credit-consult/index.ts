@@ -309,7 +309,7 @@ serve(async (req) => {
         Authorization: `Bearer ${REDEBE_API_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ documento: documentoLimpo }),
+      body: JSON.stringify({ documento: documentoLimpo, include_pdf: true }),
     });
 
     const redebeBodyText = await redebeResp.text();
@@ -432,6 +432,18 @@ serve(async (req) => {
       principal?.CREDCADASTRAL?.HEADER?.PARAMETROS?.RAZAO_SOCIAL ||
       "";
 
+    // Extract PDF "espelho" from the response, if present
+    const pdfRaw = findFirstDeep(wrapper, (k, v) =>
+      (typeof v === 'string') &&
+      /^(pdf|pdf_base64|pdf_url|url_pdf|link_pdf|espelho)$/i.test(k) &&
+      String(v).length > 20
+    );
+    const pdfData = pdfRaw ? String(pdfRaw) : null;
+
+    // Interpreted payment-probability bucket (from textual score)
+    const textoBucket = classifyTextoInadimplencia(summary.texto_score);
+    const probInadNum = toInt(summary.probabilidade_inadimplencia) || null;
+
     const result = {
       documento: documentoLimpo,
       tipo_documento,
@@ -440,6 +452,9 @@ serve(async (req) => {
       principal,
       engine,
       ignored_adjustments: ignoredAdjustments,
+      pdf_data: pdfData,
+      texto_score_bucket: textoBucket,
+      probabilidade_inadimplencia: probInadNum,
     };
 
     if (!test_only) {
@@ -457,6 +472,7 @@ serve(async (req) => {
         approved_limit: engine.approved_limit,
         decision_reason: engine.reason,
         consulted_by: userId,
+        pdf_data: pdfData,
       };
       const { data: consultRow, error: consultErr } = await supabase
         .from("credit_consultations")
@@ -491,6 +507,8 @@ serve(async (req) => {
             decision_reason: engine.reason,
             status: engine.decision === "rejected" ? "rejected" : "consulted",
             current_step: engine.decision === "rejected" ? 1 : 2,
+            probabilidade_inadimplencia: probInadNum,
+            texto_score_bucket: textoBucket,
           })
           .eq("id", application_id);
       }

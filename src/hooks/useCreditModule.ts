@@ -34,6 +34,11 @@ export interface CreditRules {
   max_dependentes_bolsa_familia: number;
   max_probabilidade_inadimplencia: number; // 1..9 (knockout if > value)
   texto_inadimplencia_block_levels: string[]; // e.g. ['muito_alta','alta']
+  // Bureau analysis cut-offs (novo nó "resumo" do RedeBE)
+  min_score_analise: number;
+  use_bureau_limits: boolean;
+  min_nivel_confianca_levels: string[];     // levels that BLOCK
+  sugestao_negocio_block_levels: string[];  // levels that BLOCK
 }
 
 export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {

@@ -711,6 +711,7 @@ function ApplicationDetailDialog({
                     <TabsTrigger value="occurrences">Ocorrências</TabsTrigger>
                     <TabsTrigger value="summary">Resumo</TabsTrigger>
                     <TabsTrigger value="raw">Resposta</TabsTrigger>
+                    {consultation?.pdf_data && <TabsTrigger value="espelho">Espelho (PDF)</TabsTrigger>}
                   </TabsList>
                   <TabsContent value="decision" className="flex-1 overflow-auto px-4 pb-4">
                     <div className="rounded-lg border p-4 space-y-3">

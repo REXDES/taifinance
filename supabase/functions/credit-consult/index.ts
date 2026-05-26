@@ -309,7 +309,7 @@ serve(async (req) => {
         Authorization: `Bearer ${REDEBE_API_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ documento: documentoLimpo }),
+      body: JSON.stringify({ documento: documentoLimpo, include_pdf: true }),
     });
 
     const redebeBodyText = await redebeResp.text();

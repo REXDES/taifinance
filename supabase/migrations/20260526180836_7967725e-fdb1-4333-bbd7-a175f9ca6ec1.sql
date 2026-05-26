@@ -1,0 +1,1 @@
+ALTER TABLE public.credit_applications ADD COLUMN IF NOT EXISTS simulation jsonb;

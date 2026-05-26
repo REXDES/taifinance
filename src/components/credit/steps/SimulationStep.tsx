@@ -38,10 +38,46 @@ export function SimulationStep({
     return d.toISOString().slice(0, 10);
   });
   const [description, setDescription] = useState<string>('');
+  const [loadedDraft, setLoadedDraft] = useState(false);
+
+  // Carrega rascunho salvo (se houver)
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('credit_applications')
+        .select('simulation')
+        .eq('id', applicationId)
+        .maybeSingle();
+      const sim = data?.simulation;
+      if (sim) {
+        if (sim.principal != null) setPrincipal(String(sim.principal));
+        if (sim.num_parcelas != null) setNumParcelas(String(sim.num_parcelas));
+        if (sim.first_due_date) setFirstDue(sim.first_due_date);
+        if (sim.description) setDescription(sim.description);
+      }
+      setLoadedDraft(true);
+    })();
+  }, [applicationId]);
 
   useEffect(() => {
-    if (approvedLimit != null && !principal) setPrincipal(String(approvedLimit));
-  }, [approvedLimit, principal]);
+    if (loadedDraft && approvedLimit != null && !principal) setPrincipal(String(approvedLimit));
+  }, [approvedLimit, principal, loadedDraft]);
+
+  // Auto-save (debounced) sempre que o usuário alterar algum campo, mesmo sem confirmar
+  useEffect(() => {
+    if (!loadedDraft) return;
+    const t = setTimeout(() => {
+      const payload = {
+        principal: principal ? Number(principal) : null,
+        num_parcelas: numParcelas ? Number(numParcelas) : null,
+        first_due_date: firstDue || null,
+        description: description || null,
+        juros_mensal_pct: rules?.juros_mensal_pct ?? null,
+      };
+      (supabase as any).from('credit_applications').update({ simulation: payload }).eq('id', applicationId);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [principal, numParcelas, firstDue, description, rules?.juros_mensal_pct, applicationId, loadedDraft]);
 
   const calc = useMemo(() => {
     const P = Number(principal) || 0;
@@ -68,8 +104,7 @@ export function SimulationStep({
   const confirm = async () => {
     const err = validate();
     if (err) { toast.error(err); return; }
-    await (supabase as any).from('credit_applications').update({ current_step: 3 }).eq('id', applicationId).lt('current_step', 3);
-    onCompleted({
+    const data: SimulationData = {
       principal: Number(principal),
       num_parcelas: Number(numParcelas),
       juros_mensal_pct: rules?.juros_mensal_pct || 0,
@@ -77,7 +112,14 @@ export function SimulationStep({
       total_amount: calc!.total,
       first_due_date: firstDue,
       description: description.trim(),
-    });
+    };
+    await (supabase as any).from('credit_applications').update({
+      simulation: data,
+      current_step: 3,
+    }).eq('id', applicationId).lt('current_step', 3);
+    // garante o save mesmo se já estiver em step >= 3 (re-simulação)
+    await (supabase as any).from('credit_applications').update({ simulation: data }).eq('id', applicationId);
+    onCompleted(data);
   };
 
   const schedule = useMemo(() => {

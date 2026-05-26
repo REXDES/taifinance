@@ -35,6 +35,7 @@ import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
 import { useCompanyCreditFlag } from '@/hooks/useCreditModule';
 import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
 import { CreditApplicationsPage } from '@/components/credit/CreditApplicationsPage';
+import { CreditIgnoredOccurrencesPage } from '@/components/credit/CreditIgnoredOccurrencesPage';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -65,7 +66,8 @@ export type FinanceView =
   | 'machines-operators'
   | 'machines-mechanics'
   | 'credit-admin'
-  | 'credit-applications';
+  | 'credit-applications'
+  | 'credit-ignored';
 
 const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital', 'credit-admin'];
 // Views available only in normal mode for supervisors
@@ -91,6 +93,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'machines-operators',
   'machines-mechanics',
   'credit-applications',
+  'credit-ignored',
 ];
 
 interface UserRoleInfo {
@@ -275,6 +278,8 @@ const Finance = () => {
         return creditEnabled ? <CreditAdminPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'credit-applications':
         return creditEnabled ? <CreditApplicationsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'credit-ignored':
+        return creditEnabled ? <CreditIgnoredOccurrencesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }

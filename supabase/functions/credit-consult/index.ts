@@ -296,10 +296,47 @@ serve(async (req) => {
     // RedeBE responde como array; pegar [0]
     const wrapper = Array.isArray(redebeJson) ? redebeJson[0] : redebeJson;
     const redeBlock = wrapper?.RedeBE || wrapper?.data?.RedeBE || wrapper;
-    const summary: RedeBESummary = redeBlock?.resumo || {};
+    const summary: RedeBESummary = { ...(redeBlock?.resumo || {}) };
     const principal = redeBlock?.retorno?.principal || {};
 
-    // Motor de decisão
+    // ----- Ocorrências ignoradas (alçada aprovada) -----
+    // Reduz contadores antes de avaliar o motor de decisão.
+    const { data: ignoredRows } = await supabase
+      .from("credit_ignored_occurrences")
+      .select("category")
+      .eq("company_id", company_id)
+      .eq("documento", documentoLimpo)
+      .eq("status", "approved");
+
+    const CATEGORY_TO_SUMMARY_FIELDS: Record<string, string[]> = {
+      "Alertas / Restrições": ["quantidade_alertas_restricoes"],
+      "Protestos": ["quantidade_protestos"],
+      "Pendências Financeiras": ["quantidade_pendencias_financeiras"],
+      "Cheques sem Fundo (CCF)": ["quantidade_ccf_bacen", "quantidade_ccf_varejo"],
+      "Ações Cíveis": ["quantidade_acoes_civeis"],
+    };
+    const ignoredCountByCategory: Record<string, number> = {};
+    for (const r of ignoredRows || []) {
+      ignoredCountByCategory[(r as any).category] = (ignoredCountByCategory[(r as any).category] || 0) + 1;
+    }
+    const ignoredAdjustments: Array<{ category: string; field: string; subtracted: number; before: string; after: string }> = [];
+    for (const [cat, count] of Object.entries(ignoredCountByCategory)) {
+      const fields = CATEGORY_TO_SUMMARY_FIELDS[cat] || [];
+      let remaining = count;
+      for (const f of fields) {
+        if (remaining <= 0) break;
+        const before = parseInt(String((summary as any)[f] ?? "0").replace(/\D/g, ""), 10) || 0;
+        const take = Math.min(before, remaining);
+        const after = before - take;
+        if (take > 0) {
+          (summary as any)[f] = String(after);
+          ignoredAdjustments.push({ category: cat, field: f, subtracted: take, before: String(before), after: String(after) });
+          remaining -= take;
+        }
+      }
+    }
+
+    // Motor de decisão (rodando sobre o summary já ajustado)
     const engine = runDecisionEngine({ rules, summary, principal, tipo_documento });
 
     // Nome — tenta vários caminhos
@@ -317,6 +354,7 @@ serve(async (req) => {
       summary,
       principal,
       engine,
+      ignored_adjustments: ignoredAdjustments,
     };
 
     if (!test_only) {

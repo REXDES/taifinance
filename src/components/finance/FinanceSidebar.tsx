@@ -137,6 +137,9 @@ const machinesMenuItems: MenuItem[] = [
 const creditMenuItems: MenuItem[] = [
   { view: 'credit-applications', label: 'Propostas', icon: <ClipboardList className="w-4 h-4" /> },
 ];
+const creditAdminMenuItems: MenuItem[] = [
+  { view: 'credit-ignored', label: 'Ocorrências Ignoradas', icon: <Shield className="w-4 h-4" /> },
+];
 
 export function FinanceSidebar({
   companies,
@@ -574,7 +577,10 @@ export function FinanceSidebar({
                 {/* Gestão de Crédito (módulo opcional por empresa) */}
                 {creditEnabled && (
                   collapsed ? (
-                    creditMenuItems.map(renderMenuItem)
+                    <>
+                      {creditMenuItems.map(renderMenuItem)}
+                      {(isSupervisor || isGerente) && creditAdminMenuItems.map(renderMenuItem)}
+                    </>
                   ) : (
                     <Collapsible open={openGroup === 'credit'} onOpenChange={setGroup('credit')}>
                       <CollapsibleTrigger asChild>
@@ -588,6 +594,7 @@ export function FinanceSidebar({
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pl-4 space-y-1 mt-1">
                         {creditMenuItems.map(renderMenuItem)}
+                        {(isSupervisor || isGerente) && creditAdminMenuItems.map(renderMenuItem)}
                       </CollapsibleContent>
                     </Collapsible>
                   )

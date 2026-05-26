@@ -732,6 +732,9 @@ function ApplicationDetailDialog({
                         )}
                       </div>
                       <DecisionBox decision={(app.decision || consultation?.decision) as any} approved_limit={app.approved_limit} reason={app.decision_reason || consultation?.decision_reason} knockouts={knockouts} />
+                      {(consultation?.bureau_analysis || (app as any).bureau_analysis) && (
+                        <BureauAnalysisCard analysis={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any} />
+                      )}
                       {decisionOk && localStep < 2 && (
                         <div className="flex justify-end pt-2">
                           <Button onClick={() => advanceStep(2)}>

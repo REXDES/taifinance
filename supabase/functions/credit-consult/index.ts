@@ -134,6 +134,27 @@ function runDecisionEngine(opts: {
     knockouts.push(`${alertas} alerta(s) de restrição — máximo permitido: ${rules.max_alertas_restricoes}`);
   }
 
+  // Bolsa Família
+  const depBF = toInt(summary.qtd_dependentes_bolsa_familia);
+  if (rules.bolsa_familia_block && depBF > (rules.max_dependentes_bolsa_familia ?? 0)) {
+    knockouts.push(`Beneficiário do Bolsa Família (${depBF} dependente(s)) — máximo permitido: ${rules.max_dependentes_bolsa_familia ?? 0}`);
+  }
+
+  // Probabilidade de inadimplência (1=baixa, 9=alta)
+  const probNum = toInt(summary.probabilidade_inadimplencia);
+  if (probNum > 0 && (rules.max_probabilidade_inadimplencia ?? 9) < 9 && probNum > (rules.max_probabilidade_inadimplencia ?? 9)) {
+    knockouts.push(`Probabilidade de inadimplência ${probNum} acima do máximo permitido (${rules.max_probabilidade_inadimplencia})`);
+  }
+
+  // Texto interpretativo do score
+  const blockLevels = rules.texto_inadimplencia_block_levels || [];
+  if (blockLevels.length > 0) {
+    const bucket = classifyTextoInadimplencia(summary.texto_score);
+    if (bucket && blockLevels.includes(bucket)) {
+      knockouts.push(`Análise textual do score indica probabilidade "${bucket.replace('_',' ')}" de inadimplência`);
+    }
+  }
+
   const score = toInt(summary.score);
   const classification = (summary.classificacao_score || "").toUpperCase();
 

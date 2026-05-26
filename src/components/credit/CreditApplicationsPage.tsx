@@ -698,12 +698,11 @@ function ApplicationDetailDialog({
                         )}
                       </div>
                       <DecisionBox decision={(app.decision || consultation?.decision) as any} approved_limit={app.approved_limit} reason={app.decision_reason || consultation?.decision_reason} knockouts={knockouts} />
-                      {decisionOk && (app.current_step || 1) < 2 && (
+                      {decisionOk && localStep < 2 && (
                         <div className="flex justify-end pt-2">
-                          <Button onClick={async () => {
-                            await (supabase as any).from('credit_applications').update({ current_step: 2 }).eq('id', app.id).lt('current_step', 2);
-                            setActiveStep(2); reload();
-                          }}>Prosseguir <ArrowRight className="w-4 h-4 ml-2" /></Button>
+                          <Button onClick={() => advanceStep(2)}>
+                            Prosseguir para simulação <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
                         </div>
                       )}
                     </div>

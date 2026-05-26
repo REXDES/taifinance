@@ -664,7 +664,7 @@ function ApplicationDetailDialog({
             {app.documento} ({app.tipo_documento}) · Criada em {new Date(app.created_at).toLocaleString('pt-BR')}
           </DialogDescription>
           <div className="pt-3 pb-1">
-            <HorizontalTimeline labels={STEP_LABELS} current={app.current_step || 1} />
+            <HorizontalTimeline labels={STEP_LABELS} current={localStep} />
           </div>
         </DialogHeader>
 

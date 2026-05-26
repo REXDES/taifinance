@@ -588,7 +588,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function ApplicationDetailDialog({
-  app, companyId, userId, onClose, onReevaluate, reevaluating, onChanged,
+  app, companyId, userId, onClose, onReevaluate, reevaluating, onChanged, initialStep,
 }: {
   app: CreditApplication | null;
   companyId: string;
@@ -597,6 +597,7 @@ function ApplicationDetailDialog({
   onReevaluate: (a: CreditApplication) => void;
   reevaluating: boolean;
   onChanged: () => void;
+  initialStep?: number | null;
 }) {
   const [consultation, setConsultation] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);

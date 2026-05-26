@@ -240,16 +240,36 @@ function OccurrencesList({ raw }: { raw: any }) {
               const entries = Object.entries(it).filter(([, v]) =>
                 v != null && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== ''
               );
+              const priority = entries.filter(([k]) => PRIORITY_FIELDS.includes(k.toUpperCase()));
+              const rest = entries.filter(([k]) => !PRIORITY_FIELDS.includes(k.toUpperCase()));
+              const titulo = priority.find(([k]) => k.toUpperCase() === 'TITULO')?.[1];
+              const descricao = priority.find(([k]) =>
+                ['DESCRICAO', 'OBSERVACOES', 'OBSERVACAO', 'MENSAGEM', 'MOTIVO', 'DESCRICAO_TIPO_INFORMACAO'].includes(k.toUpperCase())
+              )?.[1];
               return (
-                <div key={i} className="p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                <div key={i} className="p-3 space-y-2">
                   {entries.length === 0 ? (
-                    <pre className="text-[11px] font-mono col-span-full whitespace-pre-wrap">{JSON.stringify(it, null, 2)}</pre>
-                  ) : entries.map(([k, v]) => (
-                    <div key={k} className="text-xs">
-                      <div className="text-[10px] uppercase text-muted-foreground">{k.replace(/_/g, ' ')}</div>
-                      <div className="font-medium break-words">{String(v)}</div>
-                    </div>
-                  ))}
+                    <pre className="text-[11px] font-mono whitespace-pre-wrap">{JSON.stringify(it, null, 2)}</pre>
+                  ) : (
+                    <>
+                      {(titulo || descricao) && (
+                        <div className="rounded border-l-2 border-amber-500 bg-amber-500/5 px-3 py-2">
+                          {titulo && <div className="text-sm font-semibold">{String(titulo)}</div>}
+                          {descricao && <div className="text-xs text-muted-foreground mt-0.5">{String(descricao)}</div>}
+                        </div>
+                      )}
+                      {rest.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                          {rest.map(([k, v]) => (
+                            <div key={k} className="text-xs">
+                              <div className="text-[10px] uppercase text-muted-foreground">{k.replace(/_/g, ' ')}</div>
+                              <div className="font-medium break-words">{String(v)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               );
             })}

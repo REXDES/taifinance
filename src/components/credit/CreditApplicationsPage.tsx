@@ -646,7 +646,7 @@ function ApplicationDetailDialog({
     return { id, label, status };
   });
 
-  const reload = async () => { onChanged(); };
+  
 
   return (
     <Dialog open={!!app} onOpenChange={(o) => !o && onClose()}>

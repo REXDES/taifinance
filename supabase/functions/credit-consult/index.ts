@@ -432,6 +432,18 @@ serve(async (req) => {
       principal?.CREDCADASTRAL?.HEADER?.PARAMETROS?.RAZAO_SOCIAL ||
       "";
 
+    // Extract PDF "espelho" from the response, if present
+    const pdfRaw = findFirstDeep(wrapper, (k, v) =>
+      (typeof v === 'string') &&
+      /^(pdf|pdf_base64|pdf_url|url_pdf|link_pdf|espelho)$/i.test(k) &&
+      String(v).length > 20
+    );
+    const pdfData = pdfRaw ? String(pdfRaw) : null;
+
+    // Interpreted payment-probability bucket (from textual score)
+    const textoBucket = classifyTextoInadimplencia(summary.texto_score);
+    const probInadNum = toInt(summary.probabilidade_inadimplencia) || null;
+
     const result = {
       documento: documentoLimpo,
       tipo_documento,
@@ -440,6 +452,9 @@ serve(async (req) => {
       principal,
       engine,
       ignored_adjustments: ignoredAdjustments,
+      pdf_data: pdfData,
+      texto_score_bucket: textoBucket,
+      probabilidade_inadimplencia: probInadNum,
     };
 
     if (!test_only) {

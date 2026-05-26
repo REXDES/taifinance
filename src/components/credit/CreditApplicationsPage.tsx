@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Search, ShieldCheck, ShieldAlert, ShieldX, ArrowRight, Eye, AlertTriangle, Gavel, RefreshCw, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Plus, Search, ShieldCheck, ShieldAlert, ShieldX, ArrowRight, Eye, AlertTriangle, Gavel, RefreshCw, Clock, CheckCircle2, XCircle, FileSearch } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -56,6 +56,7 @@ export function CreditApplicationsPage({ companyId }: Props) {
   const [consultResult, setConsultResult] = useState<ConsultResult | null>(null);
   const [createdAppId, setCreatedAppId] = useState<string | null>(null);
   const [detailApp, setDetailApp] = useState<CreditApplication | null>(null);
+  const [detailInitialStep, setDetailInitialStep] = useState<number | null>(null);
   const [reevaluatingId, setReevaluatingId] = useState<string | null>(null);
 
   const handleStartNew = async () => {
@@ -190,7 +191,7 @@ export function CreditApplicationsPage({ companyId }: Props) {
               </TableHeader>
               <TableBody>
                 {applications.map((a) => (
-                  <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setDetailApp(a)}>
+                  <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setDetailInitialStep(null); setDetailApp(a); }}>
                     <TableCell className="font-mono text-xs">{a.documento} <span className="text-muted-foreground">({a.tipo_documento})</span></TableCell>
                     <TableCell>{a.nome || '—'}</TableCell>
                     <TableCell>{a.score ?? '—'}{a.classification ? ` (${a.classification})` : ''}</TableCell>
@@ -205,6 +206,14 @@ export function CreditApplicationsPage({ companyId }: Props) {
                     <TableCell className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleDateString('pt-BR')}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Ver consulta, ocorrências e resumo"
+                          onClick={(e) => { e.stopPropagation(); setDetailInitialStep(1); setDetailApp(a); }}
+                        >
+                          <FileSearch className="w-4 h-4" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -229,9 +238,10 @@ export function CreditApplicationsPage({ companyId }: Props) {
 
       <ApplicationDetailDialog
         app={detailApp}
+        initialStep={detailInitialStep}
         companyId={companyId}
         userId={user?.id ?? null}
-        onClose={() => setDetailApp(null)}
+        onClose={() => { setDetailApp(null); setDetailInitialStep(null); }}
         onReevaluate={(a) => handleReevaluate(a)}
         reevaluating={!!detailApp && reevaluatingId === detailApp.id}
         onChanged={refetch}
@@ -578,7 +588,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function ApplicationDetailDialog({
-  app, companyId, userId, onClose, onReevaluate, reevaluating, onChanged,
+  app, companyId, userId, onClose, onReevaluate, reevaluating, onChanged, initialStep,
 }: {
   app: CreditApplication | null;
   companyId: string;
@@ -587,6 +597,7 @@ function ApplicationDetailDialog({
   onReevaluate: (a: CreditApplication) => void;
   reevaluating: boolean;
   onChanged: () => void;
+  initialStep?: number | null;
 }) {
   const [consultation, setConsultation] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
@@ -607,7 +618,7 @@ function ApplicationDetailDialog({
   useEffect(() => {
     if (!app) { setConsultation(null); return; }
     const cur = Math.max(1, app.current_step || 1);
-    setActiveStep(cur);
+    setActiveStep(initialStep ?? cur);
     setLocalStep(cur);
     setLoading(true);
     (async () => {

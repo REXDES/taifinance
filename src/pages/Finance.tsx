@@ -32,6 +32,9 @@ import { MaintenancePage } from '@/components/machines/MaintenancePage';
 import { RentalsPage } from '@/components/machines/RentalsPage';
 import { PeoplePage } from '@/components/machines/PeoplePage';
 import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
+import { useCompanyCreditFlag } from '@/hooks/useCreditModule';
+import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
+import { CreditApplicationsPage } from '@/components/credit/CreditApplicationsPage';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -60,9 +63,11 @@ export type FinanceView =
   | 'machines-maintenance'
   | 'machines-rentals'
   | 'machines-operators'
-  | 'machines-mechanics';
+  | 'machines-mechanics'
+  | 'credit-admin'
+  | 'credit-applications';
 
-const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital'];
+const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital', 'credit-admin'];
 // Views available only in normal mode for supervisors
 const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'dashboard',
@@ -85,6 +90,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'machines-rentals',
   'machines-operators',
   'machines-mechanics',
+  'credit-applications',
 ];
 
 interface UserRoleInfo {
@@ -195,6 +201,7 @@ const Finance = () => {
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const { enabled: machinesEnabled, refetch: refetchMachinesFlag } = useCompanyMachinesFlag(selectedCompanyId);
+  const { enabled: creditEnabled, refetch: refetchCreditFlag } = useCompanyCreditFlag(selectedCompanyId);
 
   const handleCreateCompany = async (name: string, color: string) => {
     const result = await createCompany(name, color);
@@ -264,6 +271,10 @@ const Finance = () => {
         return machinesEnabled ? <PeoplePage companyId={selectedCompanyId} kind="operator" /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-mechanics':
         return machinesEnabled ? <PeoplePage companyId={selectedCompanyId} kind="mechanic" /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'credit-admin':
+        return creditEnabled ? <CreditAdminPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'credit-applications':
+        return creditEnabled ? <CreditApplicationsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }
@@ -344,7 +355,7 @@ const Finance = () => {
         companyId={effectiveMode === 'admin' ? null : selectedCompanyId}
         showPicker={effectiveMode === 'admin'}
         showModulesTab={effectiveMode === 'admin'}
-        onSaved={refetchMachinesFlag}
+        onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); }}
       />
     </div>
   );

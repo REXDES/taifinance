@@ -515,6 +515,19 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                       />
                     </div>
                   </div>
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-base flex items-center gap-2">
+                          <Wrench className="w-4 h-4" />
+                          Gestão de Crédito
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Habilita o módulo de venda a prazo: consulta de crédito (RedeBE), motor de decisão, biometria por IA, contrato digital e geração de parcelas em contas a receber.
+                        </p>
+                      </div>
+                      <Switch checked={creditModuleEnabled} onCheckedChange={setCreditModuleEnabled} />
+                    </div>
                 </TabsContent>
               )}
             </div>

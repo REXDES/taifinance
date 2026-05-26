@@ -762,6 +762,11 @@ function ApplicationDetailDialog({
                       </pre>
                     </ScrollArea>
                   </TabsContent>
+                  {consultation?.pdf_data && (
+                    <TabsContent value="espelho" className="flex-1 overflow-hidden px-4 pb-4">
+                      <PdfEspelhoViewer pdfData={consultation.pdf_data} />
+                    </TabsContent>
+                  )}
                 </Tabs>
               )}
               {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={app.approved_limit} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}

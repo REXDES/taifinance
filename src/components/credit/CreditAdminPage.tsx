@@ -193,15 +193,15 @@ export function CreditAdminPage({ companyId }: Props) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Probabilidade de inadimplência</CardTitle>
+              <CardTitle>Probabilidade de pagamento (adimplência)</CardTitle>
               <CardDescription>
-                Régua de corte baseada no nó <code>probabilidade_inadimplencia</code> (escala 1 = baixa, 9 = alta)
-                e na interpretação textual do score (nó "Texto").
+                Régua de corte baseada no nó <code>probabilidade_inadimplencia</code> (escala 1 = baixa probabilidade de inadimplência / bom pagador, 9 = alta probabilidade de inadimplência / mau pagador)
+                e na interpretação textual do score (nó "Texto"), que descreve a <strong>probabilidade de pagamento</strong>.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="max-w-md">
-                <Label className="text-xs">Aceitar até probabilidade máxima de (1 a 9)</Label>
+                <Label className="text-xs">Aceitar até probabilidade de inadimplência máxima de (1 a 9)</Label>
                 <Input type="number" min={1} max={9} value={draft.max_probabilidade_inadimplencia}
                   onChange={(e) => setDraft({ ...draft, max_probabilidade_inadimplencia: Math.min(9, Math.max(1, parseInt(e.target.value) || 9)) })} />
                 <p className="text-[11px] text-muted-foreground mt-1">
@@ -209,14 +209,14 @@ export function CreditAdminPage({ companyId }: Props) {
                 </p>
               </div>
               <div>
-                <Label className="text-xs">Reprovar quando o texto do score indicar:</Label>
+                <Label className="text-xs">Reprovar quando a probabilidade de pagamento for:</Label>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2">
                   {[
-                    { value: 'muito_alta', label: 'Muito Alta' },
-                    { value: 'alta', label: 'Alta' },
-                    { value: 'media', label: 'Média' },
+                    { value: 'muito_baixa', label: 'Muito Baixa', hint: 'pior' },
                     { value: 'baixa', label: 'Baixa' },
-                    { value: 'muito_baixa', label: 'Muito Baixa' },
+                    { value: 'media', label: 'Média' },
+                    { value: 'alta', label: 'Alta' },
+                    { value: 'muito_alta', label: 'Muito Alta', hint: 'melhor' },
                   ].map((opt) => {
                     const checked = (draft.texto_inadimplencia_block_levels || []).includes(opt.value);
                     return (
@@ -230,13 +230,13 @@ export function CreditAdminPage({ companyId }: Props) {
                             setDraft({ ...draft, texto_inadimplencia_block_levels: Array.from(curr) });
                           }}
                         />
-                        {opt.label}
+                        <span>{opt.label}{opt.hint ? <span className="text-muted-foreground"> ({opt.hint})</span> : null}</span>
                       </label>
                     );
                   })}
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Interpretação automática do texto: detecta "Muito Alta/Alta/Média/Baixa/Muito Baixa probabilidade".
+                  O texto do bureau indica a chance de o cliente <strong>pagar</strong>. Tipicamente marque "Muito Baixa" e/ou "Baixa" para reprovar maus pagadores.
                 </p>
               </div>
             </CardContent>

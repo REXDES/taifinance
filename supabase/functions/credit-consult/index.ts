@@ -338,6 +338,44 @@ serve(async (req) => {
     const summary: RedeBESummary = { ...(redeBlock?.resumo || {}) };
     const principal = redeBlock?.retorno?.principal || {};
 
+    // Backfill summary fields from principal/raw if not present in resumo
+    const findFirstDeep = (node: any, predicate: (k: string, v: any) => boolean): any => {
+      if (!node || typeof node !== 'object') return undefined;
+      if (Array.isArray(node)) {
+        for (const item of node) { const r = findFirstDeep(item, predicate); if (r !== undefined) return r; }
+        return undefined;
+      }
+      for (const [k, v] of Object.entries(node)) {
+        if (predicate(k, v)) return v;
+      }
+      for (const v of Object.values(node)) {
+        if (v && typeof v === 'object') { const r = findFirstDeep(v, predicate); if (r !== undefined) return r; }
+      }
+      return undefined;
+    };
+    if (!summary.texto_score) {
+      const t = findFirstDeep(redeBlock, (k, v) =>
+        (typeof v === 'string' || typeof v === 'number') &&
+        /^TEXTO(_SCORE)?$/i.test(k)
+      );
+      if (t != null) summary.texto_score = String(t);
+    }
+    if (!summary.qtd_dependentes_bolsa_familia) {
+      const bf = findFirstDeep(redeBlock, (k, v) =>
+        (typeof v === 'string' || typeof v === 'number') &&
+        /bolsa.*familia|qtd.*dependentes.*bolsa/i.test(k)
+      );
+      if (bf != null) summary.qtd_dependentes_bolsa_familia = String(bf);
+    }
+    if (!summary.probabilidade_inadimplencia) {
+      const p = findFirstDeep(redeBlock, (k, v) =>
+        (typeof v === 'string' || typeof v === 'number') &&
+        /probabilidade.*inadimpl/i.test(k)
+      );
+      if (p != null) summary.probabilidade_inadimplencia = String(p);
+    }
+
+
     // ----- Ocorrências ignoradas (alçada aprovada) -----
     // Escopo: 'application' (só esta proposta), 'document' (todas do cliente),
     // 'global' (todas as propostas da empresa).

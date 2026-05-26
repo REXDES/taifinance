@@ -432,17 +432,26 @@ serve(async (req) => {
       principal?.CREDCADASTRAL?.HEADER?.PARAMETROS?.RAZAO_SOCIAL ||
       "";
 
-    // Extract PDF "espelho" from the response, if present
-    const pdfRaw = findFirstDeep(wrapper, (k, v) =>
-      (typeof v === 'string') &&
-      /^(pdf|pdf_base64|pdf_url|url_pdf|link_pdf|espelho)$/i.test(k) &&
-      String(v).length > 20
+    // Extract PDF "espelho" from the response, if present.
+    // RedeBE typically returns: redebe_pdf_disponivel (bool), redebe_pdf_base64 (string|null), redebe_pdf_nome_arquivo (string|null)
+    const pdfBase64 = findFirstDeep(wrapper, (k, v) =>
+      typeof v === 'string' && v.length > 100 &&
+      /^(redebe_pdf_base64|pdf_base64|pdf)$/i.test(k)
     );
-    const pdfData = pdfRaw ? String(pdfRaw) : null;
+    const pdfUrl = findFirstDeep(wrapper, (k, v) =>
+      typeof v === 'string' && v.length > 10 &&
+      /^(pdf_url|url_pdf|link_pdf|espelho_url)$/i.test(k)
+    );
+    const pdfDisponivel = findFirstDeep(wrapper, (k, v) =>
+      typeof v === 'boolean' && /^redebe_pdf_disponivel$/i.test(k)
+    );
+    const pdfData = pdfBase64 ? String(pdfBase64) : (pdfUrl ? String(pdfUrl) : null);
+    console.log(`[credit-consult] PDF disponivel=${pdfDisponivel} hasData=${!!pdfData}`);
 
     // Interpreted payment-probability bucket (from textual score)
     const textoBucket = classifyTextoInadimplencia(summary.texto_score);
     const probInadNum = toInt(summary.probabilidade_inadimplencia) || null;
+
 
     const result = {
       documento: documentoLimpo,
@@ -453,9 +462,11 @@ serve(async (req) => {
       engine,
       ignored_adjustments: ignoredAdjustments,
       pdf_data: pdfData,
+      pdf_disponivel: pdfDisponivel ?? null,
       texto_score_bucket: textoBucket,
       probabilidade_inadimplencia: probInadNum,
     };
+
 
     if (!test_only) {
       // Persiste consulta

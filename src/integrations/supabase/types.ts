@@ -775,6 +775,7 @@ export type Database = {
       }
       credit_rules: {
         Row: {
+          bolsa_familia_block: boolean
           company_id: string
           contract_clauses: string | null
           created_at: string
@@ -784,8 +785,10 @@ export type Database = {
           juros_mensal_pct: number
           max_alertas_restricoes: number
           max_ccf_total: number
+          max_dependentes_bolsa_familia: number
           max_dias_inadimplencia_interna: number
           max_pendencias_financeiras: number
+          max_probabilidade_inadimplencia: number
           max_protestos: number
           min_idade_pf: number
           min_meses_cnpj: number
@@ -794,9 +797,11 @@ export type Database = {
           parcela_minima: number
           score_bands: Json
           teto_credito: number
+          texto_inadimplencia_block_levels: Json
           updated_at: string
         }
         Insert: {
+          bolsa_familia_block?: boolean
           company_id: string
           contract_clauses?: string | null
           created_at?: string
@@ -806,8 +811,10 @@ export type Database = {
           juros_mensal_pct?: number
           max_alertas_restricoes?: number
           max_ccf_total?: number
+          max_dependentes_bolsa_familia?: number
           max_dias_inadimplencia_interna?: number
           max_pendencias_financeiras?: number
+          max_probabilidade_inadimplencia?: number
           max_protestos?: number
           min_idade_pf?: number
           min_meses_cnpj?: number
@@ -816,9 +823,11 @@ export type Database = {
           parcela_minima?: number
           score_bands?: Json
           teto_credito?: number
+          texto_inadimplencia_block_levels?: Json
           updated_at?: string
         }
         Update: {
+          bolsa_familia_block?: boolean
           company_id?: string
           contract_clauses?: string | null
           created_at?: string
@@ -828,8 +837,10 @@ export type Database = {
           juros_mensal_pct?: number
           max_alertas_restricoes?: number
           max_ccf_total?: number
+          max_dependentes_bolsa_familia?: number
           max_dias_inadimplencia_interna?: number
           max_pendencias_financeiras?: number
+          max_probabilidade_inadimplencia?: number
           max_protestos?: number
           min_idade_pf?: number
           min_meses_cnpj?: number
@@ -838,6 +849,7 @@ export type Database = {
           parcela_minima?: number
           score_bands?: Json
           teto_credito?: number
+          texto_inadimplencia_block_levels?: Json
           updated_at?: string
         }
         Relationships: []

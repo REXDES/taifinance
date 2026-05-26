@@ -68,7 +68,7 @@ export function SimulationStep({
   const confirm = async () => {
     const err = validate();
     if (err) { toast.error(err); return; }
-    await (supabase as any).from('credit_applications').update({ current_step: 5 }).eq('id', applicationId).lt('current_step', 5);
+    await (supabase as any).from('credit_applications').update({ current_step: 3 }).eq('id', applicationId).lt('current_step', 3);
     onCompleted({
       principal: Number(principal),
       num_parcelas: Number(numParcelas),

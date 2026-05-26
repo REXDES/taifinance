@@ -97,7 +97,7 @@ export function BiometryStep({
       rejection_reason: decision === 'rejected' ? 'Reprovado manualmente pelo gerente' : null,
     }).eq('id', bio.id);
     if (decision === 'approved') {
-      await (supabase as any).from('credit_applications').update({ current_step: 4 }).eq('id', applicationId).lt('current_step', 4);
+      await (supabase as any).from('credit_applications').update({ current_step: 5 }).eq('id', applicationId).lt('current_step', 5);
       toast.success('Biometria aprovada manualmente');
       onCompleted();
     } else {
@@ -108,7 +108,7 @@ export function BiometryStep({
 
   useEffect(() => {
     if (bio?.status === 'approved') {
-      (supabase as any).from('credit_applications').update({ current_step: 4 }).eq('id', applicationId).lt('current_step', 4);
+      (supabase as any).from('credit_applications').update({ current_step: 5 }).eq('id', applicationId).lt('current_step', 5);
     }
   }, [bio?.status, applicationId]);
 

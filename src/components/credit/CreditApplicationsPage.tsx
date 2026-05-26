@@ -22,6 +22,7 @@ import {
   type OccurrenceRecord,
 } from '@/lib/creditOccurrences';
 import { JourneyStepper } from './JourneyStepper';
+import { HorizontalTimeline } from './HorizontalTimeline';
 import { QualificationStep } from './steps/QualificationStep';
 import { BiometryStep } from './steps/BiometryStep';
 import { SimulationStep } from './steps/SimulationStep';
@@ -30,7 +31,9 @@ import { BoletosStep } from './steps/BoletosStep';
 
 interface Props { companyId: string }
 
-const STEP_LABELS = ['Consulta', 'Qualificação', 'Biometria', 'Simulação', 'Contrato', 'Boletos'];
+// Etapas na ordem da jornada — simulação vem antes de qualificação/biometria
+// (cliente pode não aceitar as condições antes de coletar dados pessoais)
+const STEP_LABELS = ['Consulta', 'Simulação', 'Qualificação', 'Biometria', 'Contrato', 'Boletos'];
 
 function StatusBadge({ status, decision }: { status: string; decision: string | null }) {
   if (decision === 'rejected' || status === 'rejected')
@@ -192,8 +195,11 @@ export function CreditApplicationsPage({ companyId }: Props) {
                     <TableCell>{a.nome || '—'}</TableCell>
                     <TableCell>{a.score ?? '—'}{a.classification ? ` (${a.classification})` : ''}</TableCell>
                     <TableCell>{a.approved_limit != null ? `R$ ${Number(a.approved_limit).toLocaleString('pt-BR')}` : '—'}</TableCell>
-                    <TableCell>
-                      <span className="text-xs">{a.current_step}/6 — {STEP_LABELS[a.current_step - 1]}</span>
+                    <TableCell className="min-w-[220px]">
+                      <HorizontalTimeline labels={STEP_LABELS} current={a.current_step || 1} compact />
+                      <div className="text-[10px] text-muted-foreground mt-1">
+                        {a.current_step}/6 — {STEP_LABELS[(a.current_step || 1) - 1]}
+                      </div>
                     </TableCell>
                     <TableCell><StatusBadge status={a.status} decision={a.decision} /></TableCell>
                     <TableCell className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleDateString('pt-BR')}</TableCell>
@@ -647,6 +653,9 @@ function ApplicationDetailDialog({
           <DialogDescription className="font-mono text-xs">
             {app.documento} ({app.tipo_documento}) · Criada em {new Date(app.created_at).toLocaleString('pt-BR')}
           </DialogDescription>
+          <div className="pt-3 pb-1">
+            <HorizontalTimeline labels={STEP_LABELS} current={app.current_step || 1} />
+          </div>
         </DialogHeader>
 
         {loading ? (
@@ -715,9 +724,9 @@ function ApplicationDetailDialog({
                   </TabsContent>
                 </Tabs>
               )}
-              {activeStep === 2 && <QualificationStep applicationId={app.id} companyId={companyId} onCompleted={() => { setActiveStep(3); reload(); }} />}
-              {activeStep === 3 && <BiometryStep applicationId={app.id} companyId={companyId} canApprove={canApprove} onCompleted={() => { setActiveStep(4); reload(); }} />}
-              {activeStep === 4 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={app.approved_limit} onCompleted={(data) => { setPendingSim(data); setActiveStep(5); reload(); }} />}
+              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={app.approved_limit} onCompleted={(data) => { setPendingSim(data); setActiveStep(3); reload(); }} />}
+              {activeStep === 3 && <QualificationStep applicationId={app.id} companyId={companyId} onCompleted={() => { setActiveStep(4); reload(); }} />}
+              {activeStep === 4 && <BiometryStep applicationId={app.id} companyId={companyId} canApprove={canApprove} onCompleted={() => { setActiveStep(5); reload(); }} />}
               {activeStep === 5 && <ContractStep applicationId={app.id} companyId={companyId} application={app} pendingSimulation={pendingSim} canApprove={canApprove} onCompleted={() => { setActiveStep(6); reload(); }} />}
               {activeStep === 6 && <BoletosStep applicationId={app.id} companyId={companyId} clientSupplierId={app.client_supplier_id} userId={userId} onCompleted={() => { reload(); }} />}
             </div>

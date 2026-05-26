@@ -35,6 +35,7 @@ import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
 import { useCompanyCreditFlag } from '@/hooks/useCreditModule';
 import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
 import { CreditApplicationsPage } from '@/components/credit/CreditApplicationsPage';
+import { CreditIgnoredOccurrencesPage } from '@/components/credit/CreditIgnoredOccurrencesPage';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 

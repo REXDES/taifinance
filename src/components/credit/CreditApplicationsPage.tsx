@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Search, ShieldCheck, ShieldAlert, ShieldX, ArrowRight, Eye, AlertTriangle, Gavel, RefreshCw, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Plus, Search, ShieldCheck, ShieldAlert, ShieldX, ArrowRight, Eye, AlertTriangle, Gavel, RefreshCw, Clock, CheckCircle2, XCircle, FileSearch } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

@@ -93,7 +93,44 @@ function extractFromConsultation(raw: any): Prefilled {
     }
   });
 
-  // Endereço — primeiro encontrado
+  // Procura primeiro nos nós oficiais IDENTIFICACAO_PESSOA_FISICA / IDENTIFICACAO_PESSOA_JURIDICA
+  const identNodes: any[] = [];
+  walk(raw, (k, v) => {
+    if (/^IDENTIFICACAO_PESSOA_(FISICA|JURIDICA)$/i.test(k) && v && typeof v === 'object') {
+      identNodes.push(v);
+    }
+  });
+
+  const pickEnderecoFromIdent = (node: any) => {
+    if (!node || typeof node !== 'object') return;
+    // pode ter sub-node ENDERECOS / ENDERECO
+    const endNodes: any[] = [];
+    if (Array.isArray(node.ENDERECOS)) endNodes.push(...node.ENDERECOS);
+    if (node.ENDERECO) endNodes.push(node.ENDERECO);
+    // Também alguns retornos têm os campos diretamente no nó
+    endNodes.push(node);
+    for (const e of endNodes) {
+      if (!e || typeof e !== 'object') continue;
+      const log = e.LOGRADOURO || e.logradouro || e.ENDERECO;
+      const num = e.NUMERO || e.numero;
+      const compl = e.COMPLEMENTO || e.complemento;
+      const bairro = e.BAIRRO || e.bairro;
+      const cep = e.CEP || e.cep;
+      const cidade = e.CIDADE || e.cidade || e.MUNICIPIO;
+      const uf = e.UF || e.uf || e.ESTADO;
+      if (log || cep || cidade) {
+        const parts = [log, num, compl, bairro].filter(Boolean).join(', ');
+        if (parts) setIf('endereco_entrega', parts);
+        if (cep) setIf('cep', String(cep).replace(/\D/g, ''));
+        if (cidade) setIf('cidade', cidade);
+        if (uf && String(uf).length <= 2) setIf('uf', String(uf).toUpperCase());
+        return;
+      }
+    }
+  };
+  identNodes.forEach(pickEnderecoFromIdent);
+
+  // Fallback: walks adicionais
   walk(raw, (k, v) => {
     if (k.toUpperCase() === 'ENDERECOS' && Array.isArray(v) && v.length > 0) {
       const e = v[0];

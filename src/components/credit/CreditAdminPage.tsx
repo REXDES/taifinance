@@ -172,6 +172,78 @@ export function CreditAdminPage({ companyId }: Props) {
 
           <Card>
             <CardHeader>
+              <CardTitle>Bolsa Família</CardTitle>
+              <CardDescription>Usa o nó <code>qtd_dependentes_bolsa_familia</code> da consulta para determinar se o cliente é beneficiário.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between max-w-md">
+                <Label>Reprovar beneficiários do Bolsa Família</Label>
+                <Switch checked={draft.bolsa_familia_block}
+                  onCheckedChange={(v) => setDraft({ ...draft, bolsa_familia_block: v })} />
+              </div>
+              {draft.bolsa_familia_block && (
+                <div className="max-w-xs">
+                  <Label className="text-xs">Tolerar até X dependentes (acima disso = reprova)</Label>
+                  <Input type="number" min={0} value={draft.max_dependentes_bolsa_familia}
+                    onChange={(e) => setDraft({ ...draft, max_dependentes_bolsa_familia: parseInt(e.target.value) || 0 })} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Probabilidade de inadimplência</CardTitle>
+              <CardDescription>
+                Régua de corte baseada no nó <code>probabilidade_inadimplencia</code> (escala 1 = baixa, 9 = alta)
+                e na interpretação textual do score (nó "Texto").
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="max-w-md">
+                <Label className="text-xs">Aceitar até probabilidade máxima de (1 a 9)</Label>
+                <Input type="number" min={1} max={9} value={draft.max_probabilidade_inadimplencia}
+                  onChange={(e) => setDraft({ ...draft, max_probabilidade_inadimplencia: Math.min(9, Math.max(1, parseInt(e.target.value) || 9)) })} />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Acima desse valor a proposta é reprovada. Use 9 para desativar esta régua.
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs">Reprovar quando o texto do score indicar:</Label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2">
+                  {[
+                    { value: 'muito_alta', label: 'Muito Alta' },
+                    { value: 'alta', label: 'Alta' },
+                    { value: 'media', label: 'Média' },
+                    { value: 'baixa', label: 'Baixa' },
+                    { value: 'muito_baixa', label: 'Muito Baixa' },
+                  ].map((opt) => {
+                    const checked = (draft.texto_inadimplencia_block_levels || []).includes(opt.value);
+                    return (
+                      <label key={opt.value} className="flex items-center gap-2 text-xs border border-border rounded px-2 py-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const curr = new Set(draft.texto_inadimplencia_block_levels || []);
+                            if (e.target.checked) curr.add(opt.value); else curr.delete(opt.value);
+                            setDraft({ ...draft, texto_inadimplencia_block_levels: Array.from(curr) });
+                          }}
+                        />
+                        {opt.label}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Interpretação automática do texto: detecta "Muito Alta/Alta/Média/Baixa/Muito Baixa probabilidade".
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Teto e faixas de score</CardTitle>
               <CardDescription>Defina o teto máximo de crédito e como o score determina o percentual aprovado e o nº máximo de parcelas.</CardDescription>
             </CardHeader>

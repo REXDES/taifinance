@@ -92,6 +92,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'machines-operators',
   'machines-mechanics',
   'credit-applications',
+  'credit-ignored',
 ];
 
 interface UserRoleInfo {

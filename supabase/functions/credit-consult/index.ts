@@ -206,6 +206,23 @@ function runDecisionEngine(opts: {
     }
   }
 
+  // ---- Novos knockouts: análise do bureau (nó "resumo") ----
+  const scoreAnalise = toNumberLoose(summary.score_analise);
+  const minScoreAnalise = rules.min_score_analise ?? 0;
+  if (minScoreAnalise > 0 && scoreAnalise != null && scoreAnalise < minScoreAnalise) {
+    knockouts.push(`Score analítico do bureau ${scoreAnalise} abaixo do mínimo (${minScoreAnalise})`);
+  }
+  const confiancaBucket = classifyConfianca(summary.nivel_de_confianca);
+  const blockConf = rules.min_nivel_confianca_levels || [];
+  if (blockConf.length > 0 && confiancaBucket && blockConf.includes(confiancaBucket)) {
+    knockouts.push(`Nível de confiança do bureau "${CONFIANCA_LABEL[confiancaBucket] || confiancaBucket}" não atende ao critério mínimo`);
+  }
+  const sugestaoBucket = classifySugestao(summary.sugestao_de_negocio);
+  const blockSug = rules.sugestao_negocio_block_levels || [];
+  if (blockSug.length > 0 && sugestaoBucket && blockSug.includes(sugestaoBucket)) {
+    knockouts.push(`Sugestão de negócio do bureau: "${SUGESTAO_LABEL[sugestaoBucket] || sugestaoBucket}"`);
+  }
+
   const score = toInt(summary.score);
   const classification = (summary.classificacao_score || "").toUpperCase();
 
@@ -243,21 +260,58 @@ function runDecisionEngine(opts: {
     };
   }
 
-  const limit = Math.round((rules.teto_credito * band.percent_teto) / 100);
+  let limit = Math.round((rules.teto_credito * band.percent_teto) / 100);
+  let parcelas = band.max_parcelas;
+  let bureauCapApplied = "";
+
+  // Aplica caps do bureau quando habilitado
+  if (rules.use_bureau_limits) {
+    const limBureau = toNumberLoose(summary.limite_sugerido);
+    const parcBureau = toNumberLoose(summary.max_parcelas);
+    if (limBureau != null && limBureau > 0 && limBureau < limit) {
+      limit = Math.round(limBureau);
+      bureauCapApplied += ` Limite reduzido para R$ ${limit.toLocaleString('pt-BR')} (sugerido pelo bureau).`;
+    }
+    if (parcBureau != null && parcBureau > 0 && parcBureau < parcelas) {
+      parcelas = Math.floor(parcBureau);
+      bureauCapApplied += ` Parcelas reduzidas para ${parcelas}x (máximo do bureau).`;
+    }
+  }
 
   return {
     decision: band.decision,
     approved_limit: limit,
-    max_parcelas: band.max_parcelas,
+    max_parcelas: parcelas,
     score,
     classification,
     reason:
-      band.decision === "approved"
+      (band.decision === "approved"
         ? `Aprovado com base no score ${score} (classe ${classification}) — ${band.percent_teto}% do teto`
-        : `Score ${score} (classe ${classification}) requer análise manual`,
+        : `Score ${score} (classe ${classification}) requer análise manual`) + bureauCapApplied,
     knockouts,
   };
 }
+
+// Build the interpreted bureau analysis object used both for display and persistence.
+function buildBureauAnalysis(summary: RedeBESummary) {
+  const confiancaBucket = classifyConfianca(summary.nivel_de_confianca);
+  const sugestaoBucket = classifySugestao(summary.sugestao_de_negocio);
+  return {
+    score_analise: toNumberLoose(summary.score_analise),
+    max_parcelas: toNumberLoose(summary.max_parcelas),
+    parcela_maxima: toNumberLoose(summary.parcela_maxima),
+    limite_sugerido: toNumberLoose(summary.limite_sugerido),
+    nivel_de_confianca_raw: summary.nivel_de_confianca || null,
+    nivel_de_confianca_bucket: confiancaBucket,
+    nivel_de_confianca_label: confiancaBucket ? CONFIANCA_LABEL[confiancaBucket] : null,
+    descricao_rating: summary.descricao_rating || null,
+    observacao_credito: summary.observacao_credito || null,
+    sugestao_de_negocio_raw: summary.sugestao_de_negocio || null,
+    sugestao_de_negocio_bucket: sugestaoBucket,
+    sugestao_de_negocio_label: sugestaoBucket ? SUGESTAO_LABEL[sugestaoBucket] : null,
+  };
+}
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

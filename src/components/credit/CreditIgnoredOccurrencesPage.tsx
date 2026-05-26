@@ -33,7 +33,6 @@ interface Row {
   decided_at: string | null;
   created_at: string;
   scope?: 'application' | 'document' | 'global';
-  application_id?: string | null;
 }
 
 type Scope = 'application' | 'document' | 'global';

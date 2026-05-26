@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useCreditRules, type ScoreBand, DEFAULT_RULES, consultCredit, type ConsultResult } from '@/hooks/useCreditModule';
+import { useCreditRules, type ScoreBand, DEFAULT_RULES, consultCredit, type ConsultResult, CONFIANCA_OPTIONS, SUGESTAO_OPTIONS } from '@/hooks/useCreditModule';
+import { BureauAnalysisCard } from './BureauAnalysisCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -147,6 +148,9 @@ export function CreditAdminPage({ companyId }: Props) {
                       <> — Limite sugerido: <strong>R$ {testResult.engine.approved_limit.toLocaleString('pt-BR')}</strong> em até <strong>{testResult.engine.max_parcelas}x</strong></>
                     )}
                   </div>
+                  {testResult.bureau_analysis && (
+                    <div className="pt-2"><BureauAnalysisCard analysis={testResult.bureau_analysis} /></div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -256,6 +260,74 @@ export function CreditAdminPage({ companyId }: Props) {
                 <p className="text-[11px] text-muted-foreground mt-1">
                   O texto do bureau indica a chance de o cliente <strong>pagar</strong>. Tipicamente marque "Muito Baixa" e/ou "Baixa" para reprovar maus pagadores.
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Análise do bureau (nó "resumo")</CardTitle>
+              <CardDescription>
+                Interpreta os campos analíticos enviados pelo provedor: <code>score_analise</code>, <code>limite_sugerido</code>,
+                <code> max_parcelas</code>, <code>parcela_maxima</code>, <code>nivel_de_confianca</code>,
+                <code> descricao_rating</code>, <code>observacao_credito</code> e <code>sugestao_de_negocio</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Score analítico mínimo (0 = desliga)</Label>
+                  <Input type="number" min={0} value={draft.min_score_analise ?? 0}
+                    onChange={(e) => setDraft({ ...draft, min_score_analise: parseInt(e.target.value) || 0 })} />
+                  <p className="text-[11px] text-muted-foreground mt-1">Propostas com <code>score_analise</code> abaixo deste valor são reprovadas.</p>
+                </div>
+                <div className="flex flex-col">
+                  <Label className="text-xs mb-2">Aplicar limites sugeridos pelo bureau como teto</Label>
+                  <div className="flex items-center gap-3 border border-border rounded px-3 py-2">
+                    <Switch checked={!!draft.use_bureau_limits}
+                      onCheckedChange={(v) => setDraft({ ...draft, use_bureau_limits: v })} />
+                    <span className="text-xs text-muted-foreground">Quando ligado, o limite e nº de parcelas aprovados nunca superam <code>limite_sugerido</code> / <code>max_parcelas</code> do bureau.</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Reprovar quando o nível de confiança for:</Label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2">
+                  {CONFIANCA_OPTIONS.map((opt) => {
+                    const checked = (draft.min_nivel_confianca_levels || []).includes(opt.value);
+                    return (
+                      <label key={opt.value} className="flex items-center gap-2 text-xs border border-border rounded px-2 py-1.5 cursor-pointer">
+                        <input type="checkbox" checked={checked} onChange={(e) => {
+                          const curr = new Set(draft.min_nivel_confianca_levels || []);
+                          if (e.target.checked) curr.add(opt.value); else curr.delete(opt.value);
+                          setDraft({ ...draft, min_nivel_confianca_levels: Array.from(curr) });
+                        }} />
+                        <span>{opt.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Reprovar quando a sugestão de negócio do bureau for:</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+                  {SUGESTAO_OPTIONS.map((opt) => {
+                    const checked = (draft.sugestao_negocio_block_levels || []).includes(opt.value);
+                    return (
+                      <label key={opt.value} className="flex items-center gap-2 text-xs border border-border rounded px-2 py-1.5 cursor-pointer">
+                        <input type="checkbox" checked={checked} onChange={(e) => {
+                          const curr = new Set(draft.sugestao_negocio_block_levels || []);
+                          if (e.target.checked) curr.add(opt.value); else curr.delete(opt.value);
+                          setDraft({ ...draft, sugestao_negocio_block_levels: Array.from(curr) });
+                        }} />
+                        <span>{opt.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">Interpretado a partir do texto livre <code>sugestao_de_negocio</code>.</p>
               </div>
             </CardContent>
           </Card>

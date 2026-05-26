@@ -27,6 +27,15 @@ interface RedeBESummary {
   quantidade_ccf_bacen?: string;
   quantidade_ccf_varejo?: string;
   qtd_dependentes_bolsa_familia?: string;
+  // New analytical fields under "resumo"
+  score_analise?: string;
+  max_parcelas?: string;
+  parcela_maxima?: string;
+  limite_sugerido?: string;
+  nivel_de_confianca?: string;
+  descricao_rating?: string;
+  observacao_credito?: string;
+  sugestao_de_negocio?: string;
 }
 
 interface ScoreBand {
@@ -51,7 +60,49 @@ interface CreditRules {
   max_dependentes_bolsa_familia?: number;
   max_probabilidade_inadimplencia?: number;
   texto_inadimplencia_block_levels?: string[];
+  // Bureau analysis cut-offs
+  min_score_analise?: number;
+  use_bureau_limits?: boolean;
+  min_nivel_confianca_levels?: string[];
+  sugestao_negocio_block_levels?: string[];
 }
+
+// ---- Bureau "resumo" analytical helpers ----
+function toNumberLoose(v: any): number | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  // strip currency / thousand separators, keep last decimal comma/dot
+  const cleaned = s.replace(/[R$\s]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+function classifyConfianca(v: string | undefined | null): string | null {
+  if (!v) return null;
+  const s = String(v).toLowerCase();
+  if (/muito\s+alt/.test(s)) return 'muito_alto';
+  if (/muito\s+baix/.test(s)) return 'muito_baixo';
+  if (/\balt/.test(s)) return 'alto';
+  if (/\bbaix/.test(s)) return 'baixo';
+  if (/\bm[eé]di/.test(s)) return 'medio';
+  return null;
+}
+function classifySugestao(v: string | undefined | null): string | null {
+  if (!v) return null;
+  const s = String(v).toLowerCase();
+  if (/n[aã]o\s+recomend|negar|recus|reprov/.test(s)) return 'nao_recomendar';
+  if (/cautel|atenç|analis[ae]\s+manual|aprov.*restri/.test(s)) return 'recomendar_com_cautela';
+  if (/recomend|aprov|liber/.test(s)) return 'recomendar';
+  return null;
+}
+const CONFIANCA_LABEL: Record<string, string> = {
+  muito_baixo: 'Muito Baixo', baixo: 'Baixo', medio: 'Médio', alto: 'Alto', muito_alto: 'Muito Alto',
+};
+const SUGESTAO_LABEL: Record<string, string> = {
+  recomendar: 'Recomendar',
+  recomendar_com_cautela: 'Recomendar com cautela',
+  nao_recomendar: 'Não recomendar',
+};
 
 // Classify the score "texto" into a probability bucket
 function classifyTextoInadimplencia(t: string | undefined | null): string | null {
@@ -155,6 +206,23 @@ function runDecisionEngine(opts: {
     }
   }
 
+  // ---- Novos knockouts: análise do bureau (nó "resumo") ----
+  const scoreAnalise = toNumberLoose(summary.score_analise);
+  const minScoreAnalise = rules.min_score_analise ?? 0;
+  if (minScoreAnalise > 0 && scoreAnalise != null && scoreAnalise < minScoreAnalise) {
+    knockouts.push(`Score analítico do bureau ${scoreAnalise} abaixo do mínimo (${minScoreAnalise})`);
+  }
+  const confiancaBucket = classifyConfianca(summary.nivel_de_confianca);
+  const blockConf = rules.min_nivel_confianca_levels || [];
+  if (blockConf.length > 0 && confiancaBucket && blockConf.includes(confiancaBucket)) {
+    knockouts.push(`Nível de confiança do bureau "${CONFIANCA_LABEL[confiancaBucket] || confiancaBucket}" não atende ao critério mínimo`);
+  }
+  const sugestaoBucket = classifySugestao(summary.sugestao_de_negocio);
+  const blockSug = rules.sugestao_negocio_block_levels || [];
+  if (blockSug.length > 0 && sugestaoBucket && blockSug.includes(sugestaoBucket)) {
+    knockouts.push(`Sugestão de negócio do bureau: "${SUGESTAO_LABEL[sugestaoBucket] || sugestaoBucket}"`);
+  }
+
   const score = toInt(summary.score);
   const classification = (summary.classificacao_score || "").toUpperCase();
 
@@ -192,21 +260,58 @@ function runDecisionEngine(opts: {
     };
   }
 
-  const limit = Math.round((rules.teto_credito * band.percent_teto) / 100);
+  let limit = Math.round((rules.teto_credito * band.percent_teto) / 100);
+  let parcelas = band.max_parcelas;
+  let bureauCapApplied = "";
+
+  // Aplica caps do bureau quando habilitado
+  if (rules.use_bureau_limits) {
+    const limBureau = toNumberLoose(summary.limite_sugerido);
+    const parcBureau = toNumberLoose(summary.max_parcelas);
+    if (limBureau != null && limBureau > 0 && limBureau < limit) {
+      limit = Math.round(limBureau);
+      bureauCapApplied += ` Limite reduzido para R$ ${limit.toLocaleString('pt-BR')} (sugerido pelo bureau).`;
+    }
+    if (parcBureau != null && parcBureau > 0 && parcBureau < parcelas) {
+      parcelas = Math.floor(parcBureau);
+      bureauCapApplied += ` Parcelas reduzidas para ${parcelas}x (máximo do bureau).`;
+    }
+  }
 
   return {
     decision: band.decision,
     approved_limit: limit,
-    max_parcelas: band.max_parcelas,
+    max_parcelas: parcelas,
     score,
     classification,
     reason:
-      band.decision === "approved"
+      (band.decision === "approved"
         ? `Aprovado com base no score ${score} (classe ${classification}) — ${band.percent_teto}% do teto`
-        : `Score ${score} (classe ${classification}) requer análise manual`,
+        : `Score ${score} (classe ${classification}) requer análise manual`) + bureauCapApplied,
     knockouts,
   };
 }
+
+// Build the interpreted bureau analysis object used both for display and persistence.
+function buildBureauAnalysis(summary: RedeBESummary) {
+  const confiancaBucket = classifyConfianca(summary.nivel_de_confianca);
+  const sugestaoBucket = classifySugestao(summary.sugestao_de_negocio);
+  return {
+    score_analise: toNumberLoose(summary.score_analise),
+    max_parcelas: toNumberLoose(summary.max_parcelas),
+    parcela_maxima: toNumberLoose(summary.parcela_maxima),
+    limite_sugerido: toNumberLoose(summary.limite_sugerido),
+    nivel_de_confianca_raw: summary.nivel_de_confianca || null,
+    nivel_de_confianca_bucket: confiancaBucket,
+    nivel_de_confianca_label: confiancaBucket ? CONFIANCA_LABEL[confiancaBucket] : null,
+    descricao_rating: summary.descricao_rating || null,
+    observacao_credito: summary.observacao_credito || null,
+    sugestao_de_negocio_raw: summary.sugestao_de_negocio || null,
+    sugestao_de_negocio_bucket: sugestaoBucket,
+    sugestao_de_negocio_label: sugestaoBucket ? SUGESTAO_LABEL[sugestaoBucket] : null,
+  };
+}
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -375,6 +480,24 @@ serve(async (req) => {
       if (p != null) summary.probabilidade_inadimplencia = String(p);
     }
 
+    // Backfill novos campos do nó "resumo" (análise do bureau)
+    const backfillIfMissing = (field: keyof RedeBESummary, regex: RegExp) => {
+      if ((summary as any)[field]) return;
+      const v = findFirstDeep(redeBlock, (k, val) =>
+        (typeof val === 'string' || typeof val === 'number') && regex.test(k)
+      );
+      if (v != null) (summary as any)[field] = String(v);
+    };
+    backfillIfMissing('score_analise', /^score[_\s-]?an[aá]lise$/i);
+    backfillIfMissing('max_parcelas', /^max[_\s-]?parcelas$/i);
+    backfillIfMissing('parcela_maxima', /^parcela[_\s-]?m[aá]xima$/i);
+    backfillIfMissing('limite_sugerido', /^limite[_\s-]?sugerido$/i);
+    backfillIfMissing('nivel_de_confianca', /n[ií]vel[_\s-]?de?[_\s-]?confian[cç]a/i);
+    backfillIfMissing('descricao_rating', /descri[cç][aã]o[_\s-]?rating/i);
+    backfillIfMissing('observacao_credito', /observa[cç][aã]o[_\s-]?cr[eé]dito/i);
+    backfillIfMissing('sugestao_de_negocio', /sugest[aã]o[_\s-]?de?[_\s-]?neg[oó]cio/i);
+
+
 
     // ----- Ocorrências ignoradas (alçada aprovada) -----
     // Escopo: 'application' (só esta proposta), 'document' (todas do cliente),
@@ -452,6 +575,8 @@ serve(async (req) => {
     const textoBucket = classifyTextoInadimplencia(summary.texto_score);
     const probInadNum = toInt(summary.probabilidade_inadimplencia) || null;
 
+    // Análise interpretada do bureau (nó "resumo")
+    const bureauAnalysis = buildBureauAnalysis(summary);
 
     const result = {
       documento: documentoLimpo,
@@ -465,6 +590,7 @@ serve(async (req) => {
       pdf_disponivel: pdfDisponivel ?? null,
       texto_score_bucket: textoBucket,
       probabilidade_inadimplencia: probInadNum,
+      bureau_analysis: bureauAnalysis,
     };
 
 
@@ -484,6 +610,7 @@ serve(async (req) => {
         decision_reason: engine.reason,
         consulted_by: userId,
         pdf_data: pdfData,
+        bureau_analysis: bureauAnalysis,
       };
       const { data: consultRow, error: consultErr } = await supabase
         .from("credit_consultations")
@@ -520,6 +647,7 @@ serve(async (req) => {
             current_step: engine.decision === "rejected" ? 1 : 2,
             probabilidade_inadimplencia: probInadNum,
             texto_score_bucket: textoBucket,
+            bureau_analysis: bureauAnalysis,
           })
           .eq("id", application_id);
       }

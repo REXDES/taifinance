@@ -343,6 +343,7 @@ export type Database = {
       credit_applications: {
         Row: {
           approved_limit: number | null
+          bureau_analysis: Json | null
           classification: string | null
           client_supplier_id: string | null
           company_id: string
@@ -365,6 +366,7 @@ export type Database = {
         }
         Insert: {
           approved_limit?: number | null
+          bureau_analysis?: Json | null
           classification?: string | null
           client_supplier_id?: string | null
           company_id: string
@@ -387,6 +389,7 @@ export type Database = {
         }
         Update: {
           approved_limit?: number | null
+          bureau_analysis?: Json | null
           classification?: string | null
           client_supplier_id?: string | null
           company_id?: string
@@ -481,6 +484,7 @@ export type Database = {
         Row: {
           application_id: string | null
           approved_limit: number | null
+          bureau_analysis: Json | null
           classification: string | null
           company_id: string
           consulted_by: string | null
@@ -498,6 +502,7 @@ export type Database = {
         Insert: {
           application_id?: string | null
           approved_limit?: number | null
+          bureau_analysis?: Json | null
           classification?: string | null
           company_id: string
           consulted_by?: string | null
@@ -515,6 +520,7 @@ export type Database = {
         Update: {
           application_id?: string | null
           approved_limit?: number | null
+          bureau_analysis?: Json | null
           classification?: string | null
           company_id?: string
           consulted_by?: string | null
@@ -801,13 +807,17 @@ export type Database = {
           max_protestos: number
           min_idade_pf: number
           min_meses_cnpj: number
+          min_nivel_confianca_levels: Json
+          min_score_analise: number
           mora_diaria_pct: number
           multa_atraso_pct: number
           parcela_minima: number
           score_bands: Json
+          sugestao_negocio_block_levels: Json
           teto_credito: number
           texto_inadimplencia_block_levels: Json
           updated_at: string
+          use_bureau_limits: boolean
         }
         Insert: {
           bolsa_familia_block?: boolean
@@ -827,13 +837,17 @@ export type Database = {
           max_protestos?: number
           min_idade_pf?: number
           min_meses_cnpj?: number
+          min_nivel_confianca_levels?: Json
+          min_score_analise?: number
           mora_diaria_pct?: number
           multa_atraso_pct?: number
           parcela_minima?: number
           score_bands?: Json
+          sugestao_negocio_block_levels?: Json
           teto_credito?: number
           texto_inadimplencia_block_levels?: Json
           updated_at?: string
+          use_bureau_limits?: boolean
         }
         Update: {
           bolsa_familia_block?: boolean
@@ -853,13 +867,17 @@ export type Database = {
           max_protestos?: number
           min_idade_pf?: number
           min_meses_cnpj?: number
+          min_nivel_confianca_levels?: Json
+          min_score_analise?: number
           mora_diaria_pct?: number
           multa_atraso_pct?: number
           parcela_minima?: number
           score_bands?: Json
+          sugestao_negocio_block_levels?: Json
           teto_credito?: number
           texto_inadimplencia_block_levels?: Json
           updated_at?: string
+          use_bureau_limits?: boolean
         }
         Relationships: []
       }

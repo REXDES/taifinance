@@ -34,6 +34,11 @@ export interface CreditRules {
   max_dependentes_bolsa_familia: number;
   max_probabilidade_inadimplencia: number; // 1..9 (knockout if > value)
   texto_inadimplencia_block_levels: string[]; // e.g. ['muito_alta','alta']
+  // Bureau analysis cut-offs (novo nó "resumo" do RedeBE)
+  min_score_analise: number;
+  use_bureau_limits: boolean;
+  min_nivel_confianca_levels: string[];     // levels that BLOCK
+  sugestao_negocio_block_levels: string[];  // levels that BLOCK
 }
 
 export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
@@ -62,6 +67,10 @@ export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
   max_dependentes_bolsa_familia: 0,
   max_probabilidade_inadimplencia: 9,
   texto_inadimplencia_block_levels: [],
+  min_score_analise: 0,
+  use_bureau_limits: false,
+  min_nivel_confianca_levels: [],
+  sugestao_negocio_block_levels: [],
 };
 
 export interface CreditApplication {
@@ -83,7 +92,36 @@ export interface CreditApplication {
   updated_at: string;
   probabilidade_inadimplencia?: number | null;
   texto_score_bucket?: string | null;
+  bureau_analysis?: BureauAnalysis | null;
 }
+
+export interface BureauAnalysis {
+  score_analise: number | null;
+  max_parcelas: number | null;
+  parcela_maxima: number | null;
+  limite_sugerido: number | null;
+  nivel_de_confianca_raw: string | null;
+  nivel_de_confianca_bucket: string | null;
+  nivel_de_confianca_label: string | null;
+  descricao_rating: string | null;
+  observacao_credito: string | null;
+  sugestao_de_negocio_raw: string | null;
+  sugestao_de_negocio_bucket: string | null;
+  sugestao_de_negocio_label: string | null;
+}
+
+export const CONFIANCA_OPTIONS = [
+  { value: 'muito_baixo', label: 'Muito Baixo' },
+  { value: 'baixo', label: 'Baixo' },
+  { value: 'medio', label: 'Médio' },
+  { value: 'alto', label: 'Alto' },
+  { value: 'muito_alto', label: 'Muito Alto' },
+];
+export const SUGESTAO_OPTIONS = [
+  { value: 'nao_recomendar', label: 'Não recomendar' },
+  { value: 'recomendar_com_cautela', label: 'Recomendar com cautela' },
+  { value: 'recomendar', label: 'Recomendar' },
+];
 
 // Maps the bureau "texto" classification (probability of payment).
 // Lower bucket = worse payer. We display in "payment probability" terms.
@@ -212,6 +250,7 @@ export interface ConsultResult {
   pdf_data?: string | null;
   texto_score_bucket?: string | null;
   probabilidade_inadimplencia?: number | null;
+  bureau_analysis?: BureauAnalysis | null;
 }
 
 export async function consultCredit(params: {

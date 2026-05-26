@@ -642,6 +642,69 @@ export type Database = {
           },
         ]
       }
+      credit_ignored_occurrences: {
+        Row: {
+          application_id: string | null
+          category: string
+          company_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          descricao: string | null
+          documento: string
+          id: string
+          occurrence_key: string
+          raw_record: Json
+          request_reason: string | null
+          requested_at: string
+          requested_by: string | null
+          status: string
+          titulo: string | null
+          updated_at: string
+        }
+        Insert: {
+          application_id?: string | null
+          category: string
+          company_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          descricao?: string | null
+          documento: string
+          id?: string
+          occurrence_key: string
+          raw_record: Json
+          request_reason?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          status?: string
+          titulo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string | null
+          category?: string
+          company_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          descricao?: string | null
+          documento?: string
+          id?: string
+          occurrence_key?: string
+          raw_record?: Json
+          request_reason?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          status?: string
+          titulo?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       credit_qualifications: {
         Row: {
           application_id: string

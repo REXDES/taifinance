@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.credit-consult]
 verify_jwt = false
+
+[functions.credit-biometry-analyze]
+verify_jwt = false

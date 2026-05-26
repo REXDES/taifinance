@@ -173,6 +173,7 @@ export interface ConsultResult {
     knockouts: string[];
   };
   consultation_id?: string;
+  ignored_adjustments?: Array<{ category: string; field: string; subtracted: number; before: string; after: string }>;
 }
 
 export async function consultCredit(params: {

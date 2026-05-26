@@ -209,6 +209,9 @@ export interface ConsultResult {
   };
   consultation_id?: string;
   ignored_adjustments?: Array<{ category: string; field: string; subtracted: number; before: string; after: string }>;
+  pdf_data?: string | null;
+  texto_score_bucket?: string | null;
+  probabilidade_inadimplencia?: number | null;
 }
 
 export async function consultCredit(params: {

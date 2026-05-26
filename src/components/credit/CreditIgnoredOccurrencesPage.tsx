@@ -182,7 +182,7 @@ export function CreditIgnoredOccurrencesPage({ companyId }: Props) {
                         <TableCell className="text-right">
                           {r.status === 'pending' && canDecide && (
                             <div className="flex justify-end gap-1">
-                              <Button size="sm" variant="outline" onClick={() => { setDecideRow(r); setDecideAction('approve'); setDecideNotes(''); }}>
+                              <Button size="sm" variant="outline" onClick={() => { setDecideRow(r); setDecideAction('approve'); setDecideNotes(''); setDecideScope('document'); }}>
                                 <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Aprovar
                               </Button>
                               <Button size="sm" variant="outline" onClick={() => { setDecideRow(r); setDecideAction('reject'); setDecideNotes(''); }}>
@@ -212,7 +212,7 @@ export function CreditIgnoredOccurrencesPage({ companyId }: Props) {
             </DialogTitle>
             <DialogDescription>
               {decideAction === 'approve'
-                ? 'A ocorrência deixará de ser considerada restritiva em todas as consultas deste documento, nesta e nas próximas propostas.'
+                ? 'Escolha o escopo da liberação. A ocorrência deixará de ser considerada restritiva conforme o escopo selecionado.'
                 : 'A solicitação ficará registrada como negada e a ocorrência continuará pesando nas decisões.'}
             </DialogDescription>
           </DialogHeader>
@@ -224,6 +224,34 @@ export function CreditIgnoredOccurrencesPage({ companyId }: Props) {
                 {decideRow.descricao && <div className="text-xs text-muted-foreground mt-0.5">{decideRow.descricao}</div>}
                 {decideRow.request_reason && <div className="text-[11px] italic mt-1">Justificativa: {decideRow.request_reason}</div>}
               </div>
+              {decideAction === 'approve' && (
+                <div>
+                  <label className="text-xs font-medium block mb-2">Escopo da liberação</label>
+                  <RadioGroup value={decideScope} onValueChange={(v) => setDecideScope(v as Scope)} className="space-y-2">
+                    <label htmlFor="scope-app" className="flex items-start gap-3 rounded border p-3 cursor-pointer hover:bg-muted/40 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                      <RadioGroupItem value="application" id="scope-app" className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> Apenas esta proposta</div>
+                        <div className="text-xs text-muted-foreground">A ocorrência será ignorada somente nesta proposta específica.</div>
+                      </div>
+                    </label>
+                    <label htmlFor="scope-doc" className="flex items-start gap-3 rounded border p-3 cursor-pointer hover:bg-muted/40 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                      <RadioGroupItem value="document" id="scope-doc" className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Para este cliente ({decideRow.documento})</div>
+                        <div className="text-xs text-muted-foreground">Vale para esta e para futuras propostas do mesmo CPF/CNPJ.</div>
+                      </div>
+                    </label>
+                    <label htmlFor="scope-glob" className="flex items-start gap-3 rounded border p-3 cursor-pointer hover:bg-muted/40 has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                      <RadioGroupItem value="global" id="scope-glob" className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> Para todas as propostas da empresa</div>
+                        <div className="text-xs text-muted-foreground">Ocorrências dessa mesma categoria serão desconsideradas em todas as consultas futuras da empresa.</div>
+                      </div>
+                    </label>
+                  </RadioGroup>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-medium">Observação da decisão (opcional)</label>
                 <Textarea value={decideNotes} onChange={(e) => setDecideNotes(e.target.value)} rows={3} />

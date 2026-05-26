@@ -83,6 +83,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
 
   // Módulos
   const [machinesModuleEnabled, setMachinesModuleEnabled] = useState(false);
+  const [creditModuleEnabled, setCreditModuleEnabled] = useState(false);
 
   // Reset picked when dialog reopens in picker mode
   useEffect(() => {
@@ -140,6 +141,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
         setWhatsappNotifyDaysBefore(d.whatsapp_notify_days_before || [0]);
         setWhatsappNotifyTime(d.whatsapp_notify_time || '08:00');
         setMachinesModuleEnabled(!!d.machines_module_enabled);
+        setCreditModuleEnabled(!!d.credit_module_enabled);
       }
     } catch (error) {
       console.error('Error loading company settings:', error);
@@ -191,6 +193,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           whatsapp_notify_days_before: whatsappNotifyDaysBefore,
           whatsapp_notify_time: whatsappNotifyTime,
           machines_module_enabled: machinesModuleEnabled,
+          credit_module_enabled: creditModuleEnabled,
         } as any)
         .eq('id', effectiveCompanyId!);
 

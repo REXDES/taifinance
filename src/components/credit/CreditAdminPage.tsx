@@ -137,6 +137,9 @@ export function CreditAdminPage({ companyId }: Props) {
                     <div>Pendências: {testResult.summary.quantidade_pendencias_financeiras || 0}</div>
                     <div>CCF Bacen: {testResult.summary.quantidade_ccf_bacen || 0}</div>
                     <div>CCF Varejo: {testResult.summary.quantidade_ccf_varejo || 0}</div>
+                    <div>Probabilidade inad. (1-9): <strong>{(testResult.summary as any).probabilidade_inadimplencia || '—'}</strong></div>
+                    <div>Bolsa Família (deps): <strong>{(testResult.summary as any).qtd_dependentes_bolsa_familia || 0}</strong></div>
+                    <div className="col-span-2">Texto do score: <em>{(testResult.summary as any).texto_score || '—'}</em></div>
                   </div>
                   <div className="text-xs pt-2 border-t">
                     <strong>Decisão:</strong> {testResult.engine.reason}

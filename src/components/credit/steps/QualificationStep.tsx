@@ -313,7 +313,10 @@ export function QualificationStep({
           <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
       </div>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] text-muted-foreground">
+          {draftSaving ? 'Salvando rascunho…' : draftSavedAt ? `Rascunho salvo às ${draftSavedAt.toLocaleTimeString('pt-BR')}` : 'Suas alterações são salvas automaticamente como rascunho.'}
+        </div>
         <Button onClick={save} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
           Salvar e avançar para biometria <ArrowRight className="w-4 h-4 ml-2" />

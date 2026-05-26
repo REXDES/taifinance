@@ -673,13 +673,22 @@ function ApplicationDetailDialog({
     <Dialog open={!!app} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-6 pt-5">
-          <DialogTitle className="flex items-center gap-3">
+          <DialogTitle className="flex items-center gap-3 flex-wrap">
             <span>{app.nome || '(sem nome)'}</span>
             <StatusBadge status={app.status} decision={app.decision} />
-            <Button size="sm" variant="outline" onClick={() => onReevaluate(app)} disabled={reevaluating} className="ml-auto">
-              {reevaluating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-              Reavaliar
-            </Button>
+            <PaymentProbabilityBadge
+              probabilidadeInadimplencia={app.probabilidade_inadimplencia}
+              textoBucket={app.texto_score_bucket}
+            />
+            <div className="ml-auto flex items-center gap-2">
+              {consultation?.pdf_data && (
+                <PdfEspelhoButton pdfData={consultation.pdf_data} />
+              )}
+              <Button size="sm" variant="outline" onClick={() => onReevaluate(app)} disabled={reevaluating}>
+                {reevaluating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Reavaliar
+              </Button>
+            </div>
           </DialogTitle>
           <DialogDescription className="font-mono text-xs">
             {app.documento} ({app.tipo_documento}) · Criada em {new Date(app.created_at).toLocaleString('pt-BR')}

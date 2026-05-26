@@ -591,6 +591,7 @@ function ApplicationDetailDialog({
   const [consultation, setConsultation] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeStep, setActiveStep] = useState<number>(1);
+  const [localStep, setLocalStep] = useState<number>(1);
   const [pendingSim, setPendingSim] = useState<any | null>(null);
   const [canApprove, setCanApprove] = useState(false);
 
@@ -605,7 +606,9 @@ function ApplicationDetailDialog({
 
   useEffect(() => {
     if (!app) { setConsultation(null); return; }
-    setActiveStep(Math.max(1, app.current_step || 1));
+    const cur = Math.max(1, app.current_step || 1);
+    setActiveStep(cur);
+    setLocalStep(cur);
     setLoading(true);
     (async () => {
       const { data } = await (supabase as any)
@@ -625,10 +628,17 @@ function ApplicationDetailDialog({
   const knockouts = knockoutsFromReason(consultation?.decision_reason || app.decision_reason);
   const decisionOk = (app.decision || consultation?.decision) === 'approved' || (app.decision || consultation?.decision) === 'manual';
 
+  const advanceStep = async (next: number) => {
+    setLocalStep((p) => Math.max(p, next));
+    setActiveStep(next);
+    await (supabase as any).from('credit_applications').update({ current_step: next }).eq('id', app.id).lt('current_step', next);
+    onChanged();
+  };
+
   const steps = STEP_LABELS.map((label, i) => {
     const id = i + 1;
     let status: 'done' | 'current' | 'locked' | 'pending';
-    const cur = app.current_step || 1;
+    const cur = localStep;
     if (id < cur) status = 'done';
     else if (id === cur) status = 'current';
     else if (id === 1 || (id === 2 && decisionOk) || id <= cur) status = 'pending';
@@ -636,7 +646,7 @@ function ApplicationDetailDialog({
     return { id, label, status };
   });
 
-  const reload = async () => { onChanged(); };
+  
 
   return (
     <Dialog open={!!app} onOpenChange={(o) => !o && onClose()}>
@@ -654,7 +664,7 @@ function ApplicationDetailDialog({
             {app.documento} ({app.tipo_documento}) · Criada em {new Date(app.created_at).toLocaleString('pt-BR')}
           </DialogDescription>
           <div className="pt-3 pb-1">
-            <HorizontalTimeline labels={STEP_LABELS} current={app.current_step || 1} />
+            <HorizontalTimeline labels={STEP_LABELS} current={localStep} />
           </div>
         </DialogHeader>
 
@@ -688,12 +698,11 @@ function ApplicationDetailDialog({
                         )}
                       </div>
                       <DecisionBox decision={(app.decision || consultation?.decision) as any} approved_limit={app.approved_limit} reason={app.decision_reason || consultation?.decision_reason} knockouts={knockouts} />
-                      {decisionOk && (app.current_step || 1) < 2 && (
+                      {decisionOk && localStep < 2 && (
                         <div className="flex justify-end pt-2">
-                          <Button onClick={async () => {
-                            await (supabase as any).from('credit_applications').update({ current_step: 2 }).eq('id', app.id).lt('current_step', 2);
-                            setActiveStep(2); reload();
-                          }}>Prosseguir <ArrowRight className="w-4 h-4 ml-2" /></Button>
+                          <Button onClick={() => advanceStep(2)}>
+                            Prosseguir para simulação <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -724,11 +733,11 @@ function ApplicationDetailDialog({
                   </TabsContent>
                 </Tabs>
               )}
-              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={app.approved_limit} onCompleted={(data) => { setPendingSim(data); setActiveStep(3); reload(); }} />}
-              {activeStep === 3 && <QualificationStep applicationId={app.id} companyId={companyId} onCompleted={() => { setActiveStep(4); reload(); }} />}
-              {activeStep === 4 && <BiometryStep applicationId={app.id} companyId={companyId} canApprove={canApprove} onCompleted={() => { setActiveStep(5); reload(); }} />}
-              {activeStep === 5 && <ContractStep applicationId={app.id} companyId={companyId} application={app} pendingSimulation={pendingSim} canApprove={canApprove} onCompleted={() => { setActiveStep(6); reload(); }} />}
-              {activeStep === 6 && <BoletosStep applicationId={app.id} companyId={companyId} clientSupplierId={app.client_supplier_id} userId={userId} onCompleted={() => { reload(); }} />}
+              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={app.approved_limit} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
+              {activeStep === 3 && <QualificationStep applicationId={app.id} companyId={companyId} consultationRaw={consultation?.raw_response} consultationName={app.nome || consultation?.nome} onCompleted={() => advanceStep(4)} />}
+              {activeStep === 4 && <BiometryStep applicationId={app.id} companyId={companyId} canApprove={canApprove} onCompleted={() => advanceStep(5)} />}
+              {activeStep === 5 && <ContractStep applicationId={app.id} companyId={companyId} application={app} pendingSimulation={pendingSim} canApprove={canApprove} onCompleted={() => advanceStep(6)} />}
+              {activeStep === 6 && <BoletosStep applicationId={app.id} companyId={companyId} clientSupplierId={app.client_supplier_id} userId={userId} onCompleted={() => { onChanged(); }} />}
             </div>
           </div>
         )}

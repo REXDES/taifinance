@@ -65,7 +65,8 @@ export type FinanceView =
   | 'machines-operators'
   | 'machines-mechanics'
   | 'credit-admin'
-  | 'credit-applications';
+  | 'credit-applications'
+  | 'credit-ignored';
 
 const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital', 'credit-admin'];
 // Views available only in normal mode for supervisors

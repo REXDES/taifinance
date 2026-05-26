@@ -270,6 +270,7 @@ export type Database = {
           color: string
           created_at: string
           created_by: string | null
+          credit_module_enabled: boolean
           email: string | null
           fantasy_name: string | null
           id: string
@@ -294,6 +295,7 @@ export type Database = {
           color?: string
           created_at?: string
           created_by?: string | null
+          credit_module_enabled?: boolean
           email?: string | null
           fantasy_name?: string | null
           id?: string
@@ -318,6 +320,7 @@ export type Database = {
           color?: string
           created_at?: string
           created_by?: string | null
+          credit_module_enabled?: boolean
           email?: string | null
           fantasy_name?: string | null
           id?: string
@@ -334,6 +337,436 @@ export type Database = {
           whatsapp_notify_enabled?: boolean
           whatsapp_notify_time?: string
           zip_code?: string | null
+        }
+        Relationships: []
+      }
+      credit_applications: {
+        Row: {
+          approved_limit: number | null
+          classification: string | null
+          client_supplier_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          current_step: number
+          decision: string | null
+          decision_reason: string | null
+          documento: string
+          id: string
+          nome: string | null
+          score: number | null
+          status: string
+          tipo_documento: string
+          updated_at: string
+        }
+        Insert: {
+          approved_limit?: number | null
+          classification?: string | null
+          client_supplier_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          current_step?: number
+          decision?: string | null
+          decision_reason?: string | null
+          documento: string
+          id?: string
+          nome?: string | null
+          score?: number | null
+          status?: string
+          tipo_documento: string
+          updated_at?: string
+        }
+        Update: {
+          approved_limit?: number | null
+          classification?: string | null
+          client_supplier_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          current_step?: number
+          decision?: string | null
+          decision_reason?: string | null
+          documento?: string
+          id?: string
+          nome?: string | null
+          score?: number | null
+          status?: string
+          tipo_documento?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_biometry: {
+        Row: {
+          ai_analysis: Json | null
+          application_id: string
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          doc_back_url: string | null
+          doc_front_url: string | null
+          id: string
+          link_sent_at: string | null
+          liveness_passed: boolean | null
+          ocr_data: Json | null
+          public_token: string
+          rejection_reason: string | null
+          selfie_url: string | null
+          similarity_score: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          application_id: string
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          doc_back_url?: string | null
+          doc_front_url?: string | null
+          id?: string
+          link_sent_at?: string | null
+          liveness_passed?: boolean | null
+          ocr_data?: Json | null
+          public_token?: string
+          rejection_reason?: string | null
+          selfie_url?: string | null
+          similarity_score?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          application_id?: string
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          doc_back_url?: string | null
+          doc_front_url?: string | null
+          id?: string
+          link_sent_at?: string | null
+          liveness_passed?: boolean | null
+          ocr_data?: Json | null
+          public_token?: string
+          rejection_reason?: string | null
+          selfie_url?: string | null
+          similarity_score?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_biometry_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: true
+            referencedRelation: "credit_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_consultations: {
+        Row: {
+          application_id: string | null
+          approved_limit: number | null
+          classification: string | null
+          company_id: string
+          consulted_by: string | null
+          created_at: string
+          decision: string | null
+          decision_reason: string | null
+          documento: string
+          id: string
+          provider: string
+          raw_response: Json | null
+          score: number | null
+          summary: Json | null
+        }
+        Insert: {
+          application_id?: string | null
+          approved_limit?: number | null
+          classification?: string | null
+          company_id: string
+          consulted_by?: string | null
+          created_at?: string
+          decision?: string | null
+          decision_reason?: string | null
+          documento: string
+          id?: string
+          provider?: string
+          raw_response?: Json | null
+          score?: number | null
+          summary?: Json | null
+        }
+        Update: {
+          application_id?: string | null
+          approved_limit?: number | null
+          classification?: string | null
+          company_id?: string
+          consulted_by?: string | null
+          created_at?: string
+          decision?: string | null
+          decision_reason?: string | null
+          documento?: string
+          id?: string
+          provider?: string
+          raw_response?: Json | null
+          score?: number | null
+          summary?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_consultations_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "credit_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_contracts: {
+        Row: {
+          application_id: string
+          client_supplier_id: string | null
+          company_id: string
+          contract_status: string
+          created_at: string
+          created_by: string | null
+          description: string
+          first_due_date: string
+          id: string
+          juros_mensal_pct: number
+          num_parcelas: number
+          parcela_amount: number
+          pdf_url: string | null
+          principal_amount: number
+          total_amount: number
+          updated_at: string
+          whatsapp_accepted_at: string | null
+          whatsapp_accepted_ip: string | null
+        }
+        Insert: {
+          application_id: string
+          client_supplier_id?: string | null
+          company_id: string
+          contract_status?: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          first_due_date: string
+          id?: string
+          juros_mensal_pct: number
+          num_parcelas: number
+          parcela_amount: number
+          pdf_url?: string | null
+          principal_amount: number
+          total_amount: number
+          updated_at?: string
+          whatsapp_accepted_at?: string | null
+          whatsapp_accepted_ip?: string | null
+        }
+        Update: {
+          application_id?: string
+          client_supplier_id?: string | null
+          company_id?: string
+          contract_status?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          first_due_date?: string
+          id?: string
+          juros_mensal_pct?: number
+          num_parcelas?: number
+          parcela_amount?: number
+          pdf_url?: string | null
+          principal_amount?: number
+          total_amount?: number
+          updated_at?: string
+          whatsapp_accepted_at?: string | null
+          whatsapp_accepted_ip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_contracts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: true
+            referencedRelation: "credit_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_decision_log: {
+        Row: {
+          application_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          decision: string | null
+          id: string
+          input: Json | null
+          output: Json | null
+          rules_snapshot: Json | null
+          step: string
+        }
+        Insert: {
+          application_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          decision?: string | null
+          id?: string
+          input?: Json | null
+          output?: Json | null
+          rules_snapshot?: Json | null
+          step: string
+        }
+        Update: {
+          application_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          decision?: string | null
+          id?: string
+          input?: Json | null
+          output?: Json | null
+          rules_snapshot?: Json | null
+          step?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_decision_log_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "credit_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_qualifications: {
+        Row: {
+          application_id: string
+          cep: string | null
+          cidade: string | null
+          company_id: string
+          created_at: string
+          email: string | null
+          endereco_entrega: string | null
+          id: string
+          notes: string | null
+          profissao: string | null
+          renda_mensal: number | null
+          uf: string | null
+          updated_at: string
+          whatsapp_phone: string
+        }
+        Insert: {
+          application_id: string
+          cep?: string | null
+          cidade?: string | null
+          company_id: string
+          created_at?: string
+          email?: string | null
+          endereco_entrega?: string | null
+          id?: string
+          notes?: string | null
+          profissao?: string | null
+          renda_mensal?: number | null
+          uf?: string | null
+          updated_at?: string
+          whatsapp_phone: string
+        }
+        Update: {
+          application_id?: string
+          cep?: string | null
+          cidade?: string | null
+          company_id?: string
+          created_at?: string
+          email?: string | null
+          endereco_entrega?: string | null
+          id?: string
+          notes?: string | null
+          profissao?: string | null
+          renda_mensal?: number | null
+          uf?: string | null
+          updated_at?: string
+          whatsapp_phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_qualifications_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: true
+            referencedRelation: "credit_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_rules: {
+        Row: {
+          company_id: string
+          contract_clauses: string | null
+          created_at: string
+          ia_require_liveness: boolean
+          ia_similarity_threshold: number
+          id: string
+          juros_mensal_pct: number
+          max_alertas_restricoes: number
+          max_ccf_total: number
+          max_dias_inadimplencia_interna: number
+          max_pendencias_financeiras: number
+          max_protestos: number
+          min_idade_pf: number
+          min_meses_cnpj: number
+          mora_diaria_pct: number
+          multa_atraso_pct: number
+          parcela_minima: number
+          score_bands: Json
+          teto_credito: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          contract_clauses?: string | null
+          created_at?: string
+          ia_require_liveness?: boolean
+          ia_similarity_threshold?: number
+          id?: string
+          juros_mensal_pct?: number
+          max_alertas_restricoes?: number
+          max_ccf_total?: number
+          max_dias_inadimplencia_interna?: number
+          max_pendencias_financeiras?: number
+          max_protestos?: number
+          min_idade_pf?: number
+          min_meses_cnpj?: number
+          mora_diaria_pct?: number
+          multa_atraso_pct?: number
+          parcela_minima?: number
+          score_bands?: Json
+          teto_credito?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          contract_clauses?: string | null
+          created_at?: string
+          ia_require_liveness?: boolean
+          ia_similarity_threshold?: number
+          id?: string
+          juros_mensal_pct?: number
+          max_alertas_restricoes?: number
+          max_ccf_total?: number
+          max_dias_inadimplencia_interna?: number
+          max_pendencias_financeiras?: number
+          max_protestos?: number
+          min_idade_pf?: number
+          min_meses_cnpj?: number
+          mora_diaria_pct?: number
+          multa_atraso_pct?: number
+          parcela_minima?: number
+          score_bands?: Json
+          teto_credito?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1067,6 +1500,7 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string | null
+          credit_contract_id: string | null
           description: string
           due_date: string
           id: string
@@ -1094,6 +1528,7 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by?: string | null
+          credit_contract_id?: string | null
           description: string
           due_date: string
           id?: string
@@ -1121,6 +1556,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string | null
+          credit_contract_id?: string | null
           description?: string
           due_date?: string
           id?: string

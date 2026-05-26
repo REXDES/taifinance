@@ -83,6 +83,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
 
   // Módulos
   const [machinesModuleEnabled, setMachinesModuleEnabled] = useState(false);
+  const [creditModuleEnabled, setCreditModuleEnabled] = useState(false);
 
   // Reset picked when dialog reopens in picker mode
   useEffect(() => {
@@ -140,6 +141,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
         setWhatsappNotifyDaysBefore(d.whatsapp_notify_days_before || [0]);
         setWhatsappNotifyTime(d.whatsapp_notify_time || '08:00');
         setMachinesModuleEnabled(!!d.machines_module_enabled);
+        setCreditModuleEnabled(!!d.credit_module_enabled);
       }
     } catch (error) {
       console.error('Error loading company settings:', error);
@@ -191,6 +193,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           whatsapp_notify_days_before: whatsappNotifyDaysBefore,
           whatsapp_notify_time: whatsappNotifyTime,
           machines_module_enabled: machinesModuleEnabled,
+          credit_module_enabled: creditModuleEnabled,
         } as any)
         .eq('id', effectiveCompanyId!);
 
@@ -512,6 +515,19 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                       />
                     </div>
                   </div>
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-base flex items-center gap-2">
+                          <Wrench className="w-4 h-4" />
+                          Gestão de Crédito
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Habilita o módulo de venda a prazo: consulta de crédito (RedeBE), motor de decisão, biometria por IA, contrato digital e geração de parcelas em contas a receber.
+                        </p>
+                      </div>
+                      <Switch checked={creditModuleEnabled} onCheckedChange={setCreditModuleEnabled} />
+                    </div>
                 </TabsContent>
               )}
             </div>

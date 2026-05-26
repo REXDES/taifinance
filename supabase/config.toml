@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.bank-api-proxy]
 verify_jwt = false
+
+[functions.credit-consult]
+verify_jwt = false

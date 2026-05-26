@@ -300,13 +300,21 @@ serve(async (req) => {
     const principal = redeBlock?.retorno?.principal || {};
 
     // ----- Ocorrências ignoradas (alçada aprovada) -----
-    // Reduz contadores antes de avaliar o motor de decisão.
-    const { data: ignoredRows } = await supabase
+    // Escopo: 'application' (só esta proposta), 'document' (todas do cliente),
+    // 'global' (todas as propostas da empresa).
+    const { data: ignoredRowsRaw } = await supabase
       .from("credit_ignored_occurrences")
-      .select("category")
+      .select("category, scope, documento, application_id")
       .eq("company_id", company_id)
-      .eq("documento", documentoLimpo)
       .eq("status", "approved");
+
+    const ignoredRows = (ignoredRowsRaw || []).filter((r: any) => {
+      const scope = r.scope || 'document';
+      if (scope === 'global') return true;
+      if (scope === 'document') return r.documento === documentoLimpo;
+      if (scope === 'application') return application_id && r.application_id === application_id;
+      return false;
+    });
 
     const CATEGORY_TO_SUMMARY_FIELDS: Record<string, string[]> = {
       "Alertas / Restrições": ["quantidade_alertas_restricoes"],
@@ -316,7 +324,7 @@ serve(async (req) => {
       "Ações Cíveis": ["quantidade_acoes_civeis"],
     };
     const ignoredCountByCategory: Record<string, number> = {};
-    for (const r of ignoredRows || []) {
+    for (const r of ignoredRows) {
       ignoredCountByCategory[(r as any).category] = (ignoredCountByCategory[(r as any).category] || 0) + 1;
     }
     const ignoredAdjustments: Array<{ category: string; field: string; subtracted: number; before: string; after: string }> = [];

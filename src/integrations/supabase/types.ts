@@ -659,6 +659,7 @@ export type Database = {
           request_reason: string | null
           requested_at: string
           requested_by: string | null
+          scope: string
           status: string
           titulo: string | null
           updated_at: string
@@ -679,6 +680,7 @@ export type Database = {
           request_reason?: string | null
           requested_at?: string
           requested_by?: string | null
+          scope?: string
           status?: string
           titulo?: string | null
           updated_at?: string
@@ -699,6 +701,7 @@ export type Database = {
           request_reason?: string | null
           requested_at?: string
           requested_by?: string | null
+          scope?: string
           status?: string
           titulo?: string | null
           updated_at?: string

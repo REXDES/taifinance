@@ -14,6 +14,7 @@ interface RedeBESummary {
   score?: string;
   classificacao_score?: string;
   probabilidade_inadimplencia?: string;
+  texto_score?: string;
   situacao_cpf?: string;
   nome?: string;
   data_nascimento?: string;
@@ -25,6 +26,7 @@ interface RedeBESummary {
   quantidade_alertas_restricoes?: string;
   quantidade_ccf_bacen?: string;
   quantidade_ccf_varejo?: string;
+  qtd_dependentes_bolsa_familia?: string;
 }
 
 interface ScoreBand {
@@ -45,6 +47,22 @@ interface CreditRules {
   min_meses_cnpj: number;
   teto_credito: number;
   score_bands: ScoreBand[];
+  bolsa_familia_block?: boolean;
+  max_dependentes_bolsa_familia?: number;
+  max_probabilidade_inadimplencia?: number;
+  texto_inadimplencia_block_levels?: string[];
+}
+
+// Classify the score "texto" into a probability bucket
+function classifyTextoInadimplencia(t: string | undefined | null): string | null {
+  if (!t) return null;
+  const s = String(t).toLowerCase();
+  if (/muito\s+alta/.test(s)) return 'muito_alta';
+  if (/muito\s+baixa/.test(s)) return 'muito_baixa';
+  if (/\balta\b/.test(s)) return 'alta';
+  if (/\bbaixa\b/.test(s)) return 'baixa';
+  if (/\bm[eé]dia\b/.test(s)) return 'media';
+  return null;
 }
 
 function toInt(s: string | undefined | null): number {

@@ -108,7 +108,7 @@ export function BiometryStep({
 
   useEffect(() => {
     if (bio?.status === 'approved') {
-      (supabase as any).from('credit_applications').update({ current_step: 4 }).eq('id', applicationId).lt('current_step', 4);
+      (supabase as any).from('credit_applications').update({ current_step: 5 }).eq('id', applicationId).lt('current_step', 5);
     }
   }, [bio?.status, applicationId]);
 

@@ -618,7 +618,7 @@ function ApplicationDetailDialog({
   useEffect(() => {
     if (!app) { setConsultation(null); return; }
     const cur = Math.max(1, app.current_step || 1);
-    setActiveStep(cur);
+    setActiveStep(initialStep ?? cur);
     setLocalStep(cur);
     setLoading(true);
     (async () => {

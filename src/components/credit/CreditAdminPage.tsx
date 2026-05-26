@@ -148,6 +148,9 @@ export function CreditAdminPage({ companyId }: Props) {
                       <> — Limite sugerido: <strong>R$ {testResult.engine.approved_limit.toLocaleString('pt-BR')}</strong> em até <strong>{testResult.engine.max_parcelas}x</strong></>
                     )}
                   </div>
+                  {testResult.bureau_analysis && (
+                    <div className="pt-2"><BureauAnalysisCard analysis={testResult.bureau_analysis} /></div>
+                  )}
                 </div>
               )}
             </CardContent>

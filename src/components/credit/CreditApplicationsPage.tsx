@@ -28,6 +28,7 @@ import { BiometryStep } from './steps/BiometryStep';
 import { SimulationStep } from './steps/SimulationStep';
 import { ContractStep } from './steps/ContractStep';
 import { BoletosStep } from './steps/BoletosStep';
+import { PaymentProbabilityBadge } from './PaymentProbabilityBadge';
 
 interface Props { companyId: string }
 

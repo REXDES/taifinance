@@ -575,6 +575,8 @@ serve(async (req) => {
     const textoBucket = classifyTextoInadimplencia(summary.texto_score);
     const probInadNum = toInt(summary.probabilidade_inadimplencia) || null;
 
+    // Análise interpretada do bureau (nó "resumo")
+    const bureauAnalysis = buildBureauAnalysis(summary);
 
     const result = {
       documento: documentoLimpo,
@@ -588,6 +590,7 @@ serve(async (req) => {
       pdf_disponivel: pdfDisponivel ?? null,
       texto_score_bucket: textoBucket,
       probabilidade_inadimplencia: probInadNum,
+      bureau_analysis: bureauAnalysis,
     };
 
 
@@ -607,6 +610,7 @@ serve(async (req) => {
         decision_reason: engine.reason,
         consulted_by: userId,
         pdf_data: pdfData,
+        bureau_analysis: bureauAnalysis,
       };
       const { data: consultRow, error: consultErr } = await supabase
         .from("credit_consultations")

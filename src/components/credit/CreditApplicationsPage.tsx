@@ -198,6 +198,23 @@ const PRIORITY_FIELDS = ['TITULO', 'TIPO', 'DESCRICAO', 'OBSERVACOES', 'OBSERVAC
 function extractOccurrences(raw: any): Array<{ category: string; items: Array<Record<string, any>> }> {
   const buckets: Record<string, Array<Record<string, any>>> = {};
 
+  const buildOccurrenceKey = (record: Record<string, any>) => JSON.stringify(
+    Object.entries(record)
+      .filter(([, v]) => v != null && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== '')
+      .map(([k, v]) => [k.toUpperCase(), String(v).trim()])
+      .sort(([a], [b]) => a.localeCompare(b))
+  );
+
+  const dedupeItems = (items: Array<Record<string, any>>) => {
+    const seen = new Set<string>();
+    return items.filter((item) => {
+      const key = buildOccurrenceKey(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   const isStatusWrapper = (o: Record<string, any>) => {
     const keys = Object.keys(o).map((k) => k.toUpperCase());
     return keys.length > 0 && keys.length <= 3 &&
@@ -261,7 +278,7 @@ function extractOccurrences(raw: any): Array<{ category: string; items: Array<Re
     }
   };
   visit(raw);
-  return Object.entries(buckets).map(([category, items]) => ({ category, items }));
+  return Object.entries(buckets).map(([category, items]) => ({ category, items: dedupeItems(items) }));
 }
 
 function OccurrencesList({ raw }: { raw: any }) {

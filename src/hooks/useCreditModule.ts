@@ -92,7 +92,36 @@ export interface CreditApplication {
   updated_at: string;
   probabilidade_inadimplencia?: number | null;
   texto_score_bucket?: string | null;
+  bureau_analysis?: BureauAnalysis | null;
 }
+
+export interface BureauAnalysis {
+  score_analise: number | null;
+  max_parcelas: number | null;
+  parcela_maxima: number | null;
+  limite_sugerido: number | null;
+  nivel_de_confianca_raw: string | null;
+  nivel_de_confianca_bucket: string | null;
+  nivel_de_confianca_label: string | null;
+  descricao_rating: string | null;
+  observacao_credito: string | null;
+  sugestao_de_negocio_raw: string | null;
+  sugestao_de_negocio_bucket: string | null;
+  sugestao_de_negocio_label: string | null;
+}
+
+export const CONFIANCA_OPTIONS = [
+  { value: 'muito_baixo', label: 'Muito Baixo' },
+  { value: 'baixo', label: 'Baixo' },
+  { value: 'medio', label: 'Médio' },
+  { value: 'alto', label: 'Alto' },
+  { value: 'muito_alto', label: 'Muito Alto' },
+];
+export const SUGESTAO_OPTIONS = [
+  { value: 'nao_recomendar', label: 'Não recomendar' },
+  { value: 'recomendar_com_cautela', label: 'Recomendar com cautela' },
+  { value: 'recomendar', label: 'Recomendar' },
+];
 
 // Maps the bureau "texto" classification (probability of payment).
 // Lower bucket = worse payer. We display in "payment probability" terms.

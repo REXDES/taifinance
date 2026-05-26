@@ -85,6 +85,7 @@ interface FinanceSidebarProps {
   onOpenInvitations?: () => void;
   onOpenCompanySettings?: () => void;
   machinesEnabled?: boolean;
+  creditEnabled?: boolean;
 }
 
 type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };
@@ -133,6 +134,10 @@ const machinesMenuItems: MenuItem[] = [
   { view: 'machines-mechanics', label: 'Mecânicos', icon: <Wrench className="w-4 h-4" /> },
 ];
 
+const creditMenuItems: MenuItem[] = [
+  { view: 'credit-applications', label: 'Propostas', icon: <ClipboardList className="w-4 h-4" /> },
+];
+
 export function FinanceSidebar({
   companies,
   selectedCompanyId,
@@ -154,13 +159,14 @@ export function FinanceSidebar({
   onOpenInvitations,
   onOpenCompanySettings,
   machinesEnabled = false,
+  creditEnabled = false,
 }: FinanceSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
 
   // Accordion state for top-level groups in normal mode (only one open at a time)
-  type TopGroup = 'gestao' | 'machines';
+  type TopGroup = 'gestao' | 'machines' | 'credit';
   type SubGroup = 'transacoes' | 'relatorios' | 'cadastros';
   const isInGestao =
     transacoesMenuItems.some(i => currentView === i.view) ||
@@ -169,6 +175,7 @@ export function FinanceSidebar({
   const initialOpenGroup: TopGroup | null =
     isInGestao ? 'gestao'
     : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
+    : creditMenuItems.some(i => currentView === i.view) ? 'credit'
     : null;
   const initialOpenSub: SubGroup | null =
     transacoesMenuItems.some(i => currentView === i.view) ? 'transacoes'
@@ -319,6 +326,7 @@ export function FinanceSidebar({
               <>
                 {renderMenuItem({ view: 'admin-dashboard', label: 'Dashboard Admin', icon: <LayoutDashboard className="w-4 h-4" /> })}
                 {renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
+                {renderMenuItem({ view: 'credit-admin', label: 'Gestão de Crédito (config)', icon: <CreditCard className="w-4 h-4" /> })}
 
                 {!collapsed && (
                   <div className="pt-2 pb-1 px-2">
@@ -558,6 +566,28 @@ export function FinanceSidebar({
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pl-4 space-y-1 mt-1">
                         {machinesMenuItems.map(renderMenuItem)}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )
+                )}
+
+                {/* Gestão de Crédito (módulo opcional por empresa) */}
+                {creditEnabled && (
+                  collapsed ? (
+                    creditMenuItems.map(renderMenuItem)
+                  ) : (
+                    <Collapsible open={openGroup === 'credit'} onOpenChange={setGroup('credit')}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                          <span className="flex items-center gap-2">
+                            <CreditCard className="w-4 h-4" />
+                            Gestão de Crédito
+                          </span>
+                          <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                        {creditMenuItems.map(renderMenuItem)}
                       </CollapsibleContent>
                     </Collapsible>
                   )

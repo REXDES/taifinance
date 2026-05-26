@@ -528,6 +528,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                       </div>
                       <Switch checked={creditModuleEnabled} onCheckedChange={setCreditModuleEnabled} />
                     </div>
+                  </div>
                 </TabsContent>
               )}
             </div>

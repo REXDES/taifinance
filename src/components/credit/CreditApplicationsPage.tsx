@@ -520,6 +520,8 @@ function ConsultationResultCard({ result, onContinue, onDiscard }: { result: Con
         </div>
       )}
 
+      {result.bureau_analysis && <BureauAnalysisCard analysis={result.bureau_analysis} />}
+
       <DecisionBox decision={e.decision} approved_limit={e.approved_limit} max_parcelas={e.max_parcelas} reason={e.reason} knockouts={e.knockouts} />
 
       <div className="flex justify-end gap-2 pt-2">

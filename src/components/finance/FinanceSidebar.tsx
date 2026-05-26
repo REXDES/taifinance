@@ -571,6 +571,28 @@ export function FinanceSidebar({
                   )
                 )}
 
+                {/* Gestão de Crédito (módulo opcional por empresa) */}
+                {creditEnabled && (
+                  collapsed ? (
+                    creditMenuItems.map(renderMenuItem)
+                  ) : (
+                    <Collapsible open={openGroup === 'credit'} onOpenChange={setGroup('credit')}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                          <span className="flex items-center gap-2">
+                            <CreditCard className="w-4 h-4" />
+                            Gestão de Crédito
+                          </span>
+                          <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                        {creditMenuItems.map(renderMenuItem)}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )
+                )}
+
                 {/* Configurações da Empresa (supervisor e gerente) */}
                 {selectedCompanyId && onOpenCompanySettings && (isSupervisor || isGerente) && (
                   collapsed ? (

@@ -14,6 +14,7 @@ interface RedeBESummary {
   score?: string;
   classificacao_score?: string;
   probabilidade_inadimplencia?: string;
+  texto_score?: string;
   situacao_cpf?: string;
   nome?: string;
   data_nascimento?: string;
@@ -25,6 +26,7 @@ interface RedeBESummary {
   quantidade_alertas_restricoes?: string;
   quantidade_ccf_bacen?: string;
   quantidade_ccf_varejo?: string;
+  qtd_dependentes_bolsa_familia?: string;
 }
 
 interface ScoreBand {
@@ -45,6 +47,22 @@ interface CreditRules {
   min_meses_cnpj: number;
   teto_credito: number;
   score_bands: ScoreBand[];
+  bolsa_familia_block?: boolean;
+  max_dependentes_bolsa_familia?: number;
+  max_probabilidade_inadimplencia?: number;
+  texto_inadimplencia_block_levels?: string[];
+}
+
+// Classify the score "texto" into a probability bucket
+function classifyTextoInadimplencia(t: string | undefined | null): string | null {
+  if (!t) return null;
+  const s = String(t).toLowerCase();
+  if (/muito\s+alta/.test(s)) return 'muito_alta';
+  if (/muito\s+baixa/.test(s)) return 'muito_baixa';
+  if (/\balta\b/.test(s)) return 'alta';
+  if (/\bbaixa\b/.test(s)) return 'baixa';
+  if (/\bm[eé]dia\b/.test(s)) return 'media';
+  return null;
 }
 
 function toInt(s: string | undefined | null): number {
@@ -114,6 +132,27 @@ function runDecisionEngine(opts: {
   const alertas = toInt(summary.quantidade_alertas_restricoes);
   if (alertas > rules.max_alertas_restricoes) {
     knockouts.push(`${alertas} alerta(s) de restrição — máximo permitido: ${rules.max_alertas_restricoes}`);
+  }
+
+  // Bolsa Família
+  const depBF = toInt(summary.qtd_dependentes_bolsa_familia);
+  if (rules.bolsa_familia_block && depBF > (rules.max_dependentes_bolsa_familia ?? 0)) {
+    knockouts.push(`Beneficiário do Bolsa Família (${depBF} dependente(s)) — máximo permitido: ${rules.max_dependentes_bolsa_familia ?? 0}`);
+  }
+
+  // Probabilidade de inadimplência (1=baixa, 9=alta)
+  const probNum = toInt(summary.probabilidade_inadimplencia);
+  if (probNum > 0 && (rules.max_probabilidade_inadimplencia ?? 9) < 9 && probNum > (rules.max_probabilidade_inadimplencia ?? 9)) {
+    knockouts.push(`Probabilidade de inadimplência ${probNum} acima do máximo permitido (${rules.max_probabilidade_inadimplencia})`);
+  }
+
+  // Texto interpretativo do score
+  const blockLevels = rules.texto_inadimplencia_block_levels || [];
+  if (blockLevels.length > 0) {
+    const bucket = classifyTextoInadimplencia(summary.texto_score);
+    if (bucket && blockLevels.includes(bucket)) {
+      knockouts.push(`Análise textual do score indica probabilidade "${bucket.replace('_',' ')}" de inadimplência`);
+    }
   }
 
   const score = toInt(summary.score);
@@ -298,6 +337,44 @@ serve(async (req) => {
     const redeBlock = wrapper?.RedeBE || wrapper?.data?.RedeBE || wrapper;
     const summary: RedeBESummary = { ...(redeBlock?.resumo || {}) };
     const principal = redeBlock?.retorno?.principal || {};
+
+    // Backfill summary fields from principal/raw if not present in resumo
+    const findFirstDeep = (node: any, predicate: (k: string, v: any) => boolean): any => {
+      if (!node || typeof node !== 'object') return undefined;
+      if (Array.isArray(node)) {
+        for (const item of node) { const r = findFirstDeep(item, predicate); if (r !== undefined) return r; }
+        return undefined;
+      }
+      for (const [k, v] of Object.entries(node)) {
+        if (predicate(k, v)) return v;
+      }
+      for (const v of Object.values(node)) {
+        if (v && typeof v === 'object') { const r = findFirstDeep(v, predicate); if (r !== undefined) return r; }
+      }
+      return undefined;
+    };
+    if (!summary.texto_score) {
+      const t = findFirstDeep(redeBlock, (k, v) =>
+        (typeof v === 'string' || typeof v === 'number') &&
+        /^TEXTO(_SCORE)?$/i.test(k)
+      );
+      if (t != null) summary.texto_score = String(t);
+    }
+    if (!summary.qtd_dependentes_bolsa_familia) {
+      const bf = findFirstDeep(redeBlock, (k, v) =>
+        (typeof v === 'string' || typeof v === 'number') &&
+        /bolsa.*familia|qtd.*dependentes.*bolsa/i.test(k)
+      );
+      if (bf != null) summary.qtd_dependentes_bolsa_familia = String(bf);
+    }
+    if (!summary.probabilidade_inadimplencia) {
+      const p = findFirstDeep(redeBlock, (k, v) =>
+        (typeof v === 'string' || typeof v === 'number') &&
+        /probabilidade.*inadimpl/i.test(k)
+      );
+      if (p != null) summary.probabilidade_inadimplencia = String(p);
+    }
+
 
     // ----- Ocorrências ignoradas (alçada aprovada) -----
     // Escopo: 'application' (só esta proposta), 'document' (todas do cliente),

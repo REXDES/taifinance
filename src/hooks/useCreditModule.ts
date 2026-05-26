@@ -30,6 +30,10 @@ export interface CreditRules {
   ia_similarity_threshold: number;
   ia_require_liveness: boolean;
   contract_clauses: string | null;
+  bolsa_familia_block: boolean;
+  max_dependentes_bolsa_familia: number;
+  max_probabilidade_inadimplencia: number; // 1..9 (knockout if > value)
+  texto_inadimplencia_block_levels: string[]; // e.g. ['muito_alta','alta']
 }
 
 export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
@@ -54,6 +58,10 @@ export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
   ia_similarity_threshold: 80,
   ia_require_liveness: true,
   contract_clauses: null,
+  bolsa_familia_block: false,
+  max_dependentes_bolsa_familia: 0,
+  max_probabilidade_inadimplencia: 9,
+  texto_inadimplencia_block_levels: [],
 };
 
 export interface CreditApplication {

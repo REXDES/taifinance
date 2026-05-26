@@ -238,9 +238,10 @@ export function CreditApplicationsPage({ companyId }: Props) {
 
       <ApplicationDetailDialog
         app={detailApp}
+        initialStep={detailInitialStep}
         companyId={companyId}
         userId={user?.id ?? null}
-        onClose={() => setDetailApp(null)}
+        onClose={() => { setDetailApp(null); setDetailInitialStep(null); }}
         onReevaluate={(a) => handleReevaluate(a)}
         reevaluating={!!detailApp && reevaluatingId === detailApp.id}
         onChanged={refetch}

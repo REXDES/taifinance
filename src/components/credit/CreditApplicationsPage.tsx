@@ -191,7 +191,7 @@ export function CreditApplicationsPage({ companyId }: Props) {
               </TableHeader>
               <TableBody>
                 {applications.map((a) => (
-                  <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setDetailApp(a)}>
+                  <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setDetailInitialStep(null); setDetailApp(a); }}>
                     <TableCell className="font-mono text-xs">{a.documento} <span className="text-muted-foreground">({a.tipo_documento})</span></TableCell>
                     <TableCell>{a.nome || '—'}</TableCell>
                     <TableCell>{a.score ?? '—'}{a.classification ? ` (${a.classification})` : ''}</TableCell>
@@ -206,6 +206,14 @@ export function CreditApplicationsPage({ companyId }: Props) {
                     <TableCell className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleDateString('pt-BR')}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Ver consulta, ocorrências e resumo"
+                          onClick={(e) => { e.stopPropagation(); setDetailInitialStep(1); setDetailApp(a); }}
+                        >
+                          <FileSearch className="w-4 h-4" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"

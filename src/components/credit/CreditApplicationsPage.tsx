@@ -194,7 +194,16 @@ export function CreditApplicationsPage({ companyId }: Props) {
                 {applications.map((a) => (
                   <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setDetailInitialStep(null); setDetailApp(a); }}>
                     <TableCell className="font-mono text-xs">{a.documento} <span className="text-muted-foreground">({a.tipo_documento})</span></TableCell>
-                    <TableCell>{a.nome || '—'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span>{a.nome || '—'}</span>
+                        <PaymentProbabilityBadge
+                          probabilidadeInadimplencia={a.probabilidade_inadimplencia}
+                          textoBucket={a.texto_score_bucket}
+                          compact
+                        />
+                      </div>
+                    </TableCell>
                     <TableCell>{a.score ?? '—'}{a.classification ? ` (${a.classification})` : ''}</TableCell>
                     <TableCell>{a.approved_limit != null ? `R$ ${Number(a.approved_limit).toLocaleString('pt-BR')}` : '—'}</TableCell>
                     <TableCell className="min-w-[220px]">

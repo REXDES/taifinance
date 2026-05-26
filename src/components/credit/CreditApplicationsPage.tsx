@@ -409,6 +409,7 @@ function ApplicationDetailDialog({ app, onClose }: { app: CreditApplication | nu
           <Tabs defaultValue="decision" className="flex-1 overflow-hidden flex flex-col">
             <TabsList>
               <TabsTrigger value="decision">Decisão</TabsTrigger>
+              <TabsTrigger value="occurrences">Ocorrências</TabsTrigger>
               <TabsTrigger value="summary">Resumo</TabsTrigger>
               <TabsTrigger value="raw">Resposta completa</TabsTrigger>
             </TabsList>

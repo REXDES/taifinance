@@ -782,3 +782,51 @@ function ApplicationDetailDialog({
   );
 }
 
+// ---------- PDF "espelho" helpers ----------
+
+function buildPdfObjectUrl(pdfData: string): { url: string; revoke?: () => void } {
+  const s = pdfData.trim();
+  if (/^https?:\/\//i.test(s)) return { url: s };
+  // Strip optional data URL prefix
+  const base64 = s.replace(/^data:application\/pdf;base64,/, '');
+  try {
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    return { url, revoke: () => URL.revokeObjectURL(url) };
+  } catch {
+    return { url: s };
+  }
+}
+
+function PdfEspelhoButton({ pdfData }: { pdfData: string }) {
+  const openFullscreen = () => {
+    const { url } = buildPdfObjectUrl(pdfData);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+  return (
+    <Button size="sm" variant="outline" onClick={openFullscreen} title="Abrir espelho (PDF) em nova aba">
+      <FileSearch className="w-4 h-4 mr-2" />
+      Espelho PDF
+    </Button>
+  );
+}
+
+function PdfEspelhoViewer({ pdfData }: { pdfData: string }) {
+  const [obj] = useState(() => buildPdfObjectUrl(pdfData));
+  useEffect(() => () => { obj.revoke?.(); }, [obj]);
+  return (
+    <div className="h-[60vh] flex flex-col gap-2">
+      <div className="flex justify-end">
+        <Button size="sm" variant="outline" onClick={() => window.open(obj.url, '_blank', 'noopener,noreferrer')}>
+          Abrir em tela cheia
+        </Button>
+      </div>
+      <iframe src={obj.url} title="Espelho PDF da consulta" className="flex-1 w-full rounded border bg-muted/20" />
+    </div>
+  );
+}
+
+

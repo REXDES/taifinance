@@ -154,14 +154,17 @@ export function QualificationStep({
   });
   const [existingId, setExistingId] = useState<string | null>(null);
 
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data } = await (supabase as any)
-        .from('credit_qualifications')
-        .select('*')
-        .eq('application_id', applicationId)
-        .maybeSingle();
+      const [{ data }, { data: appRow }] = await Promise.all([
+        (supabase as any).from('credit_qualifications').select('*').eq('application_id', applicationId).maybeSingle(),
+        (supabase as any).from('credit_applications').select('qualification_draft').eq('id', applicationId).maybeSingle(),
+      ]);
       if (data) {
         setExistingId(data.id);
         setForm({
@@ -178,21 +181,39 @@ export function QualificationStep({
       } else {
         const pre = extractFromConsultation(consultationRaw);
         setPrefilled(pre);
+        const draft = (appRow as any)?.qualification_draft || {};
         setForm((f) => ({
           ...f,
-          whatsapp_phone: pre.whatsapp_phone || '',
-          email: pre.email || '',
-          renda_mensal: pre.renda_mensal || '',
-          profissao: pre.profissao || '',
-          endereco_entrega: pre.endereco_entrega || '',
-          cep: pre.cep || '',
-          cidade: pre.cidade || '',
-          uf: pre.uf || '',
+          whatsapp_phone: draft.whatsapp_phone ?? pre.whatsapp_phone ?? '',
+          email: draft.email ?? pre.email ?? '',
+          renda_mensal: draft.renda_mensal ?? pre.renda_mensal ?? '',
+          profissao: draft.profissao ?? pre.profissao ?? '',
+          endereco_entrega: draft.endereco_entrega ?? pre.endereco_entrega ?? '',
+          cep: draft.cep ?? pre.cep ?? '',
+          cidade: draft.cidade ?? pre.cidade ?? '',
+          uf: draft.uf ?? pre.uf ?? '',
+          notes: draft.notes ?? '',
         }));
       }
       setLoading(false);
+      setHydrated(true);
     })();
   }, [applicationId, consultationRaw]);
+
+  // Auto-save draft (debounced) so the user can leave and return without losing data.
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = setTimeout(async () => {
+      setDraftSaving(true);
+      await (supabase as any)
+        .from('credit_applications')
+        .update({ qualification_draft: form })
+        .eq('id', applicationId);
+      setDraftSaving(false);
+      setDraftSavedAt(new Date());
+    }, 700);
+    return () => clearTimeout(t);
+  }, [form, hydrated, applicationId]);
 
   const save = async () => {
     if (!form.whatsapp_phone.trim()) {
@@ -223,7 +244,7 @@ export function QualificationStep({
     }
     await (supabase as any)
       .from('credit_applications')
-      .update({ current_step: 4 })
+      .update({ current_step: 4, qualification_draft: null })
       .eq('id', applicationId)
       .lt('current_step', 4);
     toast.success('Qualificação salva. Avançando para biometria.');
@@ -292,7 +313,10 @@ export function QualificationStep({
           <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </div>
       </div>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] text-muted-foreground">
+          {draftSaving ? 'Salvando rascunho…' : draftSavedAt ? `Rascunho salvo às ${draftSavedAt.toLocaleTimeString('pt-BR')}` : 'Suas alterações são salvas automaticamente como rascunho.'}
+        </div>
         <Button onClick={save} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
           Salvar e avançar para biometria <ArrowRight className="w-4 h-4 ml-2" />

@@ -97,14 +97,16 @@ export function CreditIgnoredOccurrencesPage({ companyId }: Props) {
   const decide = async () => {
     if (!decideRow) return;
     setSaving(true);
+    const updates: any = {
+      status: decideAction === 'approve' ? 'approved' : 'rejected',
+      decision_notes: decideNotes || null,
+      decided_by: user?.id,
+      decided_at: new Date().toISOString(),
+    };
+    if (decideAction === 'approve') updates.scope = decideScope;
     const { error } = await (supabase as any)
       .from('credit_ignored_occurrences')
-      .update({
-        status: decideAction === 'approve' ? 'approved' : 'rejected',
-        decision_notes: decideNotes || null,
-        decided_by: user?.id,
-        decided_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq('id', decideRow.id);
     setSaving(false);
     if (error) { toast.error('Erro: ' + error.message); return; }

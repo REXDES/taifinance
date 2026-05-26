@@ -197,22 +197,47 @@ const PRIORITY_FIELDS = ['TITULO', 'TIPO', 'DESCRICAO', 'OBSERVACOES', 'OBSERVAC
 /** Walks the raw_response and collects records under keys matching a pattern. */
 function extractOccurrences(raw: any): Array<{ category: string; items: Array<Record<string, any>> }> {
   const buckets: Record<string, Array<Record<string, any>>> = {};
-  const isLeafRecord = (o: any) =>
-    o && typeof o === 'object' && !Array.isArray(o) &&
-    Object.values(o).some((x) => typeof x === 'string' || typeof x === 'number');
 
-  // collect all leaf-records inside a node (deep)
+  const isStatusWrapper = (o: Record<string, any>) => {
+    const keys = Object.keys(o).map((k) => k.toUpperCase());
+    return keys.length > 0 && keys.length <= 3 &&
+      keys.every((k) => /CODIGO|DESCRICAO|MENSAGEM|STATUS/.test(k));
+  };
+
+  // Returns true if `node` itself OR any descendant is an object with at least
+  // one nested non-status object/array — meaning it's a container, not a leaf record.
+  const hasNestedRecord = (node: any): boolean => {
+    if (!node || typeof node !== 'object') return false;
+    if (Array.isArray(node)) return node.some((v) => v && typeof v === 'object');
+    return Object.entries(node).some(([, v]) => {
+      if (Array.isArray(v)) return v.some((x) => x && typeof x === 'object');
+      if (v && typeof v === 'object') return !isStatusWrapper(v as any);
+      return false;
+    });
+  };
+
+  // Collect only "deepest" records (records that don't themselves contain nested records).
   const collectLeaves = (node: any, out: any[]) => {
     if (node == null) return;
     if (Array.isArray(node)) { node.forEach((v) => collectLeaves(v, out)); return; }
     if (typeof node !== 'object') return;
-    // skip pure status wrappers
-    if (isLeafRecord(node)) {
-      // ignore generic STATUS_RETORNO objects
-      const keys = Object.keys(node).map((k) => k.toUpperCase());
-      const isStatus = keys.length <= 3 && keys.every((k) => /CODIGO|DESCRICAO|MENSAGEM|STATUS/.test(k));
-      if (!isStatus) out.push(node);
+    if (isStatusWrapper(node)) return;
+
+    if (!hasNestedRecord(node)) {
+      // pure leaf: only scalar fields. Skip empty aggregates (all values empty/0).
+      const scalarEntries = Object.entries(node).filter(([, v]) =>
+        v != null && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== ''
+      );
+      if (scalarEntries.length === 0) return;
+      // Skip aggregate summaries whose only meaningful field is QUANTIDADE_OCORRENCIA=0
+      const meaningful = scalarEntries.filter(
+        ([k, v]) => !/^QUANTIDADE_OCORRENCIA$/i.test(k) || (Number(v) || 0) > 0
+      );
+      if (meaningful.length === 0) return;
+      out.push(node);
+      return;
     }
+    // container — recurse into children only
     for (const v of Object.values(node)) {
       if (v && typeof v === 'object') collectLeaves(v, out);
     }

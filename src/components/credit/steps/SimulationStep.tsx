@@ -152,7 +152,7 @@ export function SimulationStep({
 
       <div className="flex justify-end">
         <Button onClick={confirm}>
-          Confirmar e gerar contrato <ArrowRight className="w-4 h-4 ml-2" />
+          Confirmar e avançar para qualificação <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
     </div>

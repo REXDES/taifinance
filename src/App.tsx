@@ -10,6 +10,7 @@ import Finance from "./pages/Finance";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import PixCopy from "./pages/PixCopy";
+import CreditBiometryPublic from "./pages/CreditBiometryPublic";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/pix/copiar" element={<PixCopy />} />
+              <Route path="/credit/biometry/:token" element={<CreditBiometryPublic />} />
               <Route
                 path="/"
                 element={

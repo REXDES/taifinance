@@ -21,6 +21,12 @@ import {
   PRIORITY_FIELDS,
   type OccurrenceRecord,
 } from '@/lib/creditOccurrences';
+import { JourneyStepper } from './JourneyStepper';
+import { QualificationStep } from './steps/QualificationStep';
+import { BiometryStep } from './steps/BiometryStep';
+import { SimulationStep } from './steps/SimulationStep';
+import { ContractStep } from './steps/ContractStep';
+import { BoletosStep } from './steps/BoletosStep';
 
 interface Props { companyId: string }
 
@@ -222,6 +228,7 @@ export function CreditApplicationsPage({ companyId }: Props) {
         onClose={() => setDetailApp(null)}
         onReevaluate={(a) => handleReevaluate(a)}
         reevaluating={!!detailApp && reevaluatingId === detailApp.id}
+        onChanged={refetch}
       />
     </div>
   );
@@ -565,7 +572,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function ApplicationDetailDialog({
-  app, companyId, userId, onClose, onReevaluate, reevaluating,
+  app, companyId, userId, onClose, onReevaluate, reevaluating, onChanged,
 }: {
   app: CreditApplication | null;
   companyId: string;
@@ -573,39 +580,69 @@ function ApplicationDetailDialog({
   onClose: () => void;
   onReevaluate: (a: CreditApplication) => void;
   reevaluating: boolean;
+  onChanged: () => void;
 }) {
   const [consultation, setConsultation] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
+  const [activeStep, setActiveStep] = useState<number>(1);
+  const [pendingSim, setPendingSim] = useState<any | null>(null);
+  const [canApprove, setCanApprove] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const { data } = await (supabase as any).from('user_roles').select('role').eq('user_id', userId);
+      const roles = (data || []).map((r: any) => r.role);
+      setCanApprove(roles.includes('supervisor') || roles.includes('gerente'));
+    })();
+  }, [userId]);
 
   useEffect(() => {
     if (!app) { setConsultation(null); return; }
+    setActiveStep(Math.max(1, app.current_step || 1));
     setLoading(true);
     (async () => {
-      const { data, error } = await (supabase as any)
+      const { data } = await (supabase as any)
         .from('credit_consultations')
         .select('*')
         .eq('application_id', app.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (error) console.error(error);
       setConsultation(data);
       setLoading(false);
     })();
   }, [app, reevaluating]);
 
   if (!app) return null;
-
   const summary = (consultation?.summary || {}) as Record<string, string>;
   const knockouts = knockoutsFromReason(consultation?.decision_reason || app.decision_reason);
+  const decisionOk = (app.decision || consultation?.decision) === 'approved' || (app.decision || consultation?.decision) === 'manual';
+
+  const steps = STEP_LABELS.map((label, i) => {
+    const id = i + 1;
+    let status: 'done' | 'current' | 'locked' | 'pending';
+    const cur = app.current_step || 1;
+    if (id < cur) status = 'done';
+    else if (id === cur) status = 'current';
+    else if (id === 1 || (id === 2 && decisionOk) || id <= cur) status = 'pending';
+    else status = 'locked';
+    return { id, label, status };
+  });
+
+  const reload = async () => { onChanged(); };
 
   return (
     <Dialog open={!!app} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 pt-5">
           <DialogTitle className="flex items-center gap-3">
             <span>{app.nome || '(sem nome)'}</span>
             <StatusBadge status={app.status} decision={app.decision} />
+            <Button size="sm" variant="outline" onClick={() => onReevaluate(app)} disabled={reevaluating} className="ml-auto">
+              {reevaluating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              Reavaliar
+            </Button>
           </DialogTitle>
           <DialogDescription className="font-mono text-xs">
             {app.documento} ({app.tipo_documento}) · Criada em {new Date(app.created_at).toLocaleString('pt-BR')}
@@ -615,83 +652,79 @@ function ApplicationDetailDialog({
         {loading ? (
           <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin" /></div>
         ) : (
-          <Tabs defaultValue="decision" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="flex items-center justify-between">
-              <div className="flex">
-                <TabsTrigger value="decision">Decisão</TabsTrigger>
-                <TabsTrigger value="occurrences">Ocorrências</TabsTrigger>
-                <TabsTrigger value="summary">Resumo</TabsTrigger>
-                <TabsTrigger value="raw">Resposta completa</TabsTrigger>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => onReevaluate(app)} disabled={reevaluating} className="ml-2">
-                {reevaluating
-                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  : <RefreshCw className="w-4 h-4 mr-2" />}
-                Reavaliar análise
-              </Button>
-            </TabsList>
-
-            <TabsContent value="decision" className="flex-1 overflow-auto">
-              <div className="rounded-lg border p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Score</div>
-                    <div className="text-3xl font-bold">{app.score ?? consultation?.score ?? '—'}</div>
-                    <div className="text-xs">Classe {app.classification ?? consultation?.classification ?? '—'}</div>
-                  </div>
-                  {app.approved_limit != null && (
-                    <div className="text-right">
-                      <div className="text-xs text-muted-foreground">Limite aprovado</div>
-                      <div className="text-2xl font-bold">R$ {Number(app.approved_limit).toLocaleString('pt-BR')}</div>
+          <div className="flex-1 flex overflow-hidden">
+            <JourneyStepper steps={steps} active={activeStep} onSelect={setActiveStep} />
+            <div className="flex-1 overflow-auto">
+              {activeStep === 1 && (
+                <Tabs defaultValue="decision" className="flex flex-col h-full">
+                  <TabsList className="m-3">
+                    <TabsTrigger value="decision">Decisão</TabsTrigger>
+                    <TabsTrigger value="occurrences">Ocorrências</TabsTrigger>
+                    <TabsTrigger value="summary">Resumo</TabsTrigger>
+                    <TabsTrigger value="raw">Resposta</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="decision" className="flex-1 overflow-auto px-4 pb-4">
+                    <div className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Score</div>
+                          <div className="text-3xl font-bold">{app.score ?? consultation?.score ?? '—'}</div>
+                          <div className="text-xs">Classe {app.classification ?? consultation?.classification ?? '—'}</div>
+                        </div>
+                        {app.approved_limit != null && (
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground">Limite aprovado</div>
+                            <div className="text-2xl font-bold">R$ {Number(app.approved_limit).toLocaleString('pt-BR')}</div>
+                          </div>
+                        )}
+                      </div>
+                      <DecisionBox decision={(app.decision || consultation?.decision) as any} approved_limit={app.approved_limit} reason={app.decision_reason || consultation?.decision_reason} knockouts={knockouts} />
+                      {decisionOk && (app.current_step || 1) < 2 && (
+                        <div className="flex justify-end pt-2">
+                          <Button onClick={async () => {
+                            await (supabase as any).from('credit_applications').update({ current_step: 2 }).eq('id', app.id).lt('current_step', 2);
+                            setActiveStep(2); reload();
+                          }}>Prosseguir <ArrowRight className="w-4 h-4 ml-2" /></Button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <DecisionBox
-                  decision={(app.decision || consultation?.decision) as any}
-                  approved_limit={app.approved_limit}
-                  reason={app.decision_reason || consultation?.decision_reason}
-                  knockouts={knockouts}
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="occurrences" className="flex-1 overflow-auto">
-              <OccurrencesList
-                raw={consultation?.raw_response}
-                companyId={companyId}
-                documento={app.documento}
-                applicationId={app.id}
-                userId={userId}
-              />
-            </TabsContent>
-
-            <TabsContent value="summary" className="flex-1 overflow-auto">
-              {Object.keys(summary).length === 0 ? (
-                <p className="text-sm text-muted-foreground py-6 text-center">Sem resumo disponível.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {Object.entries(summary).map(([k, v]) => (
-                    <div key={k} className="rounded border border-border bg-card px-3 py-2 text-sm">
-                      <div className="text-[10px] text-muted-foreground uppercase">{k.replace(/_/g, ' ')}</div>
-                      <div className="font-medium break-words">{String(v ?? '—')}</div>
-                    </div>
-                  ))}
-                </div>
+                  </TabsContent>
+                  <TabsContent value="occurrences" className="flex-1 overflow-auto px-4 pb-4">
+                    <OccurrencesList raw={consultation?.raw_response} companyId={companyId} documento={app.documento} applicationId={app.id} userId={userId} />
+                  </TabsContent>
+                  <TabsContent value="summary" className="flex-1 overflow-auto px-4 pb-4">
+                    {Object.keys(summary).length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-6 text-center">Sem resumo disponível.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {Object.entries(summary).map(([k, v]) => (
+                          <div key={k} className="rounded border border-border bg-card px-3 py-2 text-sm">
+                            <div className="text-[10px] text-muted-foreground uppercase">{k.replace(/_/g, ' ')}</div>
+                            <div className="font-medium break-words">{String(v ?? '—')}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="raw" className="flex-1 overflow-hidden px-4 pb-4">
+                    <ScrollArea className="h-[55vh] rounded border bg-muted/30">
+                      <pre className="text-[11px] p-3 whitespace-pre-wrap break-all font-mono">
+                        {consultation?.raw_response ? JSON.stringify(consultation.raw_response, null, 2) : 'Sem resposta bruta.'}
+                      </pre>
+                    </ScrollArea>
+                  </TabsContent>
+                </Tabs>
               )}
-            </TabsContent>
-
-            <TabsContent value="raw" className="flex-1 overflow-hidden">
-              <ScrollArea className="h-[55vh] rounded border bg-muted/30">
-                <pre className="text-[11px] p-3 whitespace-pre-wrap break-all font-mono">
-                  {consultation?.raw_response
-                    ? JSON.stringify(consultation.raw_response, null, 2)
-                    : 'Sem resposta bruta armazenada.'}
-                </pre>
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
+              {activeStep === 2 && <QualificationStep applicationId={app.id} companyId={companyId} onCompleted={() => { setActiveStep(3); reload(); }} />}
+              {activeStep === 3 && <BiometryStep applicationId={app.id} companyId={companyId} canApprove={canApprove} onCompleted={() => { setActiveStep(4); reload(); }} />}
+              {activeStep === 4 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={app.approved_limit} onCompleted={(data) => { setPendingSim(data); setActiveStep(5); reload(); }} />}
+              {activeStep === 5 && <ContractStep applicationId={app.id} companyId={companyId} application={app} pendingSimulation={pendingSim} canApprove={canApprove} onCompleted={() => { setActiveStep(6); reload(); }} />}
+              {activeStep === 6 && <BoletosStep applicationId={app.id} companyId={companyId} clientSupplierId={app.client_supplier_id} userId={userId} onCompleted={() => { reload(); }} />}
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>
   );
 }
+

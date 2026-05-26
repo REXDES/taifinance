@@ -472,6 +472,7 @@ serve(async (req) => {
         approved_limit: engine.approved_limit,
         decision_reason: engine.reason,
         consulted_by: userId,
+        pdf_data: pdfData,
       };
       const { data: consultRow, error: consultErr } = await supabase
         .from("credit_consultations")

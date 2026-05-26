@@ -56,6 +56,7 @@ export function CreditApplicationsPage({ companyId }: Props) {
   const [consultResult, setConsultResult] = useState<ConsultResult | null>(null);
   const [createdAppId, setCreatedAppId] = useState<string | null>(null);
   const [detailApp, setDetailApp] = useState<CreditApplication | null>(null);
+  const [detailInitialStep, setDetailInitialStep] = useState<number | null>(null);
   const [reevaluatingId, setReevaluatingId] = useState<string | null>(null);
 
   const handleStartNew = async () => {

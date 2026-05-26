@@ -194,27 +194,44 @@ const OCCURRENCE_KEY_PATTERNS: Array<{ label: string; regex: RegExp }> = [
 /** Campos prioritários que descrevem a ocorrência (exibidos primeiro e em destaque). */
 const PRIORITY_FIELDS = ['TITULO', 'TIPO', 'DESCRICAO', 'OBSERVACOES', 'OBSERVACAO', 'MENSAGEM', 'MOTIVO', 'DESCRICAO_TIPO_INFORMACAO'];
 
-/** Walks the raw_response and collects records from arrays whose key matches a pattern. */
+/** Walks the raw_response and collects records under keys matching a pattern. */
 function extractOccurrences(raw: any): Array<{ category: string; items: Array<Record<string, any>> }> {
   const buckets: Record<string, Array<Record<string, any>>> = {};
-  const visit = (node: any, parentKey = '') => {
+  const isLeafRecord = (o: any) =>
+    o && typeof o === 'object' && !Array.isArray(o) &&
+    Object.values(o).some((x) => typeof x === 'string' || typeof x === 'number');
+
+  // collect all leaf-records inside a node (deep)
+  const collectLeaves = (node: any, out: any[]) => {
     if (node == null) return;
-    if (Array.isArray(node)) {
-      node.forEach((v) => visit(v, parentKey));
-      return;
+    if (Array.isArray(node)) { node.forEach((v) => collectLeaves(v, out)); return; }
+    if (typeof node !== 'object') return;
+    // skip pure status wrappers
+    if (isLeafRecord(node)) {
+      // ignore generic STATUS_RETORNO objects
+      const keys = Object.keys(node).map((k) => k.toUpperCase());
+      const isStatus = keys.length <= 3 && keys.every((k) => /CODIGO|DESCRICAO|MENSAGEM|STATUS/.test(k));
+      if (!isStatus) out.push(node);
     }
+    for (const v of Object.values(node)) {
+      if (v && typeof v === 'object') collectLeaves(v, out);
+    }
+  };
+
+  const visit = (node: any) => {
+    if (node == null) return;
+    if (Array.isArray(node)) { node.forEach(visit); return; }
     if (typeof node !== 'object') return;
     for (const [k, v] of Object.entries(node)) {
       const matched = OCCURRENCE_KEY_PATTERNS.find((p) => p.regex.test(k));
-      if (matched && Array.isArray(v) && v.length > 0 && typeof v[0] === 'object') {
-        buckets[matched.label] = (buckets[matched.label] || []).concat(v as any[]);
-      } else if (matched && v && typeof v === 'object' && !Array.isArray(v)) {
-        // some bureaus wrap a single record as object — include if it has scalar fields
-        const hasScalars = Object.values(v as any).some((x) => typeof x === 'string' || typeof x === 'number');
-        if (hasScalars) buckets[matched.label] = (buckets[matched.label] || []).concat([v as any]);
-        visit(v, k);
-      } else {
-        visit(v, k);
+      if (matched) {
+        const found: any[] = [];
+        collectLeaves(v, found);
+        if (found.length > 0) {
+          buckets[matched.label] = (buckets[matched.label] || []).concat(found);
+        }
+      } else if (v && typeof v === 'object') {
+        visit(v);
       }
     }
   };

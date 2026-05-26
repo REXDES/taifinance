@@ -21,6 +21,12 @@ import {
   PRIORITY_FIELDS,
   type OccurrenceRecord,
 } from '@/lib/creditOccurrences';
+import { JourneyStepper } from './JourneyStepper';
+import { QualificationStep } from './steps/QualificationStep';
+import { BiometryStep } from './steps/BiometryStep';
+import { SimulationStep } from './steps/SimulationStep';
+import { ContractStep } from './steps/ContractStep';
+import { BoletosStep } from './steps/BoletosStep';
 
 interface Props { companyId: string }
 
@@ -222,6 +228,7 @@ export function CreditApplicationsPage({ companyId }: Props) {
         onClose={() => setDetailApp(null)}
         onReevaluate={(a) => handleReevaluate(a)}
         reevaluating={!!detailApp && reevaluatingId === detailApp.id}
+        onChanged={refetch}
       />
     </div>
   );

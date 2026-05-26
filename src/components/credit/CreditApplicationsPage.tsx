@@ -505,7 +505,7 @@ function ConsultationResultCard({ result, onContinue, onDiscard }: { result: Con
         <Button variant="ghost" onClick={onDiscard}>Descartar</Button>
         {e.decision !== 'rejected' && (
           <Button onClick={onContinue}>
-            Avançar para qualificação <ArrowRight className="w-4 h-4 ml-2" />
+            Avançar para simulação <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         )}
         {e.decision === 'rejected' && (

@@ -195,21 +195,39 @@ export function CreditAdminPage({ companyId }: Props) {
             <CardHeader>
               <CardTitle>Probabilidade de pagamento (adimplência)</CardTitle>
               <CardDescription>
-                Régua de corte baseada no nó <code>probabilidade_inadimplencia</code> (escala 1 = baixa probabilidade de inadimplência / bom pagador, 9 = alta probabilidade de inadimplência / mau pagador)
-                e na interpretação textual do score (nó "Texto"), que descreve a <strong>probabilidade de pagamento</strong>.
+                Régua de corte baseada no nó <code>probabilidade_inadimplencia</code> do bureau, exibido aqui
+                <strong> invertido</strong> como <em>probabilidade de pagamento</em> (1 = baixa probabilidade de pagamento /
+                pior pagador, 9 = alta probabilidade de pagamento / melhor pagador) — alinhado à interpretação textual do
+                score (nó "Texto").
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="max-w-md">
-                <Label className="text-xs">Aceitar até probabilidade de inadimplência máxima de (1 a 9)</Label>
-                <Input type="number" min={1} max={9} value={draft.max_probabilidade_inadimplencia}
-                  onChange={(e) => setDraft({ ...draft, max_probabilidade_inadimplencia: Math.min(9, Math.max(1, parseInt(e.target.value) || 9)) })} />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Acima desse valor a proposta é reprovada. Use 9 para desativar esta régua.
-                </p>
+                {(() => {
+                  const minPay = 10 - (draft.max_probabilidade_inadimplencia ?? 9);
+                  return (
+                    <>
+                      <Label className="text-xs">Aceitar a partir de probabilidade de pagamento mínima (1 = pior, 9 = melhor)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={9}
+                        value={minPay}
+                        onChange={(e) => {
+                          const v = Math.min(9, Math.max(1, parseInt(e.target.value) || 1));
+                          setDraft({ ...draft, max_probabilidade_inadimplencia: 10 - v });
+                        }}
+                      />
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Propostas com probabilidade de pagamento abaixo deste valor são reprovadas.
+                        Use <strong>1</strong> para desativar esta régua (aceitar qualquer probabilidade).
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
               <div>
-                <Label className="text-xs">Reprovar quando a probabilidade de pagamento for:</Label>
+                <Label className="text-xs">Reprovar quando a probabilidade de pagamento (texto do score) for:</Label>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2">
                   {[
                     { value: 'muito_baixa', label: 'Muito Baixa', hint: 'pior' },

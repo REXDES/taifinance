@@ -182,6 +182,81 @@ function knockoutsFromReason(reason: string | null | undefined): string[] {
   return reason.split(';').map((s) => s.trim()).filter(Boolean);
 }
 
+/** Categorias de ocorrências negativas que queremos exibir detalhadas. */
+const OCCURRENCE_KEY_PATTERNS: Array<{ label: string; regex: RegExp }> = [
+  { label: 'Alertas / Restrições', regex: /ALERTA|RESTRIC/i },
+  { label: 'Protestos', regex: /PROTESTO/i },
+  { label: 'Pendências Financeiras', regex: /PENDENCIA/i },
+  { label: 'Cheques sem Fundo (CCF)', regex: /\bCCF\b|CHEQUE/i },
+  { label: 'Ações Cíveis', regex: /ACAO_CIVE|ACOES_CIVE|AC_CIVEIS/i },
+];
+
+/** Walks the raw_response and collects records from arrays whose key matches a pattern. */
+function extractOccurrences(raw: any): Array<{ category: string; items: Array<Record<string, any>> }> {
+  const buckets: Record<string, Array<Record<string, any>>> = {};
+  const visit = (node: any, parentKey = '') => {
+    if (node == null) return;
+    if (Array.isArray(node)) {
+      node.forEach((v) => visit(v, parentKey));
+      return;
+    }
+    if (typeof node !== 'object') return;
+    for (const [k, v] of Object.entries(node)) {
+      const matched = OCCURRENCE_KEY_PATTERNS.find((p) => p.regex.test(k));
+      if (matched && Array.isArray(v) && v.length > 0 && typeof v[0] === 'object') {
+        buckets[matched.label] = (buckets[matched.label] || []).concat(v as any[]);
+      } else if (matched && v && typeof v === 'object' && !Array.isArray(v)) {
+        // some bureaus wrap a single record as object — include if it has scalar fields
+        const hasScalars = Object.values(v as any).some((x) => typeof x === 'string' || typeof x === 'number');
+        if (hasScalars) buckets[matched.label] = (buckets[matched.label] || []).concat([v as any]);
+        visit(v, k);
+      } else {
+        visit(v, k);
+      }
+    }
+  };
+  visit(raw);
+  return Object.entries(buckets).map(([category, items]) => ({ category, items }));
+}
+
+function OccurrencesList({ raw }: { raw: any }) {
+  const groups = extractOccurrences(raw);
+  if (groups.length === 0) {
+    return <p className="text-xs text-muted-foreground">Nenhuma ocorrência detalhada retornada pelo bureau.</p>;
+  }
+  return (
+    <div className="space-y-3">
+      {groups.map((g) => (
+        <div key={g.category} className="rounded-lg border border-border bg-card">
+          <div className="px-3 py-2 border-b bg-muted/40 flex items-center justify-between">
+            <div className="text-sm font-semibold">{g.category}</div>
+            <Badge variant="outline" className="text-xs">{g.items.length}</Badge>
+          </div>
+          <div className="divide-y">
+            {g.items.map((it, i) => {
+              const entries = Object.entries(it).filter(([, v]) =>
+                v != null && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== ''
+              );
+              return (
+                <div key={i} className="p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {entries.length === 0 ? (
+                    <pre className="text-[11px] font-mono col-span-full whitespace-pre-wrap">{JSON.stringify(it, null, 2)}</pre>
+                  ) : entries.map(([k, v]) => (
+                    <div key={k} className="text-xs">
+                      <div className="text-[10px] uppercase text-muted-foreground">{k.replace(/_/g, ' ')}</div>
+                      <div className="font-medium break-words">{String(v)}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ConsultationResultCard({ result, onContinue, onDiscard }: { result: ConsultResult; onContinue: () => void; onDiscard: () => void }) {
   const e = result.engine;
   const colorClass = e.decision === 'approved' ? 'border-emerald-500/40 bg-emerald-500/5'

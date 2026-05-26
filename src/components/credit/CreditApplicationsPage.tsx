@@ -1,17 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useCreditApplications, consultCredit, type ConsultResult, type CreditApplication } from '@/hooks/useCreditModule';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Search, ShieldCheck, ShieldAlert, ShieldX, ArrowRight, Eye, AlertTriangle } from 'lucide-react';
+import { Loader2, Plus, Search, ShieldCheck, ShieldAlert, ShieldX, ArrowRight, Eye, AlertTriangle, Gavel, RefreshCw, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  extractOccurrences,
+  buildOccurrenceKey,
+  pickTitulo,
+  pickDescricao,
+  PRIORITY_FIELDS,
+  type OccurrenceRecord,
+} from '@/lib/creditOccurrences';
 
 interface Props { companyId: string }
 
@@ -38,6 +47,7 @@ export function CreditApplicationsPage({ companyId }: Props) {
   const [consultResult, setConsultResult] = useState<ConsultResult | null>(null);
   const [createdAppId, setCreatedAppId] = useState<string | null>(null);
   const [detailApp, setDetailApp] = useState<CreditApplication | null>(null);
+  const [reevaluatingId, setReevaluatingId] = useState<string | null>(null);
 
   const handleStartNew = async () => {
     const docDigits = newDoc.replace(/\D/g, '');
@@ -78,6 +88,24 @@ export function CreditApplicationsPage({ companyId }: Props) {
     setNewDoc('');
     setConsultResult(null);
     setCreatedAppId(null);
+  };
+
+  const handleReevaluate = async (a: CreditApplication, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setReevaluatingId(a.id);
+    try {
+      const r = await consultCredit({ documento: a.documento, company_id: companyId, application_id: a.id });
+      toast.success(
+        r.engine.decision === 'approved' ? 'Reavaliada: aprovada' :
+        r.engine.decision === 'manual' ? 'Reavaliada: análise manual' :
+        'Reavaliada: ainda recusada'
+      );
+      await refetch();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao reavaliar');
+    } finally {
+      setReevaluatingId(null);
+    }
   };
 
   return (
@@ -148,7 +176,7 @@ export function CreditApplicationsPage({ companyId }: Props) {
                   <TableHead>Etapa</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criada em</TableHead>
-                  <TableHead className="w-12"></TableHead>
+                  <TableHead className="w-28 text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -163,7 +191,22 @@ export function CreditApplicationsPage({ companyId }: Props) {
                     </TableCell>
                     <TableCell><StatusBadge status={a.status} decision={a.decision} /></TableCell>
                     <TableCell className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                    <TableCell><Eye className="w-4 h-4 text-muted-foreground" /></TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          title="Reavaliar análise"
+                          disabled={reevaluatingId === a.id}
+                          onClick={(e) => handleReevaluate(a, e)}
+                        >
+                          {reevaluatingId === a.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <RefreshCw className="w-4 h-4" />}
+                        </Button>
+                        <Eye className="w-4 h-4 text-muted-foreground self-center" />
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -172,7 +215,14 @@ export function CreditApplicationsPage({ companyId }: Props) {
         </CardContent>
       </Card>
 
-      <ApplicationDetailDialog app={detailApp} onClose={() => setDetailApp(null)} />
+      <ApplicationDetailDialog
+        app={detailApp}
+        companyId={companyId}
+        userId={user?.id ?? null}
+        onClose={() => setDetailApp(null)}
+        onReevaluate={(a) => handleReevaluate(a)}
+        reevaluating={!!detailApp && reevaluatingId === detailApp.id}
+      />
     </div>
   );
 }
@@ -182,160 +232,213 @@ function knockoutsFromReason(reason: string | null | undefined): string[] {
   return reason.split(';').map((s) => s.trim()).filter(Boolean);
 }
 
-/** Categorias de ocorrências negativas que queremos exibir detalhadas. */
-const OCCURRENCE_KEY_PATTERNS: Array<{ label: string; regex: RegExp }> = [
-  { label: 'Alertas / Restrições', regex: /ALERTA|RESTRIC|CHAVEAMENTO|STATUS_CONSUMIDOR/i },
-  { label: 'Protestos', regex: /PROTESTO/i },
-  { label: 'Pendências Financeiras', regex: /PENDENCIA/i },
-  { label: 'Cheques sem Fundo (CCF)', regex: /\bCCF\b|CHEQUE/i },
-  { label: 'Ações Cíveis', regex: /ACAO_CIVE|ACOES_CIVE|AC_CIVEIS/i },
-];
+// ---------- Ocorrências ignoradas (alçada) ----------
 
-/** Campos prioritários que descrevem a ocorrência (exibidos primeiro e em destaque). */
-const PRIORITY_FIELDS = ['TITULO', 'TIPO', 'DESCRICAO', 'OBSERVACOES', 'OBSERVACAO', 'MENSAGEM', 'MOTIVO', 'DESCRICAO_TIPO_INFORMACAO'];
+type IgnoredRow = {
+  id: string;
+  occurrence_key: string;
+  status: 'pending' | 'approved' | 'rejected';
+  category: string;
+  request_reason: string | null;
+  decision_notes: string | null;
+};
 
-/** Walks the raw_response and collects records under keys matching a pattern. */
-function extractOccurrences(raw: any): Array<{ category: string; items: Array<Record<string, any>> }> {
-  const buckets: Record<string, Array<Record<string, any>>> = {};
+function useIgnoredOccurrences(companyId: string | null, documento: string | null) {
+  const [byKey, setByKey] = useState<Record<string, IgnoredRow>>({});
+  const [loading, setLoading] = useState(false);
 
-  const buildOccurrenceKey = (record: Record<string, any>) => JSON.stringify(
-    Object.entries(record)
-      .filter(([, v]) => v != null && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== '')
-      .map(([k, v]) => [k.toUpperCase(), String(v).trim()])
-      .sort(([a], [b]) => a.localeCompare(b))
-  );
-
-  const dedupeItems = (items: Array<Record<string, any>>) => {
-    const seen = new Set<string>();
-    return items.filter((item) => {
-      const key = buildOccurrenceKey(item);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  };
-
-  const isStatusWrapper = (o: Record<string, any>) => {
-    const keys = Object.keys(o).map((k) => k.toUpperCase());
-    return keys.length > 0 && keys.length <= 3 &&
-      keys.every((k) => /CODIGO|DESCRICAO|MENSAGEM|STATUS/.test(k));
-  };
-
-  // Returns true if `node` itself OR any descendant is an object with at least
-  // one nested non-status object/array — meaning it's a container, not a leaf record.
-  const hasNestedRecord = (node: any): boolean => {
-    if (!node || typeof node !== 'object') return false;
-    if (Array.isArray(node)) return node.some((v) => v && typeof v === 'object');
-    return Object.entries(node).some(([, v]) => {
-      if (Array.isArray(v)) return v.some((x) => x && typeof x === 'object');
-      if (v && typeof v === 'object') return !isStatusWrapper(v as any);
-      return false;
-    });
-  };
-
-  // Collect only "deepest" records (records that don't themselves contain nested records).
-  const collectLeaves = (node: any, out: any[]) => {
-    if (node == null) return;
-    if (Array.isArray(node)) { node.forEach((v) => collectLeaves(v, out)); return; }
-    if (typeof node !== 'object') return;
-    if (isStatusWrapper(node)) return;
-
-    if (!hasNestedRecord(node)) {
-      // pure leaf: only scalar fields. Skip empty aggregates (all values empty/0).
-      const scalarEntries = Object.entries(node).filter(([, v]) =>
-        v != null && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== ''
-      );
-      if (scalarEntries.length === 0) return;
-      // Skip aggregate summaries whose only meaningful field is QUANTIDADE_OCORRENCIA=0
-      const meaningful = scalarEntries.filter(
-        ([k, v]) => !/^QUANTIDADE_OCORRENCIA$/i.test(k) || (Number(v) || 0) > 0
-      );
-      if (meaningful.length === 0) return;
-      out.push(node);
-      return;
+  const refetch = useCallback(async () => {
+    if (!companyId || !documento) { setByKey({}); return; }
+    setLoading(true);
+    const { data, error } = await (supabase as any)
+      .from('credit_ignored_occurrences')
+      .select('id, occurrence_key, status, category, request_reason, decision_notes')
+      .eq('company_id', companyId)
+      .eq('documento', documento)
+      .order('created_at', { ascending: false });
+    if (error) console.error(error);
+    const map: Record<string, IgnoredRow> = {};
+    for (const r of (data || []) as IgnoredRow[]) {
+      // keep most recent per key
+      if (!map[r.occurrence_key]) map[r.occurrence_key] = r;
     }
-    // container — recurse into children only
-    for (const v of Object.values(node)) {
-      if (v && typeof v === 'object') collectLeaves(v, out);
-    }
-  };
+    setByKey(map);
+    setLoading(false);
+  }, [companyId, documento]);
 
-  const visit = (node: any) => {
-    if (node == null) return;
-    if (Array.isArray(node)) { node.forEach(visit); return; }
-    if (typeof node !== 'object') return;
-    for (const [k, v] of Object.entries(node)) {
-      const matched = OCCURRENCE_KEY_PATTERNS.find((p) => p.regex.test(k));
-      if (matched) {
-        const found: any[] = [];
-        collectLeaves(v, found);
-        if (found.length > 0) {
-          buckets[matched.label] = (buckets[matched.label] || []).concat(found);
-        }
-      } else if (v && typeof v === 'object') {
-        visit(v);
-      }
-    }
-  };
-  visit(raw);
-  return Object.entries(buckets).map(([category, items]) => ({ category, items: dedupeItems(items) }));
+  useEffect(() => { refetch(); }, [refetch]);
+
+  return { byKey, loading, refetch };
 }
 
-function OccurrencesList({ raw }: { raw: any }) {
+function OccurrencesList({
+  raw, companyId, documento, applicationId, userId,
+}: {
+  raw: any;
+  companyId: string;
+  documento: string;
+  applicationId: string | null;
+  userId: string | null;
+}) {
   const groups = extractOccurrences(raw);
+  const { byKey, refetch } = useIgnoredOccurrences(companyId, documento);
+  const [requestFor, setRequestFor] = useState<{ category: string; record: OccurrenceRecord; key: string } | null>(null);
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
   if (groups.length === 0) {
     return <p className="text-xs text-muted-foreground">Nenhuma ocorrência detalhada retornada pelo bureau.</p>;
   }
+
+  const submitRequest = async () => {
+    if (!requestFor) return;
+    setSubmitting(true);
+    const { error } = await (supabase as any).from('credit_ignored_occurrences').insert({
+      company_id: companyId,
+      application_id: applicationId,
+      documento,
+      occurrence_key: requestFor.key,
+      category: requestFor.category,
+      titulo: pickTitulo(requestFor.record),
+      descricao: pickDescricao(requestFor.record),
+      raw_record: requestFor.record,
+      status: 'pending',
+      request_reason: reason || null,
+      requested_by: userId,
+    });
+    setSubmitting(false);
+    if (error) {
+      if (String(error.message || '').includes('uq_cio_pending_or_approved')) {
+        toast.error('Já existe uma solicitação pendente ou aprovada para esta ocorrência.');
+      } else {
+        toast.error('Erro ao solicitar alçada: ' + error.message);
+      }
+      return;
+    }
+    toast.success('Alçada solicitada. Aguardando aprovação do gerente.');
+    setRequestFor(null);
+    setReason('');
+    refetch();
+  };
+
   return (
-    <div className="space-y-3">
-      {groups.map((g) => (
-        <div key={g.category} className="rounded-lg border border-border bg-card">
-          <div className="px-3 py-2 border-b bg-muted/40 flex items-center justify-between">
-            <div className="text-sm font-semibold">{g.category}</div>
-            <Badge variant="outline" className="text-xs">{g.items.length}</Badge>
-          </div>
-          <div className="divide-y">
-            {g.items.map((it, i) => {
-              const entries = Object.entries(it).filter(([, v]) =>
-                v != null && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== ''
-              );
-              const priority = entries.filter(([k]) => PRIORITY_FIELDS.includes(k.toUpperCase()));
-              const rest = entries.filter(([k]) => !PRIORITY_FIELDS.includes(k.toUpperCase()));
-              const titulo = priority.find(([k]) => k.toUpperCase() === 'TITULO')?.[1];
-              const descricao = priority.find(([k]) =>
-                ['DESCRICAO', 'OBSERVACOES', 'OBSERVACAO', 'MENSAGEM', 'MOTIVO', 'DESCRICAO_TIPO_INFORMACAO'].includes(k.toUpperCase())
-              )?.[1];
-              return (
-                <div key={i} className="p-3 space-y-2">
-                  {entries.length === 0 ? (
-                    <pre className="text-[11px] font-mono whitespace-pre-wrap">{JSON.stringify(it, null, 2)}</pre>
-                  ) : (
-                    <>
-                      {(titulo || descricao) && (
-                        <div className="rounded border-l-2 border-amber-500 bg-amber-500/5 px-3 py-2">
-                          {titulo && <div className="text-sm font-semibold">{String(titulo)}</div>}
-                          {descricao && <div className="text-xs text-muted-foreground mt-0.5">{String(descricao)}</div>}
-                        </div>
-                      )}
-                      {rest.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                          {rest.map(([k, v]) => (
-                            <div key={k} className="text-xs">
-                              <div className="text-[10px] uppercase text-muted-foreground">{k.replace(/_/g, ' ')}</div>
-                              <div className="font-medium break-words">{String(v)}</div>
+    <>
+      <div className="space-y-3">
+        {groups.map((g) => (
+          <div key={g.category} className="rounded-lg border border-border bg-card">
+            <div className="px-3 py-2 border-b bg-muted/40 flex items-center justify-between">
+              <div className="text-sm font-semibold">{g.category}</div>
+              <Badge variant="outline" className="text-xs">{g.items.length}</Badge>
+            </div>
+            <div className="divide-y">
+              {g.items.map((it, i) => {
+                const entries = Object.entries(it).filter(([, v]) =>
+                  v != null && (typeof v === 'string' || typeof v === 'number') && String(v).trim() !== ''
+                );
+                const priority = entries.filter(([k]) => PRIORITY_FIELDS.includes(k.toUpperCase()));
+                const rest = entries.filter(([k]) => !PRIORITY_FIELDS.includes(k.toUpperCase()));
+                const titulo = priority.find(([k]) => k.toUpperCase() === 'TITULO')?.[1];
+                const descricao = priority.find(([k]) =>
+                  ['DESCRICAO', 'OBSERVACOES', 'OBSERVACAO', 'MENSAGEM', 'MOTIVO', 'DESCRICAO_TIPO_INFORMACAO'].includes(k.toUpperCase())
+                )?.[1];
+                const key = buildOccurrenceKey(it);
+                const ignored = byKey[key];
+
+                return (
+                  <div key={i} className="p-3 space-y-2">
+                    {entries.length === 0 ? (
+                      <pre className="text-[11px] font-mono whitespace-pre-wrap">{JSON.stringify(it, null, 2)}</pre>
+                    ) : (
+                      <>
+                        <div className="flex items-start justify-between gap-3">
+                          {(titulo || descricao) ? (
+                            <div className="flex-1 rounded border-l-2 border-amber-500 bg-amber-500/5 px-3 py-2">
+                              {titulo && <div className="text-sm font-semibold">{String(titulo)}</div>}
+                              {descricao && <div className="text-xs text-muted-foreground mt-0.5">{String(descricao)}</div>}
                             </div>
-                          ))}
+                          ) : <div className="flex-1" />}
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            {ignored?.status === 'approved' && (
+                              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />Ignorada (alçada)
+                              </Badge>
+                            )}
+                            {ignored?.status === 'pending' && (
+                              <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                                <Clock className="w-3 h-3 mr-1" />Aguardando alçada
+                              </Badge>
+                            )}
+                            {ignored?.status === 'rejected' && (
+                              <Badge className="bg-destructive/15 text-destructive border-destructive/30">
+                                <XCircle className="w-3 h-3 mr-1" />Alçada negada
+                              </Badge>
+                            )}
+                            {(!ignored || ignored.status === 'rejected') && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => { setRequestFor({ category: g.category, record: it, key }); setReason(''); }}
+                              >
+                                <Gavel className="w-3.5 h-3.5 mr-1.5" />
+                                Solicitar alçada
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
+                        {rest.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                            {rest.map(([k, v]) => (
+                              <div key={k} className="text-xs">
+                                <div className="text-[10px] uppercase text-muted-foreground">{k.replace(/_/g, ' ')}</div>
+                                <div className="font-medium break-words">{String(v)}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+
+      <Dialog open={!!requestFor} onOpenChange={(o) => !o && setRequestFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Solicitar alçada</DialogTitle>
+            <DialogDescription>
+              Esta ocorrência ficará pendente até que um Gerente ou Supervisor aprove. Uma vez aprovada, ela
+              não será considerada restritiva nesta nem em próximas consultas deste documento.
+            </DialogDescription>
+          </DialogHeader>
+          {requestFor && (
+            <div className="space-y-3">
+              <div className="rounded border-l-2 border-amber-500 bg-amber-500/5 px-3 py-2">
+                <div className="text-xs uppercase text-muted-foreground">{requestFor.category}</div>
+                <div className="text-sm font-semibold">{pickTitulo(requestFor.record) || '(sem título)'}</div>
+                {pickDescricao(requestFor.record) && (
+                  <div className="text-xs text-muted-foreground mt-0.5">{pickDescricao(requestFor.record)}</div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium">Justificativa (opcional)</label>
+                <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Por que esta ocorrência deve ser ignorada?" rows={3} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRequestFor(null)} disabled={submitting}>Cancelar</Button>
+            <Button onClick={submitRequest} disabled={submitting}>
+              {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Gavel className="w-4 h-4 mr-2" />}
+              Solicitar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -367,6 +470,21 @@ function ConsultationResultCard({ result, onContinue, onDiscard }: { result: Con
         <Stat label="Prob. Inadimpl." value={result.summary.probabilidade_inadimplencia || '—'} />
         <Stat label="Situação" value={result.summary.situacao_cpf || '—'} />
       </div>
+
+      {result.ignored_adjustments && result.ignored_adjustments.length > 0 && (
+        <div className="rounded border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs">
+          <div className="font-medium text-emerald-700 dark:text-emerald-300 mb-1 flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Ocorrências ignoradas por alçada aplicadas
+          </div>
+          <ul className="space-y-0.5">
+            {result.ignored_adjustments.map((a, i) => (
+              <li key={i} className="text-muted-foreground">
+                {a.category}: {a.field} {a.before} → {a.after} (−{a.subtracted})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <DecisionBox decision={e.decision} approved_limit={e.approved_limit} max_parcelas={e.max_parcelas} reason={e.reason} knockouts={e.knockouts} />
 
@@ -446,7 +564,16 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ApplicationDetailDialog({ app, onClose }: { app: CreditApplication | null; onClose: () => void }) {
+function ApplicationDetailDialog({
+  app, companyId, userId, onClose, onReevaluate, reevaluating,
+}: {
+  app: CreditApplication | null;
+  companyId: string;
+  userId: string | null;
+  onClose: () => void;
+  onReevaluate: (a: CreditApplication) => void;
+  reevaluating: boolean;
+}) {
   const [consultation, setConsultation] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -465,7 +592,7 @@ function ApplicationDetailDialog({ app, onClose }: { app: CreditApplication | nu
       setConsultation(data);
       setLoading(false);
     })();
-  }, [app]);
+  }, [app, reevaluating]);
 
   if (!app) return null;
 
@@ -489,11 +616,19 @@ function ApplicationDetailDialog({ app, onClose }: { app: CreditApplication | nu
           <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin" /></div>
         ) : (
           <Tabs defaultValue="decision" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList>
-              <TabsTrigger value="decision">Decisão</TabsTrigger>
-              <TabsTrigger value="occurrences">Ocorrências</TabsTrigger>
-              <TabsTrigger value="summary">Resumo</TabsTrigger>
-              <TabsTrigger value="raw">Resposta completa</TabsTrigger>
+            <TabsList className="flex items-center justify-between">
+              <div className="flex">
+                <TabsTrigger value="decision">Decisão</TabsTrigger>
+                <TabsTrigger value="occurrences">Ocorrências</TabsTrigger>
+                <TabsTrigger value="summary">Resumo</TabsTrigger>
+                <TabsTrigger value="raw">Resposta completa</TabsTrigger>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => onReevaluate(app)} disabled={reevaluating} className="ml-2">
+                {reevaluating
+                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  : <RefreshCw className="w-4 h-4 mr-2" />}
+                Reavaliar análise
+              </Button>
             </TabsList>
 
             <TabsContent value="decision" className="flex-1 overflow-auto">
@@ -521,10 +656,14 @@ function ApplicationDetailDialog({ app, onClose }: { app: CreditApplication | nu
             </TabsContent>
 
             <TabsContent value="occurrences" className="flex-1 overflow-auto">
-              <OccurrencesList raw={consultation?.raw_response} />
+              <OccurrencesList
+                raw={consultation?.raw_response}
+                companyId={companyId}
+                documento={app.documento}
+                applicationId={app.id}
+                userId={userId}
+              />
             </TabsContent>
-
-
 
             <TabsContent value="summary" className="flex-1 overflow-auto">
               {Object.keys(summary).length === 0 ? (

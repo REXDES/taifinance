@@ -369,7 +369,7 @@ function ApplicationDetailDialog({ app, onClose }: { app: CreditApplication | nu
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {Object.entries(summary).map(([k, v]) => (
                     <div key={k} className="rounded border border-border bg-card px-3 py-2 text-sm">
-                      <div className="text-[10px] text-muted-foreground uppercase">{k.replaceAll('_', ' ')}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase">{k.replace(/_/g, ' ')}</div>
                       <div className="font-medium break-words">{String(v ?? '—')}</div>
                     </div>
                   ))}

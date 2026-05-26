@@ -250,6 +250,7 @@ export interface ConsultResult {
   pdf_data?: string | null;
   texto_score_bucket?: string | null;
   probabilidade_inadimplencia?: number | null;
+  bureau_analysis?: BureauAnalysis | null;
 }
 
 export async function consultCredit(params: {

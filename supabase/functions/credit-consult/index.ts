@@ -27,6 +27,15 @@ interface RedeBESummary {
   quantidade_ccf_bacen?: string;
   quantidade_ccf_varejo?: string;
   qtd_dependentes_bolsa_familia?: string;
+  // New analytical fields under "resumo"
+  score_analise?: string;
+  max_parcelas?: string;
+  parcela_maxima?: string;
+  limite_sugerido?: string;
+  nivel_de_confianca?: string;
+  descricao_rating?: string;
+  observacao_credito?: string;
+  sugestao_de_negocio?: string;
 }
 
 interface ScoreBand {
@@ -51,7 +60,49 @@ interface CreditRules {
   max_dependentes_bolsa_familia?: number;
   max_probabilidade_inadimplencia?: number;
   texto_inadimplencia_block_levels?: string[];
+  // Bureau analysis cut-offs
+  min_score_analise?: number;
+  use_bureau_limits?: boolean;
+  min_nivel_confianca_levels?: string[];
+  sugestao_negocio_block_levels?: string[];
 }
+
+// ---- Bureau "resumo" analytical helpers ----
+function toNumberLoose(v: any): number | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  // strip currency / thousand separators, keep last decimal comma/dot
+  const cleaned = s.replace(/[R$\s]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+function classifyConfianca(v: string | undefined | null): string | null {
+  if (!v) return null;
+  const s = String(v).toLowerCase();
+  if (/muito\s+alt/.test(s)) return 'muito_alto';
+  if (/muito\s+baix/.test(s)) return 'muito_baixo';
+  if (/\balt/.test(s)) return 'alto';
+  if (/\bbaix/.test(s)) return 'baixo';
+  if (/\bm[eé]di/.test(s)) return 'medio';
+  return null;
+}
+function classifySugestao(v: string | undefined | null): string | null {
+  if (!v) return null;
+  const s = String(v).toLowerCase();
+  if (/n[aã]o\s+recomend|negar|recus|reprov/.test(s)) return 'nao_recomendar';
+  if (/cautel|atenç|analis[ae]\s+manual|aprov.*restri/.test(s)) return 'recomendar_com_cautela';
+  if (/recomend|aprov|liber/.test(s)) return 'recomendar';
+  return null;
+}
+const CONFIANCA_LABEL: Record<string, string> = {
+  muito_baixo: 'Muito Baixo', baixo: 'Baixo', medio: 'Médio', alto: 'Alto', muito_alto: 'Muito Alto',
+};
+const SUGESTAO_LABEL: Record<string, string> = {
+  recomendar: 'Recomendar',
+  recomendar_com_cautela: 'Recomendar com cautela',
+  nao_recomendar: 'Não recomendar',
+};
 
 // Classify the score "texto" into a probability bucket
 function classifyTextoInadimplencia(t: string | undefined | null): string | null {

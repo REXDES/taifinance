@@ -137,6 +137,9 @@ const machinesMenuItems: MenuItem[] = [
 const creditMenuItems: MenuItem[] = [
   { view: 'credit-applications', label: 'Propostas', icon: <ClipboardList className="w-4 h-4" /> },
 ];
+const creditAdminMenuItems: MenuItem[] = [
+  { view: 'credit-ignored', label: 'Ocorrências Ignoradas', icon: <Shield className="w-4 h-4" /> },
+];
 
 export function FinanceSidebar({
   companies,

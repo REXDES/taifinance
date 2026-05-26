@@ -81,6 +81,33 @@ export interface CreditApplication {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  probabilidade_inadimplencia?: number | null;
+  texto_score_bucket?: string | null;
+}
+
+// Maps the bureau "texto" classification (probability of payment).
+// Lower bucket = worse payer. We display in "payment probability" terms.
+export const PAYMENT_BUCKET_LABEL: Record<string, string> = {
+  muito_baixa: 'Muito Baixa',
+  baixa: 'Baixa',
+  media: 'Média',
+  alta: 'Alta',
+  muito_alta: 'Muito Alta',
+};
+export const PAYMENT_BUCKET_HINT: Record<string, string> = {
+  muito_baixa: 'pior',
+  baixa: 'ruim',
+  media: 'média',
+  alta: 'boa',
+  muito_alta: 'melhor',
+};
+// Bureau raw is 1=baixa inadimpl. (bom pagador) ... 9=alta inadimpl. (mau pagador).
+// User wants display where 9 = alta prob. de pagamento (melhor), 1 = baixa (pior).
+export function toPaymentProbability(rawInadimplencia: number | null | undefined): number | null {
+  if (rawInadimplencia == null) return null;
+  const n = Number(rawInadimplencia);
+  if (!Number.isFinite(n) || n < 1 || n > 9) return null;
+  return 10 - n;
 }
 
 export function useCompanyCreditFlag(companyId: string | null) {

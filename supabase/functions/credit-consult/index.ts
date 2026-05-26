@@ -480,6 +480,24 @@ serve(async (req) => {
       if (p != null) summary.probabilidade_inadimplencia = String(p);
     }
 
+    // Backfill novos campos do nó "resumo" (análise do bureau)
+    const backfillIfMissing = (field: keyof RedeBESummary, regex: RegExp) => {
+      if ((summary as any)[field]) return;
+      const v = findFirstDeep(redeBlock, (k, val) =>
+        (typeof val === 'string' || typeof val === 'number') && regex.test(k)
+      );
+      if (v != null) (summary as any)[field] = String(v);
+    };
+    backfillIfMissing('score_analise', /^score[_\s-]?an[aá]lise$/i);
+    backfillIfMissing('max_parcelas', /^max[_\s-]?parcelas$/i);
+    backfillIfMissing('parcela_maxima', /^parcela[_\s-]?m[aá]xima$/i);
+    backfillIfMissing('limite_sugerido', /^limite[_\s-]?sugerido$/i);
+    backfillIfMissing('nivel_de_confianca', /n[ií]vel[_\s-]?de?[_\s-]?confian[cç]a/i);
+    backfillIfMissing('descricao_rating', /descri[cç][aã]o[_\s-]?rating/i);
+    backfillIfMissing('observacao_credito', /observa[cç][aã]o[_\s-]?cr[eé]dito/i);
+    backfillIfMissing('sugestao_de_negocio', /sugest[aã]o[_\s-]?de?[_\s-]?neg[oó]cio/i);
+
+
 
     // ----- Ocorrências ignoradas (alçada aprovada) -----
     // Escopo: 'application' (só esta proposta), 'document' (todas do cliente),

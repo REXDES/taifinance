@@ -507,6 +507,8 @@ serve(async (req) => {
             decision_reason: engine.reason,
             status: engine.decision === "rejected" ? "rejected" : "consulted",
             current_step: engine.decision === "rejected" ? 1 : 2,
+            probabilidade_inadimplencia: probInadNum,
+            texto_score_bucket: textoBucket,
           })
           .eq("id", application_id);
       }

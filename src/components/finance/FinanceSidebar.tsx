@@ -134,6 +134,10 @@ const machinesMenuItems: MenuItem[] = [
   { view: 'machines-mechanics', label: 'Mecânicos', icon: <Wrench className="w-4 h-4" /> },
 ];
 
+const creditMenuItems: MenuItem[] = [
+  { view: 'credit-applications', label: 'Propostas', icon: <ClipboardList className="w-4 h-4" /> },
+];
+
 export function FinanceSidebar({
   companies,
   selectedCompanyId,

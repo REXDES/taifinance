@@ -13,11 +13,18 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Save, Plus, Trash2, FlaskConical, KeyRound, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useCompanies } from '@/hooks/useCompanies';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Building2 } from 'lucide-react';
 
 interface Props { companyId: string }
 
 export function CreditAdminPage({ companyId }: Props) {
-  const { rules, loading, save } = useCreditRules(companyId);
+  const { companies } = useCompanies();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(companyId);
+  useEffect(() => { setSelectedCompanyId(companyId); }, [companyId]);
+
+  const { rules, loading, save } = useCreditRules(selectedCompanyId);
   const [draft, setDraft] = useState(rules);
   const [saving, setSaving] = useState(false);
 

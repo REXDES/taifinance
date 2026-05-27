@@ -868,21 +868,11 @@ function downloadPdf(pdfData: string, filename = 'espelho.pdf') {
 }
 
 function PdfEspelhoButton({ pdfData, filename }: { pdfData: string; filename?: string }) {
-  const openFullscreen = () => {
-    const { url } = buildPdfObjectUrl(pdfData);
-    openPdfInNewTab(url);
-  };
   return (
-    <div className="inline-flex items-center gap-2">
-      <Button size="sm" variant="outline" onClick={openFullscreen} title="Abrir espelho (PDF) em nova aba">
-        <FileSearch className="w-4 h-4 mr-2" />
-        Espelho PDF
-      </Button>
-      <Button size="sm" variant="outline" onClick={() => downloadPdf(pdfData, filename)} title="Baixar espelho (PDF)">
-        <Download className="w-4 h-4 mr-2" />
-        Download
-      </Button>
-    </div>
+    <Button size="sm" variant="outline" onClick={() => downloadPdf(pdfData, filename)} title="Baixar espelho (PDF)">
+      <Download className="w-4 h-4 mr-2" />
+      Download Espelho
+    </Button>
   );
 }
 
@@ -890,13 +880,8 @@ function PdfEspelhoViewer({ pdfData }: { pdfData: string }) {
   const [obj] = useState(() => buildPdfObjectUrl(pdfData));
   useEffect(() => () => { obj.revoke?.(); }, [obj]);
   return (
-    <div className="h-[60vh] flex flex-col gap-2">
-      <div className="flex justify-end">
-        <Button size="sm" variant="outline" onClick={() => openPdfInNewTab(obj.url)}>
-          Abrir em tela cheia
-        </Button>
-      </div>
-      <iframe src={obj.url} title="Espelho PDF da consulta" className="flex-1 w-full rounded border bg-muted/20" />
+    <div className="h-[60vh] w-full">
+      <iframe src={obj.url} title="Espelho PDF da consulta" className="h-full w-full rounded border bg-muted/20" />
     </div>
   );
 }

@@ -848,16 +848,35 @@ function openPdfInNewTab(url: string) {
   document.body.removeChild(a);
 }
 
-function PdfEspelhoButton({ pdfData }: { pdfData: string }) {
+function downloadPdf(pdfData: string, filename = 'espelho.pdf') {
+  const { url, revoke } = buildPdfObjectUrl(pdfData);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Give browser a moment to start the download before revoking blob.
+  setTimeout(() => revoke?.(), 1500);
+}
+
+function PdfEspelhoButton({ pdfData, filename }: { pdfData: string; filename?: string }) {
   const openFullscreen = () => {
     const { url } = buildPdfObjectUrl(pdfData);
     openPdfInNewTab(url);
   };
   return (
-    <Button size="sm" variant="outline" onClick={openFullscreen} title="Abrir espelho (PDF) em nova aba">
-      <FileSearch className="w-4 h-4 mr-2" />
-      Espelho PDF
-    </Button>
+    <div className="inline-flex items-center gap-2">
+      <Button size="sm" variant="outline" onClick={openFullscreen} title="Abrir espelho (PDF) em nova aba">
+        <FileSearch className="w-4 h-4 mr-2" />
+        Espelho PDF
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => downloadPdf(pdfData, filename)} title="Baixar espelho (PDF)">
+        <Download className="w-4 h-4 mr-2" />
+        Download
+      </Button>
+    </div>
   );
 }
 

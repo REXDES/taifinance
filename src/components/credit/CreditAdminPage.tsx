@@ -62,7 +62,7 @@ export function CreditAdminPage({ companyId }: Props) {
     setTesting(true);
     setTestResult(null);
     try {
-      const r = await consultCredit({ documento: testDoc, company_id: companyId, test_only: true });
+      const r = await consultCredit({ documento: testDoc, company_id: selectedCompanyId, test_only: true });
       setTestResult(r);
     } catch (e: any) {
       toast.error(e.message || 'Erro na consulta');

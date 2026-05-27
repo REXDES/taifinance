@@ -705,6 +705,7 @@ function ApplicationDetailDialog({
           <DialogTitle className="flex items-center gap-3 flex-wrap">
             <span>{app.nome || '(sem nome)'}</span>
             <StatusBadge status={app.status} decision={app.decision} />
+            <ApprovalSourceBadge decision={app.decision} hasAlcada={hasAlcada} />
             <PaymentProbabilityBadge
               probabilidadeInadimplencia={app.probabilidade_inadimplencia}
               textoBucket={app.texto_score_bucket}

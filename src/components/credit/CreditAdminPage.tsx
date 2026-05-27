@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Save, Plus, Trash2, FlaskConical, KeyRound, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props { companyId: string }
 
@@ -81,6 +82,8 @@ export function CreditAdminPage({ companyId }: Props) {
           Salvar configurações
         </Button>
       </div>
+
+      <GlobalConsultationsUsageCard />
 
       <Tabs defaultValue="provedor">
         <TabsList className="grid grid-cols-4 w-full max-w-2xl">
@@ -440,5 +443,98 @@ function Field({ label, value, onChange, step = 1 }: { label: string; value: num
       <Label className="text-xs">{label}</Label>
       <Input type="number" step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value) || 0)} />
     </div>
+  );
+}
+
+function GlobalConsultationsUsageCard() {
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const [from, setFrom] = useState<string>(toISO(firstOfMonth));
+  const [to, setTo] = useState<string>(toISO(today));
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<Array<{ company_id: string; company_name: string; count: number; price: number; total: number }>>([]);
+
+  useEffect(() => {
+    setLoading(true);
+    (async () => {
+      const fromTs = new Date(`${from}T00:00:00`).toISOString();
+      const toTs = new Date(`${to}T23:59:59.999`).toISOString();
+      const [{ data: consults }, { data: rules }, { data: companies }] = await Promise.all([
+        (supabase as any).from('credit_consultations').select('company_id').gte('created_at', fromTs).lte('created_at', toTs),
+        (supabase as any).from('credit_rules').select('company_id, consulta_price'),
+        (supabase as any).from('companies').select('id, name'),
+      ]);
+      const priceMap = new Map<string, number>((rules || []).map((r: any) => [r.company_id, Number(r.consulta_price || 0)]));
+      const nameMap = new Map<string, string>((companies || []).map((c: any) => [c.id, c.name]));
+      const countMap = new Map<string, number>();
+      (consults || []).forEach((c: any) => countMap.set(c.company_id, (countMap.get(c.company_id) || 0) + 1));
+      const list = Array.from(countMap.entries()).map(([cid, count]) => {
+        const price = priceMap.get(cid) || 0;
+        return { company_id: cid, company_name: nameMap.get(cid) || cid, count, price, total: count * price };
+      }).sort((a, b) => b.count - a.count);
+      setRows(list);
+      setLoading(false);
+    })();
+  }, [from, to]);
+
+  const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const totalCount = rows.reduce((s, r) => s + r.count, 0);
+  const totalCost = rows.reduce((s, r) => s + r.total, 0);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Consumo global de consultas ao bureau</CardTitle>
+        <CardDescription>
+          Total consolidado de consultas realizadas por todas as empresas no período. A Tai Finance possui uma única conta no bureau;
+          cada empresa cliente paga pelo seu próprio consumo, conforme o preço configurado em suas regras.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div>
+            <Label className="text-xs">De</Label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Até</Label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="text-xs text-muted-foreground">Total de consultas</div>
+            <div className="text-2xl font-bold">{loading ? '…' : totalCount}</div>
+          </div>
+          <div className="rounded-lg border bg-primary/5 border-primary/30 p-3">
+            <div className="text-xs text-muted-foreground">Custo total (todas as empresas)</div>
+            <div className="text-2xl font-bold text-primary">{loading ? '…' : fmt(totalCost)}</div>
+          </div>
+        </div>
+
+        {rows.length > 0 && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Empresa</TableHead>
+                <TableHead className="text-right">Consultas</TableHead>
+                <TableHead className="text-right">Preço / consulta</TableHead>
+                <TableHead className="text-right">Subtotal</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.company_id}>
+                  <TableCell>{r.company_name}</TableCell>
+                  <TableCell className="text-right">{r.count}</TableCell>
+                  <TableCell className="text-right">{r.price > 0 ? fmt(r.price) : <span className="text-muted-foreground text-xs">não configurado</span>}</TableCell>
+                  <TableCell className="text-right font-medium">{fmt(r.total)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }

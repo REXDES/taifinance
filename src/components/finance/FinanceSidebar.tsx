@@ -94,8 +94,9 @@ type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };
 const mainMenuItems: MenuItem[] = [
   { view: 'dashboard', label: 'Dashboard', icon: <Home className="w-4 h-4" /> },
   { view: 'quick-entry', label: 'Lance Rápido (Finanças)', icon: <Zap className="w-4 h-4" /> },
-  { view: 'bank-digital', label: 'Banco Digital', icon: <Landmark className="w-4 h-4" /> },
 ];
+
+const bankDigitalMenuItem: MenuItem = { view: 'bank-digital', label: 'Banco Digital', icon: <Landmark className="w-4 h-4" /> };
 
 const transacoesMenuItems: MenuItem[] = [
   { view: 'transactions', label: 'Lançamentos', icon: <ArrowUpDown className="w-4 h-4" /> },

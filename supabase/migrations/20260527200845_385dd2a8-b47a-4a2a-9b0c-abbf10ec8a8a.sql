@@ -1,0 +1,1 @@
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS bank_digital_module_enabled BOOLEAN NOT NULL DEFAULT false;

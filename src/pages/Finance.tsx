@@ -33,6 +33,7 @@ import { RentalsPage } from '@/components/machines/RentalsPage';
 import { PeoplePage } from '@/components/machines/PeoplePage';
 import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
 import { useCompanyCreditFlag } from '@/hooks/useCreditModule';
+import { useCompanyBankDigitalFlag } from '@/hooks/useBankConnections';
 import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
 import { CreditApplicationsPage } from '@/components/credit/CreditApplicationsPage';
 import { CreditIgnoredOccurrencesPage } from '@/components/credit/CreditIgnoredOccurrencesPage';
@@ -205,6 +206,7 @@ const Finance = () => {
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const { enabled: machinesEnabled, refetch: refetchMachinesFlag } = useCompanyMachinesFlag(selectedCompanyId);
   const { enabled: creditEnabled, refetch: refetchCreditFlag } = useCompanyCreditFlag(selectedCompanyId);
+  const { enabled: bankDigitalEnabled, refetch: refetchBankDigitalFlag } = useCompanyBankDigitalFlag(selectedCompanyId);
 
   const handleCreateCompany = async (name: string, color: string) => {
     const result = await createCompany(name, color);
@@ -263,7 +265,7 @@ const Finance = () => {
       case 'clients-suppliers':
         return <ClientsSuppliersPage companyId={selectedCompanyId} />;
       case 'bank-digital':
-        return <BankDigitalPage companyId={selectedCompanyId} />;
+        return bankDigitalEnabled ? <BankDigitalPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-inventory':
         return machinesEnabled ? <MachinesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-maintenance':
@@ -309,6 +311,7 @@ const Finance = () => {
         onOpenCompanySettings={() => setShowCompanySettings(true)}
         machinesEnabled={machinesEnabled}
         creditEnabled={creditEnabled}
+        bankDigitalEnabled={bankDigitalEnabled}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <FinanceHeader
@@ -361,7 +364,7 @@ const Finance = () => {
         companyId={effectiveMode === 'admin' ? null : selectedCompanyId}
         showPicker={effectiveMode === 'admin'}
         showModulesTab={effectiveMode === 'admin'}
-        onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); }}
+        onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); }}
       />
     </div>
   );

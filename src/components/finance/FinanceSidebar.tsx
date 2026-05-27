@@ -86,6 +86,7 @@ interface FinanceSidebarProps {
   onOpenCompanySettings?: () => void;
   machinesEnabled?: boolean;
   creditEnabled?: boolean;
+  bankDigitalEnabled?: boolean;
 }
 
 type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };
@@ -93,8 +94,9 @@ type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };
 const mainMenuItems: MenuItem[] = [
   { view: 'dashboard', label: 'Dashboard', icon: <Home className="w-4 h-4" /> },
   { view: 'quick-entry', label: 'Lance Rápido (Finanças)', icon: <Zap className="w-4 h-4" /> },
-  { view: 'bank-digital', label: 'Banco Digital', icon: <Landmark className="w-4 h-4" /> },
 ];
+
+const bankDigitalMenuItem: MenuItem = { view: 'bank-digital', label: 'Banco Digital', icon: <Landmark className="w-4 h-4" /> };
 
 const transacoesMenuItems: MenuItem[] = [
   { view: 'transactions', label: 'Lançamentos', icon: <ArrowUpDown className="w-4 h-4" /> },
@@ -163,6 +165,7 @@ export function FinanceSidebar({
   onOpenCompanySettings,
   machinesEnabled = false,
   creditEnabled = false,
+  bankDigitalEnabled = false,
 }: FinanceSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
@@ -328,7 +331,7 @@ export function FinanceSidebar({
               /* ============== ADMIN MODE MENU ============== */
               <>
                 {renderMenuItem({ view: 'admin-dashboard', label: 'Dashboard Admin', icon: <LayoutDashboard className="w-4 h-4" /> })}
-                {renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
+                {bankDigitalEnabled && renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
                 {renderMenuItem({ view: 'credit-admin', label: 'Gestão de Crédito (config)', icon: <CreditCard className="w-4 h-4" /> })}
 
                 {!collapsed && (
@@ -451,6 +454,7 @@ export function FinanceSidebar({
               /* ============== NORMAL MODE MENU ============== */
               <>
                 {mainMenuItems.map(renderMenuItem)}
+                {bankDigitalEnabled && renderMenuItem(bankDigitalMenuItem)}
 
                 {/* Gestão Financeira (engloba Transações, Relatórios, Cadastros) */}
                 {collapsed ? (

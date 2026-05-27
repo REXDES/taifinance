@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Search, ShieldCheck, ShieldAlert, ShieldX, ArrowRight, Eye, AlertTriangle, Gavel, RefreshCw, Clock, CheckCircle2, XCircle, FileSearch } from 'lucide-react';
+import { Loader2, Plus, Search, ShieldCheck, ShieldAlert, ShieldX, ArrowRight, Eye, AlertTriangle, Gavel, RefreshCw, Clock, CheckCircle2, XCircle, FileSearch, Download } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -538,6 +538,12 @@ function ConsultationResultCard({ result, onContinue, onDiscard }: { result: Con
 
       {result.bureau_analysis && <BureauAnalysisCard analysis={result.bureau_analysis} />}
 
+      {result.pdf_data && (
+        <div className="flex justify-end">
+          <PdfEspelhoButton pdfData={result.pdf_data} filename={`espelho-${result.documento}.pdf`} />
+        </div>
+      )}
+
       <DecisionBox decision={e.decision} approved_limit={e.approved_limit} max_parcelas={e.max_parcelas} reason={e.reason} knockouts={e.knockouts} />
 
       <div className="flex justify-end gap-2 pt-2">
@@ -714,7 +720,7 @@ function ApplicationDetailDialog({
             />
             <div className="ml-auto flex items-center gap-2">
               {consultation?.pdf_data && (
-                <PdfEspelhoButton pdfData={consultation.pdf_data} />
+                <PdfEspelhoButton pdfData={consultation.pdf_data} filename={`espelho-${app.documento}.pdf`} />
               )}
               <Button size="sm" variant="outline" onClick={() => onReevaluate(app)} disabled={reevaluating}>
                 {reevaluating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
@@ -848,16 +854,35 @@ function openPdfInNewTab(url: string) {
   document.body.removeChild(a);
 }
 
-function PdfEspelhoButton({ pdfData }: { pdfData: string }) {
+function downloadPdf(pdfData: string, filename = 'espelho.pdf') {
+  const { url, revoke } = buildPdfObjectUrl(pdfData);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Give browser a moment to start the download before revoking blob.
+  setTimeout(() => revoke?.(), 1500);
+}
+
+function PdfEspelhoButton({ pdfData, filename }: { pdfData: string; filename?: string }) {
   const openFullscreen = () => {
     const { url } = buildPdfObjectUrl(pdfData);
     openPdfInNewTab(url);
   };
   return (
-    <Button size="sm" variant="outline" onClick={openFullscreen} title="Abrir espelho (PDF) em nova aba">
-      <FileSearch className="w-4 h-4 mr-2" />
-      Espelho PDF
-    </Button>
+    <div className="inline-flex items-center gap-2">
+      <Button size="sm" variant="outline" onClick={openFullscreen} title="Abrir espelho (PDF) em nova aba">
+        <FileSearch className="w-4 h-4 mr-2" />
+        Espelho PDF
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => downloadPdf(pdfData, filename)} title="Baixar espelho (PDF)">
+        <Download className="w-4 h-4 mr-2" />
+        Download
+      </Button>
+    </div>
   );
 }
 

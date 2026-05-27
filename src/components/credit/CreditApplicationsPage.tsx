@@ -661,13 +661,15 @@ function ApplicationDetailDialog({
         .limit(1)
         .maybeSingle();
       setConsultation(data);
-      const { count } = await (supabase as any)
+      // Detect alçada: any approved ignored occurrence either for THIS application
+      // OR previously approved for the same documento within the same company.
+      const { data: ignoredRows } = await (supabase as any)
         .from('credit_ignored_occurrences')
-        .select('id', { count: 'exact', head: true })
+        .select('id, application_id, documento, status')
         .eq('company_id', companyId)
-        .eq('documento', app.documento)
-        .eq('status', 'approved');
-      setHasAlcada((count || 0) > 0);
+        .eq('status', 'approved')
+        .or(`application_id.eq.${app.id},documento.eq.${app.documento}`);
+      setHasAlcada(Array.isArray(ignoredRows) && ignoredRows.length > 0);
       setLoading(false);
     })();
   }, [app, reevaluating, companyId]);

@@ -164,6 +164,7 @@ export function FinanceSidebar({
   onOpenCompanySettings,
   machinesEnabled = false,
   creditEnabled = false,
+  bankDigitalEnabled = false,
 }: FinanceSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);

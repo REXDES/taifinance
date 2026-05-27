@@ -265,6 +265,7 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          bank_digital_module_enabled: boolean
           city: string | null
           cnpj: string | null
           color: string
@@ -290,6 +291,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          bank_digital_module_enabled?: boolean
           city?: string | null
           cnpj?: string | null
           color?: string
@@ -315,6 +317,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          bank_digital_module_enabled?: boolean
           city?: string | null
           cnpj?: string | null
           color?: string

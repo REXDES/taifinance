@@ -644,8 +644,10 @@ function ApplicationDetailDialog({
     })();
   }, [userId]);
 
+  const [hasAlcada, setHasAlcada] = useState(false);
+
   useEffect(() => {
-    if (!app) { setConsultation(null); return; }
+    if (!app) { setConsultation(null); setHasAlcada(false); return; }
     const cur = Math.max(1, app.current_step || 1);
     setActiveStep(initialStep ?? cur);
     setLocalStep(cur);
@@ -659,14 +661,16 @@ function ApplicationDetailDialog({
         .limit(1)
         .maybeSingle();
       setConsultation(data);
+      const { count } = await (supabase as any)
+        .from('credit_ignored_occurrences')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('documento', app.documento)
+        .eq('status', 'approved');
+      setHasAlcada((count || 0) > 0);
       setLoading(false);
     })();
-  }, [app, reevaluating]);
-
-  if (!app) return null;
-  const summary = (consultation?.summary || {}) as Record<string, string>;
-  const knockouts = knockoutsFromReason(consultation?.decision_reason || app.decision_reason);
-  const decisionOk = (app.decision || consultation?.decision) === 'approved' || (app.decision || consultation?.decision) === 'manual';
+  }, [app, reevaluating, companyId]);
 
   const advanceStep = async (next: number) => {
     setLocalStep((p) => Math.max(p, next));

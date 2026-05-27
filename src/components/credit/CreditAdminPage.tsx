@@ -13,11 +13,18 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Save, Plus, Trash2, FlaskConical, KeyRound, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useCompanies } from '@/hooks/useCompanies';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Building2 } from 'lucide-react';
 
 interface Props { companyId: string }
 
 export function CreditAdminPage({ companyId }: Props) {
-  const { rules, loading, save } = useCreditRules(companyId);
+  const { companies } = useCompanies();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(companyId);
+  useEffect(() => { setSelectedCompanyId(companyId); }, [companyId]);
+
+  const { rules, loading, save } = useCreditRules(selectedCompanyId);
   const [draft, setDraft] = useState(rules);
   const [saving, setSaving] = useState(false);
 
@@ -55,7 +62,7 @@ export function CreditAdminPage({ companyId }: Props) {
     setTesting(true);
     setTestResult(null);
     try {
-      const r = await consultCredit({ documento: testDoc, company_id: companyId, test_only: true });
+      const r = await consultCredit({ documento: testDoc, company_id: selectedCompanyId, test_only: true });
       setTestResult(r);
     } catch (e: any) {
       toast.error(e.message || 'Erro na consulta');
@@ -84,6 +91,28 @@ export function CreditAdminPage({ companyId }: Props) {
       </div>
 
       <GlobalConsultationsUsageCard />
+
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Building2 className="w-4 h-4 text-primary" />
+              Empresa cliente para configuração:
+            </div>
+            <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+              <SelectTrigger className="md:w-80"><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground md:ml-2">
+              As abas <strong>Motor</strong>, <strong>Encargos</strong> e <strong>IA &amp; Contrato</strong> abaixo são salvas por empresa — cada cliente possui sua própria política.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="provedor">
         <TabsList className="grid grid-cols-4 w-full max-w-2xl">

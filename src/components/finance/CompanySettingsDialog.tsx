@@ -143,6 +143,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
         setWhatsappNotifyTime(d.whatsapp_notify_time || '08:00');
         setMachinesModuleEnabled(!!d.machines_module_enabled);
         setCreditModuleEnabled(!!d.credit_module_enabled);
+        setBankDigitalModuleEnabled(!!d.bank_digital_module_enabled);
       }
     } catch (error) {
       console.error('Error loading company settings:', error);

@@ -49,6 +49,22 @@ function StatusBadge({ status, decision }: { status: string; decision: string | 
   return <Badge variant="outline">{status}</Badge>;
 }
 
+function ApprovalSourceBadge({ decision, hasAlcada }: { decision: string | null; hasAlcada: boolean }) {
+  if (decision !== 'approved' && decision !== 'manual') return null;
+  if (hasAlcada) {
+    return (
+      <Badge className="bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30" title="Aprovação envolveu ocorrências ignoradas via alçada">
+        <Gavel className="w-3 h-3 mr-1" />Aprovação por alçada
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30" title="Decisão tomada automaticamente pelas regras do motor">
+      <ShieldCheck className="w-3 h-3 mr-1" />Aprovação automática
+    </Badge>
+  );
+}
+
 export function CreditApplicationsPage({ companyId }: Props) {
   const { applications, loading, refetch } = useCreditApplications(companyId);
   const { user } = useAuth();

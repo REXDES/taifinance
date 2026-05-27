@@ -183,6 +183,10 @@ export function CreditApplicationsPage({ companyId }: Props) {
         </Card>
       )}
 
+      <ConsultationsUsageCard companyId={companyId} />
+
+
+
       <Card>
         <CardHeader>
           <CardTitle>Propostas</CardTitle>

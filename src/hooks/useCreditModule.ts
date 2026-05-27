@@ -39,6 +39,7 @@ export interface CreditRules {
   use_bureau_limits: boolean;
   min_nivel_confianca_levels: string[];     // levels that BLOCK
   sugestao_negocio_block_levels: string[];  // levels that BLOCK
+  consulta_price: number; // R$ price per bureau consultation (cost)
 }
 
 export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
@@ -71,6 +72,7 @@ export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
   use_bureau_limits: false,
   min_nivel_confianca_levels: [],
   sugestao_negocio_block_levels: [],
+  consulta_price: 0,
 };
 
 export interface CreditApplication {

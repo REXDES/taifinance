@@ -792,6 +792,7 @@ export type Database = {
         Row: {
           bolsa_familia_block: boolean
           company_id: string
+          consulta_price: number
           contract_clauses: string | null
           created_at: string
           ia_require_liveness: boolean
@@ -822,6 +823,7 @@ export type Database = {
         Insert: {
           bolsa_familia_block?: boolean
           company_id: string
+          consulta_price?: number
           contract_clauses?: string | null
           created_at?: string
           ia_require_liveness?: boolean
@@ -852,6 +854,7 @@ export type Database = {
         Update: {
           bolsa_familia_block?: boolean
           company_id?: string
+          consulta_price?: number
           contract_clauses?: string | null
           created_at?: string
           ia_require_liveness?: boolean

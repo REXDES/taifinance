@@ -827,7 +827,73 @@ function ApplicationDetailDialog({
   );
 }
 
-// ---------- PDF "espelho" helpers ----------
+// ---------- Bureau consumption summary ----------
+
+function ConsultationsUsageCard({ companyId }: { companyId: string }) {
+  const { rules } = useCreditRules(companyId);
+  const price = Number(rules?.consulta_price || 0);
+
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const [from, setFrom] = useState<string>(toISO(firstOfMonth));
+  const [to, setTo] = useState<string>(toISO(today));
+  const [count, setCount] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!companyId) return;
+    setLoading(true);
+    (async () => {
+      const fromTs = new Date(`${from}T00:00:00`).toISOString();
+      const toTs = new Date(`${to}T23:59:59.999`).toISOString();
+      const { count: c } = await (supabase as any)
+        .from('credit_consultations')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .gte('created_at', fromTs)
+        .lte('created_at', toTs);
+      setCount(c || 0);
+      setLoading(false);
+    })();
+  }, [companyId, from, to]);
+
+  const total = count * price;
+  const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Consumo de consultas ao bureau</CardTitle>
+        <CardDescription>Quantidade de consultas realizadas pela empresa no período e custo estimado.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div>
+            <Label className="text-xs">De</Label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Até</Label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="text-xs text-muted-foreground">Consultas realizadas</div>
+            <div className="text-2xl font-bold">{loading ? '…' : count}</div>
+          </div>
+          <div className="rounded-lg border bg-primary/5 border-primary/30 p-3">
+            <div className="text-xs text-muted-foreground">
+              Custo total {price > 0 ? `(${fmt(price)} / consulta)` : '(preço não configurado)'}
+            </div>
+            <div className="text-2xl font-bold text-primary">{loading ? '…' : fmt(total)}</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function buildPdfObjectUrl(pdfData: string): { url: string; revoke?: () => void } {
   const s = pdfData.trim();

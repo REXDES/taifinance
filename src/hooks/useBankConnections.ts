@@ -1,7 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+export function useCompanyBankDigitalFlag(companyId: string | null) {
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    if (!companyId) { setEnabled(false); setLoading(false); return; }
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from('companies')
+      .select('bank_digital_module_enabled')
+      .eq('id', companyId)
+      .maybeSingle();
+    setEnabled(!!data?.bank_digital_module_enabled);
+    setLoading(false);
+  }, [companyId]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { enabled, loading, refetch };
+}
 
 export interface BankConnection {
   id: string;

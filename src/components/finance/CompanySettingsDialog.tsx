@@ -532,6 +532,20 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                       <Switch checked={creditModuleEnabled} onCheckedChange={setCreditModuleEnabled} />
                     </div>
                   </div>
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-base flex items-center gap-2">
+                          <Wrench className="w-4 h-4" />
+                          Banco Digital
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Habilita o módulo de Banco Digital (BaaS Unida): conexões bancárias, contas digitais e operações via API. Quando ativo, surge o item "Banco Digital" no menu lateral desta empresa.
+                        </p>
+                      </div>
+                      <Switch checked={bankDigitalModuleEnabled} onCheckedChange={setBankDigitalModuleEnabled} />
+                    </div>
+                  </div>
                 </TabsContent>
               )}
             </div>

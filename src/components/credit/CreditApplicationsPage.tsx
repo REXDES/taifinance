@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useCreditApplications, consultCredit, type ConsultResult, type CreditApplication } from '@/hooks/useCreditModule';
+import { useCreditApplications, consultCredit, useCreditRules, type ConsultResult, type CreditApplication } from '@/hooks/useCreditModule';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

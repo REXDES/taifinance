@@ -364,7 +364,7 @@ const Finance = () => {
         companyId={effectiveMode === 'admin' ? null : selectedCompanyId}
         showPicker={effectiveMode === 'admin'}
         showModulesTab={effectiveMode === 'admin'}
-        onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); }}
+        onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); }}
       />
     </div>
   );

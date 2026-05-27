@@ -86,6 +86,7 @@ interface FinanceSidebarProps {
   onOpenCompanySettings?: () => void;
   machinesEnabled?: boolean;
   creditEnabled?: boolean;
+  bankDigitalEnabled?: boolean;
 }
 
 type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };

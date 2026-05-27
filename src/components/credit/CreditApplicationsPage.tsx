@@ -672,6 +672,12 @@ function ApplicationDetailDialog({
     })();
   }, [app, reevaluating, companyId]);
 
+  if (!app) return null;
+  const summary = (consultation?.summary || {}) as Record<string, string>;
+  const knockouts = knockoutsFromReason(consultation?.decision_reason || app.decision_reason);
+  const decisionOk = (app.decision || consultation?.decision) === 'approved' || (app.decision || consultation?.decision) === 'manual';
+
+
   const advanceStep = async (next: number) => {
     setLocalStep((p) => Math.max(p, next));
     setActiveStep(next);

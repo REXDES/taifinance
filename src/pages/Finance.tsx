@@ -265,7 +265,7 @@ const Finance = () => {
       case 'clients-suppliers':
         return <ClientsSuppliersPage companyId={selectedCompanyId} />;
       case 'bank-digital':
-        return <BankDigitalPage companyId={selectedCompanyId} />;
+        return bankDigitalEnabled ? <BankDigitalPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-inventory':
         return machinesEnabled ? <MachinesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-maintenance':

@@ -206,6 +206,7 @@ const Finance = () => {
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const { enabled: machinesEnabled, refetch: refetchMachinesFlag } = useCompanyMachinesFlag(selectedCompanyId);
   const { enabled: creditEnabled, refetch: refetchCreditFlag } = useCompanyCreditFlag(selectedCompanyId);
+  const { enabled: bankDigitalEnabled, refetch: refetchBankDigitalFlag } = useCompanyBankDigitalFlag(selectedCompanyId);
 
   const handleCreateCompany = async (name: string, color: string) => {
     const result = await createCompany(name, color);

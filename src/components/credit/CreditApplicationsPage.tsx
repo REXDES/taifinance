@@ -880,13 +880,8 @@ function PdfEspelhoViewer({ pdfData }: { pdfData: string }) {
   const [obj] = useState(() => buildPdfObjectUrl(pdfData));
   useEffect(() => () => { obj.revoke?.(); }, [obj]);
   return (
-    <div className="h-[60vh] flex flex-col gap-2">
-      <div className="flex justify-end">
-        <Button size="sm" variant="outline" onClick={() => openPdfInNewTab(obj.url)}>
-          Abrir em tela cheia
-        </Button>
-      </div>
-      <iframe src={obj.url} title="Espelho PDF da consulta" className="flex-1 w-full rounded border bg-muted/20" />
+    <div className="h-[60vh] w-full">
+      <iframe src={obj.url} title="Espelho PDF da consulta" className="h-full w-full rounded border bg-muted/20" />
     </div>
   );
 }

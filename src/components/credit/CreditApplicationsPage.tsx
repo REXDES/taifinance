@@ -49,6 +49,22 @@ function StatusBadge({ status, decision }: { status: string; decision: string | 
   return <Badge variant="outline">{status}</Badge>;
 }
 
+function ApprovalSourceBadge({ decision, hasAlcada }: { decision: string | null; hasAlcada: boolean }) {
+  if (decision !== 'approved' && decision !== 'manual') return null;
+  if (hasAlcada) {
+    return (
+      <Badge className="bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30" title="Aprovação envolveu ocorrências ignoradas via alçada">
+        <Gavel className="w-3 h-3 mr-1" />Aprovação por alçada
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30" title="Decisão tomada automaticamente pelas regras do motor">
+      <ShieldCheck className="w-3 h-3 mr-1" />Aprovação automática
+    </Badge>
+  );
+}
+
 export function CreditApplicationsPage({ companyId }: Props) {
   const { applications, loading, refetch } = useCreditApplications(companyId);
   const { user } = useAuth();
@@ -628,8 +644,10 @@ function ApplicationDetailDialog({
     })();
   }, [userId]);
 
+  const [hasAlcada, setHasAlcada] = useState(false);
+
   useEffect(() => {
-    if (!app) { setConsultation(null); return; }
+    if (!app) { setConsultation(null); setHasAlcada(false); return; }
     const cur = Math.max(1, app.current_step || 1);
     setActiveStep(initialStep ?? cur);
     setLocalStep(cur);
@@ -643,14 +661,22 @@ function ApplicationDetailDialog({
         .limit(1)
         .maybeSingle();
       setConsultation(data);
+      const { count } = await (supabase as any)
+        .from('credit_ignored_occurrences')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('documento', app.documento)
+        .eq('status', 'approved');
+      setHasAlcada((count || 0) > 0);
       setLoading(false);
     })();
-  }, [app, reevaluating]);
+  }, [app, reevaluating, companyId]);
 
   if (!app) return null;
   const summary = (consultation?.summary || {}) as Record<string, string>;
   const knockouts = knockoutsFromReason(consultation?.decision_reason || app.decision_reason);
   const decisionOk = (app.decision || consultation?.decision) === 'approved' || (app.decision || consultation?.decision) === 'manual';
+
 
   const advanceStep = async (next: number) => {
     setLocalStep((p) => Math.max(p, next));
@@ -679,6 +705,7 @@ function ApplicationDetailDialog({
           <DialogTitle className="flex items-center gap-3 flex-wrap">
             <span>{app.nome || '(sem nome)'}</span>
             <StatusBadge status={app.status} decision={app.decision} />
+            <ApprovalSourceBadge decision={app.decision} hasAlcada={hasAlcada} />
             <PaymentProbabilityBadge
               probabilidadeInadimplencia={app.probabilidade_inadimplencia}
               textoBucket={app.texto_score_bucket}

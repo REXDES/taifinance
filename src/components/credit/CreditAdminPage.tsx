@@ -92,6 +92,28 @@ export function CreditAdminPage({ companyId }: Props) {
 
       <GlobalConsultationsUsageCard />
 
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Building2 className="w-4 h-4 text-primary" />
+              Empresa cliente para configuração:
+            </div>
+            <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+              <SelectTrigger className="md:w-80"><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground md:ml-2">
+              As abas <strong>Motor</strong>, <strong>Encargos</strong> e <strong>IA &amp; Contrato</strong> abaixo são salvas por empresa — cada cliente possui sua própria política.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="provedor">
         <TabsList className="grid grid-cols-4 w-full max-w-2xl">
           <TabsTrigger value="provedor">Provedor</TabsTrigger>

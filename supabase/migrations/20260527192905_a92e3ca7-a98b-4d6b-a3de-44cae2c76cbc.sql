@@ -1,0 +1,1 @@
+ALTER TABLE public.credit_rules ADD COLUMN IF NOT EXISTS consulta_price numeric NOT NULL DEFAULT 0;

@@ -33,6 +33,7 @@ import { RentalsPage } from '@/components/machines/RentalsPage';
 import { PeoplePage } from '@/components/machines/PeoplePage';
 import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
 import { useCompanyCreditFlag } from '@/hooks/useCreditModule';
+import { useCompanyBankDigitalFlag } from '@/hooks/useBankConnections';
 import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
 import { CreditApplicationsPage } from '@/components/credit/CreditApplicationsPage';
 import { CreditIgnoredOccurrencesPage } from '@/components/credit/CreditIgnoredOccurrencesPage';

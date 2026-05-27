@@ -83,6 +83,8 @@ export function CreditAdminPage({ companyId }: Props) {
         </Button>
       </div>
 
+      <GlobalConsultationsUsageCard />
+
       <Tabs defaultValue="provedor">
         <TabsList className="grid grid-cols-4 w-full max-w-2xl">
           <TabsTrigger value="provedor">Provedor</TabsTrigger>

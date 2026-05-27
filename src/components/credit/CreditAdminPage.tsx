@@ -338,10 +338,18 @@ export function CreditAdminPage({ companyId }: Props) {
               <CardDescription>Defina o teto máximo de crédito e como o score determina o percentual aprovado e o nº máximo de parcelas.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="max-w-xs">
-                <Label>Teto absoluto (R$)</Label>
-                <Input type="number" value={draft.teto_credito}
-                  onChange={(e) => setDraft({ ...draft, teto_credito: parseFloat(e.target.value) || 0 })} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
+                <div>
+                  <Label>Teto absoluto (R$)</Label>
+                  <Input type="number" value={draft.teto_credito}
+                    onChange={(e) => setDraft({ ...draft, teto_credito: parseFloat(e.target.value) || 0 })} />
+                </div>
+                <div>
+                  <Label>Preço por consulta ao bureau (R$)</Label>
+                  <Input type="number" step={0.01} min={0} value={draft.consulta_price}
+                    onChange={(e) => setDraft({ ...draft, consulta_price: parseFloat(e.target.value) || 0 })} />
+                  <p className="text-xs text-muted-foreground mt-1">Usado para calcular o custo total das consultas realizadas no período.</p>
+                </div>
               </div>
               <Table>
                 <TableHeader>

@@ -836,10 +836,22 @@ function buildPdfObjectUrl(pdfData: string): { url: string; revoke?: () => void 
   }
 }
 
+function openPdfInNewTab(url: string) {
+  // Use an anchor click instead of window.open so that the iframe sandbox /
+  // popup blocker does not stop blob: URLs from opening.
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 function PdfEspelhoButton({ pdfData }: { pdfData: string }) {
   const openFullscreen = () => {
     const { url } = buildPdfObjectUrl(pdfData);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    openPdfInNewTab(url);
   };
   return (
     <Button size="sm" variant="outline" onClick={openFullscreen} title="Abrir espelho (PDF) em nova aba">
@@ -855,7 +867,7 @@ function PdfEspelhoViewer({ pdfData }: { pdfData: string }) {
   return (
     <div className="h-[60vh] flex flex-col gap-2">
       <div className="flex justify-end">
-        <Button size="sm" variant="outline" onClick={() => window.open(obj.url, '_blank', 'noopener,noreferrer')}>
+        <Button size="sm" variant="outline" onClick={() => openPdfInNewTab(obj.url)}>
           Abrir em tela cheia
         </Button>
       </div>

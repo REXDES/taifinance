@@ -196,6 +196,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           whatsapp_notify_time: whatsappNotifyTime,
           machines_module_enabled: machinesModuleEnabled,
           credit_module_enabled: creditModuleEnabled,
+          bank_digital_module_enabled: bankDigitalModuleEnabled,
         } as any)
         .eq('id', effectiveCompanyId!);
 

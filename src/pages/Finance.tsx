@@ -311,6 +311,7 @@ const Finance = () => {
         onOpenCompanySettings={() => setShowCompanySettings(true)}
         machinesEnabled={machinesEnabled}
         creditEnabled={creditEnabled}
+        bankDigitalEnabled={bankDigitalEnabled}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <FinanceHeader

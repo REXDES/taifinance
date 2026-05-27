@@ -84,6 +84,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
   // Módulos
   const [machinesModuleEnabled, setMachinesModuleEnabled] = useState(false);
   const [creditModuleEnabled, setCreditModuleEnabled] = useState(false);
+  const [bankDigitalModuleEnabled, setBankDigitalModuleEnabled] = useState(false);
 
   // Reset picked when dialog reopens in picker mode
   useEffect(() => {

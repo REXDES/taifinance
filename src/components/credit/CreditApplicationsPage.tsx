@@ -714,7 +714,7 @@ function ApplicationDetailDialog({
             />
             <div className="ml-auto flex items-center gap-2">
               {consultation?.pdf_data && (
-                <PdfEspelhoButton pdfData={consultation.pdf_data} />
+                <PdfEspelhoButton pdfData={consultation.pdf_data} filename={`espelho-${app.documento}.pdf`} />
               )}
               <Button size="sm" variant="outline" onClick={() => onReevaluate(app)} disabled={reevaluating}>
                 {reevaluating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}

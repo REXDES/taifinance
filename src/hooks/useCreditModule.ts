@@ -72,6 +72,7 @@ export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
   use_bureau_limits: false,
   min_nivel_confianca_levels: [],
   sugestao_negocio_block_levels: [],
+  consulta_price: 0,
 };
 
 export interface CreditApplication {

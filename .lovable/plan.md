@@ -1,98 +1,69 @@
+# Reformulação da régua de crédito
 
-# Jornada completa da proposta de crédito (etapas 2 → 6)
+## 1. Probabilidade de inadimplência (escala 1–100)
 
-Hoje, após aprovação/reavaliação, a proposta fica travada em `1/6 — Consulta`. Vou implementar as 5 etapas seguintes, encadeadas, com avanço automático de `current_step` em `credit_applications` e bloqueios de UI conforme o status.
+A escala correta do bureau é o **percentual de inadimplência** (1 = melhor pagador, 100 = pior). O valor 9 significa 9% de risco — daí o texto "91% pagarão os próximos 6 meses".
 
-## Visão geral do fluxo
+- **Edge function `credit-consult`**: deixar de arredondar o valor para 1–9; preservar inteiro 1–100 (ex.: "9,00" → 9, "12,5" → 13). Manter parser de vírgula.
+- **Lógica de bloqueio**: rejeitar quando `probabilidade_inadimplencia > max_probabilidade_inadimplencia` (o admin define o **máximo de risco aceito**, ex.: 30 = aceita até 30%).
+- **`useCreditModule.ts`**:
+  - `toPaymentProbability` agora retorna **probabilidade de pagamento** = `100 - inadimplencia` (para exibição amigável).
+  - `DEFAULT_RULES.max_probabilidade_inadimplencia = 30`.
+- **`CreditAdminPage.tsx`**: input passa a ser "Máx. probabilidade de inadimplência (%)" com slider/input 1–100.
+- **`PaymentProbabilityBadge.tsx`**: exibir tanto `X% inadimplência` quanto `(100-X)% pagamento`, com cores invertidas (≤10 verde, ≥50 vermelho).
+- **Migração de dados**: registros antigos já estão em valores baixos (1–9); manter como está — passam a ser interpretados como "1%–9% risco" (excelentes pagadores), o que é coerente.
 
-```
-[1 Consulta ✅]
-   │  decision in (approved, manual) ──► botão "Prosseguir"
-   ▼
-[2 Qualificação]   formulário → grava credit_qualifications, step=3
-   ▼
-[3 Biometria]      gera link público (token), envia por WhatsApp,
-                   cliente faz selfie+doc → IA analisa similaridade/liveness
-                   se passar regras → step=4
-   ▼
-[4 Simulação]      operador escolhe valor, nº parcelas, 1ª vencimento;
-                   sistema valida contra approved_limit, score_band,
-                   juros/parcela_minima de credit_rules; step=5
-   ▼
-[5 Contrato]       gera PDF (jsPDF) com cláusulas + tabela de parcelas,
-                   sobe em credit-documents, envia link por WhatsApp,
-                   cliente aceita (registra IP/timestamp); step=6
-   ▼
-[6 Boletos]        cria N linhas em payables_receivables (tipo receivable,
-                   recorrência, PIX da empresa), vincula credit_contract_id
-```
+## 2. Score médio (rating + análise + score)
 
-## UI
+O bureau devolve três scores distintos: `score_rating`, `score_analise` e `score` (genérico). Hoje só `score` rege a régua.
 
-**Tela "Propostas" — `CreditApplicationsPage.tsx`**
-- Coluna "Etapa" passa a ser clicável → abre o passo atual.
-- Nova ação **"Prosseguir"** (ícone `ArrowRight`) ao lado de "Reavaliar", visível quando `decision ∈ {approved, manual}` e `current_step < 6`.
-- `ApplicationDetailDialog`: substituir as tabs atuais por um **stepper** vertical com 6 seções (Consulta, Qualificação, Biometria, Simulação, Contrato, Boletos). Cada seção mostra status (✅/⏳/🔒) e o painel correspondente quando ativa. As tabs atuais (Decisão, Ocorrências, Resumo, Resposta) viram sub-abas dentro da seção "Consulta".
+- **Edge function**: extrair os três do `summary` / `principal` / `bureau_analysis`. Calcular `score_medio = round((s1 + s2 + s3) / n)` ignorando ausentes.
+- **Persistência**: gravar `score_breakdown: { rating, analise, score, media }` em `credit_applications.bureau_analysis` (já é jsonb — sem migração).
+- **Régua (`score_bands`)**: passa a aplicar-se sobre `score_medio`.
+- **UI da proposta**: card mostrando os três valores individuais + média destacada.
 
-**Novos componentes (em `src/components/credit/steps/`)**
-- `QualificationStep.tsx` — form: whatsapp (obrigatório), email, renda, profissão, endereço de entrega, CEP/cidade/UF, notas. Persiste em `credit_qualifications` (upsert por `application_id`).
-- `BiometryStep.tsx` — botão "Gerar link" → cria registro em `credit_biometry` se não existir, exibe URL pública `/credit/biometry/:token`, botão "Enviar por WhatsApp" usando `whatsapp_phone` da qualificação. Mostra status (pendente/enviado/em análise/aprovado/rejeitado), preview da selfie/doc e resultado da IA (similarity_score, liveness). Ações do gerente: aprovar/rejeitar manual.
-- `SimulationStep.tsx` — inputs: valor solicitado, nº parcelas, data 1ª parcela. Calcula parcela (PRICE com `juros_mensal_pct`), exibe tabela. Valida contra `approved_limit`, `max_parcelas` da score_band e `parcela_minima`. Salva no rascunho do contrato (state local até confirmar).
-- `ContractStep.tsx` — botão "Gerar contrato" → cria registro em `credit_contracts` (com principal, parcela, juros, descrição, cláusulas de `credit_rules.contract_clauses`), gera PDF com jsPDF, faz upload em `credit-documents/contracts/{application_id}.pdf`, atualiza `pdf_url`. Botão "Enviar por WhatsApp" envia link. Botão "Registrar aceite" grava `whatsapp_accepted_at` + IP.
-- `BoletosStep.tsx` — botão "Gerar boletos/parcelas" → insere N linhas em `payables_receivables` (`type=receivable`, `payment_type=pix`, `credit_contract_id`, `installment_number`, `total_installments`, datas mensais a partir de `first_due_date`, `client_supplier_id` da proposta). Lista as parcelas geradas e seus status (pending/paid). Após criação, fecha a jornada (`status='completed'`).
+## 3. Novos parâmetros de corte A–E no robô
 
-**Página pública da biometria — `src/pages/CreditBiometryPublic.tsx`**
-- Rota `/credit/biometry/:token` (sem auth). Lê `credit_biometry` pela RLS anon-por-token (já existe). Captura selfie via `getUserMedia`, upload do doc frente/verso, envia para edge function que chama a IA. Tela final de obrigado.
+Para cada campo abaixo, o admin define a **pior letra aceita** (A é melhor, E pior). Tudo acima da letra escolhida bloqueia.
 
-## Backend
+| Campo bureau | Significado A → E | Default |
+|---|---|---|
+| `classificacao_score` | A ótimo → E péssimo | C |
+| `faturas_em_atraso` | A pontual → E muito mau pagador | C |
+| `contratos_recentes` | A relacionamento recente → E sem relacionamento | E |
 
-**Nova edge function `credit-biometry-analyze`**
-- Recebe `{ token, selfie_b64, doc_front_b64, doc_back_b64 }`.
-- Faz upload dos arquivos em `credit-documents/biometry/{application_id}/...`.
-- Chama Lovable AI (`google/gemini-2.5-flash`) com prompt para: (a) extrair OCR do documento, (b) avaliar liveness da selfie, (c) estimar similaridade selfie×doc (0–100).
-- Aplica `credit_rules.ia_similarity_threshold` e `ia_require_liveness` → grava `status='approved'|'rejected'`, `similarity_score`, `liveness_passed`, `ocr_data`, `ai_analysis`, `completed_at`.
-- Se aprovada, atualiza `credit_applications.current_step = max(current_step, 4)`.
+- **Migração**: adicionar 3 colunas em `credit_rules`:
+  - `max_classificacao_score text default 'C'`
+  - `max_faturas_em_atraso text default 'C'`
+  - `max_contratos_recentes text default 'E'`
+- **Edge function**: parser pega a letra de cada campo do bureau (regex inicial A-E) e compara ordinalmente (`A<B<C<D<E`). Se exceder o máximo configurado, knockout com motivo claro.
+- **`CreditAdminPage.tsx`**: 3 selects A–E na aba **Motor**.
 
-**Reuso de funções já existentes**
-- `whatsapp-send` (já no projeto) para enviar links de biometria e contrato.
-- `pdf` libs: usar `jspdf` + `jspdf-autotable` (já dependências) para o contrato.
+## 4. `sugestao_negocio` dinâmica
 
-## Migração
+Hoje é lista fixa de buckets. Passar a interpretar dinamicamente a frase recebida via heurística + bucket persistido:
 
-Nenhuma tabela nova é necessária — `credit_qualifications`, `credit_biometry`, `credit_contracts` e `payables_receivables.credit_contract_id` já existem. Apenas:
-- Adicionar `status='completed'` como valor permitido (já é texto livre, sem CHECK).
-- Pequeno trigger opcional: ao inserir contrato, dar `current_step = 5`; ao inserir todas as parcelas, `current_step = 6` e `status='completed'`. (Pode ser feito no client; vou no client para simplicidade.)
+- **Edge function**: já existe `sugestao_de_negocio_bucket` (`recomendar` / `recomendar_com_cautela` / `nao_recomendar`). Reaproveitar — mas mapear qualquer texto novo via palavras-chave (`recomendar`, `cautela`/`ressalva`, `não recomendar`/`negar`) e fallback `desconhecido`.
+- **Admin**: substituir `sugestao_negocio_block_levels` por **3 checkboxes** com label dinâmico (todos os buckets já vistos + os 3 padrões), marcando quais BLOQUEIAM.
+- O texto original sempre é exibido na proposta para auditoria.
 
-## Regras de avanço
+## 5. Auto-preenchimento da qualificação via endereço
 
-| De → Para | Condição |
-|---|---|
-| 1 → 2 | `decision ∈ {approved, manual}` |
-| 2 → 3 | linha em `credit_qualifications` com `whatsapp_phone` |
-| 3 → 4 | `credit_biometry.status='approved'` (ou override manual gerente) |
-| 4 → 5 | contrato criado |
-| 5 → 6 | `whatsapp_accepted_at` preenchido (ou aceite manual) |
-| 6 → done | parcelas geradas em `payables_receivables` |
+O bureau retorna `endereco`, `cep`, `cidade`, `uf` no `principal` (PF/PJ).
 
-Cada passo só fica habilitado depois que o anterior conclui. Voltar a passos anteriores é permitido (somente leitura) exceto para gerente/supervisor que podem reabrir.
+- **`QualificationStep.tsx`**: ao montar (ou após consulta), se `credit_consultations.summary.endereco_*` existir e os campos da qualificação ainda estiverem vazios, pré-preencher `endereco_entrega`, `cep`, `cidade`, `uf`. Usuário pode editar.
+- Sem migração — usa colunas existentes em `credit_qualifications`.
 
-## Arquivos a criar/editar
+## Arquivos afetados
 
-Criar:
-- `src/components/credit/steps/QualificationStep.tsx`
-- `src/components/credit/steps/BiometryStep.tsx`
-- `src/components/credit/steps/SimulationStep.tsx`
-- `src/components/credit/steps/ContractStep.tsx`
-- `src/components/credit/steps/BoletosStep.tsx`
-- `src/components/credit/JourneyStepper.tsx`
-- `src/pages/CreditBiometryPublic.tsx`
-- `supabase/functions/credit-biometry-analyze/index.ts`
+- `supabase/functions/credit-consult/index.ts` (parser, scores, knockouts, breakdown)
+- `src/hooks/useCreditModule.ts` (tipos, defaults, `toPaymentProbability`)
+- `src/components/credit/CreditAdminPage.tsx` (aba Motor: novos campos)
+- `src/components/credit/PaymentProbabilityBadge.tsx` (escala 1–100)
+- `src/components/credit/BureauAnalysisCard.tsx` (mostrar 3 scores + média)
+- `src/components/credit/steps/QualificationStep.tsx` (auto-preencher endereço)
+- Migração: adicionar 3 colunas em `credit_rules`
 
-Editar:
-- `src/components/credit/CreditApplicationsPage.tsx` (botão Prosseguir, stepper no diálogo)
-- `src/App.tsx` (rota pública `/credit/biometry/:token`)
-- `src/hooks/useCreditModule.ts` (helpers de avanço/leitura de cada passo)
+## Observação técnica
 
-## Confirmação
-
-Posso prosseguir com este plano? É um escopo grande (≈8 arquivos novos + 1 edge function), então prefiro confirmar antes de executar.
+Não vou rodar nova migração nos dados existentes de `probabilidade_inadimplencia` — os valores baixos (1–9) já fazem sentido na nova escala (= risco baixo, bons pagadores). Apenas novas consultas usarão o range completo 1–100.

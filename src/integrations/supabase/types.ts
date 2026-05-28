@@ -804,8 +804,11 @@ export type Database = {
           juros_mensal_pct: number
           max_alertas_restricoes: number
           max_ccf_total: number
+          max_classificacao_score: string
+          max_contratos_recentes: string
           max_dependentes_bolsa_familia: number
           max_dias_inadimplencia_interna: number
+          max_faturas_em_atraso: string
           max_pendencias_financeiras: number
           max_probabilidade_inadimplencia: number
           max_protestos: number
@@ -817,6 +820,7 @@ export type Database = {
           multa_atraso_pct: number
           parcela_minima: number
           score_bands: Json
+          sugestao_negocio_block_buckets: Json
           sugestao_negocio_block_levels: Json
           teto_credito: number
           texto_inadimplencia_block_levels: Json
@@ -835,8 +839,11 @@ export type Database = {
           juros_mensal_pct?: number
           max_alertas_restricoes?: number
           max_ccf_total?: number
+          max_classificacao_score?: string
+          max_contratos_recentes?: string
           max_dependentes_bolsa_familia?: number
           max_dias_inadimplencia_interna?: number
+          max_faturas_em_atraso?: string
           max_pendencias_financeiras?: number
           max_probabilidade_inadimplencia?: number
           max_protestos?: number
@@ -848,6 +855,7 @@ export type Database = {
           multa_atraso_pct?: number
           parcela_minima?: number
           score_bands?: Json
+          sugestao_negocio_block_buckets?: Json
           sugestao_negocio_block_levels?: Json
           teto_credito?: number
           texto_inadimplencia_block_levels?: Json
@@ -866,8 +874,11 @@ export type Database = {
           juros_mensal_pct?: number
           max_alertas_restricoes?: number
           max_ccf_total?: number
+          max_classificacao_score?: string
+          max_contratos_recentes?: string
           max_dependentes_bolsa_familia?: number
           max_dias_inadimplencia_interna?: number
+          max_faturas_em_atraso?: string
           max_pendencias_financeiras?: number
           max_probabilidade_inadimplencia?: number
           max_protestos?: number
@@ -879,6 +890,7 @@ export type Database = {
           multa_atraso_pct?: number
           parcela_minima?: number
           score_bands?: Json
+          sugestao_negocio_block_buckets?: Json
           sugestao_negocio_block_levels?: Json
           teto_credito?: number
           texto_inadimplencia_block_levels?: Json

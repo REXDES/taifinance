@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { PAYMENT_BUCKET_LABEL, PAYMENT_BUCKET_HINT, toPaymentProbability } from '@/hooks/useCreditModule';
 
 interface Props {
-  probabilidadeInadimplencia?: number | null; // raw 1..9 (1=bom pagador, 9=mau)
+  probabilidadeInadimplencia?: number | null; // raw 1..9 (1=pior, 9=melhor)
   textoBucket?: string | null;                // muito_baixa..muito_alta (probabilidade de pagamento)
   compact?: boolean;
 }
@@ -39,7 +39,7 @@ export function PaymentProbabilityBadge({ probabilidadeInadimplencia, textoBucke
       <div className="inline-flex items-center gap-1">
         {payment != null && (
           <Badge variant="outline" className={`${colorClassForNumber(payment)} text-[10px] px-1.5 py-0`}
-            title={`Probabilidade de pagamento: ${payment}/9 (raw inad. ${probabilidadeInadimplencia})`}>
+            title={`Probabilidade de pagamento: ${payment}/9`}>
             Pag. {payment}/9
           </Badge>
         )}
@@ -57,7 +57,7 @@ export function PaymentProbabilityBadge({ probabilidadeInadimplencia, textoBucke
     <div className="inline-flex items-center gap-2">
       {payment != null && (
         <Badge variant="outline" className={colorClassForNumber(payment)}
-          title={`Escala 1 (pior) a 9 (melhor) — raw inad. ${probabilidadeInadimplencia}`}>
+          title={`Escala 1 (pior) a 9 (melhor)`}>
           Prob. pagamento: <span className="ml-1 font-bold">{payment}/9</span>
         </Badge>
       )}

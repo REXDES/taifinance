@@ -572,6 +572,9 @@ serve(async (req) => {
     backfillIfMissing('descricao_rating', /descri[cç][aã]o[_\s-]?rating/i);
     backfillIfMissing('observacao_credito', /observa[cç][aã]o[_\s-]?cr[eé]dito/i);
     backfillIfMissing('sugestao_de_negocio', /sugest[aã]o[_\s-]?de?[_\s-]?neg[oó]cio/i);
+    backfillIfMissing('score_rating', /^score[_\s-]?rating$/i);
+    backfillIfMissing('faturas_em_atraso', /fatura.*atras|atraso.*fatura/i);
+    backfillIfMissing('contratos_recentes', /contrato.*recent|recent.*contrato/i);
 
 
 

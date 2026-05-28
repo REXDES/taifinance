@@ -2,8 +2,9 @@ import { Badge } from '@/components/ui/badge';
 import { PAYMENT_BUCKET_LABEL, PAYMENT_BUCKET_HINT, toPaymentProbability } from '@/hooks/useCreditModule';
 
 interface Props {
-  probabilidadeInadimplencia?: number | null; // raw 1..9 (1=pior, 9=melhor)
-  textoBucket?: string | null;                // muito_baixa..muito_alta (probabilidade de pagamento)
+  /** Valor cru de probabilidade de INADIMPLÊNCIA vindo do bureau (1..100, % de risco). */
+  probabilidadeInadimplencia?: number | null;
+  textoBucket?: string | null;
   compact?: boolean;
 }
 
@@ -18,29 +19,33 @@ function colorClassForBucket(bucket: string | null | undefined) {
   }
 }
 
-function colorClassForNumber(payment: number | null) {
-  if (payment == null) return 'bg-muted text-muted-foreground border-border';
-  if (payment >= 8) return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-  if (payment >= 6) return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20';
-  if (payment >= 4) return 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
-  if (payment >= 2) return 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30';
+// Quanto MAIOR a inadimplência (risco), PIOR — vermelho.
+function colorClassForRisk(risk: number | null) {
+  if (risk == null) return 'bg-muted text-muted-foreground border-border';
+  if (risk <= 10) return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+  if (risk <= 25) return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20';
+  if (risk <= 50) return 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
+  if (risk <= 75) return 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30';
   return 'bg-destructive/15 text-destructive border-destructive/30';
 }
 
 export function PaymentProbabilityBadge({ probabilidadeInadimplencia, textoBucket, compact }: Props) {
+  const risk = (probabilidadeInadimplencia == null || !Number.isFinite(Number(probabilidadeInadimplencia)))
+    ? null
+    : Math.max(0, Math.min(100, Math.round(Number(probabilidadeInadimplencia))));
   const payment = toPaymentProbability(probabilidadeInadimplencia);
   const bucketLabel = textoBucket ? PAYMENT_BUCKET_LABEL[textoBucket] : null;
   const bucketHint = textoBucket ? PAYMENT_BUCKET_HINT[textoBucket] : null;
 
-  if (payment == null && !bucketLabel) return null;
+  if (risk == null && !bucketLabel) return null;
 
   if (compact) {
     return (
       <div className="inline-flex items-center gap-1">
-        {payment != null && (
-          <Badge variant="outline" className={`${colorClassForNumber(payment)} text-[10px] px-1.5 py-0`}
-            title={`Probabilidade de pagamento: ${payment}/9`}>
-            Pag. {payment}/9
+        {risk != null && (
+          <Badge variant="outline" className={`${colorClassForRisk(risk)} text-[10px] px-1.5 py-0`}
+            title={`Risco de inadimplência: ${risk}% (probabilidade de pagamento ${payment}%)`}>
+            Risco {risk}%
           </Badge>
         )}
         {bucketLabel && (
@@ -55,10 +60,11 @@ export function PaymentProbabilityBadge({ probabilidadeInadimplencia, textoBucke
 
   return (
     <div className="inline-flex items-center gap-2">
-      {payment != null && (
-        <Badge variant="outline" className={colorClassForNumber(payment)}
-          title={`Escala 1 (pior) a 9 (melhor)`}>
-          Prob. pagamento: <span className="ml-1 font-bold">{payment}/9</span>
+      {risk != null && (
+        <Badge variant="outline" className={colorClassForRisk(risk)}
+          title={`Escala 1% (melhor) a 100% (pior)`}>
+          Risco inadimplência: <span className="ml-1 font-bold">{risk}%</span>
+          {payment != null && <span className="ml-2 text-[10px] opacity-80">(pagam {payment}%)</span>}
         </Badge>
       )}
       {bucketLabel && (

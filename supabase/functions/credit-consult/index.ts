@@ -27,8 +27,9 @@ interface RedeBESummary {
   quantidade_ccf_bacen?: string;
   quantidade_ccf_varejo?: string;
   qtd_dependentes_bolsa_familia?: string;
-  // New analytical fields under "resumo"
+  // Resumo analítico
   score_analise?: string;
+  score_rating?: string;
   max_parcelas?: string;
   parcela_maxima?: string;
   limite_sugerido?: string;
@@ -36,6 +37,8 @@ interface RedeBESummary {
   descricao_rating?: string;
   observacao_credito?: string;
   sugestao_de_negocio?: string;
+  faturas_em_atraso?: string;
+  contratos_recentes?: string;
 }
 
 interface ScoreBand {
@@ -58,6 +61,7 @@ interface CreditRules {
   score_bands: ScoreBand[];
   bolsa_familia_block?: boolean;
   max_dependentes_bolsa_familia?: number;
+  /** Máx. % de risco de inadimplência aceito (1..100, 1=melhor pagador, 100=pior). */
   max_probabilidade_inadimplencia?: number;
   texto_inadimplencia_block_levels?: string[];
   // Bureau analysis cut-offs
@@ -65,6 +69,25 @@ interface CreditRules {
   use_bureau_limits?: boolean;
   min_nivel_confianca_levels?: string[];
   sugestao_negocio_block_levels?: string[];
+  sugestao_negocio_block_buckets?: string[];
+  // Cortes A..E (pior letra aceita)
+  max_classificacao_score?: string;
+  max_faturas_em_atraso?: string;
+  max_contratos_recentes?: string;
+}
+
+// A=1 melhor, E=5 pior
+function letterRank(l?: string | null): number | null {
+  if (!l) return null;
+  const c = String(l).trim().toUpperCase().charAt(0);
+  const idx = ['A', 'B', 'C', 'D', 'E'].indexOf(c);
+  return idx >= 0 ? idx + 1 : null;
+}
+function extractLetraAE(raw: any): string | null {
+  if (raw == null) return null;
+  const s = String(raw).trim().toUpperCase();
+  const m = s.match(/\b([A-E])\b/);
+  return m ? m[1] : null;
 }
 
 // ---- Bureau "resumo" analytical helpers ----

@@ -191,11 +191,11 @@ function runDecisionEngine(opts: {
     knockouts.push(`Beneficiário do Bolsa Família (${depBF} dependente(s)) — máximo permitido: ${rules.max_dependentes_bolsa_familia ?? 0}`);
   }
 
-  // Probabilidade de inadimplência (1=baixa, 9=alta) — API pode retornar "9,00"
+  // Escala do bureau: 1 = pior pagador / 9 = melhor pagador — API pode retornar "9,00"
   const probRaw = toNumberLoose(summary.probabilidade_inadimplencia);
   const probNum = probRaw != null ? Math.round(probRaw) : 0;
-  if (probNum > 0 && (rules.max_probabilidade_inadimplencia ?? 9) < 9 && probNum > (rules.max_probabilidade_inadimplencia ?? 9)) {
-    knockouts.push(`Probabilidade de inadimplência ${probNum} acima do máximo permitido (${rules.max_probabilidade_inadimplencia})`);
+  if (probNum > 0 && (rules.max_probabilidade_inadimplencia ?? 1) > 1 && probNum < (rules.max_probabilidade_inadimplencia ?? 1)) {
+    knockouts.push(`Probabilidade de pagamento ${probNum} abaixo do mínimo permitido (${rules.max_probabilidade_inadimplencia})`);
   }
 
   // Texto interpretativo do score

@@ -170,7 +170,7 @@ export function CreditAdminPage({ companyId }: Props) {
                     <div>Pendências: {testResult.summary.quantidade_pendencias_financeiras || 0}</div>
                     <div>CCF Bacen: {testResult.summary.quantidade_ccf_bacen || 0}</div>
                     <div>CCF Varejo: {testResult.summary.quantidade_ccf_varejo || 0}</div>
-                    <div>Prob. pagamento (1=pior, 9=melhor): <strong>{(() => { const raw = parseInt(String((testResult.summary as any).probabilidade_inadimplencia || ''), 10); return Number.isFinite(raw) && raw >= 1 && raw <= 9 ? `${10 - raw}/9 (raw inad. ${raw})` : '—'; })()}</strong></div>
+                    <div>Prob. pagamento (1=pior, 9=melhor): <strong>{(() => { const raw = parseInt(String((testResult.summary as any).probabilidade_inadimplencia || ''), 10); return Number.isFinite(raw) && raw >= 1 && raw <= 9 ? `${raw}/9` : '—'; })()}</strong></div>
                     <div>Bolsa Família (deps): <strong>{(testResult.summary as any).qtd_dependentes_bolsa_familia || 0}</strong></div>
                     <div className="col-span-2">Texto do score: <em>{(testResult.summary as any).texto_score || '—'}</em>{testResult.texto_score_bucket ? <> — bucket: <strong>{testResult.texto_score_bucket}</strong></> : null}</div>
                   </div>
@@ -231,16 +231,14 @@ export function CreditAdminPage({ companyId }: Props) {
             <CardHeader>
               <CardTitle>Probabilidade de pagamento (adimplência)</CardTitle>
               <CardDescription>
-                Régua de corte baseada no nó <code>probabilidade_inadimplencia</code> do bureau, exibido aqui
-                <strong> invertido</strong> como <em>probabilidade de pagamento</em> (1 = baixa probabilidade de pagamento /
-                pior pagador, 9 = alta probabilidade de pagamento / melhor pagador) — alinhado à interpretação textual do
-                score (nó "Texto").
+                Régua de corte baseada no nó <code>probabilidade_inadimplencia</code> do bureau, tratado aqui como
+                <em> probabilidade de pagamento</em> na escala correta: <strong>1 = pior pagador</strong> e <strong>9 = melhor pagador</strong>.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="max-w-md">
                 {(() => {
-                  const minPay = 10 - (draft.max_probabilidade_inadimplencia ?? 9);
+                  const minPay = draft.max_probabilidade_inadimplencia ?? 1;
                   return (
                     <>
                       <Label className="text-xs">Aceitar a partir de probabilidade de pagamento mínima (1 = pior, 9 = melhor)</Label>
@@ -251,7 +249,7 @@ export function CreditAdminPage({ companyId }: Props) {
                         value={minPay}
                         onChange={(e) => {
                           const v = Math.min(9, Math.max(1, parseInt(e.target.value) || 1));
-                          setDraft({ ...draft, max_probabilidade_inadimplencia: 10 - v });
+                          setDraft({ ...draft, max_probabilidade_inadimplencia: v });
                         }}
                       />
                       <p className="text-[11px] text-muted-foreground mt-1">

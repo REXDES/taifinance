@@ -379,6 +379,12 @@ function buildBureauAnalysis(summary: RedeBESummary) {
     sugestao_de_negocio_raw: summary.sugestao_de_negocio || null,
     sugestao_de_negocio_bucket: sugestaoBucket,
     sugestao_de_negocio_label: sugestaoBucket ? SUGESTAO_LABEL[sugestaoBucket] : null,
+    score_breakdown: computeScoreBreakdown(summary),
+    classificacao_score_letra: extractLetraAE(summary.classificacao_score),
+    faturas_em_atraso_letra: extractLetraAE(summary.faturas_em_atraso),
+    contratos_recentes_letra: extractLetraAE(summary.contratos_recentes),
+    faturas_em_atraso_raw: summary.faturas_em_atraso || null,
+    contratos_recentes_raw: summary.contratos_recentes || null,
   };
 }
 

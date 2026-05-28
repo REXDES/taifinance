@@ -18,6 +18,7 @@ const SUGESTAO_TONE: Record<string, string> = {
   recomendar: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
   recomendar_com_cautela: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
   nao_recomendar: 'bg-destructive/15 text-destructive border-destructive/30',
+  desconhecido: 'bg-muted text-muted-foreground border-border',
 };
 
 function fmtMoney(v: number | null) {
@@ -33,10 +34,11 @@ interface Props {
 export function BureauAnalysisCard({ analysis, compact }: Props) {
   if (!analysis) return null;
   const a = analysis;
+  const breakdown = a.score_breakdown || null;
   const hasAny =
     a.score_analise != null || a.limite_sugerido != null || a.max_parcelas != null ||
     a.parcela_maxima != null || a.nivel_de_confianca_label || a.sugestao_de_negocio_label ||
-    a.descricao_rating || a.observacao_credito;
+    a.descricao_rating || a.observacao_credito || breakdown;
   if (!hasAny) return null;
 
   return (
@@ -47,6 +49,21 @@ export function BureauAnalysisCard({ analysis, compact }: Props) {
         <span className="text-[10px] text-muted-foreground">Interpretação dos campos enviados pelo provedor</span>
       </div>
 
+      {breakdown && (breakdown.score != null || breakdown.score_analise != null || breakdown.score_rating != null) && (
+        <div className="rounded border border-primary/30 bg-primary/5 p-2">
+          <div className="text-[10px] uppercase text-muted-foreground mb-1">Composição do score (média ponderada)</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+            <Cell label="Score" value={breakdown.score != null ? String(breakdown.score) : '—'} />
+            <Cell label="Score análise" value={breakdown.score_analise != null ? String(breakdown.score_analise) : '—'} />
+            <Cell label="Score rating" value={breakdown.score_rating != null ? String(breakdown.score_rating) : '—'} />
+            <div className="rounded border border-primary/40 bg-primary/10 px-2 py-1.5">
+              <div className="text-[10px] text-muted-foreground uppercase">Média (usada na régua)</div>
+              <div className="font-bold text-primary text-base">{breakdown.media != null ? breakdown.media : '—'}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {a.nivel_de_confianca_label && (
           <Badge variant="outline" className={CONFIANCA_TONE[a.nivel_de_confianca_bucket || ''] || ''}>
@@ -54,7 +71,7 @@ export function BureauAnalysisCard({ analysis, compact }: Props) {
           </Badge>
         )}
         {a.sugestao_de_negocio_label && (
-          <Badge variant="outline" className={SUGESTAO_TONE[a.sugestao_de_negocio_bucket || ''] || ''}>
+          <Badge variant="outline" className={SUGESTAO_TONE[a.sugestao_de_negocio_bucket || ''] || 'bg-muted'}>
             {a.sugestao_de_negocio_bucket && SUGESTAO_ICON[a.sugestao_de_negocio_bucket]}
             {a.sugestao_de_negocio_label}
           </Badge>
@@ -64,6 +81,15 @@ export function BureauAnalysisCard({ analysis, compact }: Props) {
             <TrendingUp className="w-3 h-3 mr-1" /> Rating: {a.descricao_rating}
           </Badge>
         )}
+        {a.classificacao_score_letra && (
+          <Badge variant="outline" className="bg-muted/50">Classificação: {a.classificacao_score_letra}</Badge>
+        )}
+        {a.faturas_em_atraso_letra && (
+          <Badge variant="outline" className="bg-muted/50">Faturas em atraso: {a.faturas_em_atraso_letra}</Badge>
+        )}
+        {a.contratos_recentes_letra && (
+          <Badge variant="outline" className="bg-muted/50">Contratos recentes: {a.contratos_recentes_letra}</Badge>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
@@ -72,6 +98,13 @@ export function BureauAnalysisCard({ analysis, compact }: Props) {
         <Cell label="Parcelas máx." value={a.max_parcelas != null ? `${a.max_parcelas}x` : '—'} />
         <Cell label="Parcela máxima" value={fmtMoney(a.parcela_maxima)} />
       </div>
+
+      {!compact && a.sugestao_de_negocio_raw && (
+        <div className="rounded border-l-2 border-primary/40 bg-muted/30 px-3 py-2 text-xs">
+          <div className="text-[10px] uppercase text-muted-foreground mb-0.5">Sugestão de negócio (texto original)</div>
+          <div className="italic">"{a.sugestao_de_negocio_raw}"</div>
+        </div>
+      )}
 
       {!compact && a.observacao_credito && (
         <div className="rounded border-l-2 border-primary/60 bg-primary/5 px-3 py-2 text-xs">

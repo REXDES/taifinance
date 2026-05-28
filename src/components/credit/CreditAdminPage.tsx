@@ -170,7 +170,7 @@ export function CreditAdminPage({ companyId }: Props) {
                     <div>Pendências: {testResult.summary.quantidade_pendencias_financeiras || 0}</div>
                     <div>CCF Bacen: {testResult.summary.quantidade_ccf_bacen || 0}</div>
                     <div>CCF Varejo: {testResult.summary.quantidade_ccf_varejo || 0}</div>
-                    <div>Prob. pagamento (1=pior, 9=melhor): <strong>{(() => { const raw = parseInt(String((testResult.summary as any).probabilidade_inadimplencia || ''), 10); return Number.isFinite(raw) && raw >= 1 && raw <= 9 ? `${raw}/9` : '—'; })()}</strong></div>
+                    <div>Risco inadimplência: <strong>{(() => { const raw = parseInt(String((testResult.summary as any).probabilidade_inadimplencia || ''), 10); return Number.isFinite(raw) ? `${raw}% (pagam ${100 - raw}%)` : '—'; })()}</strong></div>
                     <div>Bolsa Família (deps): <strong>{(testResult.summary as any).qtd_dependentes_bolsa_familia || 0}</strong></div>
                     <div className="col-span-2">Texto do score: <em>{(testResult.summary as any).texto_score || '—'}</em>{testResult.texto_score_bucket ? <> — bucket: <strong>{testResult.texto_score_bucket}</strong></> : null}</div>
                   </div>
@@ -229,36 +229,28 @@ export function CreditAdminPage({ companyId }: Props) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Probabilidade de pagamento (adimplência)</CardTitle>
+              <CardTitle>Probabilidade de inadimplência (escala 1% a 100%)</CardTitle>
               <CardDescription>
-                Régua de corte baseada no nó <code>probabilidade_inadimplencia</code> do bureau, tratado aqui como
-                <em> probabilidade de pagamento</em> na escala correta: <strong>1 = pior pagador</strong> e <strong>9 = melhor pagador</strong>.
+                O bureau devolve <code>probabilidade_inadimplencia</code> como <strong>% de risco</strong>: 1 = melhor pagador, 100 = pior.
+                Ex.: valor 9 significa 9% de risco (e o texto correspondente diz que 91% pagam os próximos 6 meses).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="max-w-md">
-                {(() => {
-                  const minPay = draft.max_probabilidade_inadimplencia ?? 1;
-                  return (
-                    <>
-                      <Label className="text-xs">Aceitar a partir de probabilidade de pagamento mínima (1 = pior, 9 = melhor)</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={9}
-                        value={minPay}
-                        onChange={(e) => {
-                          const v = Math.min(9, Math.max(1, parseInt(e.target.value) || 1));
-                          setDraft({ ...draft, max_probabilidade_inadimplencia: v });
-                        }}
-                      />
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        Propostas com probabilidade de pagamento abaixo deste valor são reprovadas.
-                        Use <strong>1</strong> para desativar esta régua (aceitar qualquer probabilidade).
-                      </p>
-                    </>
-                  );
-                })()}
+                <Label className="text-xs">Máximo de risco aceito (%)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={draft.max_probabilidade_inadimplencia ?? 30}
+                  onChange={(e) => {
+                    const v = Math.min(100, Math.max(1, parseInt(e.target.value) || 1));
+                    setDraft({ ...draft, max_probabilidade_inadimplencia: v });
+                  }}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Propostas com risco <strong>acima</strong> deste valor são reprovadas. Use <strong>100</strong> para desativar esta régua.
+                </p>
               </div>
               <div>
                 <Label className="text-xs">Reprovar quando a probabilidade de pagamento (texto do score) for:</Label>
@@ -287,10 +279,37 @@ export function CreditAdminPage({ companyId }: Props) {
                     );
                   })}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  O texto do bureau indica a chance de o cliente <strong>pagar</strong>. Tipicamente marque "Muito Baixa" e/ou "Baixa" para reprovar maus pagadores.
-                </p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Cortes ordinais A–E</CardTitle>
+              <CardDescription>
+                Define a <strong>pior letra aceita</strong> para cada indicador. A é o melhor cenário, E o pior. Tudo abaixo da letra escolhida é reprovado.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {([
+                { key: 'max_classificacao_score', label: 'Classificação do score', a: 'A — Ótimo', e: 'E — Péssimo' },
+                { key: 'max_faturas_em_atraso', label: 'Faturas em atraso', a: 'A — Pontual', e: 'E — Muito mau pagador' },
+                { key: 'max_contratos_recentes', label: 'Contratos recentes', a: 'A — Relacionamento recente', e: 'E — Sem relacionamento' },
+              ] as const).map((cfg) => (
+                <div key={cfg.key}>
+                  <Label className="text-xs">{cfg.label}</Label>
+                  <select
+                    className="w-full border border-input bg-background rounded px-2 py-2 text-sm"
+                    value={(draft as any)[cfg.key] || 'C'}
+                    onChange={(e) => setDraft({ ...draft, [cfg.key]: e.target.value } as any)}
+                  >
+                    {['A','B','C','D','E'].map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-muted-foreground mt-1">{cfg.a} ← → {cfg.e}</p>
+                </div>
+              ))}
             </CardContent>
           </Card>
 

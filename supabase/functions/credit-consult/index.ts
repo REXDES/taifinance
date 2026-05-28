@@ -161,6 +161,25 @@ function diffMonths(dateStr: string | undefined | null): number {
   return (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
 }
 
+function computeScoreBreakdown(summary: RedeBESummary): {
+  score: number | null;
+  score_analise: number | null;
+  score_rating: number | null;
+  media: number | null;
+} {
+  const s = toNumberLoose(summary.score);
+  const sa = toNumberLoose(summary.score_analise);
+  const sr = toNumberLoose(summary.score_rating);
+  const vals = [s, sa, sr].filter((v): v is number => v != null && Number.isFinite(v));
+  const media = vals.length > 0 ? Math.round(vals.reduce((acc, v) => acc + v, 0) / vals.length) : null;
+  return {
+    score: s != null ? Math.round(s) : null,
+    score_analise: sa != null ? Math.round(sa) : null,
+    score_rating: sr != null ? Math.round(sr) : null,
+    media,
+  };
+}
+
 function runDecisionEngine(opts: {
   rules: CreditRules;
   summary: RedeBESummary;
@@ -174,6 +193,7 @@ function runDecisionEngine(opts: {
   classification: string;
   reason: string;
   knockouts: string[];
+  score_breakdown: ReturnType<typeof computeScoreBreakdown>;
 } {
   const { rules, summary, principal, tipo_documento } = opts;
   const knockouts: string[] = [];
@@ -184,7 +204,6 @@ function runDecisionEngine(opts: {
     if (situacao && situacao.toUpperCase() !== "ATIVO" && situacao.toUpperCase() !== "ATIVA") {
       knockouts.push(`CNPJ não está ATIVO (situação: ${situacao})`);
     }
-    // Tempo de CNPJ
     const fundacao = principal?.CREDCADASTRAL?.INFORMACOES_DA_EMPRESA?.DATA_FUNDACAO;
     const meses = diffMonths(fundacao);
     if (meses > 0 && meses < rules.min_meses_cnpj) {
@@ -216,23 +235,25 @@ function runDecisionEngine(opts: {
     knockouts.push(`Beneficiário do Bolsa Família (${depBF} dependente(s)) — máximo permitido: ${rules.max_dependentes_bolsa_familia ?? 0}`);
   }
 
-  // Escala do bureau: 1 = pior pagador / 9 = melhor pagador — API pode retornar "9,00"
+  // Probabilidade de INADIMPLÊNCIA (1..100, % de risco; 1=melhor, 100=pior)
+  // Ex.: probabilidade_inadimplencia 9 = 9% de risco → 91% pagam.
   const probRaw = toNumberLoose(summary.probabilidade_inadimplencia);
-  const probNum = probRaw != null ? Math.round(probRaw) : 0;
-  if (probNum > 0 && (rules.max_probabilidade_inadimplencia ?? 1) > 1 && probNum < (rules.max_probabilidade_inadimplencia ?? 1)) {
-    knockouts.push(`Probabilidade de pagamento ${probNum} abaixo do mínimo permitido (${rules.max_probabilidade_inadimplencia})`);
+  const probNum = probRaw != null ? Math.max(0, Math.min(100, Math.round(probRaw))) : null;
+  const maxRisk = rules.max_probabilidade_inadimplencia ?? 100;
+  if (probNum != null && probNum > maxRisk) {
+    knockouts.push(`Risco de inadimplência ${probNum}% acima do máximo permitido (${maxRisk}%)`);
   }
 
-  // Texto interpretativo do score
+  // Texto interpretativo do score (probabilidade de PAGAMENTO)
   const blockLevels = rules.texto_inadimplencia_block_levels || [];
   if (blockLevels.length > 0) {
     const bucket = classifyTextoInadimplencia(summary.texto_score);
     if (bucket && blockLevels.includes(bucket)) {
-      knockouts.push(`Análise textual do score indica probabilidade "${bucket.replace('_',' ')}" de inadimplência`);
+      knockouts.push(`Análise textual do score indica probabilidade "${bucket.replace('_',' ')}" de pagamento`);
     }
   }
 
-  // ---- Novos knockouts: análise do bureau (nó "resumo") ----
+  // ---- Knockouts: análise do bureau (nó "resumo") ----
   const scoreAnalise = toNumberLoose(summary.score_analise);
   const minScoreAnalise = rules.min_score_analise ?? 0;
   if (minScoreAnalise > 0 && scoreAnalise != null && scoreAnalise < minScoreAnalise) {
@@ -244,12 +265,33 @@ function runDecisionEngine(opts: {
     knockouts.push(`Nível de confiança do bureau "${CONFIANCA_LABEL[confiancaBucket] || confiancaBucket}" não atende ao critério mínimo`);
   }
   const sugestaoBucket = classifySugestao(summary.sugestao_de_negocio);
-  const blockSug = rules.sugestao_negocio_block_levels || [];
+  // Une listas legada + nova
+  const blockSug = Array.from(new Set([
+    ...(rules.sugestao_negocio_block_levels || []),
+    ...(rules.sugestao_negocio_block_buckets || []),
+  ]));
   if (blockSug.length > 0 && sugestaoBucket && blockSug.includes(sugestaoBucket)) {
-    knockouts.push(`Sugestão de negócio do bureau: "${SUGESTAO_LABEL[sugestaoBucket] || sugestaoBucket}"`);
+    knockouts.push(`Sugestão de negócio do bureau: "${SUGESTAO_LABEL[sugestaoBucket] || sugestaoBucket}" — ${summary.sugestao_de_negocio || ''}`.trim());
   }
 
-  const score = toInt(summary.score);
+  // ---- Knockouts ordinais A..E ----
+  const evalLetra = (label: string, raw: any, maxLetra?: string) => {
+    if (!maxLetra) return;
+    const letra = extractLetraAE(raw);
+    if (!letra) return;
+    const r = letterRank(letra)!;
+    const max = letterRank(maxLetra);
+    if (max != null && r > max) {
+      knockouts.push(`${label}: ${letra} pior que o máximo aceito (${maxLetra})`);
+    }
+  };
+  evalLetra('Classificação do score', summary.classificacao_score, rules.max_classificacao_score);
+  evalLetra('Faturas em atraso', summary.faturas_em_atraso, rules.max_faturas_em_atraso);
+  evalLetra('Contratos recentes', summary.contratos_recentes, rules.max_contratos_recentes);
+
+  // Score usado pela régua = MÉDIA dos scores disponíveis
+  const breakdown = computeScoreBreakdown(summary);
+  const score = breakdown.media ?? (breakdown.score ?? 0);
   const classification = (summary.classificacao_score || "").toUpperCase();
 
   if (knockouts.length > 0) {
@@ -261,10 +303,11 @@ function runDecisionEngine(opts: {
       classification,
       reason: knockouts.join("; "),
       knockouts,
+      score_breakdown: breakdown,
     };
   }
 
-  // Faixa por score
+  // Faixa por score (média)
   const band =
     rules.score_bands.find(
       (b) =>
@@ -281,8 +324,9 @@ function runDecisionEngine(opts: {
       max_parcelas: 0,
       score,
       classification,
-      reason: `Score ${score} (classe ${classification}) abaixo dos critérios mínimos`,
+      reason: `Score médio ${score} (classe ${classification}) abaixo dos critérios mínimos`,
       knockouts,
+      score_breakdown: breakdown,
     };
   }
 
@@ -290,7 +334,6 @@ function runDecisionEngine(opts: {
   let parcelas = band.max_parcelas;
   let bureauCapApplied = "";
 
-  // Aplica caps do bureau quando habilitado
   if (rules.use_bureau_limits) {
     const limBureau = toNumberLoose(summary.limite_sugerido);
     const parcBureau = toNumberLoose(summary.max_parcelas);
@@ -312,9 +355,10 @@ function runDecisionEngine(opts: {
     classification,
     reason:
       (band.decision === "approved"
-        ? `Aprovado com base no score ${score} (classe ${classification}) — ${band.percent_teto}% do teto`
-        : `Score ${score} (classe ${classification}) requer análise manual`) + bureauCapApplied,
+        ? `Aprovado com base no score médio ${score} (classe ${classification}) — ${band.percent_teto}% do teto`
+        : `Score médio ${score} (classe ${classification}) requer análise manual`) + bureauCapApplied,
     knockouts,
+    score_breakdown: breakdown,
   };
 }
 

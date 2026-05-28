@@ -32,7 +32,7 @@ export interface CreditRules {
   contract_clauses: string | null;
   bolsa_familia_block: boolean;
   max_dependentes_bolsa_familia: number;
-  max_probabilidade_inadimplencia: number; // 1..9 (knockout if > value)
+  max_probabilidade_inadimplencia: number; // 1..9 (minimum accepted payment probability)
   texto_inadimplencia_block_levels: string[]; // e.g. ['muito_alta','alta']
   // Bureau analysis cut-offs (novo nó "resumo" do RedeBE)
   min_score_analise: number;
@@ -66,7 +66,7 @@ export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
   contract_clauses: null,
   bolsa_familia_block: false,
   max_dependentes_bolsa_familia: 0,
-  max_probabilidade_inadimplencia: 9,
+  max_probabilidade_inadimplencia: 1,
   texto_inadimplencia_block_levels: [],
   min_score_analise: 0,
   use_bureau_limits: false,
@@ -141,13 +141,12 @@ export const PAYMENT_BUCKET_HINT: Record<string, string> = {
   alta: 'boa',
   muito_alta: 'melhor',
 };
-// Bureau raw is 1=baixa inadimpl. (bom pagador) ... 9=alta inadimpl. (mau pagador).
-// User wants display where 9 = alta prob. de pagamento (melhor), 1 = baixa (pior).
+// Bureau raw is already 1 = pior pagador ... 9 = melhor pagador.
 export function toPaymentProbability(rawInadimplencia: number | null | undefined): number | null {
   if (rawInadimplencia == null) return null;
   const n = Number(rawInadimplencia);
   if (!Number.isFinite(n) || n < 1 || n > 9) return null;
-  return 10 - n;
+  return Math.round(n);
 }
 
 export function useCompanyCreditFlag(companyId: string | null) {

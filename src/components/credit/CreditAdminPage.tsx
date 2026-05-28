@@ -170,7 +170,7 @@ export function CreditAdminPage({ companyId }: Props) {
                     <div>Pendências: {testResult.summary.quantidade_pendencias_financeiras || 0}</div>
                     <div>CCF Bacen: {testResult.summary.quantidade_ccf_bacen || 0}</div>
                     <div>CCF Varejo: {testResult.summary.quantidade_ccf_varejo || 0}</div>
-                    <div>Prob. pagamento (1=pior, 9=melhor): <strong>{(() => { const raw = parseInt(String((testResult.summary as any).probabilidade_inadimplencia || ''), 10); return Number.isFinite(raw) && raw >= 1 && raw <= 9 ? `${raw}/9` : '—'; })()}</strong></div>
+                    <div>Risco inadimplência: <strong>{(() => { const raw = parseInt(String((testResult.summary as any).probabilidade_inadimplencia || ''), 10); return Number.isFinite(raw) ? `${raw}% (pagam ${100 - raw}%)` : '—'; })()}</strong></div>
                     <div>Bolsa Família (deps): <strong>{(testResult.summary as any).qtd_dependentes_bolsa_familia || 0}</strong></div>
                     <div className="col-span-2">Texto do score: <em>{(testResult.summary as any).texto_score || '—'}</em>{testResult.texto_score_bucket ? <> — bucket: <strong>{testResult.texto_score_bucket}</strong></> : null}</div>
                   </div>

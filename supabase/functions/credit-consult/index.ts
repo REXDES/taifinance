@@ -112,19 +112,21 @@ function classifyConfianca(v: string | undefined | null): string | null {
 }
 function classifySugestao(v: string | undefined | null): string | null {
   if (!v) return null;
-  const s = String(v).toLowerCase();
-  if (/n[aã]o\s+recomend|negar|recus|reprov/.test(s)) return 'nao_recomendar';
-  if (/cautel|atenç|analis[ae]\s+manual|aprov.*restri/.test(s)) return 'recomendar_com_cautela';
-  if (/recomend|aprov|liber/.test(s)) return 'recomendar';
-  return null;
+  const s = String(v).toLowerCase().trim();
+  if (!s) return null;
+  if (/n[aã]o\s+recomend|negar|recus|reprov|inviab|n[aã]o\s+aprov/.test(s)) return 'nao_recomendar';
+  if (/cautel|atenç|ressalva|analis[ae]\s+manual|aprov.*restri|com\s+restri|moderad/.test(s)) return 'recomendar_com_cautela';
+  if (/recomend|aprov|liber|via?vel|positiv/.test(s)) return 'recomendar';
+  return 'desconhecido';
 }
 const CONFIANCA_LABEL: Record<string, string> = {
   muito_baixo: 'Muito Baixo', baixo: 'Baixo', medio: 'Médio', alto: 'Alto', muito_alto: 'Muito Alto',
 };
 const SUGESTAO_LABEL: Record<string, string> = {
   recomendar: 'Recomendar',
-  recomendar_com_cautela: 'Recomendar com cautela',
+  recomendar_com_cautela: 'Recomendar com cautela / ressalva',
   nao_recomendar: 'Não recomendar',
+  desconhecido: 'Não classificado',
 };
 
 // Classify the score "texto" into a probability bucket

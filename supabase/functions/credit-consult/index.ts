@@ -574,7 +574,8 @@ serve(async (req) => {
 
     // Interpreted payment-probability bucket (from textual score)
     const textoBucket = classifyTextoInadimplencia(summary.texto_score);
-    const probInadNum = toInt(summary.probabilidade_inadimplencia) || null;
+    const _probRaw = toNumberLoose(summary.probabilidade_inadimplencia);
+    const probInadNum = _probRaw != null ? Math.round(_probRaw) : null;
 
     // Análise interpretada do bureau (nó "resumo")
     const bureauAnalysis = buildBureauAnalysis(summary);

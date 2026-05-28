@@ -191,8 +191,9 @@ function runDecisionEngine(opts: {
     knockouts.push(`Beneficiário do Bolsa Família (${depBF} dependente(s)) — máximo permitido: ${rules.max_dependentes_bolsa_familia ?? 0}`);
   }
 
-  // Probabilidade de inadimplência (1=baixa, 9=alta)
-  const probNum = toInt(summary.probabilidade_inadimplencia);
+  // Probabilidade de inadimplência (1=baixa, 9=alta) — API pode retornar "9,00"
+  const probRaw = toNumberLoose(summary.probabilidade_inadimplencia);
+  const probNum = probRaw != null ? Math.round(probRaw) : 0;
   if (probNum > 0 && (rules.max_probabilidade_inadimplencia ?? 9) < 9 && probNum > (rules.max_probabilidade_inadimplencia ?? 9)) {
     knockouts.push(`Probabilidade de inadimplência ${probNum} acima do máximo permitido (${rules.max_probabilidade_inadimplencia})`);
   }
@@ -573,7 +574,8 @@ serve(async (req) => {
 
     // Interpreted payment-probability bucket (from textual score)
     const textoBucket = classifyTextoInadimplencia(summary.texto_score);
-    const probInadNum = toInt(summary.probabilidade_inadimplencia) || null;
+    const _probRaw = toNumberLoose(summary.probabilidade_inadimplencia);
+    const probInadNum = _probRaw != null ? Math.round(_probRaw) : null;
 
     // Análise interpretada do bureau (nó "resumo")
     const bureauAnalysis = buildBureauAnalysis(summary);

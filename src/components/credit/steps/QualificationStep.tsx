@@ -148,16 +148,37 @@ function extractFromConsultation(raw: any): Prefilled {
     }
   });
 
-  // Endereço solto (não dentro de array)
-  if (!out.endereco_entrega) {
+  // Endereço solto (não dentro de array) — inclui variações com prefixo END_ (ex: END_LOGRADOURO, END_CEP)
+  if (!out.endereco_entrega || !out.cep || !out.cidade || !out.uf) {
+    let endLog = '', endNum = '', endCompl = '', endBairro = '';
     walk(raw, (k, v) => {
       const K = k.toUpperCase();
-      if (K === 'LOGRADOURO' && typeof v === 'string') setIf('endereco_entrega', v);
-      if (K === 'CEP' && (typeof v === 'string' || typeof v === 'number')) setIf('cep', String(v).replace(/\D/g, ''));
-      if ((K === 'CIDADE' || K === 'MUNICIPIO') && typeof v === 'string') setIf('cidade', v);
-      if ((K === 'UF' || K === 'ESTADO') && typeof v === 'string' && v.length <= 2) setIf('uf', v.toUpperCase());
+      if ((K === 'LOGRADOURO' || K === 'END_LOGRADOURO' || K === 'ENDERECO') && typeof v === 'string') {
+        if (!endLog) endLog = v;
+        if (!out.endereco_entrega) setIf('endereco_entrega', v);
+      }
+      if ((K === 'NUMERO' || K === 'END_NUMERO') && (typeof v === 'string' || typeof v === 'number')) {
+        if (!endNum) endNum = String(v);
+      }
+      if ((K === 'COMPLEMENTO' || K === 'END_COMPLEMENTO') && typeof v === 'string') {
+        if (!endCompl) endCompl = v;
+      }
+      if ((K === 'BAIRRO' || K === 'END_BAIRRO') && typeof v === 'string') {
+        if (!endBairro) endBairro = v;
+      }
+      if ((K === 'CEP' || K === 'END_CEP') && (typeof v === 'string' || typeof v === 'number')) setIf('cep', String(v).replace(/\D/g, ''));
+      if ((K === 'CIDADE' || K === 'MUNICIPIO' || K === 'END_CIDADE' || K === 'END_MUNICIPIO') && typeof v === 'string') setIf('cidade', v);
+      if ((K === 'UF' || K === 'ESTADO' || K === 'END_UF' || K === 'END_ESTADO') && typeof v === 'string' && v.length <= 2) setIf('uf', v.toUpperCase());
     });
+    // Combina logradouro + número + complemento + bairro quando possível
+    if (endLog) {
+      const combined = [endLog, endNum, endCompl, endBairro].filter(Boolean).join(', ');
+      if (combined && (!out.endereco_entrega || out.endereco_entrega === endLog)) {
+        out.endereco_entrega = combined;
+      }
+    }
   }
+
 
   return out;
 }

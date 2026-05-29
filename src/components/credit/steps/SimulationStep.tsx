@@ -22,11 +22,13 @@ export function SimulationStep({
   applicationId,
   companyId,
   approvedLimit,
+  bureauParcelaMaxima,
   onCompleted,
 }: {
   applicationId: string;
   companyId: string;
   approvedLimit: number | null;
+  bureauParcelaMaxima?: number | null;
   onCompleted: (data: SimulationData) => void;
 }) {
   const { rules } = useCreditRules(companyId);

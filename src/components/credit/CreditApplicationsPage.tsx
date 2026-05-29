@@ -687,8 +687,10 @@ function ApplicationDetailDialog({
   }, [app, reevaluating, companyId]);
 
   if (!app) return null;
-  const summary = (consultation?.summary || {}) as Record<string, string>;
-  const knockouts = knockoutsFromReason(consultation?.decision_reason || app.decision_reason);
+  const summary = ((app as any).summary || consultation?.summary || {}) as Record<string, string>;
+  const currentDecision = (app.decision || consultation?.decision) as any;
+  const currentReason = app.decision_reason || consultation?.decision_reason;
+  const knockouts = knockoutsFromReason(currentReason);
   const decisionOk = (app.decision || consultation?.decision) === 'approved' || (app.decision || consultation?.decision) === 'manual';
 
 
@@ -772,7 +774,7 @@ function ApplicationDetailDialog({
                           </div>
                         )}
                       </div>
-                      <DecisionBox decision={(app.decision || consultation?.decision) as any} approved_limit={app.approved_limit} reason={app.decision_reason || consultation?.decision_reason} knockouts={knockouts} />
+                      <DecisionBox decision={currentDecision} approved_limit={app.approved_limit} reason={currentReason} knockouts={knockouts} />
                       {(consultation?.bureau_analysis || (app as any).bureau_analysis) && (
                         <BureauAnalysisCard analysis={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any} />
                       )}

@@ -43,15 +43,22 @@ function extractFromConsultation(raw: any): Prefilled {
     out[key] = s;
   };
 
-  // Telefones: pick first mobile
+  // Telefones: pick first mobile/fixed
   const phones: string[] = [];
   walk(raw, (k, v) => {
     const K = k.toUpperCase();
-    if ((K === 'DDD_CELULAR' || K === 'TELEFONE_CELULAR' || K === 'CELULAR') && (typeof v === 'string' || typeof v === 'number')) {
-      phones.push(String(v));
-    }
-    if (K === 'NUMERO' && typeof v === 'string' && v.replace(/\D/g, '').length >= 8) {
-      phones.push(v);
+    if (
+      (K === 'DDD_CELULAR' ||
+        K === 'TELEFONE_CELULAR' ||
+        K === 'CELULAR' ||
+        K === 'TELEFONE' ||
+        K === 'TELEFONE_FIXO' ||
+        K === 'WHATSAPP' ||
+        K === 'TELEFONE_CLIENTE') &&
+      (typeof v === 'string' || typeof v === 'number')
+    ) {
+      const s = String(v).trim();
+      if (s && s !== '---' && s.replace(/\D/g, '').length >= 8) phones.push(s);
     }
   });
 
@@ -67,7 +74,12 @@ function extractFromConsultation(raw: any): Prefilled {
       }
     }
   });
-  if (phones.length) setIf('whatsapp_phone', phones[0].replace(/\D/g, ''));
+  if (phones.length) {
+    // Normaliza: pega apenas dígitos e remove prefixos "00" / "0" iniciais (ex: "(0011) 951552228" → "11951552228")
+    let digits = phones[0].replace(/\D/g, '');
+    while (digits.length > 11 && digits.startsWith('0')) digits = digits.slice(1);
+    setIf('whatsapp_phone', digits);
+  }
 
   // Email
   walk(raw, (k, v) => {
@@ -76,23 +88,21 @@ function extractFromConsultation(raw: any): Prefilled {
     }
   });
 
-  // Renda — pega apenas o PRIMEIRO número (evita concatenar faixas como "2001 a 3000" → 20013000)
+  // Renda — pega apenas o PRIMEIRO número da string (evita concatenar faixas como "DE R$ 2.001 ATE R$ 3.000" → 20013000)
   walk(raw, (k, v) => {
     const K = k.toUpperCase();
-    if ((K.includes('RENDA') || K === 'RENDA_PRESUMIDA' || K === 'FAIXA_RENDA') && (typeof v === 'number' || typeof v === 'string')) {
+    if ((K.includes('RENDA') || K === 'FAIXA_RENDA' || K === 'FAIXA') && (typeof v === 'number' || typeof v === 'string')) {
       const s = String(v);
-      // captura o primeiro token numérico (com . ou , como separador)
-      const match = s.match(/[\d]+(?:[.,]\d+)*(?:[.,]\d+)?/);
+      const match = s.match(/[\d]+(?:[.,]\d+)*/);
       if (!match) return;
-      const raw = match[0];
-      // normaliza: remove separadores de milhar (.) e troca decimal (,) por .
-      let normalized = raw;
-      if (raw.includes(',')) {
-        // assume vírgula = decimal, ponto = milhar
-        normalized = raw.replace(/\./g, '').replace(',', '.');
-      } else if ((raw.match(/\./g) || []).length > 1) {
-        // múltiplos pontos = milhar
-        normalized = raw.replace(/\./g, '');
+      const tok = match[0];
+      // Formato BR: se tem vírgula, vírgula = decimal e ponto = milhar.
+      // Se NÃO tem vírgula, pontos são separadores de milhar (ex: "2.001" → 2001).
+      let normalized: string;
+      if (tok.includes(',')) {
+        normalized = tok.replace(/\./g, '').replace(',', '.');
+      } else {
+        normalized = tok.replace(/\./g, '');
       }
       const n = Number(normalized);
       if (!isNaN(n) && n > 0) setIf('renda_mensal', String(n));

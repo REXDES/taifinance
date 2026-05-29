@@ -211,43 +211,58 @@ export type Database = {
       }
       clients_suppliers: {
         Row: {
+          biometry_similarity_score: number | null
+          biometry_verified_at: string | null
           company_id: string
           created_at: string
           created_by: string | null
+          doc_back_url: string | null
+          doc_front_url: string | null
           document: string | null
           email: string | null
           id: string
           name: string
           notes: string | null
           phone: string | null
+          selfie_url: string | null
           type: string
           updated_at: string
           whatsapp_phone: string | null
         }
         Insert: {
+          biometry_similarity_score?: number | null
+          biometry_verified_at?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
+          doc_back_url?: string | null
+          doc_front_url?: string | null
           document?: string | null
           email?: string | null
           id?: string
           name: string
           notes?: string | null
           phone?: string | null
+          selfie_url?: string | null
           type: string
           updated_at?: string
           whatsapp_phone?: string | null
         }
         Update: {
+          biometry_similarity_score?: number | null
+          biometry_verified_at?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
+          doc_back_url?: string | null
+          doc_front_url?: string | null
           document?: string | null
           email?: string | null
           id?: string
           name?: string
           notes?: string | null
           phone?: string | null
+          selfie_url?: string | null
           type?: string
           updated_at?: string
           whatsapp_phone?: string | null

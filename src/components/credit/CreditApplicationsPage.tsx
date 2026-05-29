@@ -31,6 +31,7 @@ import { ContractStep } from './steps/ContractStep';
 import { BoletosStep } from './steps/BoletosStep';
 import { PaymentProbabilityBadge } from './PaymentProbabilityBadge';
 import { BureauAnalysisCard } from './BureauAnalysisCard';
+import { EngineChecklist } from './EngineChecklist';
 
 interface Props { companyId: string }
 

@@ -299,6 +299,24 @@ function runDecisionEngine(opts: {
   const score = breakdown.media ?? (breakdown.score ?? 0);
   const classification = (summary.classificacao_score || "").toUpperCase();
 
+  // Faixa por score (média) — calculada antes para permitir alçada em "score_band"
+  const band =
+    rules.score_bands.find(
+      (b) =>
+        score >= b.min_score &&
+        score <= b.max_score &&
+        (!b.classes || b.classes.length === 0 || b.classes.includes(classification))
+    ) ||
+    rules.score_bands.find((b) => score >= b.min_score && score <= b.max_score);
+
+  const bandRejected = !band || band.decision === "rejected";
+  const fallbackBand = [...rules.score_bands]
+    .filter((b) => b.decision !== "rejected")
+    .sort((a, b) => a.min_score - b.min_score)[0];
+  if (bandRejected) {
+    pushKO('score_band', `Score médio ${score} (classe bureau ${classification || '—'}) abaixo da faixa mínima aprovada${fallbackBand ? ` (mín ${fallbackBand.min_score})` : ''}`);
+  }
+
   if (knockouts.length > 0) {
     return {
       decision: "rejected",
@@ -312,24 +330,16 @@ function runDecisionEngine(opts: {
     };
   }
 
-  // Faixa por score (média)
-  const band =
-    rules.score_bands.find(
-      (b) =>
-        score >= b.min_score &&
-        score <= b.max_score &&
-        (!b.classes || b.classes.length === 0 || b.classes.includes(classification))
-    ) ||
-    rules.score_bands.find((b) => score >= b.min_score && score <= b.max_score);
-
-  if (!band || band.decision === "rejected") {
+  // Se a faixa estava rejeitada mas o knockout foi liberado por alçada, usa a menor faixa aprovável
+  const effectiveBand = bandRejected ? fallbackBand : band!;
+  if (!effectiveBand) {
     return {
       decision: "rejected",
       approved_limit: 0,
       max_parcelas: 0,
       score,
       classification,
-      reason: `Score médio ${score} (classe ${classification}) abaixo dos critérios mínimos`,
+      reason: `Sem faixa de score aprovável configurada`,
       knockouts,
       score_breakdown: breakdown,
     };

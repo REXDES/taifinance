@@ -185,6 +185,7 @@ function runDecisionEngine(opts: {
   summary: RedeBESummary;
   principal: any;
   tipo_documento: "CPF" | "CNPJ";
+  overriddenCriteria?: Set<string>;
 }): {
   decision: "approved" | "manual" | "rejected";
   approved_limit: number;
@@ -196,60 +197,64 @@ function runDecisionEngine(opts: {
   score_breakdown: ReturnType<typeof computeScoreBreakdown>;
 } {
   const { rules, summary, principal, tipo_documento } = opts;
+  const overridden = opts.overriddenCriteria || new Set<string>();
   const knockouts: string[] = [];
+  const pushKO = (criterion: string, msg: string) => {
+    if (overridden.has(criterion)) return;
+    knockouts.push(msg);
+  };
 
   // PJ: checar situação ATIVA
   if (tipo_documento === "CNPJ") {
     const situacao = principal?.CREDCADASTRAL?.INFORMACOES_DA_EMPRESA?.SITUACAO || "";
     if (situacao && situacao.toUpperCase() !== "ATIVO" && situacao.toUpperCase() !== "ATIVA") {
-      knockouts.push(`CNPJ não está ATIVO (situação: ${situacao})`);
+      pushKO('cnpj_situacao', `CNPJ não está ATIVO (situação: ${situacao})`);
     }
     const fundacao = principal?.CREDCADASTRAL?.INFORMACOES_DA_EMPRESA?.DATA_FUNDACAO;
     const meses = diffMonths(fundacao);
     if (meses > 0 && meses < rules.min_meses_cnpj) {
-      knockouts.push(`CNPJ ativo há ${meses} meses (mínimo: ${rules.min_meses_cnpj})`);
+      pushKO('cnpj_meses', `CNPJ ativo há ${meses} meses (mínimo: ${rules.min_meses_cnpj})`);
     }
   }
 
   // Knock-outs por quantidade
   const protestos = toInt(summary.quantidade_protestos);
   if (protestos > rules.max_protestos) {
-    knockouts.push(`${protestos} protesto(s) — máximo permitido: ${rules.max_protestos}`);
+    pushKO('protestos', `${protestos} protesto(s) — máximo permitido: ${rules.max_protestos}`);
   }
   const pendencias = toInt(summary.quantidade_pendencias_financeiras);
   if (pendencias > rules.max_pendencias_financeiras) {
-    knockouts.push(`${pendencias} pendência(s) financeira(s) — máximo permitido: ${rules.max_pendencias_financeiras}`);
+    pushKO('pendencias_financeiras', `${pendencias} pendência(s) financeira(s) — máximo permitido: ${rules.max_pendencias_financeiras}`);
   }
   const ccfTotal = toInt(summary.quantidade_ccf_bacen) + toInt(summary.quantidade_ccf_varejo);
   if (ccfTotal > rules.max_ccf_total) {
-    knockouts.push(`${ccfTotal} cheque(s) sem fundo (CCF) — máximo permitido: ${rules.max_ccf_total}`);
+    pushKO('ccf', `${ccfTotal} cheque(s) sem fundo (CCF) — máximo permitido: ${rules.max_ccf_total}`);
   }
   const alertas = toInt(summary.quantidade_alertas_restricoes);
   if (alertas > rules.max_alertas_restricoes) {
-    knockouts.push(`${alertas} alerta(s) de restrição — máximo permitido: ${rules.max_alertas_restricoes}`);
+    pushKO('alertas_restricoes', `${alertas} alerta(s) de restrição — máximo permitido: ${rules.max_alertas_restricoes}`);
   }
 
   // Bolsa Família
   const depBF = toInt(summary.qtd_dependentes_bolsa_familia);
   if (rules.bolsa_familia_block && depBF > (rules.max_dependentes_bolsa_familia ?? 0)) {
-    knockouts.push(`Beneficiário do Bolsa Família (${depBF} dependente(s)) — máximo permitido: ${rules.max_dependentes_bolsa_familia ?? 0}`);
+    pushKO('bolsa_familia', `Beneficiário do Bolsa Família (${depBF} dependente(s)) — máximo permitido: ${rules.max_dependentes_bolsa_familia ?? 0}`);
   }
 
-  // Probabilidade de INADIMPLÊNCIA (1..100, % de risco; 1=melhor, 100=pior)
-  // Ex.: probabilidade_inadimplencia 9 = 9% de risco → 91% pagam.
+  // Probabilidade de INADIMPLÊNCIA
   const probRaw = toNumberLoose(summary.probabilidade_inadimplencia);
   const probNum = probRaw != null ? Math.max(0, Math.min(100, Math.round(probRaw))) : null;
   const maxRisk = rules.max_probabilidade_inadimplencia ?? 100;
   if (probNum != null && probNum > maxRisk) {
-    knockouts.push(`Risco de inadimplência ${probNum}% acima do máximo permitido (${maxRisk}%)`);
+    pushKO('probabilidade_inadimplencia', `Risco de inadimplência ${probNum}% acima do máximo permitido (${maxRisk}%)`);
   }
 
-  // Texto interpretativo do score (probabilidade de PAGAMENTO)
+  // Texto interpretativo do score
   const blockLevels = rules.texto_inadimplencia_block_levels || [];
   if (blockLevels.length > 0) {
     const bucket = classifyTextoInadimplencia(summary.texto_score);
     if (bucket && blockLevels.includes(bucket)) {
-      knockouts.push(`Análise textual do score indica probabilidade "${bucket.replace('_',' ')}" de pagamento`);
+      pushKO('texto_score', `Análise textual do score indica probabilidade "${bucket.replace('_',' ')}" de pagamento`);
     }
   }
 
@@ -257,37 +262,37 @@ function runDecisionEngine(opts: {
   const scoreAnalise = toNumberLoose(summary.score_analise);
   const minScoreAnalise = rules.min_score_analise ?? 0;
   if (minScoreAnalise > 0 && scoreAnalise != null && scoreAnalise < minScoreAnalise) {
-    knockouts.push(`Score analítico do bureau ${scoreAnalise} abaixo do mínimo (${minScoreAnalise})`);
+    pushKO('score_analise', `Score analítico do bureau ${scoreAnalise} abaixo do mínimo (${minScoreAnalise})`);
   }
   const confiancaBucket = classifyConfianca(summary.nivel_de_confianca);
   const blockConf = rules.min_nivel_confianca_levels || [];
   if (blockConf.length > 0 && confiancaBucket && blockConf.includes(confiancaBucket)) {
-    knockouts.push(`Nível de confiança do bureau "${CONFIANCA_LABEL[confiancaBucket] || confiancaBucket}" não atende ao critério mínimo`);
+    pushKO('nivel_de_confianca', `Nível de confiança do bureau "${CONFIANCA_LABEL[confiancaBucket] || confiancaBucket}" não atende ao critério mínimo`);
   }
   const sugestaoBucket = classifySugestao(summary.sugestao_de_negocio);
-  // Une listas legada + nova
   const blockSug = Array.from(new Set([
     ...(rules.sugestao_negocio_block_levels || []),
     ...(rules.sugestao_negocio_block_buckets || []),
   ]));
   if (blockSug.length > 0 && sugestaoBucket && blockSug.includes(sugestaoBucket)) {
-    knockouts.push(`Sugestão de negócio do bureau: "${SUGESTAO_LABEL[sugestaoBucket] || sugestaoBucket}" — ${summary.sugestao_de_negocio || ''}`.trim());
+    pushKO('sugestao_negocio', `Sugestão de negócio do bureau: "${SUGESTAO_LABEL[sugestaoBucket] || sugestaoBucket}" — ${summary.sugestao_de_negocio || ''}`.trim());
   }
 
   // ---- Knockouts ordinais A..E ----
-  const evalLetra = (label: string, raw: any, maxLetra?: string) => {
+  const evalLetra = (criterion: string, label: string, raw: any, maxLetra?: string) => {
     if (!maxLetra) return;
     const letra = extractLetraAE(raw);
     if (!letra) return;
     const r = letterRank(letra)!;
     const max = letterRank(maxLetra);
     if (max != null && r > max) {
-      knockouts.push(`${label}: ${letra} pior que o máximo aceito (${maxLetra})`);
+      pushKO(criterion, `${label}: ${letra} pior que o máximo aceito (${maxLetra})`);
     }
   };
-  evalLetra('Classificação do score', summary.classificacao_score, rules.max_classificacao_score);
-  evalLetra('Faturas em atraso', summary.faturas_em_atraso, rules.max_faturas_em_atraso);
-  evalLetra('Contratos recentes', summary.contratos_recentes, rules.max_contratos_recentes);
+  evalLetra('classificacao_score', 'Classificação do score', summary.classificacao_score, rules.max_classificacao_score);
+  evalLetra('faturas_em_atraso', 'Faturas em atraso', summary.faturas_em_atraso, rules.max_faturas_em_atraso);
+  evalLetra('contratos_recentes', 'Contratos recentes', summary.contratos_recentes, rules.max_contratos_recentes);
+
 
   // Score usado pela régua = MÉDIA dos scores disponíveis
   const breakdown = computeScoreBreakdown(summary);
@@ -659,8 +664,22 @@ serve(async (req) => {
       }
     }
 
+    // Overrides aprovados (alçada) para esta proposta
+    const overriddenSet = new Set<string>();
+    if (application_id) {
+      const { data: overridesRows } = await supabase
+        .from("credit_overridden_criteria")
+        .select("criterion")
+        .eq("company_id", company_id)
+        .eq("application_id", application_id)
+        .eq("status", "approved");
+      for (const r of overridesRows || []) {
+        if ((r as any).criterion) overriddenSet.add(String((r as any).criterion));
+      }
+    }
+
     // Motor de decisão (rodando sobre o summary já ajustado)
-    const engine = runDecisionEngine({ rules, summary, principal, tipo_documento });
+    const engine = runDecisionEngine({ rules, summary, principal, tipo_documento, overriddenCriteria: overriddenSet });
 
     // Nome — tenta vários caminhos
     const nome =

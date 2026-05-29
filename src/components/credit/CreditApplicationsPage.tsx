@@ -31,6 +31,7 @@ import { ContractStep } from './steps/ContractStep';
 import { BoletosStep } from './steps/BoletosStep';
 import { PaymentProbabilityBadge } from './PaymentProbabilityBadge';
 import { BureauAnalysisCard } from './BureauAnalysisCard';
+import { EngineChecklist } from './EngineChecklist';
 
 interface Props { companyId: string }
 
@@ -646,6 +647,7 @@ function ApplicationDetailDialog({
   const [localStep, setLocalStep] = useState<number>(1);
   const [pendingSim, setPendingSim] = useState<any | null>(null);
   const [canApprove, setCanApprove] = useState(false);
+  const { rules } = useCreditRules(companyId);
 
   useEffect(() => {
     if (!userId) return;
@@ -775,6 +777,12 @@ function ApplicationDetailDialog({
                         )}
                       </div>
                       <DecisionBox decision={currentDecision} approved_limit={app.approved_limit} reason={currentReason} knockouts={knockouts} />
+                      <EngineChecklist
+                        summary={summary}
+                        bureau={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any}
+                        rules={rules}
+                        tipoDocumento={app.tipo_documento}
+                      />
                       {(consultation?.bureau_analysis || (app as any).bureau_analysis) && (
                         <BureauAnalysisCard analysis={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any} />
                       )}

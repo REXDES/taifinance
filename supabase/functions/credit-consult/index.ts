@@ -741,7 +741,7 @@ serve(async (req) => {
       await supabase.from("credit_decision_log").insert({
         application_id: application_id || null,
         company_id,
-        step: "consult",
+        step: reuse_last ? "reevaluate" : "consult",
         input: { documento: documentoLimpo, tipo_documento },
         output: engine,
         rules_snapshot: rules,

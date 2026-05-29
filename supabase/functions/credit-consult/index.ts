@@ -345,8 +345,8 @@ function runDecisionEngine(opts: {
     };
   }
 
-  let limit = Math.round((rules.teto_credito * band.percent_teto) / 100);
-  let parcelas = band.max_parcelas;
+  let limit = Math.round((rules.teto_credito * effectiveBand.percent_teto) / 100);
+  let parcelas = effectiveBand.max_parcelas;
   let bureauCapApplied = "";
 
   if (rules.use_bureau_limits) {
@@ -362,16 +362,20 @@ function runDecisionEngine(opts: {
     }
   }
 
+  // Se a faixa original era de rejeição e foi liberada por alçada, força revisão manual
+  const finalDecision: "approved" | "manual" = bandRejected ? "manual" : effectiveBand.decision as any;
+  const alcadaNote = bandRejected ? ` (faixa liberada por alçada — score ${score} estava abaixo do mínimo)` : '';
+
   return {
-    decision: band.decision,
+    decision: finalDecision,
     approved_limit: limit,
     max_parcelas: parcelas,
     score,
     classification,
     reason:
-      (band.decision === "approved"
-        ? `Aprovado com base no score médio ${score} (classe ${classification}) — ${band.percent_teto}% do teto`
-        : `Score médio ${score} (classe ${classification}) requer análise manual`) + bureauCapApplied,
+      (finalDecision === "approved"
+        ? `Aprovado com base no score médio ${score} (classe ${classification}) — ${effectiveBand.percent_teto}% do teto`
+        : `Score médio ${score} (classe ${classification}) requer análise manual`) + alcadaNote + bureauCapApplied,
     knockouts,
     score_breakdown: breakdown,
   };

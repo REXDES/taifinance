@@ -782,6 +782,11 @@ function ApplicationDetailDialog({
                         bureau={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any}
                         rules={rules}
                         tipoDocumento={app.tipo_documento}
+                        applicationId={app.id}
+                        companyId={companyId}
+                        userId={userId}
+                        canApprove={canApprove}
+                        onChanged={onChanged}
                       />
                       {(consultation?.bureau_analysis || (app as any).bureau_analysis) && (
                         <BureauAnalysisCard analysis={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any} />

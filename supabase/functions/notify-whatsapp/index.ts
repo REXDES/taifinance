@@ -109,6 +109,22 @@ serve(async (req) => {
       );
     }
 
+    // ===== Ação ad-hoc: enviar texto livre (ex: link de biometria) =====
+    // Observação: a Cloud API só permite texto livre dentro da janela de 24h após
+    // a última mensagem do cliente. Fora dessa janela, é necessário usar um template.
+    if (req.method === "POST") {
+      let body: any = null;
+      try { body = await req.json(); } catch { /* sem body */ }
+      if (body?.action === "send_text" && body?.to && body?.text) {
+        const r = await sendText(normalizePhone(String(body.to)), String(body.text));
+        return new Response(JSON.stringify({ ok: r.ok, status: r.status, data: r.data }), {
+          status: r.ok ? 200 : 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+
     const today = new Date();
     const currentHour = today.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false });
     const todayStr = today.toISOString().split("T")[0];

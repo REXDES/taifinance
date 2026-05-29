@@ -709,29 +709,33 @@ serve(async (req) => {
 
 
     if (!test_only) {
-      // Persiste consulta
-      const insertPayload: any = {
-        company_id,
-        application_id: application_id || null,
-        documento: documentoLimpo,
-        provider: "redebe",
-        raw_response: wrapper,
-        summary,
-        score: engine.score,
-        classification: engine.classification,
-        decision: engine.decision,
-        approved_limit: engine.approved_limit,
-        decision_reason: engine.reason,
-        consulted_by: userId,
-        pdf_data: pdfData,
-        bureau_analysis: bureauAnalysis,
-      };
-      const { data: consultRow, error: consultErr } = await supabase
-        .from("credit_consultations")
-        .insert(insertPayload)
-        .select()
-        .single();
-      if (consultErr) console.error("[credit-consult] insert consultation error", consultErr);
+      let consultRow: any = null;
+      if (!reuse_last) {
+        // Persiste consulta (somente quando há consulta nova ao bureau)
+        const insertPayload: any = {
+          company_id,
+          application_id: application_id || null,
+          documento: documentoLimpo,
+          provider: "redebe",
+          raw_response: wrapper,
+          summary,
+          score: engine.score,
+          classification: engine.classification,
+          decision: engine.decision,
+          approved_limit: engine.approved_limit,
+          decision_reason: engine.reason,
+          consulted_by: userId,
+          pdf_data: pdfData,
+          bureau_analysis: bureauAnalysis,
+        };
+        const { data: cr, error: consultErr } = await supabase
+          .from("credit_consultations")
+          .insert(insertPayload)
+          .select()
+          .single();
+        if (consultErr) console.error("[credit-consult] insert consultation error", consultErr);
+        consultRow = cr;
+      }
 
       // Decision log
       await supabase.from("credit_decision_log").insert({

@@ -185,6 +185,7 @@ function runDecisionEngine(opts: {
   summary: RedeBESummary;
   principal: any;
   tipo_documento: "CPF" | "CNPJ";
+  overriddenCriteria?: Set<string>;
 }): {
   decision: "approved" | "manual" | "rejected";
   approved_limit: number;
@@ -196,6 +197,11 @@ function runDecisionEngine(opts: {
   score_breakdown: ReturnType<typeof computeScoreBreakdown>;
 } {
   const { rules, summary, principal, tipo_documento } = opts;
+  const overridden = opts.overriddenCriteria || new Set<string>();
+  const pushKO = (criterion: string, msg: string) => {
+    if (overridden.has(criterion)) return;
+    knockouts.push(msg);
+  };
   const knockouts: string[] = [];
 
   // PJ: checar situação ATIVA

@@ -484,10 +484,11 @@ serve(async (req) => {
 
     // Consulta RedeBE — OU reaproveita última consulta (modo reuse_last)
     let wrapper: any;
+    let reusedConsultationId: string | null = null;
     if (reuse_last) {
       let q = supabase
         .from("credit_consultations")
-        .select("raw_response")
+        .select("id, application_id, raw_response")
         .eq("company_id", company_id)
         .eq("documento", documentoLimpo)
         .order("created_at", { ascending: false })
@@ -498,7 +499,7 @@ serve(async (req) => {
       if (!lastConsult && application_id) {
         const { data: any2 } = await supabase
           .from("credit_consultations")
-          .select("raw_response")
+          .select("id, application_id, raw_response")
           .eq("company_id", company_id)
           .eq("documento", documentoLimpo)
           .order("created_at", { ascending: false })
@@ -514,6 +515,7 @@ serve(async (req) => {
       }
       const raw = (lastConsult as any).raw_response;
       wrapper = Array.isArray(raw) ? raw[0] : raw;
+      reusedConsultationId = (lastConsult as any).id ?? null;
       console.log(`[credit-consult] reuse_last for ${documentoLimpo}`);
     } else {
       console.log(`[credit-consult] consulting RedeBE for ${tipo_documento} ${documentoLimpo}`);
@@ -734,6 +736,26 @@ serve(async (req) => {
           .select()
           .single();
         if (consultErr) console.error("[credit-consult] insert consultation error", consultErr);
+        consultRow = cr;
+      } else if (reusedConsultationId) {
+        const updatePayload: any = {
+          application_id: application_id || null,
+          summary,
+          score: engine.score,
+          classification: engine.classification,
+          decision: engine.decision,
+          approved_limit: engine.approved_limit,
+          decision_reason: engine.reason,
+          pdf_data: pdfData,
+          bureau_analysis: bureauAnalysis,
+        };
+        const { data: cr, error: consultUpdateErr } = await supabase
+          .from("credit_consultations")
+          .update(updatePayload)
+          .eq("id", reusedConsultationId)
+          .select()
+          .single();
+        if (consultUpdateErr) console.error("[credit-consult] reuse_last update consultation error", consultUpdateErr);
         consultRow = cr;
       }
 

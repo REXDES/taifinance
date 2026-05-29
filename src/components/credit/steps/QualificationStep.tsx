@@ -76,11 +76,25 @@ function extractFromConsultation(raw: any): Prefilled {
     }
   });
 
-  // Renda
+  // Renda — pega apenas o PRIMEIRO número (evita concatenar faixas como "2001 a 3000" → 20013000)
   walk(raw, (k, v) => {
     const K = k.toUpperCase();
     if ((K.includes('RENDA') || K === 'RENDA_PRESUMIDA' || K === 'FAIXA_RENDA') && (typeof v === 'number' || typeof v === 'string')) {
-      const n = Number(String(v).replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.'));
+      const s = String(v);
+      // captura o primeiro token numérico (com . ou , como separador)
+      const match = s.match(/[\d]+(?:[.,]\d+)*(?:[.,]\d+)?/);
+      if (!match) return;
+      const raw = match[0];
+      // normaliza: remove separadores de milhar (.) e troca decimal (,) por .
+      let normalized = raw;
+      if (raw.includes(',')) {
+        // assume vírgula = decimal, ponto = milhar
+        normalized = raw.replace(/\./g, '').replace(',', '.');
+      } else if ((raw.match(/\./g) || []).length > 1) {
+        // múltiplos pontos = milhar
+        normalized = raw.replace(/\./g, '');
+      }
+      const n = Number(normalized);
       if (!isNaN(n) && n > 0) setIf('renda_mensal', String(n));
     }
   });

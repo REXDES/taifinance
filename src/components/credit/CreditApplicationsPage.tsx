@@ -647,6 +647,7 @@ function ApplicationDetailDialog({
   const [localStep, setLocalStep] = useState<number>(1);
   const [pendingSim, setPendingSim] = useState<any | null>(null);
   const [canApprove, setCanApprove] = useState(false);
+  const { rules } = useCreditRules(companyId);
 
   useEffect(() => {
     if (!userId) return;

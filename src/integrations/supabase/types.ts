@@ -895,7 +895,7 @@ export type Database = {
           sugestao_negocio_block_buckets: Json
           sugestao_negocio_block_levels: Json
           teto_credito: number
-          texto_inadimplencia_block_levels: Json
+          texto_pagamento_block_levels: Json
           updated_at: string
           use_bureau_limits: boolean
         }
@@ -930,7 +930,7 @@ export type Database = {
           sugestao_negocio_block_buckets?: Json
           sugestao_negocio_block_levels?: Json
           teto_credito?: number
-          texto_inadimplencia_block_levels?: Json
+          texto_pagamento_block_levels?: Json
           updated_at?: string
           use_bureau_limits?: boolean
         }
@@ -965,7 +965,7 @@ export type Database = {
           sugestao_negocio_block_buckets?: Json
           sugestao_negocio_block_levels?: Json
           teto_credito?: number
-          texto_inadimplencia_block_levels?: Json
+          texto_pagamento_block_levels?: Json
           updated_at?: string
           use_bureau_limits?: boolean
         }

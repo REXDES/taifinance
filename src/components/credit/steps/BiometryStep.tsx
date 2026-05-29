@@ -80,13 +80,30 @@ export function BiometryStep({
 
   const sendWhatsApp = async () => {
     if (!whatsapp) { toast.error('Cliente sem WhatsApp na qualificação'); return; }
-    const msg = encodeURIComponent(`Olá! Para concluir sua análise de crédito, faça sua biometria neste link: ${publicUrl}`);
-    const phone = whatsapp.replace(/\D/g, '');
-    const full = phone.length === 10 || phone.length === 11 ? `55${phone}` : phone;
-    window.open(`https://wa.me/${full}?text=${msg}`, '_blank');
+    const text = `Olá! Para concluir sua análise de crédito, faça sua biometria neste link: ${publicUrl}`;
+    let sentViaApi = false;
+    try {
+      const { data, error } = await (supabase as any).functions.invoke('notify-whatsapp', {
+        body: { action: 'send_text', to: whatsapp, text },
+      });
+      if (!error && data?.ok) {
+        sentViaApi = true;
+        toast.success('Mensagem enviada via WhatsApp');
+      } else {
+        const reason = data?.data?.error?.message || error?.message || 'Janela de 24h expirada ou número não habilitado';
+        toast.error(`Não foi possível enviar pelo sistema: ${reason}. Abrindo WhatsApp Web…`);
+      }
+    } catch (e: any) {
+      toast.error('Falha ao chamar o serviço de WhatsApp. Abrindo WhatsApp Web…');
+    }
+    if (!sentViaApi) {
+      const phone = whatsapp.replace(/\D/g, '');
+      const full = phone.length === 10 || phone.length === 11 ? `55${phone}` : phone;
+      window.open(`https://wa.me/${full}?text=${encodeURIComponent(text)}`, '_blank');
+    }
     if (bio && !bio.link_sent_at) {
       await (supabase as any).from('credit_biometry').update({ link_sent_at: new Date().toISOString(), status: bio.status === 'pending' ? 'sent' : bio.status }).eq('id', bio.id);
-      refetch();
+      refetch(true);
     }
   };
 

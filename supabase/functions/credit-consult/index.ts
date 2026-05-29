@@ -424,7 +424,7 @@ serve(async (req) => {
     }
     const userId = userData.user.id;
 
-    const { documento, company_id, application_id, test_only } = await req.json();
+    const { documento, company_id, application_id, test_only, reuse_last } = await req.json();
 
     if (!documento || !company_id) {
       return new Response(

@@ -254,16 +254,17 @@ export function QualificationStep({
         const pre = extractFromConsultation(consultationRaw);
         setPrefilled(pre);
         const draft = (appRow as any)?.qualification_draft || {};
+        // Usar || em vez de ?? para que strings vazias do rascunho não sobrescrevam o pré-preenchimento da consulta
         setForm((f) => ({
           ...f,
-          whatsapp_phone: draft.whatsapp_phone ?? pre.whatsapp_phone ?? '',
-          email: draft.email ?? pre.email ?? '',
-          renda_mensal: draft.renda_mensal ?? pre.renda_mensal ?? '',
-          profissao: draft.profissao ?? pre.profissao ?? '',
-          endereco_entrega: draft.endereco_entrega ?? pre.endereco_entrega ?? '',
-          cep: draft.cep ?? pre.cep ?? '',
-          cidade: draft.cidade ?? pre.cidade ?? '',
-          uf: draft.uf ?? pre.uf ?? '',
+          whatsapp_phone: (draft.whatsapp_phone || pre.whatsapp_phone) ?? '',
+          email: (draft.email || pre.email) ?? '',
+          renda_mensal: (draft.renda_mensal || pre.renda_mensal) ?? '',
+          profissao: (draft.profissao || pre.profissao) ?? '',
+          endereco_entrega: (draft.endereco_entrega || pre.endereco_entrega) ?? '',
+          cep: (draft.cep || pre.cep) ?? '',
+          cidade: (draft.cidade || pre.cidade) ?? '',
+          uf: (draft.uf || pre.uf) ?? '',
           notes: draft.notes ?? '',
         }));
       }

@@ -123,7 +123,8 @@ export function CreditApplicationsPage({ companyId }: Props) {
     e?.stopPropagation();
     setReevaluatingId(a.id);
     try {
-      const r = await consultCredit({ documento: a.documento, company_id: companyId, application_id: a.id });
+      // Reaproveita a última consulta ao bureau (sem custo) e aplica ocorrências ignoradas.
+      const r = await consultCredit({ documento: a.documento, company_id: companyId, application_id: a.id, reuse_last: true });
       toast.success(
         r.engine.decision === 'approved' ? 'Reavaliada: aprovada' :
         r.engine.decision === 'manual' ? 'Reavaliada: análise manual' :

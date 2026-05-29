@@ -68,7 +68,7 @@ export function BiometryStep({
     setCreating(false);
     if (error) { toast.error(error.message); return; }
     toast.success('Link de biometria gerado');
-    await refetch();
+    await refetch(true);
   };
 
   const publicUrl = bio ? `${window.location.origin}/credit/biometry/${bio.public_token}` : '';
@@ -121,7 +121,7 @@ export function BiometryStep({
     } else {
       toast.success('Biometria rejeitada');
     }
-    refetch();
+    refetch(true);
   };
 
   useEffect(() => {
@@ -169,7 +169,7 @@ export function BiometryStep({
         </div>
         <div className="flex gap-2">
           <Button size="sm" onClick={sendWhatsApp}><MessageCircle className="w-3 h-3 mr-1" />Enviar por WhatsApp</Button>
-          <Button size="sm" variant="ghost" onClick={refetch}><RefreshCw className="w-3 h-3 mr-1" />Atualizar</Button>
+          <Button size="sm" variant="ghost" onClick={() => refetch(false)}><RefreshCw className="w-3 h-3 mr-1" />Atualizar</Button>
         </div>
         {bio.link_sent_at && <p className="text-[11px] text-muted-foreground">Enviado em {new Date(bio.link_sent_at).toLocaleString('pt-BR')}</p>}
       </div>

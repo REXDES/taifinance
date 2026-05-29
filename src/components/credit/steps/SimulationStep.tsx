@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, ArrowRight, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreditRules } from '@/hooks/useCreditModule';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,11 +23,13 @@ export function SimulationStep({
   applicationId,
   companyId,
   approvedLimit,
+  bureauParcelaMaxima,
   onCompleted,
 }: {
   applicationId: string;
   companyId: string;
   approvedLimit: number | null;
+  bureauParcelaMaxima?: number | null;
   onCompleted: (data: SimulationData) => void;
 }) {
   const { rules } = useCreditRules(companyId);
@@ -191,6 +194,17 @@ export function SimulationStep({
           </Table>
         </div>
       )}
+
+      {calc && bureauParcelaMaxima != null && bureauParcelaMaxima > 0 && calc.parcela > bureauParcelaMaxima && (
+        <Alert variant="destructive" className="border-amber-500/50 text-amber-700 dark:text-amber-300 [&>svg]:text-amber-600">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Parcela acima da sugerida pelo Bureau</AlertTitle>
+          <AlertDescription>
+            A parcela calculada (R$ {calc.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) é maior que a parcela máxima sugerida pelo bureau (R$ {bureauParcelaMaxima.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}). Avalie reduzir o valor ou aumentar o nº de parcelas.
+          </AlertDescription>
+        </Alert>
+      )}
+
 
       <div className="flex justify-end">
         <Button onClick={confirm}>

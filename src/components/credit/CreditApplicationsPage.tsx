@@ -882,7 +882,7 @@ function ApplicationDetailDialog({
                   )}
                 </Tabs>
               )}
-              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={currentApprovedLimit} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
+              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={currentApprovedLimit} bureauParcelaMaxima={(consultation?.bureau_analysis as any)?.parcela_maxima ?? (app as any).bureau_analysis?.parcela_maxima ?? null} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
               {activeStep === 3 && <QualificationStep applicationId={app.id} companyId={companyId} consultationRaw={consultation?.raw_response} consultationName={app.nome || consultation?.nome} onCompleted={() => advanceStep(4)} />}
               {activeStep === 4 && <BiometryStep applicationId={app.id} companyId={companyId} canApprove={canApprove} onCompleted={() => advanceStep(5)} />}
               {activeStep === 5 && <ContractStep applicationId={app.id} companyId={companyId} application={app} pendingSimulation={pendingSim || (app as any).simulation} canApprove={canApprove} onCompleted={() => advanceStep(6)} />}

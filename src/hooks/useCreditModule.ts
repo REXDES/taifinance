@@ -306,6 +306,7 @@ export async function consultCredit(params: {
   company_id: string;
   application_id?: string;
   test_only?: boolean;
+  reuse_last?: boolean;
 }): Promise<ConsultResult> {
   const { data, error } = await supabase.functions.invoke('credit-consult', { body: params });
   if (error) throw new Error(error.message || 'Erro na consulta');

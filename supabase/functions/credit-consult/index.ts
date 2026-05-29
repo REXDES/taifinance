@@ -482,39 +482,73 @@ serve(async (req) => {
           ],
         };
 
-    // Consulta RedeBE
-    console.log(`[credit-consult] consulting RedeBE for ${tipo_documento} ${documentoLimpo}`);
-    const redebeResp = await fetch(REDEBE_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${REDEBE_API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ documento: documentoLimpo, include_pdf: true }),
-    });
+    // Consulta RedeBE — OU reaproveita última consulta (modo reuse_last)
+    let wrapper: any;
+    if (reuse_last) {
+      let q = supabase
+        .from("credit_consultations")
+        .select("raw_response")
+        .eq("company_id", company_id)
+        .eq("documento", documentoLimpo)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (application_id) q = q.eq("application_id", application_id) as any;
+      let { data: lastConsult } = await q.maybeSingle();
+      // fallback: if filtering by application_id returned nothing, try without
+      if (!lastConsult && application_id) {
+        const { data: any2 } = await supabase
+          .from("credit_consultations")
+          .select("raw_response")
+          .eq("company_id", company_id)
+          .eq("documento", documentoLimpo)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        lastConsult = any2 as any;
+      }
+      if (!lastConsult?.raw_response) {
+        return new Response(
+          JSON.stringify({ error: "Nenhuma consulta anterior encontrada para reavaliar. Realize uma nova consulta." }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const raw = (lastConsult as any).raw_response;
+      wrapper = Array.isArray(raw) ? raw[0] : raw;
+      console.log(`[credit-consult] reuse_last for ${documentoLimpo}`);
+    } else {
+      console.log(`[credit-consult] consulting RedeBE for ${tipo_documento} ${documentoLimpo}`);
+      const redebeResp = await fetch(REDEBE_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${REDEBE_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ documento: documentoLimpo, include_pdf: true }),
+      });
 
-    const redebeBodyText = await redebeResp.text();
-    let redebeJson: any;
-    try {
-      redebeJson = JSON.parse(redebeBodyText);
-    } catch {
-      console.error("[credit-consult] RedeBE non-JSON:", redebeBodyText);
-      return new Response(
-        JSON.stringify({ error: "RedeBE retornou resposta inválida", details: redebeBodyText.slice(0, 500) }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const redebeBodyText = await redebeResp.text();
+      let redebeJson: any;
+      try {
+        redebeJson = JSON.parse(redebeBodyText);
+      } catch {
+        console.error("[credit-consult] RedeBE non-JSON:", redebeBodyText);
+        return new Response(
+          JSON.stringify({ error: "RedeBE retornou resposta inválida", details: redebeBodyText.slice(0, 500) }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!redebeResp.ok) {
+        console.error("[credit-consult] RedeBE error", redebeResp.status, redebeJson);
+        return new Response(
+          JSON.stringify({ error: `RedeBE retornou status ${redebeResp.status}`, details: redebeJson }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // RedeBE responde como array; pegar [0]
+      wrapper = Array.isArray(redebeJson) ? redebeJson[0] : redebeJson;
     }
-
-    if (!redebeResp.ok) {
-      console.error("[credit-consult] RedeBE error", redebeResp.status, redebeJson);
-      return new Response(
-        JSON.stringify({ error: `RedeBE retornou status ${redebeResp.status}`, details: redebeJson }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // RedeBE responde como array; pegar [0]
-    const wrapper = Array.isArray(redebeJson) ? redebeJson[0] : redebeJson;
     const redeBlock = wrapper?.RedeBE || wrapper?.data?.RedeBE || wrapper;
     const summary: RedeBESummary = { ...(redeBlock?.resumo || {}) };
     const principal = redeBlock?.retorno?.principal || {};

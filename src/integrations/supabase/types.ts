@@ -732,6 +732,63 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_overridden_criteria: {
+        Row: {
+          actual_value: string | null
+          application_id: string
+          company_id: string
+          created_at: string
+          criterion: string
+          criterion_label: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          id: string
+          limit_value: string | null
+          request_reason: string | null
+          requested_at: string
+          requested_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_value?: string | null
+          application_id: string
+          company_id: string
+          created_at?: string
+          criterion: string
+          criterion_label?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          id?: string
+          limit_value?: string | null
+          request_reason?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_value?: string | null
+          application_id?: string
+          company_id?: string
+          created_at?: string
+          criterion?: string
+          criterion_label?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          id?: string
+          limit_value?: string | null
+          request_reason?: string | null
+          requested_at?: string
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       credit_qualifications: {
         Row: {
           application_id: string

@@ -195,6 +195,17 @@ export function SimulationStep({
         </div>
       )}
 
+      {calc && bureauParcelaMaxima != null && bureauParcelaMaxima > 0 && calc.parcela > bureauParcelaMaxima && (
+        <Alert variant="destructive" className="border-amber-500/50 text-amber-700 dark:text-amber-300 [&>svg]:text-amber-600">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Parcela acima da sugerida pelo Bureau</AlertTitle>
+          <AlertDescription>
+            A parcela calculada (R$ {calc.parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}) é maior que a parcela máxima sugerida pelo bureau (R$ {bureauParcelaMaxima.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}). Avalie reduzir o valor ou aumentar o nº de parcelas.
+          </AlertDescription>
+        </Alert>
+      )}
+
+
       <div className="flex justify-end">
         <Button onClick={confirm}>
           Confirmar e avançar para qualificação <ArrowRight className="w-4 h-4 ml-2" />

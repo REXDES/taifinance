@@ -299,6 +299,24 @@ function runDecisionEngine(opts: {
   const score = breakdown.media ?? (breakdown.score ?? 0);
   const classification = (summary.classificacao_score || "").toUpperCase();
 
+  // Faixa por score (média) — calculada antes para permitir alçada em "score_band"
+  const band =
+    rules.score_bands.find(
+      (b) =>
+        score >= b.min_score &&
+        score <= b.max_score &&
+        (!b.classes || b.classes.length === 0 || b.classes.includes(classification))
+    ) ||
+    rules.score_bands.find((b) => score >= b.min_score && score <= b.max_score);
+
+  const bandRejected = !band || band.decision === "rejected";
+  const fallbackBand = [...rules.score_bands]
+    .filter((b) => b.decision !== "rejected")
+    .sort((a, b) => a.min_score - b.min_score)[0];
+  if (bandRejected) {
+    pushKO('score_band', `Score médio ${score} (classe bureau ${classification || '—'}) abaixo da faixa mínima aprovada${fallbackBand ? ` (mín ${fallbackBand.min_score})` : ''}`);
+  }
+
   if (knockouts.length > 0) {
     return {
       decision: "rejected",
@@ -312,31 +330,23 @@ function runDecisionEngine(opts: {
     };
   }
 
-  // Faixa por score (média)
-  const band =
-    rules.score_bands.find(
-      (b) =>
-        score >= b.min_score &&
-        score <= b.max_score &&
-        (!b.classes || b.classes.length === 0 || b.classes.includes(classification))
-    ) ||
-    rules.score_bands.find((b) => score >= b.min_score && score <= b.max_score);
-
-  if (!band || band.decision === "rejected") {
+  // Se a faixa estava rejeitada mas o knockout foi liberado por alçada, usa a menor faixa aprovável
+  const effectiveBand = bandRejected ? fallbackBand : band!;
+  if (!effectiveBand) {
     return {
       decision: "rejected",
       approved_limit: 0,
       max_parcelas: 0,
       score,
       classification,
-      reason: `Score médio ${score} (classe ${classification}) abaixo dos critérios mínimos`,
+      reason: `Sem faixa de score aprovável configurada`,
       knockouts,
       score_breakdown: breakdown,
     };
   }
 
-  let limit = Math.round((rules.teto_credito * band.percent_teto) / 100);
-  let parcelas = band.max_parcelas;
+  let limit = Math.round((rules.teto_credito * effectiveBand.percent_teto) / 100);
+  let parcelas = effectiveBand.max_parcelas;
   let bureauCapApplied = "";
 
   if (rules.use_bureau_limits) {
@@ -352,16 +362,20 @@ function runDecisionEngine(opts: {
     }
   }
 
+  // Se a faixa original era de rejeição e foi liberada por alçada, força revisão manual
+  const finalDecision: "approved" | "manual" = bandRejected ? "manual" : effectiveBand.decision as any;
+  const alcadaNote = bandRejected ? ` (faixa liberada por alçada — score ${score} estava abaixo do mínimo)` : '';
+
   return {
-    decision: band.decision,
+    decision: finalDecision,
     approved_limit: limit,
     max_parcelas: parcelas,
     score,
     classification,
     reason:
-      (band.decision === "approved"
-        ? `Aprovado com base no score médio ${score} (classe ${classification}) — ${band.percent_teto}% do teto`
-        : `Score médio ${score} (classe ${classification}) requer análise manual`) + bureauCapApplied,
+      (finalDecision === "approved"
+        ? `Aprovado com base no score médio ${score} (classe ${classification}) — ${effectiveBand.percent_teto}% do teto`
+        : `Score médio ${score} (classe ${classification}) requer análise manual`) + alcadaNote + bureauCapApplied,
     knockouts,
     score_breakdown: breakdown,
   };

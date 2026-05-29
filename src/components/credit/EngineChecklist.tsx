@@ -196,6 +196,27 @@ export function EngineChecklist({
   evalLetra('faturas_em_atraso', 'Faturas em atraso', bureau?.faturas_em_atraso_letra || summary.faturas_em_atraso, rules.max_faturas_em_atraso, 'faturas');
   evalLetra('contratos_recentes', 'Contratos recentes', bureau?.contratos_recentes_letra || summary.contratos_recentes, rules.max_contratos_recentes, 'contratos');
 
+  // Faixa de score (régua score_bands) — knockout final quando a média cai em faixa "rejected"
+  const scoreMedia = bureau?.score_breakdown?.media ?? bureau?.score_breakdown?.score ?? toNum(summary.score) ?? null;
+  const bands = rules.score_bands || [];
+  const matchingBand = scoreMedia != null
+    ? bands.find((b) => scoreMedia >= b.min_score && scoreMedia <= b.max_score)
+    : null;
+  const minApprovable = bands
+    .filter((b) => b.decision !== 'rejected')
+    .sort((a, b) => a.min_score - b.min_score)[0];
+  const bandStatus: Status = scoreMedia == null
+    ? 'na'
+    : (!matchingBand || matchingBand.decision === 'rejected') ? 'fail' : 'pass';
+  rows.push({
+    criterion: 'score_band',
+    label: 'Faixa de score (régua)',
+    actual: scoreMedia != null ? `${scoreMedia} pts` : '—',
+    limit: minApprovable ? `mín ${minApprovable.min_score} pts` : 'sem faixa aprovável',
+    status: bandStatus,
+    note: matchingBand ? `faixa ${matchingBand.min_score}-${matchingBand.max_score} → ${matchingBand.decision}` : undefined,
+  });
+
   const overrideByCriterion: Record<string, OverrideRow> = {};
   for (const o of overrides) overrideByCriterion[o.criterion] = o;
 

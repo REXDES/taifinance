@@ -55,7 +55,7 @@ function ApprovalSourceBadge({ decision, hasAlcada }: { decision: string | null;
   if (decision !== 'approved' && decision !== 'manual') return null;
   if (hasAlcada) {
     return (
-      <Badge className="bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30" title="Aprovação envolveu ocorrências ignoradas via alçada">
+      <Badge className="bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30" title="Aprovação envolveu liberação por alçada">
         <Gavel className="w-3 h-3 mr-1" />Aprovação por alçada
       </Badge>
     );
@@ -126,6 +126,34 @@ export function CreditApplicationsPage({ companyId }: Props) {
     try {
       // Reaproveita a última consulta ao bureau (sem custo) e aplica ocorrências ignoradas.
       const r = await consultCredit({ documento: a.documento, company_id: companyId, application_id: a.id, reuse_last: true });
+      const { data: refreshedApp } = await (supabase as any)
+        .from('credit_applications')
+        .select('*')
+        .eq('id', a.id)
+        .maybeSingle();
+
+      if (refreshedApp) {
+        setDetailApp((current) => current?.id === a.id ? (refreshedApp as CreditApplication) : current);
+      } else {
+        setDetailApp((current) => {
+          if (!current || current.id !== a.id) return current;
+          return {
+            ...current,
+            nome: r.nome || current.nome,
+            score: r.engine.score,
+            classification: r.engine.classification,
+            approved_limit: r.engine.approved_limit,
+            decision: r.engine.decision,
+            decision_reason: r.engine.reason,
+            status: r.engine.decision === 'rejected' ? 'rejected' : 'consulted',
+            current_step: r.engine.decision === 'rejected' ? 1 : Math.max(current.current_step || 1, 2),
+            probabilidade_inadimplencia: r.probabilidade_inadimplencia ?? current.probabilidade_inadimplencia,
+            texto_score_bucket: r.texto_score_bucket ?? current.texto_score_bucket,
+            bureau_analysis: r.bureau_analysis ?? current.bureau_analysis,
+          };
+        });
+      }
+
       toast.success(
         r.engine.decision === 'approved' ? 'Reavaliada: aprovada' :
         r.engine.decision === 'manual' ? 'Reavaliada: análise manual' :
@@ -667,33 +695,56 @@ function ApplicationDetailDialog({
     setLocalStep(cur);
     setLoading(true);
     (async () => {
-      const { data } = await (supabase as any)
-        .from('credit_consultations')
-        .select('*')
-        .eq('application_id', app.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const [consultationResp, ignoredResp, overrideResp] = await Promise.all([
+        (supabase as any)
+          .from('credit_consultations')
+          .select('*')
+          .eq('application_id', app.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        (supabase as any)
+          .from('credit_ignored_occurrences')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('status', 'approved')
+          .or(`application_id.eq.${app.id},documento.eq.${app.documento}`),
+        (supabase as any)
+          .from('credit_overridden_criteria')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('application_id', app.id)
+          .eq('status', 'approved'),
+      ]);
+
+      const { data } = consultationResp;
       setConsultation(data);
-      // Detect alçada: any approved ignored occurrence either for THIS application
-      // OR previously approved for the same documento within the same company.
-      const { data: ignoredRows } = await (supabase as any)
-        .from('credit_ignored_occurrences')
-        .select('id, application_id, documento, status')
-        .eq('company_id', companyId)
-        .eq('status', 'approved')
-        .or(`application_id.eq.${app.id},documento.eq.${app.documento}`);
-      setHasAlcada(Array.isArray(ignoredRows) && ignoredRows.length > 0);
+      const ignoredRows = ignoredResp.data;
+      const overrideRows = overrideResp.data;
+      setHasAlcada(
+        (Array.isArray(ignoredRows) && ignoredRows.length > 0) ||
+        (Array.isArray(overrideRows) && overrideRows.length > 0)
+      );
       setLoading(false);
     })();
   }, [app, reevaluating, companyId]);
 
   if (!app) return null;
-  const summary = ((app as any).summary || consultation?.summary || {}) as Record<string, string>;
-  const currentDecision = (app.decision || consultation?.decision) as any;
-  const currentReason = app.decision_reason || consultation?.decision_reason;
+  const summary = ((consultation?.summary || (app as any).summary || {}) as Record<string, string>);
+  const currentDecision = (consultation?.decision ?? app.decision) as any;
+  const currentReason = consultation?.decision_reason ?? app.decision_reason;
+  const currentStatus = app.status === 'contracted'
+    ? 'contracted'
+    : consultation?.decision === 'rejected'
+      ? 'rejected'
+      : (currentDecision ? 'consulted' : app.status);
+  const currentScore = consultation?.score ?? app.score;
+  const currentClassification = consultation?.classification ?? app.classification;
+  const currentApprovedLimit = consultation?.approved_limit ?? app.approved_limit;
+  const currentProbabilidade = consultation?.probabilidade_inadimplencia ?? app.probabilidade_inadimplencia;
+  const currentTextoBucket = consultation?.texto_score_bucket ?? app.texto_score_bucket;
   const knockouts = knockoutsFromReason(currentReason);
-  const decisionOk = (app.decision || consultation?.decision) === 'approved' || (app.decision || consultation?.decision) === 'manual';
+  const decisionOk = currentDecision === 'approved' || currentDecision === 'manual';
 
 
   const advanceStep = async (next: number) => {
@@ -722,11 +773,11 @@ function ApplicationDetailDialog({
         <DialogHeader className="px-6 pt-5">
           <DialogTitle className="flex items-center gap-3 flex-wrap">
             <span>{app.nome || '(sem nome)'}</span>
-            <StatusBadge status={app.status} decision={app.decision} />
-            <ApprovalSourceBadge decision={app.decision} hasAlcada={hasAlcada} />
+            <StatusBadge status={currentStatus} decision={currentDecision} />
+            <ApprovalSourceBadge decision={currentDecision} hasAlcada={hasAlcada} />
             <PaymentProbabilityBadge
-              probabilidadeInadimplencia={app.probabilidade_inadimplencia}
-              textoBucket={app.texto_score_bucket}
+              probabilidadeInadimplencia={currentProbabilidade}
+              textoBucket={currentTextoBucket}
             />
             <div className="ml-auto flex items-center gap-2">
               {consultation?.pdf_data && (
@@ -766,17 +817,17 @@ function ApplicationDetailDialog({
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="text-xs text-muted-foreground">Score</div>
-                          <div className="text-3xl font-bold">{app.score ?? consultation?.score ?? '—'}</div>
-                          <div className="text-xs">Classe {app.classification ?? consultation?.classification ?? '—'}</div>
+                          <div className="text-3xl font-bold">{currentScore ?? '—'}</div>
+                          <div className="text-xs">Classe {currentClassification ?? '—'}</div>
                         </div>
-                        {app.approved_limit != null && (
+                        {currentApprovedLimit != null && (
                           <div className="text-right">
                             <div className="text-xs text-muted-foreground">Limite aprovado</div>
-                            <div className="text-2xl font-bold">R$ {Number(app.approved_limit).toLocaleString('pt-BR')}</div>
+                            <div className="text-2xl font-bold">R$ {Number(currentApprovedLimit).toLocaleString('pt-BR')}</div>
                           </div>
                         )}
                       </div>
-                      <DecisionBox decision={currentDecision} approved_limit={app.approved_limit} reason={currentReason} knockouts={knockouts} />
+                      <DecisionBox decision={currentDecision} approved_limit={currentApprovedLimit} reason={currentReason} knockouts={knockouts} />
                       <EngineChecklist
                         summary={summary}
                         bureau={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any}
@@ -831,7 +882,7 @@ function ApplicationDetailDialog({
                   )}
                 </Tabs>
               )}
-              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={app.approved_limit} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
+              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={currentApprovedLimit} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
               {activeStep === 3 && <QualificationStep applicationId={app.id} companyId={companyId} consultationRaw={consultation?.raw_response} consultationName={app.nome || consultation?.nome} onCompleted={() => advanceStep(4)} />}
               {activeStep === 4 && <BiometryStep applicationId={app.id} companyId={companyId} canApprove={canApprove} onCompleted={() => advanceStep(5)} />}
               {activeStep === 5 && <ContractStep applicationId={app.id} companyId={companyId} application={app} pendingSimulation={pendingSim || (app as any).simulation} canApprove={canApprove} onCompleted={() => advanceStep(6)} />}

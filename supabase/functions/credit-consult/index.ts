@@ -63,7 +63,7 @@ interface CreditRules {
   max_dependentes_bolsa_familia?: number;
   /** Máx. % de risco de inadimplência aceito (1..100, 1=melhor pagador, 100=pior). */
   max_probabilidade_inadimplencia?: number;
-  texto_inadimplencia_block_levels?: string[];
+  texto_pagamento_block_levels?: string[];
   // Bureau analysis cut-offs
   min_score_analise?: number;
   use_bureau_limits?: boolean;
@@ -250,7 +250,7 @@ function runDecisionEngine(opts: {
   }
 
   // Texto interpretativo do score
-  const blockLevels = rules.texto_inadimplencia_block_levels || [];
+  const blockLevels = rules.texto_pagamento_block_levels || [];
   if (blockLevels.length > 0) {
     const bucket = classifyTextoInadimplencia(summary.texto_score);
     if (bucket && blockLevels.includes(bucket)) {

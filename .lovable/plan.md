@@ -1,69 +1,42 @@
-# Reformulação da régua de crédito
+# Diagnóstico
 
-## 1. Probabilidade de inadimplência (escala 1–100)
+O **texto está certo** e a **análise está certa** — quem está invertido é o **valor salvo** na régua atual.
 
-A escala correta do bureau é o **percentual de inadimplência** (1 = melhor pagador, 100 = pior). O valor 9 significa 9% de risco — daí o texto "91% pagarão os próximos 6 meses".
+- O campo do bureau (`texto_score`) descreve **probabilidade de PAGAMENTO**:
+  - `muito_alta` = melhor pagador
+  - `muito_baixa` = pior pagador
+- A edge `credit-consult` (linhas 252–258) classifica esse texto e reprova quando o bucket está na lista `texto_inadimplencia_block_levels`.
+- O label da UI ("Reprovar quando a probabilidade de pagamento for…") e os hints "melhor"/"pior" estão **corretos**.
 
-- **Edge function `credit-consult`**: deixar de arredondar o valor para 1–9; preservar inteiro 1–100 (ex.: "9,00" → 9, "12,5" → 13). Manter parser de vírgula.
-- **Lógica de bloqueio**: rejeitar quando `probabilidade_inadimplencia > max_probabilidade_inadimplencia` (o admin define o **máximo de risco aceito**, ex.: 30 = aceita até 30%).
-- **`useCreditModule.ts`**:
-  - `toPaymentProbability` agora retorna **probabilidade de pagamento** = `100 - inadimplencia` (para exibição amigável).
-  - `DEFAULT_RULES.max_probabilidade_inadimplencia = 30`.
-- **`CreditAdminPage.tsx`**: input passa a ser "Máx. probabilidade de inadimplência (%)" com slider/input 1–100.
-- **`PaymentProbabilityBadge.tsx`**: exibir tanto `X% inadimplência` quanto `(100-X)% pagamento`, com cores invertidas (≤10 verde, ≥50 vermelho).
-- **Migração de dados**: registros antigos já estão em valores baixos (1–9); manter como está — passam a ser interpretados como "1%–9% risco" (excelentes pagadores), o que é coerente.
+O problema: o nome interno da coluna ainda é `texto_inadimplencia_block_levels` (legado, da época em que a régua era "probabilidade de inadimplência"). Quando o admin marcou `media + alta + muito_alta`, ele está hoje **reprovando os melhores pagadores** — exatamente o oposto do que queria. Isso vem de um registro salvo antes da troca de semântica, ou de o usuário ter lido a opção pela ordem visual e não pelo hint.
 
-## 2. Score médio (rating + análise + score)
+# Correções propostas
 
-O bureau devolve três scores distintos: `score_rating`, `score_analise` e `score` (genérico). Hoje só `score` rege a régua.
+1. **Migração de dados (1x)** — em `credit_rules`, inverter os valores já salvos em `texto_inadimplencia_block_levels` aplicando o mapa:
+   - `muito_alta ↔ muito_baixa`
+   - `alta ↔ baixa`
+   - `media → media`
+   
+   Isso faz com que a configuração atual passe a significar o que o admin originalmente queria (bloquear os piores pagadores).
 
-- **Edge function**: extrair os três do `summary` / `principal` / `bureau_analysis`. Calcular `score_medio = round((s1 + s2 + s3) / n)` ignorando ausentes.
-- **Persistência**: gravar `score_breakdown: { rating, analise, score, media }` em `credit_applications.bureau_analysis` (já é jsonb — sem migração).
-- **Régua (`score_bands`)**: passa a aplicar-se sobre `score_medio`.
-- **UI da proposta**: card mostrando os três valores individuais + média destacada.
+2. **Renomear a coluna** para `texto_pagamento_block_levels` (com `ALTER … RENAME COLUMN`), e atualizar referências em:
+   - `supabase/functions/credit-consult/index.ts` (3 ocorrências)
+   - `src/hooks/useCreditModule.ts` (tipo + default)
+   - `src/components/credit/CreditAdminPage.tsx` (binding do checkbox)
+   
+   O default passa a sugerir `['muito_baixa', 'baixa']` (bloquear apenas os piores pagadores) em vez de `[]`, para refletir a intenção típica.
 
-## 3. Novos parâmetros de corte A–E no robô
+3. **UI** — manter o label atual, mas:
+   - Reordenar os checkboxes da **pior → melhor** (muito_baixa, baixa, média, alta, muito_alta), para que a leitura natural deixe claro que marcar "muito_alta" é absurdo.
+   - Destacar visualmente (cor vermelha nos hints "pior" e verde em "melhor").
 
-Para cada campo abaixo, o admin define a **pior letra aceita** (A é melhor, E pior). Tudo acima da letra escolhida bloqueia.
+# Arquivos afetados
 
-| Campo bureau | Significado A → E | Default |
-|---|---|---|
-| `classificacao_score` | A ótimo → E péssimo | C |
-| `faturas_em_atraso` | A pontual → E muito mau pagador | C |
-| `contratos_recentes` | A relacionamento recente → E sem relacionamento | E |
+- Migração SQL: rename de coluna + UPDATE com mapa de inversão
+- `supabase/functions/credit-consult/index.ts`
+- `src/hooks/useCreditModule.ts`
+- `src/components/credit/CreditAdminPage.tsx`
 
-- **Migração**: adicionar 3 colunas em `credit_rules`:
-  - `max_classificacao_score text default 'C'`
-  - `max_faturas_em_atraso text default 'C'`
-  - `max_contratos_recentes text default 'E'`
-- **Edge function**: parser pega a letra de cada campo do bureau (regex inicial A-E) e compara ordinalmente (`A<B<C<D<E`). Se exceder o máximo configurado, knockout com motivo claro.
-- **`CreditAdminPage.tsx`**: 3 selects A–E na aba **Motor**.
+# Confirmação
 
-## 4. `sugestao_negocio` dinâmica
-
-Hoje é lista fixa de buckets. Passar a interpretar dinamicamente a frase recebida via heurística + bucket persistido:
-
-- **Edge function**: já existe `sugestao_de_negocio_bucket` (`recomendar` / `recomendar_com_cautela` / `nao_recomendar`). Reaproveitar — mas mapear qualquer texto novo via palavras-chave (`recomendar`, `cautela`/`ressalva`, `não recomendar`/`negar`) e fallback `desconhecido`.
-- **Admin**: substituir `sugestao_negocio_block_levels` por **3 checkboxes** com label dinâmico (todos os buckets já vistos + os 3 padrões), marcando quais BLOQUEIAM.
-- O texto original sempre é exibido na proposta para auditoria.
-
-## 5. Auto-preenchimento da qualificação via endereço
-
-O bureau retorna `endereco`, `cep`, `cidade`, `uf` no `principal` (PF/PJ).
-
-- **`QualificationStep.tsx`**: ao montar (ou após consulta), se `credit_consultations.summary.endereco_*` existir e os campos da qualificação ainda estiverem vazios, pré-preencher `endereco_entrega`, `cep`, `cidade`, `uf`. Usuário pode editar.
-- Sem migração — usa colunas existentes em `credit_qualifications`.
-
-## Arquivos afetados
-
-- `supabase/functions/credit-consult/index.ts` (parser, scores, knockouts, breakdown)
-- `src/hooks/useCreditModule.ts` (tipos, defaults, `toPaymentProbability`)
-- `src/components/credit/CreditAdminPage.tsx` (aba Motor: novos campos)
-- `src/components/credit/PaymentProbabilityBadge.tsx` (escala 1–100)
-- `src/components/credit/BureauAnalysisCard.tsx` (mostrar 3 scores + média)
-- `src/components/credit/steps/QualificationStep.tsx` (auto-preencher endereço)
-- Migração: adicionar 3 colunas em `credit_rules`
-
-## Observação técnica
-
-Não vou rodar nova migração nos dados existentes de `probabilidade_inadimplencia` — os valores baixos (1–9) já fazem sentido na nova escala (= risco baixo, bons pagadores). Apenas novas consultas usarão o range completo 1–100.
+Confirma que era exatamente isso (admin queria reprovar **maus pagadores**, não bons) e que posso executar a migração de inversão nos dados já salvos?

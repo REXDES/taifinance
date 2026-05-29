@@ -36,7 +36,7 @@ export interface CreditRules {
   max_dependentes_bolsa_familia: number;
   /** Máximo % de risco de inadimplência aceito (1..100, 1=melhor, 100=pior). Default 30. */
   max_probabilidade_inadimplencia: number;
-  texto_inadimplencia_block_levels: string[];
+  texto_pagamento_block_levels: string[];
   // Bureau analysis cut-offs (novo nó "resumo" do RedeBE)
   min_score_analise: number;
   use_bureau_limits: boolean;
@@ -77,7 +77,7 @@ export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
   bolsa_familia_block: false,
   max_dependentes_bolsa_familia: 0,
   max_probabilidade_inadimplencia: 30,
-  texto_inadimplencia_block_levels: [],
+  texto_pagamento_block_levels: ['muito_baixa', 'baixa'],
   min_score_analise: 0,
   use_bureau_limits: false,
   min_nivel_confianca_levels: [],

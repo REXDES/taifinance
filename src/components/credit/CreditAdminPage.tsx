@@ -254,27 +254,35 @@ export function CreditAdminPage({ companyId }: Props) {
               </div>
               <div>
                 <Label className="text-xs">Reprovar quando a probabilidade de pagamento (texto do score) for:</Label>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Marque os níveis que devem <strong>bloquear</strong>. Lembre-se: <span className="text-destructive font-medium">"Muito Baixa" = pior pagador</span> e <span className="text-emerald-600 dark:text-emerald-400 font-medium">"Muito Alta" = melhor pagador</span>.
+                </p>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2">
                   {[
-                    { value: 'muito_baixa', label: 'Muito Baixa', hint: 'pior' },
-                    { value: 'baixa', label: 'Baixa' },
-                    { value: 'media', label: 'Média' },
-                    { value: 'alta', label: 'Alta' },
-                    { value: 'muito_alta', label: 'Muito Alta', hint: 'melhor' },
+                    { value: 'muito_baixa', label: 'Muito Baixa', hint: 'pior', tone: 'bad' },
+                    { value: 'baixa', label: 'Baixa', tone: 'bad' },
+                    { value: 'media', label: 'Média', tone: 'neutral' },
+                    { value: 'alta', label: 'Alta', tone: 'good' },
+                    { value: 'muito_alta', label: 'Muito Alta', hint: 'melhor', tone: 'good' },
                   ].map((opt) => {
-                    const checked = (draft.texto_inadimplencia_block_levels || []).includes(opt.value);
+                    const checked = (draft.texto_pagamento_block_levels || []).includes(opt.value);
+                    const hintColor = opt.tone === 'bad'
+                      ? 'text-destructive'
+                      : opt.tone === 'good'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-muted-foreground';
                     return (
                       <label key={opt.value} className="flex items-center gap-2 text-xs border border-border rounded px-2 py-1.5 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={(e) => {
-                            const curr = new Set(draft.texto_inadimplencia_block_levels || []);
+                            const curr = new Set(draft.texto_pagamento_block_levels || []);
                             if (e.target.checked) curr.add(opt.value); else curr.delete(opt.value);
-                            setDraft({ ...draft, texto_inadimplencia_block_levels: Array.from(curr) });
+                            setDraft({ ...draft, texto_pagamento_block_levels: Array.from(curr) });
                           }}
                         />
-                        <span>{opt.label}{opt.hint ? <span className="text-muted-foreground"> ({opt.hint})</span> : null}</span>
+                        <span>{opt.label}{opt.hint ? <span className={hintColor}> ({opt.hint})</span> : null}</span>
                       </label>
                     );
                   })}

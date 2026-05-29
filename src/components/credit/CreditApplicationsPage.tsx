@@ -733,7 +733,11 @@ function ApplicationDetailDialog({
   const summary = ((consultation?.summary || (app as any).summary || {}) as Record<string, string>);
   const currentDecision = (consultation?.decision ?? app.decision) as any;
   const currentReason = consultation?.decision_reason ?? app.decision_reason;
-  const currentStatus = consultation?.decision === 'rejected' ? 'rejected' : (currentDecision ? 'consulted' : app.status);
+  const currentStatus = app.status === 'contracted'
+    ? 'contracted'
+    : consultation?.decision === 'rejected'
+      ? 'rejected'
+      : (currentDecision ? 'consulted' : app.status);
   const currentScore = consultation?.score ?? app.score;
   const currentClassification = consultation?.classification ?? app.classification;
   const currentApprovedLimit = consultation?.approved_limit ?? app.approved_limit;
@@ -878,7 +882,7 @@ function ApplicationDetailDialog({
                   )}
                 </Tabs>
               )}
-              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={app.approved_limit} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
+              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={currentApprovedLimit} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
               {activeStep === 3 && <QualificationStep applicationId={app.id} companyId={companyId} consultationRaw={consultation?.raw_response} consultationName={app.nome || consultation?.nome} onCompleted={() => advanceStep(4)} />}
               {activeStep === 4 && <BiometryStep applicationId={app.id} companyId={companyId} canApprove={canApprove} onCompleted={() => advanceStep(5)} />}
               {activeStep === 5 && <ContractStep applicationId={app.id} companyId={companyId} application={app} pendingSimulation={pendingSim || (app as any).simulation} canApprove={canApprove} onCompleted={() => advanceStep(6)} />}

@@ -664,8 +664,22 @@ serve(async (req) => {
       }
     }
 
+    // Overrides aprovados (alçada) para esta proposta
+    const overriddenSet = new Set<string>();
+    if (application_id) {
+      const { data: overridesRows } = await supabase
+        .from("credit_overridden_criteria")
+        .select("criterion")
+        .eq("company_id", company_id)
+        .eq("application_id", application_id)
+        .eq("status", "approved");
+      for (const r of overridesRows || []) {
+        if ((r as any).criterion) overriddenSet.add(String((r as any).criterion));
+      }
+    }
+
     // Motor de decisão (rodando sobre o summary já ajustado)
-    const engine = runDecisionEngine({ rules, summary, principal, tipo_documento });
+    const engine = runDecisionEngine({ rules, summary, principal, tipo_documento, overriddenCriteria: overriddenSet });
 
     // Nome — tenta vários caminhos
     const nome =

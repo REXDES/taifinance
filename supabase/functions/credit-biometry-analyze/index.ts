@@ -123,6 +123,29 @@ serve(async (req) => {
       await admin.from("credit_applications").update({ current_step: 4 }).eq("id", bio.application_id).lt("current_step", 4);
     }
 
+    // Grava as imagens biométricas no cadastro do cliente vinculado à aplicação
+    try {
+      const { data: app } = await admin
+        .from("credit_applications")
+        .select("client_supplier_id")
+        .eq("id", bio.application_id)
+        .maybeSingle();
+      if (app?.client_supplier_id) {
+        await admin
+          .from("clients_suppliers")
+          .update({
+            selfie_url: selfiePath,
+            doc_front_url: docFrontPath,
+            doc_back_url: docBackPath,
+            biometry_verified_at: new Date().toISOString(),
+            biometry_similarity_score: ai.similarity,
+          })
+          .eq("id", app.client_supplier_id);
+      }
+    } catch (e) {
+      console.error("Falha ao gravar biometria no cadastro do cliente:", e);
+    }
+
     return new Response(JSON.stringify({ success: true, status, similarity: ai.similarity, liveness: ai.liveness }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("biometry analyze error", e);

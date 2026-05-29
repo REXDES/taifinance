@@ -37,25 +37,26 @@ export function BiometryStep({
   const [whatsapp, setWhatsapp] = useState<string>('');
   const [creating, setCreating] = useState(false);
 
-  const refetch = useCallback(async () => {
-    setLoading(true);
+  const refetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const [{ data: bioData }, { data: qual }] = await Promise.all([
       (supabase as any).from('credit_biometry').select('*').eq('application_id', applicationId).maybeSingle(),
       (supabase as any).from('credit_qualifications').select('whatsapp_phone').eq('application_id', applicationId).maybeSingle(),
     ]);
     setBio(bioData);
     setWhatsapp(qual?.whatsapp_phone || '');
-    setLoading(false);
-  }, [applicationId]);
+    if (!loading || !silent) setLoading(false);
+  }, [applicationId, loading]);
 
-  useEffect(() => { refetch(); }, [refetch]);
+  useEffect(() => { refetch(false); }, [applicationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-refresh while pending/analyzing
+  // Auto-refresh silencioso enquanto pendente/analisando (não pisca a tela)
   useEffect(() => {
     if (!bio || bio.status === 'approved' || bio.status === 'rejected') return;
-    const t = setInterval(refetch, 5000);
+    const t = setInterval(() => refetch(true), 5000);
     return () => clearInterval(t);
-  }, [bio, refetch]);
+  }, [bio?.status, refetch]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const generate = async () => {
     setCreating(true);

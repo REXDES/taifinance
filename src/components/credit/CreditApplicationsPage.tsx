@@ -777,6 +777,12 @@ function ApplicationDetailDialog({
                         )}
                       </div>
                       <DecisionBox decision={currentDecision} approved_limit={app.approved_limit} reason={currentReason} knockouts={knockouts} />
+                      <EngineChecklist
+                        summary={summary}
+                        bureau={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any}
+                        rules={rules}
+                        tipoDocumento={app.tipo_documento}
+                      />
                       {(consultation?.bureau_analysis || (app as any).bureau_analysis) && (
                         <BureauAnalysisCard analysis={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any} />
                       )}

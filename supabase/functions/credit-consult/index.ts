@@ -412,6 +412,9 @@ function runDecisionEngine(opts: {
 function buildBureauAnalysis(summary: RedeBESummary) {
   const confiancaBucket = classifyConfianca(summary.nivel_de_confianca);
   const sugestaoBucket = classifySugestao(summary.sugestao_de_negocio);
+  const classifLetra = extractLetraAE(summary.classificacao_score);
+  const faturasLetra = extractLetraAE(summary.faturas_em_atraso);
+  const contratosLetra = extractLetraAE(summary.contratos_recentes);
   return {
     score_analise: toNumberLoose(summary.score_analise),
     max_parcelas: toNumberLoose(summary.max_parcelas),
@@ -420,17 +423,23 @@ function buildBureauAnalysis(summary: RedeBESummary) {
     nivel_de_confianca_raw: summary.nivel_de_confianca || null,
     nivel_de_confianca_bucket: confiancaBucket,
     nivel_de_confianca_label: confiancaBucket ? CONFIANCA_LABEL[confiancaBucket] : null,
+    nivel_de_confianca_interpreted: !!confiancaBucket && !!summary.nivel_de_confianca,
     descricao_rating: summary.descricao_rating || null,
     observacao_credito: summary.observacao_credito || null,
     sugestao_de_negocio_raw: summary.sugestao_de_negocio || null,
     sugestao_de_negocio_bucket: sugestaoBucket,
     sugestao_de_negocio_label: sugestaoBucket ? SUGESTAO_LABEL[sugestaoBucket] : null,
+    sugestao_de_negocio_interpreted: !!sugestaoBucket && !!summary.sugestao_de_negocio,
     score_breakdown: computeScoreBreakdown(summary),
-    classificacao_score_letra: extractLetraAE(summary.classificacao_score),
-    faturas_em_atraso_letra: extractLetraAE(summary.faturas_em_atraso),
-    contratos_recentes_letra: extractLetraAE(summary.contratos_recentes),
+    classificacao_score_letra: classifLetra,
+    classificacao_score_raw: summary.classificacao_score || null,
+    classificacao_score_interpreted: isLetraInterpreted(summary.classificacao_score, classifLetra),
+    faturas_em_atraso_letra: faturasLetra,
     faturas_em_atraso_raw: summary.faturas_em_atraso || null,
+    faturas_em_atraso_interpreted: isLetraInterpreted(summary.faturas_em_atraso, faturasLetra),
+    contratos_recentes_letra: contratosLetra,
     contratos_recentes_raw: summary.contratos_recentes || null,
+    contratos_recentes_interpreted: isLetraInterpreted(summary.contratos_recentes, contratosLetra),
   };
 }
 

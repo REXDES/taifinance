@@ -86,8 +86,35 @@ function letterRank(l?: string | null): number | null {
 function extractLetraAE(raw: any): string | null {
   if (raw == null) return null;
   const s = String(raw).trim().toUpperCase();
-  const m = s.match(/\b([A-E])\b/);
-  return m ? m[1] : null;
+  if (!s) return null;
+  // Aceita compostos como "AA", "AB", "BC" → pega a primeira letra A-E.
+  const m = s.match(/[A-E]/);
+  return m ? m[0] : null;
+}
+/** True quando a letra detectada não bate exatamente com o raw (ex.: raw="AA" → "A"). */
+function isLetraInterpreted(raw: any, parsed: string | null): boolean {
+  if (!parsed) return false;
+  const s = String(raw ?? '').trim().toUpperCase();
+  return s !== parsed;
+}
+
+/** Conta entradas "positivas" do Cadastro Positivo dentro do retorno bruto do bureau. */
+function countPositiveCadastroEntries(node: any): number {
+  if (!node || typeof node !== 'object') return 0;
+  if (Array.isArray(node)) return node.reduce<number>((acc, v) => acc + countPositiveCadastroEntries(v), 0);
+  let count = 0;
+  const text = Object.values(node)
+    .filter((v) => typeof v === 'string' || typeof v === 'number')
+    .map((v) => String(v).toUpperCase())
+    .join(' | ');
+  if (/CADASTRO\s*POSITIVO|SCPC\s*POSITIVO|CONSUMIDOR\s*POSITIVO/.test(text)
+      && !/N[ÃA]O\s*PARTICIPANTE|EXCLU[IÍ]D|NEGAT|RECUS|BLOQUEAD/.test(text)) {
+    count += 1;
+  }
+  for (const v of Object.values(node)) {
+    if (v && typeof v === 'object') count += countPositiveCadastroEntries(v);
+  }
+  return count;
 }
 
 // ---- Bureau "resumo" analytical helpers ----

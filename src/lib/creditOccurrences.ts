@@ -15,6 +15,21 @@ export const PRIORITY_FIELDS = ['TITULO', 'TIPO', 'DESCRICAO', 'OBSERVACOES', 'O
 export type OccurrenceRecord = Record<string, any>;
 export interface OccurrenceGroup { category: string; items: OccurrenceRecord[] }
 
+/**
+ * Detecta entradas "positivas" do Cadastro Positivo (ex.: "PARTICIPANTE DO CADASTRO POSITIVO"),
+ * que NÃO são ocorrências negativas — não devem aparecer como alerta nem permitir alçada.
+ * Se contiver "NÃO PARTICIPANTE" / "NEGAT" / "EXCLU", deixa passar como ocorrência real.
+ */
+export function isPositiveCadastroEntry(record: OccurrenceRecord): boolean {
+  const text = Object.values(record)
+    .filter((v) => typeof v === 'string' || typeof v === 'number')
+    .map((v) => String(v).toUpperCase())
+    .join(' | ');
+  if (!/CADASTRO\s*POSITIVO|SCPC\s*POSITIVO|CONSUMIDOR\s*POSITIVO/.test(text)) return false;
+  if (/N[ÃA]O\s*PARTICIPANTE|EXCLU[IÍ]D|NEGAT|RECUS|BLOQUEAD/.test(text)) return false;
+  return true;
+}
+
 export function buildOccurrenceKey(record: OccurrenceRecord): string {
   return JSON.stringify(
     Object.entries(record)
@@ -84,17 +99,22 @@ export function extractOccurrences(raw: any): OccurrenceGroup[] {
   };
   visit(raw);
 
-  return Object.entries(buckets).map(([category, items]) => {
-    const seen = new Set<string>();
-    const deduped = items.filter((item) => {
-      const key = buildOccurrenceKey(item);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    return { category, items: deduped };
-  });
+  return Object.entries(buckets)
+    .map(([category, items]) => {
+      const seen = new Set<string>();
+      const deduped = items.filter((item) => {
+        // Filtra entradas "positivas" do Cadastro Positivo — não são ocorrências/problemas
+        if (isPositiveCadastroEntry(item)) return false;
+        const key = buildOccurrenceKey(item);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return { category, items: deduped };
+    })
+    .filter((g) => g.items.length > 0);
 }
+
 
 export function pickTitulo(record: OccurrenceRecord): string | null {
   for (const k of ['TITULO', 'TIPO']) {

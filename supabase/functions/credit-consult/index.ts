@@ -86,8 +86,35 @@ function letterRank(l?: string | null): number | null {
 function extractLetraAE(raw: any): string | null {
   if (raw == null) return null;
   const s = String(raw).trim().toUpperCase();
-  const m = s.match(/\b([A-E])\b/);
-  return m ? m[1] : null;
+  if (!s) return null;
+  // Aceita compostos como "AA", "AB", "BC" → pega a primeira letra A-E.
+  const m = s.match(/[A-E]/);
+  return m ? m[0] : null;
+}
+/** True quando a letra detectada não bate exatamente com o raw (ex.: raw="AA" → "A"). */
+function isLetraInterpreted(raw: any, parsed: string | null): boolean {
+  if (!parsed) return false;
+  const s = String(raw ?? '').trim().toUpperCase();
+  return s !== parsed;
+}
+
+/** Conta entradas "positivas" do Cadastro Positivo dentro do retorno bruto do bureau. */
+function countPositiveCadastroEntries(node: any): number {
+  if (!node || typeof node !== 'object') return 0;
+  if (Array.isArray(node)) return node.reduce<number>((acc, v) => acc + countPositiveCadastroEntries(v), 0);
+  let count = 0;
+  const text = Object.values(node)
+    .filter((v) => typeof v === 'string' || typeof v === 'number')
+    .map((v) => String(v).toUpperCase())
+    .join(' | ');
+  if (/CADASTRO\s*POSITIVO|SCPC\s*POSITIVO|CONSUMIDOR\s*POSITIVO/.test(text)
+      && !/N[ÃA]O\s*PARTICIPANTE|EXCLU[IÍ]D|NEGAT|RECUS|BLOQUEAD/.test(text)) {
+    count += 1;
+  }
+  for (const v of Object.values(node)) {
+    if (v && typeof v === 'object') count += countPositiveCadastroEntries(v);
+  }
+  return count;
 }
 
 // ---- Bureau "resumo" analytical helpers ----
@@ -385,6 +412,9 @@ function runDecisionEngine(opts: {
 function buildBureauAnalysis(summary: RedeBESummary) {
   const confiancaBucket = classifyConfianca(summary.nivel_de_confianca);
   const sugestaoBucket = classifySugestao(summary.sugestao_de_negocio);
+  const classifLetra = extractLetraAE(summary.classificacao_score);
+  const faturasLetra = extractLetraAE(summary.faturas_em_atraso);
+  const contratosLetra = extractLetraAE(summary.contratos_recentes);
   return {
     score_analise: toNumberLoose(summary.score_analise),
     max_parcelas: toNumberLoose(summary.max_parcelas),
@@ -393,17 +423,23 @@ function buildBureauAnalysis(summary: RedeBESummary) {
     nivel_de_confianca_raw: summary.nivel_de_confianca || null,
     nivel_de_confianca_bucket: confiancaBucket,
     nivel_de_confianca_label: confiancaBucket ? CONFIANCA_LABEL[confiancaBucket] : null,
+    nivel_de_confianca_interpreted: !!confiancaBucket && !!summary.nivel_de_confianca,
     descricao_rating: summary.descricao_rating || null,
     observacao_credito: summary.observacao_credito || null,
     sugestao_de_negocio_raw: summary.sugestao_de_negocio || null,
     sugestao_de_negocio_bucket: sugestaoBucket,
     sugestao_de_negocio_label: sugestaoBucket ? SUGESTAO_LABEL[sugestaoBucket] : null,
+    sugestao_de_negocio_interpreted: !!sugestaoBucket && !!summary.sugestao_de_negocio,
     score_breakdown: computeScoreBreakdown(summary),
-    classificacao_score_letra: extractLetraAE(summary.classificacao_score),
-    faturas_em_atraso_letra: extractLetraAE(summary.faturas_em_atraso),
-    contratos_recentes_letra: extractLetraAE(summary.contratos_recentes),
+    classificacao_score_letra: classifLetra,
+    classificacao_score_raw: summary.classificacao_score || null,
+    classificacao_score_interpreted: isLetraInterpreted(summary.classificacao_score, classifLetra),
+    faturas_em_atraso_letra: faturasLetra,
     faturas_em_atraso_raw: summary.faturas_em_atraso || null,
+    faturas_em_atraso_interpreted: isLetraInterpreted(summary.faturas_em_atraso, faturasLetra),
+    contratos_recentes_letra: contratosLetra,
     contratos_recentes_raw: summary.contratos_recentes || null,
+    contratos_recentes_interpreted: isLetraInterpreted(summary.contratos_recentes, contratosLetra),
   };
 }
 
@@ -675,6 +711,23 @@ serve(async (req) => {
           ignoredAdjustments.push({ category: cat, field: f, subtracted: take, before: String(before), after: String(after) });
           remaining -= take;
         }
+      }
+    }
+
+    // Desconta entradas "Participante do Cadastro Positivo" do contador de alertas (não são problemas)
+    const positiveCadastroCount = countPositiveCadastroEntries(redeBlock);
+    if (positiveCadastroCount > 0) {
+      const beforeAlertas = toInt(summary.quantidade_alertas_restricoes);
+      const afterAlertas = Math.max(0, beforeAlertas - positiveCadastroCount);
+      if (afterAlertas !== beforeAlertas) {
+        summary.quantidade_alertas_restricoes = String(afterAlertas);
+        ignoredAdjustments.push({
+          category: 'Cadastro Positivo (ignorado)',
+          field: 'quantidade_alertas_restricoes',
+          subtracted: beforeAlertas - afterAlertas,
+          before: String(beforeAlertas),
+          after: String(afterAlertas),
+        });
       }
     }
 

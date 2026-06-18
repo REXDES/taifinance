@@ -133,6 +133,7 @@ export interface BureauAnalysis {
   sugestao_de_negocio_label: string | null;
   score_breakdown?: ScoreBreakdown | null;
   classificacao_score_letra?: string | null;
+  classificacao_score_raw?: string | null;
   faturas_em_atraso_letra?: string | null;
   contratos_recentes_letra?: string | null;
   faturas_em_atraso_raw?: string | null;

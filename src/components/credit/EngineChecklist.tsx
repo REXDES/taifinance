@@ -162,48 +162,78 @@ export function EngineChecklist({
   }
 
   const confBucket = bureau?.nivel_de_confianca_bucket || null;
+  const confRaw = (bureau as any)?.nivel_de_confianca_raw || null;
   const blockConf = rules.min_nivel_confianca_levels || [];
   if (blockConf.length > 0) {
+    let actual: string;
+    if (confBucket) {
+      const label = CONFIANCA_LABEL[confBucket] || confBucket;
+      const isInterpreted = confRaw && String(confRaw).trim().toLowerCase() !== label.toLowerCase();
+      actual = isInterpreted ? `Interpretado como ${label} (original: ${confRaw})` : label;
+    } else if (confRaw) {
+      actual = `Não associado (original: ${confRaw})`;
+    } else {
+      actual = '—';
+    }
     rows.push({
       criterion: 'nivel_de_confianca',
       label: 'Nível de confiança',
-      actual: confBucket ? CONFIANCA_LABEL[confBucket] || confBucket : '—',
+      actual,
       limit: `bloqueia: ${blockConf.map((b) => CONFIANCA_LABEL[b] || b).join(', ')}`,
       status: !confBucket ? 'na' : blockConf.includes(confBucket) ? 'fail' : 'pass',
     });
   }
 
   const sugBucket = bureau?.sugestao_de_negocio_bucket || null;
+  const sugRaw = bureau?.sugestao_de_negocio_raw || null;
   const blockSug = Array.from(new Set([
     ...(rules.sugestao_negocio_block_levels || []),
     ...(rules.sugestao_negocio_block_buckets || []),
   ]));
+  let sugActual: string;
+  if (sugBucket) {
+    const label = SUGESTAO_LABEL[sugBucket] || sugBucket;
+    const isInterpreted = sugRaw && String(sugRaw).trim().toLowerCase() !== label.toLowerCase();
+    sugActual = isInterpreted ? `Interpretado como ${label} (original: ${sugRaw})` : label;
+  } else if (sugRaw) {
+    sugActual = `Não associado (original: ${sugRaw})`;
+  } else {
+    sugActual = '—';
+  }
   rows.push({
     criterion: 'sugestao_negocio',
     label: 'Sugestão de negócio',
-    actual: sugBucket ? SUGESTAO_LABEL[sugBucket] || sugBucket : (bureau?.sugestao_de_negocio_raw || '—'),
+    actual: sugActual,
     limit: blockSug.length ? `bloqueia: ${blockSug.map((b) => SUGESTAO_LABEL[b] || b).join(', ')}` : '—',
     status: !sugBucket || blockSug.length === 0 ? 'na' : blockSug.includes(sugBucket) ? 'fail' : 'pass',
   });
 
-  const evalLetra = (criterion: string, label: string, letra: string | null | undefined, maxLetra: LetraAE | undefined, kind: 'classificacao' | 'faturas' | 'contratos') => {
+  const evalLetra = (criterion: string, label: string, rawValue: string | null | undefined, maxLetra: LetraAE | undefined, kind: 'classificacao' | 'faturas' | 'contratos') => {
     if (!maxLetra) return;
-    const L = (letra || '').toUpperCase();
-    const r = LETRA_RANK[L];
+    const { letter, interpreted, raw } = interpretLetra(rawValue);
+    const r = letter ? LETRA_RANK[letter] : undefined;
     const max = LETRA_RANK[maxLetra];
-    const actualLabel = L ? (LETRA_LABEL[L]?.[kind] || L) : '—';
     const maxLabel = LETRA_LABEL[maxLetra]?.[kind] || maxLetra;
+    let actual: string;
+    if (letter) {
+      const baseLabel = LETRA_LABEL[letter]?.[kind] || letter;
+      actual = interpreted ? `Interpretado como ${baseLabel} (original: ${raw})` : baseLabel;
+    } else if (raw) {
+      actual = `Não associado (original: ${raw})`;
+    } else {
+      actual = '—';
+    }
     rows.push({
       criterion,
       label,
-      actual: actualLabel,
+      actual,
       limit: `máx ${maxLabel}`,
       status: !r ? 'na' : r > max ? 'fail' : 'pass',
     });
   };
-  evalLetra('classificacao_score', 'Classificação do score', bureau?.classificacao_score_letra || summary.classificacao_score, rules.max_classificacao_score, 'classificacao');
-  evalLetra('faturas_em_atraso', 'Faturas em atraso', bureau?.faturas_em_atraso_letra || summary.faturas_em_atraso, rules.max_faturas_em_atraso, 'faturas');
-  evalLetra('contratos_recentes', 'Contratos recentes', bureau?.contratos_recentes_letra || summary.contratos_recentes, rules.max_contratos_recentes, 'contratos');
+  evalLetra('classificacao_score', 'Classificação do score', (bureau as any)?.classificacao_score_raw || bureau?.classificacao_score_letra || summary.classificacao_score, rules.max_classificacao_score, 'classificacao');
+  evalLetra('faturas_em_atraso', 'Faturas em atraso', bureau?.faturas_em_atraso_raw || bureau?.faturas_em_atraso_letra || summary.faturas_em_atraso, rules.max_faturas_em_atraso, 'faturas');
+  evalLetra('contratos_recentes', 'Contratos recentes', bureau?.contratos_recentes_raw || bureau?.contratos_recentes_letra || summary.contratos_recentes, rules.max_contratos_recentes, 'contratos');
 
   // Faixa de score (régua score_bands) — knockout final quando a média cai em faixa "rejected"
   const scoreMedia = bureau?.score_breakdown?.media ?? bureau?.score_breakdown?.score ?? toNum(summary.score) ?? null;

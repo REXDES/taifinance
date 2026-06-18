@@ -99,17 +99,20 @@ export function extractOccurrences(raw: any): OccurrenceGroup[] {
   };
   visit(raw);
 
-  return Object.entries(buckets).map(([category, items]) => {
-    const seen = new Set<string>();
-    const deduped = items.filter((item) => {
-      const key = buildOccurrenceKey(item);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    return { category, items: deduped };
-  });
-}
+  return Object.entries(buckets)
+    .map(([category, items]) => {
+      const seen = new Set<string>();
+      const deduped = items.filter((item) => {
+        // Filtra entradas "positivas" do Cadastro Positivo — não são ocorrências/problemas
+        if (isPositiveCadastroEntry(item)) return false;
+        const key = buildOccurrenceKey(item);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return { category, items: deduped };
+    })
+    .filter((g) => g.items.length > 0);
 
 export function pickTitulo(record: OccurrenceRecord): string | null {
   for (const k of ['TITULO', 'TIPO']) {

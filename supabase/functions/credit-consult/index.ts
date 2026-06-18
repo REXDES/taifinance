@@ -697,23 +697,6 @@ serve(async (req) => {
     for (const r of ignoredRows) {
       ignoredCountByCategory[(r as any).category] = (ignoredCountByCategory[(r as any).category] || 0) + 1;
     }
-
-    // Desconta entradas "Participante do Cadastro Positivo" do contador de alertas (não são problemas)
-    const positiveCadastroCount = countPositiveCadastroEntries(redeBlock);
-    if (positiveCadastroCount > 0) {
-      const beforeAlertas = toInt(summary.quantidade_alertas_restricoes);
-      const afterAlertas = Math.max(0, beforeAlertas - positiveCadastroCount);
-      if (afterAlertas !== beforeAlertas) {
-        summary.quantidade_alertas_restricoes = String(afterAlertas);
-        ignoredAdjustments.push({
-          category: 'Alertas / Restrições',
-          field: 'quantidade_alertas_restricoes',
-          subtracted: beforeAlertas - afterAlertas,
-          before: String(beforeAlertas),
-          after: String(afterAlertas),
-        });
-      }
-    }
     const ignoredAdjustments: Array<{ category: string; field: string; subtracted: number; before: string; after: string }> = [];
     for (const [cat, count] of Object.entries(ignoredCountByCategory)) {
       const fields = CATEGORY_TO_SUMMARY_FIELDS[cat] || [];
@@ -728,6 +711,23 @@ serve(async (req) => {
           ignoredAdjustments.push({ category: cat, field: f, subtracted: take, before: String(before), after: String(after) });
           remaining -= take;
         }
+      }
+    }
+
+    // Desconta entradas "Participante do Cadastro Positivo" do contador de alertas (não são problemas)
+    const positiveCadastroCount = countPositiveCadastroEntries(redeBlock);
+    if (positiveCadastroCount > 0) {
+      const beforeAlertas = toInt(summary.quantidade_alertas_restricoes);
+      const afterAlertas = Math.max(0, beforeAlertas - positiveCadastroCount);
+      if (afterAlertas !== beforeAlertas) {
+        summary.quantidade_alertas_restricoes = String(afterAlertas);
+        ignoredAdjustments.push({
+          category: 'Cadastro Positivo (ignorado)',
+          field: 'quantidade_alertas_restricoes',
+          subtracted: beforeAlertas - afterAlertas,
+          before: String(beforeAlertas),
+          after: String(afterAlertas),
+        });
       }
     }
 

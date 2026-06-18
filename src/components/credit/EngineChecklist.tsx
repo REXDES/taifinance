@@ -21,6 +21,15 @@ type Row = {
 
 const LETRA_RANK: Record<string, number> = { A: 1, B: 2, C: 3, D: 4, E: 5 };
 
+/** Interpreta uma letra A-E de um raw como "AA", "BC", "C1"; retorna a letra e se foi interpretada. */
+function interpretLetra(raw: any): { letter: string | null; interpreted: boolean; raw: string } {
+  const s = String(raw ?? '').trim().toUpperCase();
+  if (!s) return { letter: null, interpreted: false, raw: '' };
+  const m = s.match(/[A-E]/);
+  if (!m) return { letter: null, interpreted: false, raw: s };
+  return { letter: m[0], interpreted: s !== m[0], raw: s };
+}
+
 const CONFIANCA_LABEL = Object.fromEntries(CONFIANCA_OPTIONS.map((o) => [o.value, o.label]));
 const SUGESTAO_LABEL = Object.fromEntries(SUGESTAO_OPTIONS.map((o) => [o.value, o.label]));
 

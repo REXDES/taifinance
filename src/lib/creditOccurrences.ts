@@ -113,6 +113,8 @@ export function extractOccurrences(raw: any): OccurrenceGroup[] {
       return { category, items: deduped };
     })
     .filter((g) => g.items.length > 0);
+}
+
 
 export function pickTitulo(record: OccurrenceRecord): string | null {
   for (const k of ['TITULO', 'TIPO']) {

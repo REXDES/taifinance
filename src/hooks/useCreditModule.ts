@@ -139,10 +139,6 @@ export interface BureauAnalysis {
   faturas_em_atraso_raw?: string | null;
   contratos_recentes_raw?: string | null;
 }
-  contratos_recentes_letra?: string | null;
-  faturas_em_atraso_raw?: string | null;
-  contratos_recentes_raw?: string | null;
-}
 
 export const CONFIANCA_OPTIONS = [
   { value: 'muito_baixo', label: 'Muito Baixo' },

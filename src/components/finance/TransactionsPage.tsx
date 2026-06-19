@@ -401,6 +401,16 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                   </div>
 
                   <div>
+                    <Label>Tags</Label>
+                    <TagPicker
+                      companyId={companyId}
+                      value={form.tags}
+                      onChange={(ids) => setForm({ ...form, tags: ids })}
+                      placeholder="Adicionar tags..."
+                    />
+                  </div>
+
+                  <div>
                     <Label>Observações</Label>
                     <Textarea
                       value={form.notes}

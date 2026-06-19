@@ -527,6 +527,10 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                 ))}
               </div>
             </div>
+            <div className="md:col-span-2">
+              <Label>Tags</Label>
+              <TagPicker companyId={companyId} value={filterTagIds} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
+            </div>
           </div>
         </Card>
       )}

@@ -438,6 +438,10 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
           <CardContent className="pt-4">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
+                <Label>Tags</Label>
+                <TagPicker companyId={companyId} value={filterTagIdsRaw} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
+              </div>
+              <div>
                 <Label>Descrição</Label>
                 <Input
                   type="text"

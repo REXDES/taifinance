@@ -257,7 +257,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
             <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Resultado</CardTitle></CardHeader><CardContent><div className={`text-xl font-bold ${totals.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(totals.net)}</div></CardContent></Card>
           </div>
           <Card><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent>
-            {entries.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhuma movimentação encontrada.</p> : (
+            {visibleEntries.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhuma movimentação encontrada.</p> : (
               <Table><TableHeader><TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
@@ -267,7 +267,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
                 {showBalanceColumn && <TableHead className="text-right">Saldo</TableHead>}
               </TableRow></TableHeader>
                 <TableBody>
-                  {entries.map((e) => (
+                  {visibleEntries.map((e) => (
                     <TableRow key={e.id}>
                       <TableCell>{new Date(e.date).toLocaleDateString('pt-BR')}</TableCell>
                       <TableCell><div className="flex items-center gap-2">{getIcon(e.type)}<span>{e.description}</span></div></TableCell>

@@ -197,6 +197,10 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Tags</Label>
+                <TagPicker companyId={companyId} value={filterTagIds} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
+              </div>
             </div>
           </CardContent>
         </Card>

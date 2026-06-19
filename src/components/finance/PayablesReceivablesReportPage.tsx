@@ -274,7 +274,10 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
                       {getTypeLabel(record.type)}
                     </Badge>
                   </TableCell>
-                  <TableCell>{record.description}</TableCell>
+                  <TableCell>
+                    <div>{record.description}</div>
+                    <TagBadges tags={rowTags[record.id]} className="mt-1" />
+                  </TableCell>
                   <TableCell>{record.client_supplier?.name || '-'}</TableCell>
                   <TableCell>{record.category?.name || '-'}</TableCell>
                   <TableCell className={record.type === 'payable' ? 'text-red-600' : 'text-green-600'}>

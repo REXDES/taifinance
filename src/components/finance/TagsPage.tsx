@@ -122,16 +122,6 @@ export function TagsPage({ companyId }: TagsPageProps) {
             </Card>
             );
           })}
-              <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={() => openEdit(tag)}>
-                  <Pencil className="w-4 h-4" />
-                </Button>
-                <Button size="icon" variant="ghost" onClick={() => setDeleteTarget(tag)}>
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </Button>
-              </div>
-            </Card>
-          ))}
         </div>
       )}
 

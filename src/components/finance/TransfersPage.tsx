@@ -55,7 +55,20 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
+    tags: [] as string[],
   });
+  const [tagRefresh, setTagRefresh] = useState(0);
+  const [filterTagIds, setFilterTagIdsRaw] = useState<string[]>([]);
+  const [tagFilteredIds, setTagFilteredIds] = useState<Set<string> | null>(null);
+  const setFilterTagIds = async (ids: string[]) => {
+    setFilterTagIdsRaw(ids);
+    if (ids.length === 0) { setTagFilteredIds(null); return; }
+    try {
+      const recs = await findRecordIdsByTags('transfer', ids);
+      setTagFilteredIds(new Set(recs));
+    } catch { setTagFilteredIds(new Set()); }
+  };
+  const recordTags = useRecordTags('transfer', transfers.map(t => t.id), tagRefresh);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 

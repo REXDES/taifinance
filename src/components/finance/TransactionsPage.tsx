@@ -92,7 +92,6 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     return list;
   }, [transactions, searchText, tagFilteredIds]);
 
-  const recordTags = useRecordTags('transaction', transactions.map(t => t.id), tagRefresh);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
 
@@ -108,6 +107,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     tags: [] as string[],
   });
   const [tagRefresh, setTagRefresh] = useState(0);
+  const recordTags = useRecordTags('transaction', transactions.map(t => t.id), tagRefresh);
 
   // Calculate current month's spending per category with budget
   const budgetSummary = useMemo(() => {

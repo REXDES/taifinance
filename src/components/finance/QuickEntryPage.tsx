@@ -103,7 +103,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
 
     setSubmitting(true);
     try {
-      await createTransaction({
+      const created = await createTransaction({
         account_id: selectedAccountId,
         category_id: subcatInfo?.category_id,
         subcategory_id: selectedSubcategoryId,
@@ -112,6 +112,10 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         description: description || (isIncome ? 'Receita rápida' : 'Despesa rápida'),
         date: selectedDate.toISOString().split('T')[0],
       });
+
+      if (created && selectedTags.length > 0) {
+        try { await setEntityTags('transaction', (created as any).id, selectedTags); } catch {}
+      }
 
       toast({ title: 'Lançamento registrado com sucesso!' });
       
@@ -123,6 +127,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       setShowMoreAccounts(false);
       setShowMoreSubcategories(false);
       setSelectedDate(new Date());
+      setSelectedTags([]);
       
       // Refetch recent selections
       refetchRecent();

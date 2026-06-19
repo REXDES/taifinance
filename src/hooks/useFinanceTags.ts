@@ -22,11 +22,12 @@ const JUNCTION: Record<TagEntity, { table: 'transaction_tags' | 'payable_receiva
 
 export function useFinanceTags(companyId: string | null) {
   const [tags, setTags] = useState<FinanceTag[]>([]);
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetch = useCallback(async () => {
-    if (!companyId) { setTags([]); setLoading(false); return; }
+    if (!companyId) { setTags([]); setUsageCounts({}); setLoading(false); return; }
     setLoading(true);
     const { data, error } = await supabase
       .from('finance_tags')
@@ -37,6 +38,23 @@ export function useFinanceTags(companyId: string | null) {
       toast({ title: 'Erro ao carregar tags', description: error.message, variant: 'destructive' });
     } else {
       setTags(data || []);
+      const ids = (data || []).map(t => t.id);
+      if (ids.length > 0) {
+        const sb = supabase as any;
+        const [tx, pr, tr] = await Promise.all([
+          sb.from('transaction_tags').select('tag_id').in('tag_id', ids),
+          sb.from('payable_receivable_tags').select('tag_id').in('tag_id', ids),
+          sb.from('transfer_tags').select('tag_id').in('tag_id', ids),
+        ]);
+        const counts: Record<string, number> = {};
+        ids.forEach(id => { counts[id] = 0; });
+        [tx.data, pr.data, tr.data].forEach(rows => {
+          (rows || []).forEach((r: any) => { counts[r.tag_id] = (counts[r.tag_id] || 0) + 1; });
+        });
+        setUsageCounts(counts);
+      } else {
+        setUsageCounts({});
+      }
     }
     setLoading(false);
   }, [companyId, toast]);

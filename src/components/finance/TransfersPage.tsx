@@ -29,6 +29,10 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Trash2, ArrowRight, Filter } from 'lucide-react';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
+import { TagPicker } from './TagPicker';
+import TagBadges from './TagBadges';
+import { useRecordTags } from '@/hooks/useRecordTags';
+import { setEntityTags, findRecordIdsByTags } from '@/hooks/useFinanceTags';
 
 interface TransfersPageProps {
   companyId: string;

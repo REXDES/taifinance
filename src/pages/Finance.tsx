@@ -21,6 +21,7 @@ import { PayablesReceivablesCalendarPage } from '@/components/finance/PayablesRe
 import { PayablesReceivablesFlowPage } from '@/components/finance/PayablesReceivablesFlowPage';
 import { QuickEntryPage } from '@/components/finance/QuickEntryPage';
 import { ClientsSuppliersPage } from '@/components/finance/ClientsSuppliersPage';
+import { TagsPage } from '@/components/finance/TagsPage';
 import { BankDigitalPage } from '@/components/finance/BankDigitalPage';
 import { CompanySettingsDialog } from '@/components/finance/CompanySettingsDialog';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
@@ -53,6 +54,7 @@ export type FinanceView =
   | 'balance'
   | 'statement'
   | 'categories'
+  | 'tags'
   | 'category-report'
   | 'cash-flow'
   | 'payables-receivables-report'
@@ -82,6 +84,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'balance',
   'statement',
   'categories',
+  'tags',
   'category-report',
   'cash-flow',
   'payables-receivables-report',
@@ -250,6 +253,8 @@ const Finance = () => {
         return <StatementPage companyId={selectedCompanyId} />;
       case 'categories':
         return <CategoriesPage companyId={selectedCompanyId} />;
+      case 'tags':
+        return <TagsPage companyId={selectedCompanyId} />;
       case 'category-report':
         return <CategoryReportPage companyId={selectedCompanyId} />;
       case 'cash-flow':

@@ -1,4 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { TagPicker } from './TagPicker';
+import TagBadges from './TagBadges';
+import { findRecordIdsByTags, fetchTagsForRecords } from '@/hooks/useFinanceTags';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FileSpreadsheet, FileText, Loader2 } from 'lucide-react';

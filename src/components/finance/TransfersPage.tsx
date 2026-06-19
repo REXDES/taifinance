@@ -213,7 +213,10 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
             <TableBody>
               {filteredTransfers.map((t) => (
                 <TableRow key={t.id}>
-                  <TableCell>{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
+                  <TableCell>
+                    <div>{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
+                    <TagBadges tags={recordTags[t.id]} className="mt-1" />
+                  </TableCell>
                   <TableCell>{t.from_account?.name}</TableCell>
                   <TableCell><ArrowRight className="w-4 h-4 text-muted-foreground" /></TableCell>
                   <TableCell>{t.to_account?.name}</TableCell>

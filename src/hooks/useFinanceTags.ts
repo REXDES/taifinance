@@ -124,7 +124,7 @@ export async function fetchTagsForRecords(entity: TagEntity, recordIds: string[]
 export async function findRecordIdsByTags(entity: TagEntity, tagIds: string[]): Promise<string[]> {
   if (tagIds.length === 0) return [];
   const { table, fk } = JUNCTION[entity];
-  const { data, error } = await supabase.from(table).select(fk).in('tag_id', tagIds);
+  const { data, error } = await (supabase as any).from(table).select(fk).in('tag_id', tagIds);
   if (error) throw error;
   return Array.from(new Set((data || []).map((r: any) => r[fk] as string)));
 }

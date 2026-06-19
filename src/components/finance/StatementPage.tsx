@@ -270,7 +270,10 @@ export function StatementPage({ companyId }: StatementPageProps) {
                   {visibleEntries.map((e) => (
                     <TableRow key={e.id}>
                       <TableCell>{new Date(e.date).toLocaleDateString('pt-BR')}</TableCell>
-                      <TableCell><div className="flex items-center gap-2">{getIcon(e.type)}<span>{e.description}</span></div></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">{getIcon(e.type)}<span>{e.description}</span></div>
+                        <TagBadges tags={rowTags[e.id]} className="mt-1 ml-6" />
+                      </TableCell>
                       {showAccountColumn && <TableCell className="text-muted-foreground">{e.accountName || '-'}</TableCell>}
                       <TableCell className="text-muted-foreground">{e.category ? `${e.category}${e.subcategory ? ` / ${e.subcategory}` : ''}` : e.relatedAccount || '-'}</TableCell>
                       <TableCell className={`text-right ${e.type === 'income' || e.type === 'transfer_in' ? 'text-green-600' : 'text-red-600'}`}>{e.type === 'income' || e.type === 'transfer_in' ? '+' : '-'}{formatCurrency(e.amount)}</TableCell>

@@ -259,14 +259,14 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
             </TableRow>
           </TableHeader>
           <TableBody>
-            {payablesReceivables.length === 0 ? (
+            {displayedRecords.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   Nenhuma conta encontrada
                 </TableCell>
               </TableRow>
             ) : (
-              payablesReceivables.map((record) => (
+              displayedRecords.map((record) => (
                 <TableRow key={record.id}>
                   <TableCell>{format(new Date(record.due_date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>

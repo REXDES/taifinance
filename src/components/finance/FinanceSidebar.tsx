@@ -125,6 +125,7 @@ const allRelatoriosItems = [...relatoriosMainItems, ...movimentacoesMenuItems, .
 const cadastrosMenuItems: MenuItem[] = [
   { view: 'accounts', label: 'Contas', icon: <Wallet className="w-4 h-4" /> },
   { view: 'categories', label: 'Categorias', icon: <Tags className="w-4 h-4" /> },
+  { view: 'tags', label: 'Tags', icon: <Tags className="w-4 h-4" /> },
   { view: 'clients-suppliers', label: 'Clientes/Fornecedores', icon: <Users className="w-4 h-4" /> },
 ];
 

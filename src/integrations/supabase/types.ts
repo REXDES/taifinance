@@ -1090,6 +1090,47 @@ export type Database = {
           },
         ]
       }
+      finance_tags: {
+        Row: {
+          color: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_tags_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitation_access: {
         Row: {
           created_at: string
@@ -1692,6 +1733,39 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      payable_receivable_tags: {
+        Row: {
+          created_at: string
+          payable_receivable_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          payable_receivable_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          payable_receivable_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payable_receivable_tags_payable_receivable_id_fkey"
+            columns: ["payable_receivable_id"]
+            isOneToOne: false
+            referencedRelation: "payables_receivables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payable_receivable_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "finance_tags"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payables_receivables: {
         Row: {
@@ -2458,6 +2532,39 @@ export type Database = {
           },
         ]
       }
+      transaction_tags: {
+        Row: {
+          created_at: string
+          tag_id: string
+          transaction_id: string
+        }
+        Insert: {
+          created_at?: string
+          tag_id: string
+          transaction_id: string
+        }
+        Update: {
+          created_at?: string
+          tag_id?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "finance_tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_tags_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: string
@@ -2531,6 +2638,39 @@ export type Database = {
             columns: ["subcategory_id"]
             isOneToOne: false
             referencedRelation: "transaction_subcategories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transfer_tags: {
+        Row: {
+          created_at: string
+          tag_id: string
+          transfer_id: string
+        }
+        Insert: {
+          created_at?: string
+          tag_id: string
+          transfer_id: string
+        }
+        Update: {
+          created_at?: string
+          tag_id?: string
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transfer_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "finance_tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfer_tags_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "transfers"
             referencedColumns: ["id"]
           },
         ]

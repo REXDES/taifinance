@@ -244,6 +244,12 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         </Popover>
       </div>
 
+      {/* Tags */}
+      <div>
+        <Label className="text-sm font-medium mb-2 block">Tags (opcional)</Label>
+        <TagPicker companyId={companyId} value={selectedTags} onChange={setSelectedTags} placeholder="Adicionar tags..." />
+      </div>
+
       {/* Recent Accounts */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">

@@ -870,6 +870,15 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                 </Select>
               </div>
             </div>
+            <div>
+              <Label>Tags</Label>
+              <TagPicker
+                companyId={companyId}
+                value={formData.tags}
+                onChange={(ids) => setFormData(prev => ({ ...prev, tags: ids }))}
+                placeholder="Adicionar tags..."
+              />
+            </div>
           </div>
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => {

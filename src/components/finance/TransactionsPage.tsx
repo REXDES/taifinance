@@ -36,6 +36,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
+import { TagPicker } from './TagPicker';
+import TagBadges from './TagBadges';
+import { useRecordTags } from '@/hooks/useRecordTags';
+import { setEntityTags, findRecordIdsByTags } from '@/hooks/useFinanceTags';
 
 interface TransactionsPageProps {
   companyId: string;

@@ -92,11 +92,12 @@ export function useFinanceTags(companyId: string | null) {
 /** Replace the set of tags for a given entity record. */
 export async function setEntityTags(entity: TagEntity, recordId: string, tagIds: string[]) {
   const { table, fk } = JUNCTION[entity];
-  const { error: delErr } = await supabase.from(table).delete().eq(fk, recordId);
+  const sb = supabase as any;
+  const { error: delErr } = await sb.from(table).delete().eq(fk, recordId);
   if (delErr) throw delErr;
   if (tagIds.length === 0) return;
-  const rows = tagIds.map(tag_id => ({ [fk]: recordId, tag_id } as any));
-  const { error: insErr } = await supabase.from(table).insert(rows);
+  const rows = tagIds.map(tag_id => ({ [fk]: recordId, tag_id }));
+  const { error: insErr } = await sb.from(table).insert(rows);
   if (insErr) throw insErr;
 }
 

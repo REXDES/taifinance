@@ -97,15 +97,19 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
   }, [transfers, filters]);
 
   const handleSave = async () => {
-    await createTransfer({
+    const created = await createTransfer({
       from_account_id: form.from_account_id,
       to_account_id: form.to_account_id,
       amount: parseFloat(form.amount),
       description: form.description,
       date: form.date,
     });
+    if (created && form.tags.length > 0) {
+      try { await setEntityTags('transfer', (created as any).id, form.tags); } catch {}
+    }
+    setTagRefresh(r => r + 1);
     setShowDialog(false);
-    setForm({ from_account_id: '', to_account_id: '', amount: '', description: '', date: new Date().toISOString().split('T')[0] });
+    setForm({ from_account_id: '', to_account_id: '', amount: '', description: '', date: new Date().toISOString().split('T')[0], tags: [] });
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;

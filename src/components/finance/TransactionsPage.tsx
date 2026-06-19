@@ -618,6 +618,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                           {transaction.notes && (
                             <p className="text-xs text-muted-foreground">{transaction.notes}</p>
                           )}
+                          <TagBadges tags={recordTags[transaction.id]} className="mt-1" />
                         </div>
                       </div>
                     </TableCell>

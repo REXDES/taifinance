@@ -569,14 +569,14 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
             </TableRow>
           </TableHeader>
           <TableBody>
-            {payablesReceivables.length === 0 ? (
+            {displayedRecords.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   Nenhuma conta encontrada
                 </TableCell>
               </TableRow>
             ) : (
-              payablesReceivables.map((record) => (
+              displayedRecords.map((record) => (
                 <TableRow key={record.id}>
                   <TableCell>{format(new Date(record.due_date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>
@@ -589,6 +589,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                     {record.payment_type === 'recurring' && (
                       <Badge variant="outline" className="ml-2 text-xs">Recorrente</Badge>
                     )}
+                    <TagBadges tags={prRecordTags[record.id]} className="mt-1" />
                   </TableCell>
                   <TableCell>{getTypeBadge(record.type)}</TableCell>
                   <TableCell>

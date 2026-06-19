@@ -239,6 +239,10 @@ export function StatementPage({ companyId }: StatementPageProps) {
           </div>
           <div><Label>Data Inicial</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
           <div><Label>Data Final</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
+          <div className="md:col-span-3 lg:col-span-5">
+            <Label>Tags</Label>
+            <TagPicker companyId={companyId} value={filterTagIds} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
+          </div>
         </div>
         {!hasValidFilter && (
           <p className="text-sm text-amber-600 mt-3">Selecione ao menos uma conta ou uma categoria para visualizar o extrato.</p>

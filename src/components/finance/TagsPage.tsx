@@ -25,7 +25,7 @@ const PRESET_COLORS = [
 ];
 
 export function TagsPage({ companyId }: TagsPageProps) {
-  const { tags, loading, createTag, updateTag, deleteTag } = useFinanceTags(companyId);
+  const { tags, usageCounts, loading, createTag, updateTag, deleteTag } = useFinanceTags(companyId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FinanceTag | null>(null);
   const [name, setName] = useState('');
@@ -92,7 +92,9 @@ export function TagsPage({ companyId }: TagsPageProps) {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {tags.map(tag => (
+          {tags.map(tag => {
+            const count = usageCounts[tag.id] || 0;
+            return (
             <Card key={tag.id} className="p-4 flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <Badge
@@ -102,8 +104,11 @@ export function TagsPage({ companyId }: TagsPageProps) {
                 >
                   {tag.name}
                 </Badge>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {count === 0 ? 'Nenhum lançamento vinculado' : count === 1 ? '1 lançamento vinculado' : `${count} lançamentos vinculados`}
+                </p>
                 {tag.description && (
-                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{tag.description}</p>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{tag.description}</p>
                 )}
               </div>
               <div className="flex gap-1">
@@ -115,7 +120,8 @@ export function TagsPage({ companyId }: TagsPageProps) {
                 </Button>
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

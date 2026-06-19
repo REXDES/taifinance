@@ -23,6 +23,8 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useToast } from '@/hooks/use-toast';
+import { TagPicker } from './TagPicker';
+import { setEntityTags } from '@/hooks/useFinanceTags';
 
 interface QuickEntryPageProps {
   companyId: string;
@@ -44,6 +46,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const [showMoreSubcategories, setShowMoreSubcategories] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const activeAccounts = accounts.filter(a => a.is_active);
   const filteredCategories = categories.filter(c => c.type === (isIncome ? 'income' : 'expense') || c.type === 'both');
@@ -100,7 +103,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
 
     setSubmitting(true);
     try {
-      await createTransaction({
+      const created = await createTransaction({
         account_id: selectedAccountId,
         category_id: subcatInfo?.category_id,
         subcategory_id: selectedSubcategoryId,
@@ -109,6 +112,10 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         description: description || (isIncome ? 'Receita rápida' : 'Despesa rápida'),
         date: selectedDate.toISOString().split('T')[0],
       });
+
+      if (created && selectedTags.length > 0) {
+        try { await setEntityTags('transaction', (created as any).id, selectedTags); } catch {}
+      }
 
       toast({ title: 'Lançamento registrado com sucesso!' });
       
@@ -120,6 +127,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       setShowMoreAccounts(false);
       setShowMoreSubcategories(false);
       setSelectedDate(new Date());
+      setSelectedTags([]);
       
       // Refetch recent selections
       refetchRecent();
@@ -234,6 +242,12 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
             />
           </PopoverContent>
         </Popover>
+      </div>
+
+      {/* Tags */}
+      <div>
+        <Label className="text-sm font-medium mb-2 block">Tags (opcional)</Label>
+        <TagPicker companyId={companyId} value={selectedTags} onChange={setSelectedTags} placeholder="Adicionar tags..." />
       </div>
 
       {/* Recent Accounts */}

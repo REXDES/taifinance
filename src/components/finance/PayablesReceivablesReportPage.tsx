@@ -1,4 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { TagPicker } from './TagPicker';
+import TagBadges from './TagBadges';
+import { findRecordIdsByTags, fetchTagsForRecords } from '@/hooks/useFinanceTags';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
@@ -36,6 +39,31 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
   });
 
   const { users } = useUsers(companyId);
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
+  const [allowedIds, setAllowedIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (filterTagIds.length === 0) { setAllowedIds(null); return; }
+    findRecordIdsByTags('payable_receivable', filterTagIds)
+      .then(ids => { if (!cancelled) setAllowedIds(new Set(ids)); })
+      .catch(() => { if (!cancelled) setAllowedIds(new Set()); });
+    return () => { cancelled = true; };
+  }, [filterTagIds.join(',')]);
+
+  const displayedRecords = useMemo(() => {
+    if (!allowedIds) return payablesReceivables;
+    return payablesReceivables.filter(r => allowedIds.has(r.id));
+  }, [payablesReceivables, allowedIds]);
+
+  const [rowTags, setRowTags] = useState<Record<string, any[]>>({});
+  useEffect(() => {
+    let cancelled = false;
+    const ids = payablesReceivables.map(r => r.id);
+    if (ids.length === 0) { setRowTags({}); return; }
+    fetchTagsForRecords('payable_receivable', ids).then(m => { if (!cancelled) setRowTags(m); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [payablesReceivables]);
+
 
   const getUserName = (userId: string | null) => {
     if (!userId) return '-';
@@ -195,6 +223,10 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
               ))}
             </div>
           </div>
+          <div className="md:col-span-4">
+            <Label>Tags</Label>
+            <TagPicker companyId={companyId} value={filterTagIds} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
+          </div>
         </div>
       </Card>
 
@@ -231,14 +263,14 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
             </TableRow>
           </TableHeader>
           <TableBody>
-            {payablesReceivables.length === 0 ? (
+            {displayedRecords.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                   Nenhuma conta encontrada
                 </TableCell>
               </TableRow>
             ) : (
-              payablesReceivables.map((record) => (
+              displayedRecords.map((record) => (
                 <TableRow key={record.id}>
                   <TableCell>{format(new Date(record.due_date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>
@@ -246,7 +278,10 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
                       {getTypeLabel(record.type)}
                     </Badge>
                   </TableCell>
-                  <TableCell>{record.description}</TableCell>
+                  <TableCell>
+                    <div>{record.description}</div>
+                    <TagBadges tags={rowTags[record.id]} className="mt-1" />
+                  </TableCell>
                   <TableCell>{record.client_supplier?.name || '-'}</TableCell>
                   <TableCell>{record.category?.name || '-'}</TableCell>
                   <TableCell className={record.type === 'payable' ? 'text-red-600' : 'text-green-600'}>

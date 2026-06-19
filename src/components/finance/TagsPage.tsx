@@ -25,7 +25,7 @@ const PRESET_COLORS = [
 ];
 
 export function TagsPage({ companyId }: TagsPageProps) {
-  const { tags, loading, createTag, updateTag, deleteTag } = useFinanceTags(companyId);
+  const { tags, usageCounts, loading, createTag, updateTag, deleteTag } = useFinanceTags(companyId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FinanceTag | null>(null);
   const [name, setName] = useState('');

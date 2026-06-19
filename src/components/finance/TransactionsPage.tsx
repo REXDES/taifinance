@@ -134,8 +134,9 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
   };
 
   const handleSave = async () => {
+    let recordId: string | null = null;
     if (editingTransaction) {
-      await updateTransaction(editingTransaction.id, {
+      const ok = await updateTransaction(editingTransaction.id, {
         account_id: form.account_id,
         category_id: form.category_id || null,
         subcategory_id: form.subcategory_id || null,
@@ -145,8 +146,9 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
         date: form.date,
         notes: form.notes || null,
       });
+      if (ok) recordId = editingTransaction.id;
     } else {
-      await createTransaction({
+      const created = await createTransaction({
         account_id: form.account_id,
         category_id: form.category_id || undefined,
         subcategory_id: form.subcategory_id || undefined,
@@ -156,6 +158,11 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
         date: form.date,
         notes: form.notes,
       });
+      if (created) recordId = (created as any).id;
+    }
+    if (recordId) {
+      try { await setEntityTags('transaction', recordId, form.tags); } catch (e) { /* ignore */ }
+      setTagRefresh(r => r + 1);
     }
     setShowDialog(false);
     setEditingTransaction(null);
@@ -172,11 +179,18 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
       description: '',
       date: new Date().toISOString().split('T')[0],
       notes: '',
+      tags: [],
     });
   };
 
-  const handleEdit = (transaction: Transaction) => {
+  const handleEdit = async (transaction: Transaction) => {
     setEditingTransaction(transaction);
+    let existingTags: string[] = [];
+    try {
+      const { fetchTagsForRecords } = await import('@/hooks/useFinanceTags');
+      const map = await fetchTagsForRecords('transaction', [transaction.id]);
+      existingTags = (map[transaction.id] || []).map(t => t.id);
+    } catch {}
     setForm({
       type: transaction.type,
       account_id: transaction.account_id,
@@ -186,6 +200,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
       description: transaction.description,
       date: transaction.date,
       notes: transaction.notes || '',
+      tags: existingTags,
     });
     setShowDialog(true);
   };

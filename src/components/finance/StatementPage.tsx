@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useAccountStatement, StatementEntry } from '@/hooks/useAccountStatement';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
@@ -13,6 +13,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { TagPicker } from './TagPicker';
+import TagBadges from './TagBadges';
+import { fetchTagsForRecords, findRecordIdsByTags } from '@/hooks/useFinanceTags';
 
 interface StatementPageProps { companyId: string; }
 

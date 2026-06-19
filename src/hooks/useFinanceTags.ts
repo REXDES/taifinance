@@ -104,7 +104,7 @@ export function useFinanceTags(companyId: string | null) {
     return true;
   }, [fetch, toast]);
 
-  return { tags, loading, createTag, updateTag, deleteTag, refetch: fetch };
+  return { tags, usageCounts, loading, createTag, updateTag, deleteTag, refetch: fetch };
 }
 
 /** Replace the set of tags for a given entity record. */

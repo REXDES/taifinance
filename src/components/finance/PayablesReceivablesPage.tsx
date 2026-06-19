@@ -383,7 +383,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       category_id: '',
       subcategory_id: '',
       client_supplier_id: '',
-      installments: '2'
+      installments: '2',
+      tags: [],
     });
     setEditingRecord(null);
   };

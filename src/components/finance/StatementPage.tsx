@@ -55,6 +55,37 @@ export function StatementPage({ companyId }: StatementPageProps) {
     companyId
   );
 
+  // Resolve tag filter to a set of allowed ids (union of tx + transfer ids)
+  const [allowedIds, setAllowedIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (filterTagIds.length === 0) { setAllowedIds(null); return; }
+    Promise.all([
+      findRecordIdsByTags('transaction', filterTagIds),
+      findRecordIdsByTags('transfer', filterTagIds),
+    ]).then(([t, tr]) => { if (!cancelled) setAllowedIds(new Set([...t, ...tr])); })
+      .catch(() => { if (!cancelled) setAllowedIds(new Set()); });
+    return () => { cancelled = true; };
+  }, [filterTagIds.join(',')]);
+
+  // Load tags for visible rows
+  const [rowTags, setRowTags] = useState<Record<string, any[]>>({});
+  useEffect(() => {
+    let cancelled = false;
+    const txIds = entries.filter(e => e.type === 'income' || e.type === 'expense').map(e => e.id);
+    const trIds = entries.filter(e => e.type === 'transfer_in' || e.type === 'transfer_out').map(e => e.id);
+    Promise.all([
+      txIds.length ? fetchTagsForRecords('transaction', txIds) : Promise.resolve({}),
+      trIds.length ? fetchTagsForRecords('transfer', trIds) : Promise.resolve({}),
+    ]).then(([a, b]) => { if (!cancelled) setRowTags({ ...a, ...b }); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [entries]);
+
+  const visibleEntries = useMemo(() => {
+    if (!allowedIds) return entries;
+    return entries.filter(e => allowedIds.has(e.id));
+  }, [entries, allowedIds]);
+
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const formatCurrencyPlain = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const getIcon = (type: string) => {

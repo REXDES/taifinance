@@ -27,6 +27,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
 
   const { data: subcategories = [] } = useQuery({
     queryKey: ['subcategories', selectedCategoryId],

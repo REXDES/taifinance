@@ -129,8 +129,20 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     category_id: '',
     subcategory_id: '',
     client_supplier_id: '',
-    installments: '2'
+    installments: '2',
+    tags: [] as string[],
   });
+  const [tagRefresh, setTagRefresh] = useState(0);
+  const [filterTagIds, setFilterTagIdsRaw] = useState<string[]>([]);
+  const [tagFilteredIds, setTagFilteredIds] = useState<Set<string> | null>(null);
+  const setFilterTagIds = async (ids: string[]) => {
+    setFilterTagIdsRaw(ids);
+    if (ids.length === 0) { setTagFilteredIds(null); return; }
+    try {
+      const recs = await findRecordIdsByTags('payable_receivable', ids);
+      setTagFilteredIds(new Set(recs));
+    } catch { setTagFilteredIds(new Set()); }
+  };
 
   const [clientFormData, setClientFormData] = useState({
     name: '',

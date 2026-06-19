@@ -92,9 +92,10 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
         }
       }
       
+      if (tagFilteredIds && !tagFilteredIds.has(t.id)) return false;
       return true;
     });
-  }, [transfers, filters]);
+  }, [transfers, filters, tagFilteredIds]);
 
   const handleSave = async () => {
     const created = await createTransfer({

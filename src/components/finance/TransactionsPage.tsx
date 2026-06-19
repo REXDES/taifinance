@@ -71,11 +71,26 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
   const [showBudget, setShowBudget] = useState(false);
   const [searchText, setSearchText] = useState('');
 
+  const [filterTagIds, setFilterTagIdsRaw] = useState<string[]>([]);
+  const [tagFilteredIds, setTagFilteredIds] = useState<Set<string> | null>(null);
+  const setFilterTagIds = async (ids: string[]) => {
+    setFilterTagIdsRaw(ids);
+    if (ids.length === 0) { setTagFilteredIds(null); return; }
+    try {
+      const recs = await findRecordIdsByTags('transaction', ids);
+      setTagFilteredIds(new Set(recs));
+    } catch { setTagFilteredIds(new Set()); }
+  };
+
   const filteredTransactions = useMemo(() => {
-    if (!searchText.trim()) return transactions;
-    const term = searchText.toLowerCase().trim();
-    return transactions.filter(t => t.description.toLowerCase().includes(term));
-  }, [transactions, searchText]);
+    let list = transactions;
+    if (searchText.trim()) {
+      const term = searchText.toLowerCase().trim();
+      list = list.filter(t => t.description.toLowerCase().includes(term));
+    }
+    if (tagFilteredIds) list = list.filter(t => tagFilteredIds.has(t.id));
+    return list;
+  }, [transactions, searchText, tagFilteredIds]);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
 

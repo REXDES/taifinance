@@ -46,6 +46,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const [showMoreSubcategories, setShowMoreSubcategories] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const activeAccounts = accounts.filter(a => a.is_active);
   const filteredCategories = categories.filter(c => c.type === (isIncome ? 'income' : 'expense') || c.type === 'both');

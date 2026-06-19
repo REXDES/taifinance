@@ -164,7 +164,7 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
       {showFilters && (
         <Card>
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label>Data Inicial</Label>
                 <Input

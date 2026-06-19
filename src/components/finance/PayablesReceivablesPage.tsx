@@ -200,10 +200,11 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
           subcategory_id: formData.subcategory_id || null,
           client_supplier_id: formData.client_supplier_id || null
         });
+        try { await setEntityTags('payable_receivable', editingRecord.id, formData.tags); } catch {}
         toast.success('Conta atualizada com sucesso!');
       } else {
         // Create new record
-        await createPayableReceivable(
+        const createdIds = await createPayableReceivable(
           {
             company_id: companyId,
             type: formData.type,
@@ -228,9 +229,15 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
           },
           formData.payment_type === 'installment' ? parseInt(formData.installments) : undefined
         );
+        if (formData.tags.length > 0 && createdIds && createdIds.length > 0) {
+          for (const id of createdIds) {
+            try { await setEntityTags('payable_receivable', id, formData.tags); } catch {}
+          }
+        }
         toast.success('Conta criada com sucesso!');
       }
       
+      setTagRefresh(r => r + 1);
       setIsDialogOpen(false);
       setEditingRecord(null);
       resetForm();

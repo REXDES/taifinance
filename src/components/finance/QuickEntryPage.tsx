@@ -23,6 +23,8 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useToast } from '@/hooks/use-toast';
+import { TagPicker } from './TagPicker';
+import { setEntityTags } from '@/hooks/useFinanceTags';
 
 interface QuickEntryPageProps {
   companyId: string;

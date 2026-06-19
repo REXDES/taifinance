@@ -102,18 +102,21 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
   const createPayableReceivable = async (
     data: Omit<PayableReceivable, 'id' | 'created_at' | 'updated_at' | 'category' | 'subcategory' | 'client_supplier' | 'account'>,
     installments?: number
-  ) => {
+  ): Promise<string[]> => {
     const { data: user } = await supabase.auth.getUser();
     const userId = user?.user?.id;
+    const createdIds: string[] = [];
 
     // Para contas com valor pendente, não dividir parcelas
     const isAmountPending = data.is_amount_pending || data.amount === null;
 
     if (data.payment_type === 'single') {
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('payables_receivables')
-        .insert({ ...data, created_by: userId, is_amount_pending: isAmountPending });
+        .insert({ ...data, created_by: userId, is_amount_pending: isAmountPending })
+        .select('id');
       if (error) throw error;
+      (inserted || []).forEach(r => createdIds.push(r.id));
     } else if (data.payment_type === 'installment' && installments) {
       // Se valor pendente, criar parcelas com amount null
       const installmentAmount = isAmountPending ? null : (data.amount as number) / installments;
@@ -134,6 +137,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
         .single();
       
       if (parentError) throw parentError;
+      createdIds.push(parent.id);
 
       // Create child installments
       for (let i = 2; i <= installments; i++) {
@@ -150,20 +154,25 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
       }
 
       if (records.length > 0) {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('payables_receivables')
-          .insert(records);
+          .insert(records)
+          .select('id');
         if (error) throw error;
+        (inserted || []).forEach(r => createdIds.push(r.id));
       }
     } else if (data.payment_type === 'recurring') {
       // Create only for next month
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('payables_receivables')
-        .insert({ ...data, created_by: userId, is_amount_pending: isAmountPending });
+        .insert({ ...data, created_by: userId, is_amount_pending: isAmountPending })
+        .select('id');
       if (error) throw error;
+      (inserted || []).forEach(r => createdIds.push(r.id));
     }
 
     await fetchPayablesReceivables();
+    return createdIds;
   };
 
   const effectuatePayment = async (

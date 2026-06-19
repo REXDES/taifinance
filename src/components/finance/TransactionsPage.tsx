@@ -88,7 +88,10 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     description: '',
     date: new Date().toISOString().split('T')[0],
     notes: '',
+    tags: [] as string[],
   });
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
+  const [tagRefresh, setTagRefresh] = useState(0);
 
   // Calculate current month's spending per category with budget
   const budgetSummary = useMemo(() => {

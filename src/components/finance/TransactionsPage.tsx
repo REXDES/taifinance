@@ -91,6 +91,8 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     if (tagFilteredIds) list = list.filter(t => tagFilteredIds.has(t.id));
     return list;
   }, [transactions, searchText, tagFilteredIds]);
+
+  const recordTags = useRecordTags('transaction', transactions.map(t => t.id), tagRefresh);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
 

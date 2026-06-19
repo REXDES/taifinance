@@ -39,6 +39,31 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
   });
 
   const { users } = useUsers(companyId);
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
+  const [allowedIds, setAllowedIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (filterTagIds.length === 0) { setAllowedIds(null); return; }
+    findRecordIdsByTags('payable_receivable', filterTagIds)
+      .then(ids => { if (!cancelled) setAllowedIds(new Set(ids)); })
+      .catch(() => { if (!cancelled) setAllowedIds(new Set()); });
+    return () => { cancelled = true; };
+  }, [filterTagIds.join(',')]);
+
+  const displayedRecords = useMemo(() => {
+    if (!allowedIds) return payablesReceivables;
+    return payablesReceivables.filter(r => allowedIds.has(r.id));
+  }, [payablesReceivables, allowedIds]);
+
+  const [rowTags, setRowTags] = useState<Record<string, any[]>>({});
+  useEffect(() => {
+    let cancelled = false;
+    const ids = payablesReceivables.map(r => r.id);
+    if (ids.length === 0) { setRowTags({}); return; }
+    fetchTagsForRecords('payable_receivable', ids).then(m => { if (!cancelled) setRowTags(m); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [payablesReceivables]);
+
 
   const getUserName = (userId: string | null) => {
     if (!userId) return '-';

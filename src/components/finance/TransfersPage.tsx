@@ -148,6 +148,10 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
                 <div><Label>Valor *</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
                 <div><Label>Data *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
                 <div><Label>Descrição</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Opcional" /></div>
+                <div>
+                  <Label>Tags</Label>
+                  <TagPicker companyId={companyId} value={form.tags} onChange={(ids) => setForm({ ...form, tags: ids })} placeholder="Adicionar tags..." />
+                </div>
                 <Button onClick={handleSave} className="w-full" disabled={!form.from_account_id || !form.to_account_id || !form.amount}>Transferir</Button>
               </div>
             </DialogContent>

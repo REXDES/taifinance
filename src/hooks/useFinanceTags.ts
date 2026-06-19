@@ -105,7 +105,8 @@ export async function setEntityTags(entity: TagEntity, recordId: string, tagIds:
 export async function fetchTagsForRecords(entity: TagEntity, recordIds: string[]): Promise<Record<string, FinanceTag[]>> {
   if (recordIds.length === 0) return {};
   const { table, fk } = JUNCTION[entity];
-  const { data, error } = await supabase
+  const sb = supabase as any;
+  const { data, error } = await sb
     .from(table)
     .select(`${fk}, tag:finance_tags(*)`)
     .in(fk, recordIds);

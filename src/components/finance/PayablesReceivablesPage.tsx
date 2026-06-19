@@ -22,6 +22,10 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useAuth } from '@/contexts/AuthContext';
 import { PixQrCodeDialog } from './PixQrCodeDialog';
 import { CompanySettingsDialog } from './CompanySettingsDialog';
+import { TagPicker } from './TagPicker';
+import TagBadges from './TagBadges';
+import { useRecordTags } from '@/hooks/useRecordTags';
+import { setEntityTags, findRecordIdsByTags, fetchTagsForRecords } from '@/hooks/useFinanceTags';
 
 interface PayablesReceivablesPageProps {
   companyId: string;

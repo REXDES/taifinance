@@ -439,7 +439,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <Label>Tags</Label>
-                <TagPicker companyId={companyId} value={filterTagIdsRaw} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
+                <TagPicker companyId={companyId} value={filterTagIds} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
               </div>
               <div>
                 <Label>Descrição</Label>

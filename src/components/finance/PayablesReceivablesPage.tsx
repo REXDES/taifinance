@@ -164,6 +164,13 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     return categories.filter(c => c.type === categoryType);
   }, [categories, formData.type]);
 
+  const displayedRecords = useMemo(() => {
+    if (!tagFilteredIds) return payablesReceivables;
+    return payablesReceivables.filter(r => tagFilteredIds.has(r.id));
+  }, [payablesReceivables, tagFilteredIds]);
+
+  const prRecordTags = useRecordTags('payable_receivable', payablesReceivables.map(r => r.id), tagRefresh);
+
   const selectedCategory = categories.find(c => c.id === formData.category_id);
 
   const formatCurrency = (value: number) => {

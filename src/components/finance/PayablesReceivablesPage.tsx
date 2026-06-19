@@ -242,8 +242,13 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     }
   };
 
-  const openEditDialog = (record: any) => {
+  const openEditDialog = async (record: any) => {
     setEditingRecord(record);
+    let existingTags: string[] = [];
+    try {
+      const map = await fetchTagsForRecords('payable_receivable', [record.id]);
+      existingTags = (map[record.id] || []).map(t => t.id);
+    } catch {}
     setFormData({
       type: record.type,
       payment_type: record.payment_type,
@@ -254,7 +259,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       category_id: record.category_id || '',
       subcategory_id: record.subcategory_id || '',
       client_supplier_id: record.client_supplier_id || '',
-      installments: '2'
+      installments: '2',
+      tags: existingTags,
     });
     setIsDialogOpen(true);
   };

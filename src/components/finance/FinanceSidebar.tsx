@@ -36,6 +36,7 @@ import {
   ClipboardCheck,
   Hammer,
   Briefcase,
+  Split,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -127,6 +128,7 @@ const cadastrosMenuItems: MenuItem[] = [
   { view: 'categories', label: 'Categorias', icon: <Tags className="w-4 h-4" /> },
   { view: 'tags', label: 'Tags', icon: <Tags className="w-4 h-4" /> },
   { view: 'clients-suppliers', label: 'Clientes/Fornecedores', icon: <Users className="w-4 h-4" /> },
+  { view: 'split-pix', label: 'Split de PIX', icon: <Split className="w-4 h-4" /> },
 ];
 
 const machinesMenuItems: MenuItem[] = [

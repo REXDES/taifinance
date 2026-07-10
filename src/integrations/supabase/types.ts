@@ -1904,6 +1904,89 @@ export type Database = {
           },
         ]
       }
+      pix_charge_splits: {
+        Row: {
+          calculated_amount: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          executed_at: string | null
+          id: string
+          manual: boolean
+          payable_receivable_id: string
+          psp_reference: string | null
+          recipient_id: string
+          rule_id: string | null
+          status: Database["public"]["Enums"]["split_status"]
+          updated_at: string
+          value: number
+          value_type: Database["public"]["Enums"]["split_value_type"]
+        }
+        Insert: {
+          calculated_amount: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          executed_at?: string | null
+          id?: string
+          manual?: boolean
+          payable_receivable_id: string
+          psp_reference?: string | null
+          recipient_id: string
+          rule_id?: string | null
+          status?: Database["public"]["Enums"]["split_status"]
+          updated_at?: string
+          value: number
+          value_type: Database["public"]["Enums"]["split_value_type"]
+        }
+        Update: {
+          calculated_amount?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          executed_at?: string | null
+          id?: string
+          manual?: boolean
+          payable_receivable_id?: string
+          psp_reference?: string | null
+          recipient_id?: string
+          rule_id?: string | null
+          status?: Database["public"]["Enums"]["split_status"]
+          updated_at?: string
+          value?: number
+          value_type?: Database["public"]["Enums"]["split_value_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pix_charge_splits_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pix_charge_splits_payable_receivable_id_fkey"
+            columns: ["payable_receivable_id"]
+            isOneToOne: false
+            referencedRelation: "payables_receivables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pix_charge_splits_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "split_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pix_charge_splits_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "split_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2262,6 +2345,128 @@ export type Database = {
             columns: ["paid_account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      split_recipients: {
+        Row: {
+          active: boolean
+          bank_account: string | null
+          bank_branch: string | null
+          bank_name: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          document: string | null
+          id: string
+          name: string
+          notes: string | null
+          pix_key: string
+          pix_key_type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          bank_account?: string | null
+          bank_branch?: string | null
+          bank_name?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          document?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          pix_key: string
+          pix_key_type: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          bank_account?: string | null
+          bank_branch?: string | null
+          bank_name?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          document?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          pix_key?: string
+          pix_key_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "split_recipients_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      split_rules: {
+        Row: {
+          active: boolean
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          priority: number
+          recipient_id: string
+          scope: Database["public"]["Enums"]["split_scope"]
+          scope_ref_id: string | null
+          updated_at: string
+          value: number
+          value_type: Database["public"]["Enums"]["split_value_type"]
+        }
+        Insert: {
+          active?: boolean
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          priority?: number
+          recipient_id: string
+          scope?: Database["public"]["Enums"]["split_scope"]
+          scope_ref_id?: string | null
+          updated_at?: string
+          value: number
+          value_type?: Database["public"]["Enums"]["split_value_type"]
+        }
+        Update: {
+          active?: boolean
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          priority?: number
+          recipient_id?: string
+          scope?: Database["public"]["Enums"]["split_scope"]
+          scope_ref_id?: string | null
+          updated_at?: string
+          value?: number
+          value_type?: Database["public"]["Enums"]["split_value_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "split_rules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_rules_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "split_recipients"
             referencedColumns: ["id"]
           },
         ]
@@ -2971,6 +3176,9 @@ export type Database = {
     }
     Enums: {
       app_role: "supervisor" | "gerente" | "operador"
+      split_scope: "global" | "category" | "client_supplier" | "tag"
+      split_status: "pending" | "executed" | "failed"
+      split_value_type: "percent" | "fixed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3099,6 +3307,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["supervisor", "gerente", "operador"],
+      split_scope: ["global", "category", "client_supplier", "tag"],
+      split_status: ["pending", "executed", "failed"],
+      split_value_type: ["percent", "fixed"],
     },
   },
 } as const

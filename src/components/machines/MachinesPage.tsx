@@ -34,7 +34,12 @@ type MachineExt = Machine & {
   rental_price_monthly?: number | null;
 };
 
-const CATEGORY_LABEL: Record<string, string> = { maquina: 'Máquina', equipamento: 'Equipamento', ferramenta: 'Ferramenta' };
+const DEFAULT_CATEGORY_LABEL: Record<string, string> = { maquina: 'Máquina', equipamento: 'Equipamento', ferramenta: 'Ferramenta' };
+const DEFAULT_CATEGORIES = [
+  { value: 'maquina', label: 'Máquina' },
+  { value: 'equipamento', label: 'Equipamento' },
+  { value: 'ferramenta', label: 'Ferramenta' },
+];
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 

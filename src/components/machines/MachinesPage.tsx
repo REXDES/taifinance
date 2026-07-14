@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, Tag, Package, Wallet, Percent, MapPin } from 'lucide-react';
-import { useMachines, useMachineTypes, Machine } from '@/hooks/useMachinesModule';
+import { useMachines, useMachineTypes, useMachineCategories, Machine } from '@/hooks/useMachinesModule';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';

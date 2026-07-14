@@ -44,6 +44,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
     const maintenanceValue = machines.filter(m => (m as any).technical_status === 'em_manutencao').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
     const availableValue = machines.filter(m => m.status === 'disponivel').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
     const unavailableValue = machines.filter(m => m.status === 'indisponivel').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
+    const discardValue = machines.filter(m => (m as any).technical_status === 'descarte').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
 
     const pctRented = total ? (rented / total) * 100 : 0;
     const pctMaintenance = total ? (inMaintenance / total) * 100 : 0;
@@ -89,7 +90,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
     return {
       total, rented, available, reserved, sold, demo, unavailable,
       operational, inMaintenance, inTest, discard,
-      totalValue, rentedValue, maintenanceValue, availableValue, unavailableValue,
+      totalValue, rentedValue, maintenanceValue, availableValue, unavailableValue, discardValue,
       pctRented, pctMaintenance, pctOperational, pctAvailable,
       activeRentalsCount: activeRentals.length,
       monthReceivable, activeRentalsTotal,
@@ -135,12 +136,13 @@ export function MachinesDashboardPage({ companyId }: Props) {
       </div>
 
       {/* Valores */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
         {kpi(<DollarSign className="w-6 h-6" />, 'Valor Total do Inventário', brl(stats.totalValue))}
         {kpi(<DollarSign className="w-6 h-6 text-blue-500" />, 'Valor dos Itens Locados', brl(stats.rentedValue))}
         {kpi(<DollarSign className="w-6 h-6 text-orange-500" />, 'Valor em Manutenção', brl(stats.maintenanceValue))}
         {kpi(<DollarSign className="w-6 h-6 text-green-500" />, 'Valor Disponível', brl(stats.availableValue))}
         {kpi(<DollarSign className="w-6 h-6 text-gray-500" />, 'Valor Indisponível', brl(stats.unavailableValue))}
+        {kpi(<DollarSign className="w-6 h-6 text-red-500" />, 'Valor em Descarte', brl(stats.discardValue))}
       </div>
 
       {/* Locações do mês */}
@@ -224,7 +226,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
             <AlertTriangle className="w-5 h-5 text-red-500" />
             <div>
               <p className="text-sm font-medium">Atenção: {stats.discard} {stats.discard === 1 ? 'item marcado' : 'itens marcados'} para descarte</p>
-              <p className="text-xs text-muted-foreground">Revise o inventário para baixa contábil</p>
+              <p className="text-xs text-muted-foreground">Valor em descarte: {brl(stats.discardValue)} · Revise o inventário para baixa contábil</p>
             </div>
           </CardContent>
         </Card>

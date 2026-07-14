@@ -32,6 +32,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
     const reserved = machines.filter(m => m.status === 'reservada').length;
     const sold = machines.filter(m => m.status === 'vendida').length;
     const demo = machines.filter(m => m.status === 'demonstracao').length;
+    const unavailable = machines.filter(m => m.status === 'indisponivel').length;
 
     const operational = machines.filter(m => (m as any).technical_status === 'operacional' || !(m as any).technical_status).length;
     const inMaintenance = machines.filter(m => (m as any).technical_status === 'em_manutencao').length;
@@ -42,6 +43,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
     const rentedValue = machines.filter(m => m.status === 'locada').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
     const maintenanceValue = machines.filter(m => (m as any).technical_status === 'em_manutencao').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
     const availableValue = machines.filter(m => m.status === 'disponivel').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
+    const unavailableValue = machines.filter(m => m.status === 'indisponivel').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
 
     const pctRented = total ? (rented / total) * 100 : 0;
     const pctMaintenance = total ? (inMaintenance / total) * 100 : 0;
@@ -85,9 +87,9 @@ export function MachinesDashboardPage({ companyId }: Props) {
     });
 
     return {
-      total, rented, available, reserved, sold, demo,
+      total, rented, available, reserved, sold, demo, unavailable,
       operational, inMaintenance, inTest, discard,
-      totalValue, rentedValue, maintenanceValue, availableValue,
+      totalValue, rentedValue, maintenanceValue, availableValue, unavailableValue,
       pctRented, pctMaintenance, pctOperational, pctAvailable,
       activeRentalsCount: activeRentals.length,
       monthReceivable, activeRentalsTotal,
@@ -122,21 +124,23 @@ export function MachinesDashboardPage({ companyId }: Props) {
       </div>
 
       {/* KPIs principais */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
         {kpi(<Package className="w-6 h-6" />, 'Total de Itens', stats.total)}
         {kpi(<Truck className="w-6 h-6 text-blue-500" />, 'Locados', stats.rented, pct(stats.pctRented))}
         {kpi(<CheckCircle2 className="w-6 h-6 text-green-500" />, 'Operacionais', stats.operational, pct(stats.pctOperational))}
         {kpi(<Wrench className="w-6 h-6 text-orange-500" />, 'Em Manutenção', stats.inMaintenance, pct(stats.pctMaintenance))}
         {kpi(<Activity className="w-6 h-6 text-purple-500" />, 'Em Teste', stats.inTest)}
         {kpi(<Trash2 className="w-6 h-6 text-red-500" />, 'Descarte', stats.discard)}
+        {kpi(<Package className="w-6 h-6 text-gray-500" />, 'Indisponíveis', stats.unavailable)}
       </div>
 
       {/* Valores */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
         {kpi(<DollarSign className="w-6 h-6" />, 'Valor Total do Inventário', brl(stats.totalValue))}
         {kpi(<DollarSign className="w-6 h-6 text-blue-500" />, 'Valor dos Itens Locados', brl(stats.rentedValue))}
         {kpi(<DollarSign className="w-6 h-6 text-orange-500" />, 'Valor em Manutenção', brl(stats.maintenanceValue))}
         {kpi(<DollarSign className="w-6 h-6 text-green-500" />, 'Valor Disponível', brl(stats.availableValue))}
+        {kpi(<DollarSign className="w-6 h-6 text-gray-500" />, 'Valor Indisponível', brl(stats.unavailableValue))}
       </div>
 
       {/* Locações do mês */}
@@ -155,7 +159,8 @@ export function MachinesDashboardPage({ companyId }: Props) {
             <StatusBar label="Disponíveis" count={stats.available} total={stats.total} color="bg-green-500" />
             <StatusBar label="Reservadas" count={stats.reserved} total={stats.total} color="bg-yellow-500" />
             <StatusBar label="Demonstração" count={stats.demo} total={stats.total} color="bg-purple-500" />
-            <StatusBar label="Vendidas" count={stats.sold} total={stats.total} color="bg-gray-500" />
+            <StatusBar label="Vendidas" count={stats.sold} total={stats.total} color="bg-gray-400" />
+            <StatusBar label="Indisponíveis" count={stats.unavailable} total={stats.total} color="bg-gray-600" />
           </CardContent>
         </Card>
 

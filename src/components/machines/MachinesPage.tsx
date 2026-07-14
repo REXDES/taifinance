@@ -343,12 +343,10 @@ export function MachinesPage({ companyId }: Props) {
               <div><Label>Nome *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
               <div>
                 <Label>Categoria *</Label>
-                <Select value={form.category} onValueChange={(v: any) => setForm({ ...form, category: v })}>
+                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="maquina">Máquina</SelectItem>
-                    <SelectItem value="equipamento">Equipamento</SelectItem>
-                    <SelectItem value="ferramenta">Ferramenta</SelectItem>
+                    {categoryOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

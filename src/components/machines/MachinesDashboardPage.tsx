@@ -131,6 +131,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
         {kpi(<Wrench className="w-6 h-6 text-orange-500" />, 'Em Manutenção', stats.inMaintenance, pct(stats.pctMaintenance))}
         {kpi(<Activity className="w-6 h-6 text-purple-500" />, 'Em Teste', stats.inTest)}
         {kpi(<Trash2 className="w-6 h-6 text-red-500" />, 'Descarte', stats.discard)}
+        {kpi(<Package className="w-6 h-6 text-gray-500" />, 'Indisponíveis', stats.unavailable)}
       </div>
 
       {/* Valores */}

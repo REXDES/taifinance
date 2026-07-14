@@ -67,6 +67,7 @@ export type FinanceView =
   | 'audit-logs'
   | 'clients-suppliers'
   | 'bank-digital'
+  | 'machines-dashboard'
   | 'machines-inventory'
   | 'machines-maintenance'
   | 'machines-rentals'

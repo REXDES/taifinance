@@ -226,7 +226,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
             <AlertTriangle className="w-5 h-5 text-red-500" />
             <div>
               <p className="text-sm font-medium">Atenção: {stats.discard} {stats.discard === 1 ? 'item marcado' : 'itens marcados'} para descarte</p>
-              <p className="text-xs text-muted-foreground">Revise o inventário para baixa contábil</p>
+              <p className="text-xs text-muted-foreground">Valor em descarte: {brl(stats.discardValue)} · Revise o inventário para baixa contábil</p>
             </div>
           </CardContent>
         </Card>

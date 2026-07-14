@@ -409,7 +409,14 @@ export function MachinesPage({ companyId }: Props) {
               <div><Label>Modelo</Label><Input value={form.model} onChange={e => setForm({ ...form, model: e.target.value })} /></div>
               <div><Label>Ano</Label><Input type="number" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} /></div>
             </div>
-            <div><Label>Destinação</Label><Input value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} placeholder="Ex.: Locação, Uso interno" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Número de série</Label><Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} placeholder="Ex.: SN123456" /></div>
+              <div><Label>Destinação</Label><Input value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} placeholder="Ex.: Locação, Uso interno" /></div>
+            </div>
+            <div>
+              <Label>Tags / Lembretes</Label>
+              <MachineTagPicker companyId={companyId} value={formTagIds} onChange={setFormTagIds} />
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>

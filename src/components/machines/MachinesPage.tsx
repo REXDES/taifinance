@@ -326,19 +326,23 @@ export function MachinesPage({ companyId }: Props) {
           <Table>
             <TableHeader><TableRow>
               <TableHead>Nome</TableHead><TableHead>Categoria</TableHead><TableHead>Marca/Modelo</TableHead>
+              <TableHead>Nº Série</TableHead>
               <TableHead>Local</TableHead>
               <TableHead>Status comercial</TableHead><TableHead>Status técnico</TableHead>
               <TableHead>Horímetro</TableHead><TableHead>Origem</TableHead>
-              <TableHead>Valor</TableHead><TableHead className="w-40"></TableHead>
+              <TableHead>Valor</TableHead>
+              <TableHead className="min-w-[180px]">Tags / Lembretes</TableHead>
+              <TableHead className="w-40"></TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {loading ? <TableRow><TableCell colSpan={10}>Carregando...</TableCell></TableRow> :
-                filtered.length === 0 ? <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhum item encontrado</TableCell></TableRow> :
+              {loading ? <TableRow><TableCell colSpan={12}>Carregando...</TableCell></TableRow> :
+                filtered.length === 0 ? <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhum item encontrado</TableCell></TableRow> :
                 filtered.map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
                     <TableCell><Badge variant="secondary">{categoryLabel(m.category)}</Badge></TableCell>
                     <TableCell>{[m.brand, m.model].filter(Boolean).join(' ') || '-'}</TableCell>
+                    <TableCell className="font-mono text-xs">{(m as any).serial_number || '-'}</TableCell>
                     <TableCell>{(m as any).location || '-'}</TableCell>
                     <TableCell><Badge variant="outline">{STATUS_LABEL[m.status] || m.status}</Badge></TableCell>
                     <TableCell><Badge variant="outline">{TECH_STATUS_LABEL[(m as any).technical_status || 'operacional']}</Badge></TableCell>
@@ -349,6 +353,16 @@ export function MachinesPage({ companyId }: Props) {
                       </Badge>
                     </TableCell>
                     <TableCell>R$ {Number(m.acquisition_value).toFixed(2)}</TableCell>
+                    <TableCell className="min-w-[180px]">
+                      <MachineTagPicker
+                        companyId={companyId}
+                        value={(tagsMap[m.id] || []).map(t => t.id)}
+                        onChange={async (ids) => {
+                          try { await setMachineTags(m.id, ids); refetchTags(); }
+                          catch (e: any) { toast.error(e.message); }
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Button size="icon" variant="ghost" onClick={() => openPrices(m)} title="Preços de venda e locação"><Tag className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>

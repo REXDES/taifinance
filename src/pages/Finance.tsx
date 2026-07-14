@@ -70,6 +70,7 @@ export type FinanceView =
   | 'machines-rentals'
   | 'machines-operators'
   | 'machines-mechanics'
+  | 'machines-catalog'
   | 'credit-admin'
   | 'credit-applications'
   | 'credit-ignored';

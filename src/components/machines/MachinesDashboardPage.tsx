@@ -90,7 +90,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
     return {
       total, rented, available, reserved, sold, demo, unavailable,
       operational, inMaintenance, inTest, discard,
-      totalValue, rentedValue, maintenanceValue, availableValue, unavailableValue,
+      totalValue, rentedValue, maintenanceValue, availableValue, unavailableValue, discardValue,
       pctRented, pctMaintenance, pctOperational, pctAvailable,
       activeRentalsCount: activeRentals.length,
       monthReceivable, activeRentalsTotal,

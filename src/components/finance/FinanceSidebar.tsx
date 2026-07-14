@@ -137,6 +137,7 @@ const machinesMenuItems: MenuItem[] = [
   { view: 'machines-maintenance', label: 'Manutenções', icon: <Hammer className="w-4 h-4" /> },
   { view: 'machines-operators', label: 'Operadores', icon: <HardHat className="w-4 h-4" /> },
   { view: 'machines-mechanics', label: 'Mecânicos', icon: <Wrench className="w-4 h-4" /> },
+  { view: 'machines-catalog', label: 'Categorias e Tipos', icon: <Tag className="w-4 h-4" /> },
 ];
 
 const creditMenuItems: MenuItem[] = [

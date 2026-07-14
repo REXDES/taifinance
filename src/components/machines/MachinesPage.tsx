@@ -560,6 +560,8 @@ export function MachinesPage({ companyId }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <MachineTagsManagerDialog companyId={companyId} open={tagsManagerOpen} onOpenChange={setTagsManagerOpen} />
     </div>
   );
 }

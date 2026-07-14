@@ -44,6 +44,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
     const maintenanceValue = machines.filter(m => (m as any).technical_status === 'em_manutencao').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
     const availableValue = machines.filter(m => m.status === 'disponivel').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
     const unavailableValue = machines.filter(m => m.status === 'indisponivel').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
+    const discardValue = machines.filter(m => (m as any).technical_status === 'descarte').reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
 
     const pctRented = total ? (rented / total) * 100 : 0;
     const pctMaintenance = total ? (inMaintenance / total) * 100 : 0;

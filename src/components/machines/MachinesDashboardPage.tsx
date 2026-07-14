@@ -159,7 +159,8 @@ export function MachinesDashboardPage({ companyId }: Props) {
             <StatusBar label="Disponíveis" count={stats.available} total={stats.total} color="bg-green-500" />
             <StatusBar label="Reservadas" count={stats.reserved} total={stats.total} color="bg-yellow-500" />
             <StatusBar label="Demonstração" count={stats.demo} total={stats.total} color="bg-purple-500" />
-            <StatusBar label="Vendidas" count={stats.sold} total={stats.total} color="bg-gray-500" />
+            <StatusBar label="Vendidas" count={stats.sold} total={stats.total} color="bg-gray-400" />
+            <StatusBar label="Indisponíveis" count={stats.unavailable} total={stats.total} color="bg-gray-600" />
           </CardContent>
         </Card>
 

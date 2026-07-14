@@ -31,6 +31,7 @@ type MachineExt = Machine & {
   category?: string | null;
   technical_status?: string | null;
   location?: string | null;
+  serial_number?: string | null;
   sale_price?: number | null;
   rental_price_daily?: number | null;
   rental_price_weekly?: number | null;

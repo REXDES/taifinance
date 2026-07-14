@@ -30,6 +30,7 @@ import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
 import { AccessModeDialog } from '@/components/AccessModeDialog';
 import { MachinesPage } from '@/components/machines/MachinesPage';
+import { MachinesDashboardPage } from '@/components/machines/MachinesDashboardPage';
 import { MachineCatalogPage } from '@/components/machines/MachineCatalogPage';
 import { MaintenancePage } from '@/components/machines/MaintenancePage';
 import { RentalsPage } from '@/components/machines/RentalsPage';

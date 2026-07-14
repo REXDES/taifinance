@@ -59,6 +59,10 @@ export function useMachineTypes(companyId: string | null) {
   const r = useTable<MachineType>('machine_types', companyId);
   return { types: r.data, loading: r.loading, refetch: r.refetch };
 }
+export function useMachineCategories(companyId: string | null) {
+  const r = useTable<MachineCategory>('machine_categories', companyId);
+  return { categories: r.data, loading: r.loading, refetch: r.refetch };
+}
 export function useMachines(companyId: string | null) {
   const r = useTable<Machine>('machines', companyId);
   return { machines: r.data, loading: r.loading, refetch: r.refetch };

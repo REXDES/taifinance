@@ -32,6 +32,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
     const reserved = machines.filter(m => m.status === 'reservada').length;
     const sold = machines.filter(m => m.status === 'vendida').length;
     const demo = machines.filter(m => m.status === 'demonstracao').length;
+    const unavailable = machines.filter(m => m.status === 'indisponivel').length;
 
     const operational = machines.filter(m => (m as any).technical_status === 'operacional' || !(m as any).technical_status).length;
     const inMaintenance = machines.filter(m => (m as any).technical_status === 'em_manutencao').length;

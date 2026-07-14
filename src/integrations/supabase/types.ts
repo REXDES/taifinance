@@ -1435,6 +1435,80 @@ export type Database = {
         }
         Relationships: []
       }
+      machine_tag_links: {
+        Row: {
+          created_at: string
+          machine_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          machine_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          machine_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_tag_links_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_tag_links_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "machine_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_tags: {
+        Row: {
+          color: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_tags_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machine_types: {
         Row: {
           company_id: string
@@ -1481,6 +1555,7 @@ export type Database = {
           rental_price_monthly: number | null
           rental_price_weekly: number | null
           sale_price: number | null
+          serial_number: string | null
           status: string
           technical_status: string
           type_id: string | null
@@ -1508,6 +1583,7 @@ export type Database = {
           rental_price_monthly?: number | null
           rental_price_weekly?: number | null
           sale_price?: number | null
+          serial_number?: string | null
           status?: string
           technical_status?: string
           type_id?: string | null
@@ -1535,6 +1611,7 @@ export type Database = {
           rental_price_monthly?: number | null
           rental_price_weekly?: number | null
           sale_price?: number | null
+          serial_number?: string | null
           status?: string
           technical_status?: string
           type_id?: string | null

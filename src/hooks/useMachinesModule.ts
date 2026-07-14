@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export interface MachineType { id: string; company_id: string; name: string; }
+export interface MachineCategory { id: string; company_id: string; name: string; }
 export interface Machine {
   id: string; company_id: string; type_id: string | null; name: string;
   brand: string | null; model: string | null; year: number | null; destination: string | null;

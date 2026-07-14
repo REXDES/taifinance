@@ -30,6 +30,7 @@ import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
 import { AccessModeDialog } from '@/components/AccessModeDialog';
 import { MachinesPage } from '@/components/machines/MachinesPage';
+import { MachinesDashboardPage } from '@/components/machines/MachinesDashboardPage';
 import { MachineCatalogPage } from '@/components/machines/MachineCatalogPage';
 import { MaintenancePage } from '@/components/machines/MaintenancePage';
 import { RentalsPage } from '@/components/machines/RentalsPage';
@@ -66,6 +67,7 @@ export type FinanceView =
   | 'audit-logs'
   | 'clients-suppliers'
   | 'bank-digital'
+  | 'machines-dashboard'
   | 'machines-inventory'
   | 'machines-maintenance'
   | 'machines-rentals'
@@ -96,6 +98,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'payables-receivables-calendar',
   'payables-receivables-flow',
   'clients-suppliers',
+  'machines-dashboard',
   'machines-inventory',
   'machines-maintenance',
   'machines-rentals',
@@ -279,6 +282,8 @@ const Finance = () => {
         return <ClientsSuppliersPage companyId={selectedCompanyId} />;
       case 'bank-digital':
         return bankDigitalEnabled ? <BankDigitalPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'machines-dashboard':
+        return machinesEnabled ? <MachinesDashboardPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-inventory':
         return machinesEnabled ? <MachinesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-maintenance':

@@ -125,12 +125,6 @@ export function MachinesPage({ companyId }: Props) {
       destination: m.destination || '', type_id: m.type_id || 'none',
       category: ((m as any).category || 'equipamento') as any,
       serial_number: (m as any).serial_number || '',
-  const openEdit = (m: MachineExt) => {
-    setEditing(m);
-    setForm({
-      name: m.name, brand: m.brand || '', model: m.model || '', year: m.year?.toString() || '',
-      destination: m.destination || '', type_id: m.type_id || 'none',
-      category: ((m as any).category || 'equipamento') as any,
       acquisition_value: m.acquisition_value?.toString() || '',
       acquisition_date: m.acquisition_date || '',
       acquisition_source: m.acquisition_source,
@@ -141,6 +135,7 @@ export function MachinesPage({ companyId }: Props) {
       location: (m as any).location || '',
       notes: m.notes || '',
     });
+    setFormTagIds((tagsMap[m.id] || []).map(t => t.id));
     setOpen(true);
   };
 

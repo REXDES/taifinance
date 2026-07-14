@@ -65,7 +65,7 @@ export function MachinesPage({ companyId }: Props) {
   const [editing, setEditing] = useState<MachineExt | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MachineExt | null>(null);
   const [filter, setFilter] = useState<'all' | 'new_purchase' | 'pre_existing'>('all');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'maquina' | 'equipamento' | 'ferramenta'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [techStatusFilter, setTechStatusFilter] = useState<string>('all');

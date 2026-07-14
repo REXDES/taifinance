@@ -46,6 +46,21 @@ const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', cur
 export function MachinesPage({ companyId }: Props) {
   const { machines, refetch, loading } = useMachines(companyId) as { machines: MachineExt[]; refetch: () => void; loading: boolean };
   const { types, refetch: refetchTypes } = useMachineTypes(companyId);
+  const { categories: dbCategories } = useMachineCategories(companyId);
+  const categoryOptions = useMemo(() => {
+    if (dbCategories.length > 0) return dbCategories.map(c => ({ value: c.name, label: c.name }));
+    return DEFAULT_CATEGORIES;
+  }, [dbCategories]);
+  const categoryLabel = (v?: string | null) => {
+    if (!v) return DEFAULT_CATEGORY_LABEL.equipamento;
+    const found = categoryOptions.find(o => o.value === v);
+    return found?.label || DEFAULT_CATEGORY_LABEL[v] || v;
+  };
+  const allCategoryValues = useMemo(() => {
+    const set = new Set<string>();
+    categoryOptions.forEach(o => set.add(o.value));
+    return Array.from(set);
+  }, [categoryOptions]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MachineExt | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MachineExt | null>(null);

@@ -90,6 +90,13 @@ export function MachinesPage({ companyId }: Props) {
   }, [companyId]);
   useEffect(() => { fetchLocations(); }, [fetchLocations]);
 
+  const refetchTags = useCallback(async () => {
+    const ids = machines.map(m => m.id);
+    if (ids.length === 0) { setTagsMap({}); return; }
+    try { setTagsMap(await fetchMachineTagsMap(ids)); } catch { /* ignore */ }
+  }, [machines]);
+  useEffect(() => { refetchTags(); }, [refetchTags]);
+
   const allLocationNames = useMemo(() => {
     const set = new Set<string>(DEFAULT_LOCATIONS);
     locations.forEach(l => set.add(l.name));

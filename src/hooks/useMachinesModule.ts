@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export interface MachineType { id: string; company_id: string; name: string; }
+export interface MachineCategory { id: string; company_id: string; name: string; }
 export interface Machine {
   id: string; company_id: string; type_id: string | null; name: string;
   brand: string | null; model: string | null; year: number | null; destination: string | null;
@@ -57,6 +58,10 @@ function useTable<T>(table: string, companyId: string | null, select = '*') {
 export function useMachineTypes(companyId: string | null) {
   const r = useTable<MachineType>('machine_types', companyId);
   return { types: r.data, loading: r.loading, refetch: r.refetch };
+}
+export function useMachineCategories(companyId: string | null) {
+  const r = useTable<MachineCategory>('machine_categories', companyId);
+  return { categories: r.data, loading: r.loading, refetch: r.refetch };
 }
 export function useMachines(companyId: string | null) {
   const r = useTable<Machine>('machines', companyId);

@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, Tag, Package, Wallet, Percent, MapPin } from 'lucide-react';
-import { useMachines, useMachineTypes, Machine } from '@/hooks/useMachinesModule';
+import { useMachines, useMachineTypes, useMachineCategories, Machine } from '@/hooks/useMachinesModule';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
@@ -34,18 +34,38 @@ type MachineExt = Machine & {
   rental_price_monthly?: number | null;
 };
 
-const CATEGORY_LABEL: Record<string, string> = { maquina: 'Máquina', equipamento: 'Equipamento', ferramenta: 'Ferramenta' };
+const DEFAULT_CATEGORY_LABEL: Record<string, string> = { maquina: 'Máquina', equipamento: 'Equipamento', ferramenta: 'Ferramenta' };
+const DEFAULT_CATEGORIES = [
+  { value: 'maquina', label: 'Máquina' },
+  { value: 'equipamento', label: 'Equipamento' },
+  { value: 'ferramenta', label: 'Ferramenta' },
+];
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function MachinesPage({ companyId }: Props) {
   const { machines, refetch, loading } = useMachines(companyId) as { machines: MachineExt[]; refetch: () => void; loading: boolean };
   const { types, refetch: refetchTypes } = useMachineTypes(companyId);
+  const { categories: dbCategories } = useMachineCategories(companyId);
+  const categoryOptions = useMemo(() => {
+    if (dbCategories.length > 0) return dbCategories.map(c => ({ value: c.name, label: c.name }));
+    return DEFAULT_CATEGORIES;
+  }, [dbCategories]);
+  const categoryLabel = (v?: string | null) => {
+    if (!v) return DEFAULT_CATEGORY_LABEL.equipamento;
+    const found = categoryOptions.find(o => o.value === v);
+    return found?.label || DEFAULT_CATEGORY_LABEL[v] || v;
+  };
+  const allCategoryValues = useMemo(() => {
+    const set = new Set<string>();
+    categoryOptions.forEach(o => set.add(o.value));
+    return Array.from(set);
+  }, [categoryOptions]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MachineExt | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MachineExt | null>(null);
   const [filter, setFilter] = useState<'all' | 'new_purchase' | 'pre_existing'>('all');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'maquina' | 'equipamento' | 'ferramenta'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [techStatusFilter, setTechStatusFilter] = useState<string>('all');
@@ -72,7 +92,7 @@ export function MachinesPage({ companyId }: Props) {
 
   const empty = {
     name: '', brand: '', model: '', year: '', destination: '', type_id: 'none',
-    category: 'equipamento' as 'maquina' | 'equipamento' | 'ferramenta',
+    category: 'equipamento' as string,
     acquisition_value: '', acquisition_date: '', acquisition_source: 'pre_existing' as 'new_purchase' | 'pre_existing',
     current_horimeter: '', preventive_maintenance_interval_hours: '',
     status: 'disponivel' as string,
@@ -197,13 +217,11 @@ export function MachinesPage({ companyId }: Props) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Select value={categoryFilter} onValueChange={(v: any) => setCategoryFilter(v)}>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas categorias</SelectItem>
-            <SelectItem value="maquina">Máquina</SelectItem>
-            <SelectItem value="equipamento">Equipamento</SelectItem>
-            <SelectItem value="ferramenta">Ferramenta</SelectItem>
+            {categoryOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -293,7 +311,7 @@ export function MachinesPage({ companyId }: Props) {
                 filtered.map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
-                    <TableCell><Badge variant="secondary">{CATEGORY_LABEL[m.category || 'equipamento']}</Badge></TableCell>
+                    <TableCell><Badge variant="secondary">{categoryLabel(m.category)}</Badge></TableCell>
                     <TableCell>{[m.brand, m.model].filter(Boolean).join(' ') || '-'}</TableCell>
                     <TableCell>{(m as any).location || '-'}</TableCell>
                     <TableCell><Badge variant="outline">{STATUS_LABEL[m.status] || m.status}</Badge></TableCell>
@@ -325,12 +343,10 @@ export function MachinesPage({ companyId }: Props) {
               <div><Label>Nome *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
               <div>
                 <Label>Categoria *</Label>
-                <Select value={form.category} onValueChange={(v: any) => setForm({ ...form, category: v })}>
+                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="maquina">Máquina</SelectItem>
-                    <SelectItem value="equipamento">Equipamento</SelectItem>
-                    <SelectItem value="ferramenta">Ferramenta</SelectItem>
+                    {categoryOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

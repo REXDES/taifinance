@@ -98,6 +98,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'payables-receivables-calendar',
   'payables-receivables-flow',
   'clients-suppliers',
+  'machines-dashboard',
   'machines-inventory',
   'machines-maintenance',
   'machines-rentals',

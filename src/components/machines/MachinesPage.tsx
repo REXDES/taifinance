@@ -311,7 +311,7 @@ export function MachinesPage({ companyId }: Props) {
                 filtered.map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
-                    <TableCell><Badge variant="secondary">{CATEGORY_LABEL[m.category || 'equipamento']}</Badge></TableCell>
+                    <TableCell><Badge variant="secondary">{categoryLabel(m.category)}</Badge></TableCell>
                     <TableCell>{[m.brand, m.model].filter(Boolean).join(' ') || '-'}</TableCell>
                     <TableCell>{(m as any).location || '-'}</TableCell>
                     <TableCell><Badge variant="outline">{STATUS_LABEL[m.status] || m.status}</Badge></TableCell>

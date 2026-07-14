@@ -217,13 +217,11 @@ export function MachinesPage({ companyId }: Props) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Select value={categoryFilter} onValueChange={(v: any) => setCategoryFilter(v)}>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas categorias</SelectItem>
-            <SelectItem value="maquina">Máquina</SelectItem>
-            <SelectItem value="equipamento">Equipamento</SelectItem>
-            <SelectItem value="ferramenta">Ferramenta</SelectItem>
+            {categoryOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={typeFilter} onValueChange={setTypeFilter}>

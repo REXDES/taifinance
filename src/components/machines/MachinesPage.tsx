@@ -236,7 +236,10 @@ export function MachinesPage({ companyId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-semibold">Inventário</h1>
-        <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Novo item</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setTagsManagerOpen(true)}><Tags className="w-4 h-4 mr-1" /> Gerenciar tags</Button>
+          <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Novo item</Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">

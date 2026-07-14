@@ -132,6 +132,7 @@ const cadastrosMenuItems: MenuItem[] = [
 ];
 
 const machinesMenuItems: MenuItem[] = [
+  { view: 'machines-dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
   { view: 'machines-inventory', label: 'Inventário', icon: <Truck className="w-4 h-4" /> },
   { view: 'machines-rentals', label: 'Locações', icon: <ClipboardCheck className="w-4 h-4" /> },
   { view: 'machines-maintenance', label: 'Manutenções', icon: <Hammer className="w-4 h-4" /> },

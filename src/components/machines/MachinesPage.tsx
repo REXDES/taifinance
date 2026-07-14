@@ -20,7 +20,7 @@ import { fetchMachineTagsMap, setMachineTags, MachineTag } from '@/hooks/useMach
 interface Props { companyId: string; }
 
 const STATUS_LABEL: Record<string, string> = {
-  disponivel: 'Disponível', locada: 'Locada', vendida: 'Vendida', reservada: 'Reservada', demonstracao: 'Demonstração',
+  disponivel: 'Disponível', locada: 'Locada', vendida: 'Vendida', reservada: 'Reservada', demonstracao: 'Demonstração', indisponivel: 'Indisponível',
 };
 const TECH_STATUS_LABEL: Record<string, string> = {
   operacional: 'Operacional', em_manutencao: 'Em manutenção', em_teste: 'Em teste', descarte: 'Descarte',

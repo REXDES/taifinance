@@ -8,11 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Tag, Package, Wallet, Percent, MapPin } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, Package, Wallet, Percent, MapPin, Tags } from 'lucide-react';
 import { useMachines, useMachineTypes, useMachineCategories, Machine } from '@/hooks/useMachinesModule';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
+import { MachineTagPicker } from './MachineTagPicker';
+import { MachineTagsManagerDialog } from './MachineTagsManagerDialog';
+import { fetchMachineTagsMap, setMachineTags, MachineTag } from '@/hooks/useMachineTags';
 
 interface Props { companyId: string; }
 
@@ -28,6 +31,7 @@ type MachineExt = Machine & {
   category?: string | null;
   technical_status?: string | null;
   location?: string | null;
+  serial_number?: string | null;
   sale_price?: number | null;
   rental_price_daily?: number | null;
   rental_price_weekly?: number | null;
@@ -75,6 +79,9 @@ export function MachinesPage({ companyId }: Props) {
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [locDialogOpen, setLocDialogOpen] = useState(false);
   const [newLocName, setNewLocName] = useState('');
+  const [tagsMap, setTagsMap] = useState<Record<string, MachineTag[]>>({});
+  const [tagsManagerOpen, setTagsManagerOpen] = useState(false);
+  const [formTagIds, setFormTagIds] = useState<string[]>([]);
 
   const fetchLocations = useCallback(async () => {
     if (!companyId) return;
@@ -82,6 +89,13 @@ export function MachinesPage({ companyId }: Props) {
     setLocations(data || []);
   }, [companyId]);
   useEffect(() => { fetchLocations(); }, [fetchLocations]);
+
+  const refetchTags = useCallback(async () => {
+    const ids = machines.map(m => m.id);
+    if (ids.length === 0) { setTagsMap({}); return; }
+    try { setTagsMap(await fetchMachineTagsMap(ids)); } catch { /* ignore */ }
+  }, [machines]);
+  useEffect(() => { refetchTags(); }, [refetchTags]);
 
   const allLocationNames = useMemo(() => {
     const set = new Set<string>(DEFAULT_LOCATIONS);
@@ -93,6 +107,7 @@ export function MachinesPage({ companyId }: Props) {
   const empty = {
     name: '', brand: '', model: '', year: '', destination: '', type_id: 'none',
     category: 'equipamento' as string,
+    serial_number: '',
     acquisition_value: '', acquisition_date: '', acquisition_source: 'pre_existing' as 'new_purchase' | 'pre_existing',
     current_horimeter: '', preventive_maintenance_interval_hours: '',
     status: 'disponivel' as string,
@@ -102,13 +117,14 @@ export function MachinesPage({ companyId }: Props) {
   };
   const [form, setForm] = useState(empty);
 
-  const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm(empty); setFormTagIds([]); setOpen(true); };
   const openEdit = (m: MachineExt) => {
     setEditing(m);
     setForm({
       name: m.name, brand: m.brand || '', model: m.model || '', year: m.year?.toString() || '',
       destination: m.destination || '', type_id: m.type_id || 'none',
       category: ((m as any).category || 'equipamento') as any,
+      serial_number: (m as any).serial_number || '',
       acquisition_value: m.acquisition_value?.toString() || '',
       acquisition_date: m.acquisition_date || '',
       acquisition_source: m.acquisition_source,
@@ -119,6 +135,7 @@ export function MachinesPage({ companyId }: Props) {
       location: (m as any).location || '',
       notes: m.notes || '',
     });
+    setFormTagIds((tagsMap[m.id] || []).map(t => t.id));
     setOpen(true);
   };
 
@@ -154,6 +171,7 @@ export function MachinesPage({ companyId }: Props) {
       year: form.year ? parseInt(form.year) : null, destination: form.destination || null,
       type_id: form.type_id !== 'none' ? form.type_id : null,
       category: form.category,
+      serial_number: form.serial_number || null,
       acquisition_value: parseFloat(form.acquisition_value || '0'),
       acquisition_date: form.acquisition_date || null,
       acquisition_source: form.acquisition_source,
@@ -164,16 +182,21 @@ export function MachinesPage({ companyId }: Props) {
       location: form.location || null,
       notes: form.notes || null,
     };
+    let machineId = editing?.id || null;
     if (editing) {
       const { error } = await (supabase as any).from('machines').update(payload).eq('id', editing.id);
       if (error) return toast.error(error.message);
       toast.success('Máquina atualizada');
     } else {
-      const { error } = await (supabase as any).from('machines').insert(payload);
+      const { data, error } = await (supabase as any).from('machines').insert(payload).select('id').single();
       if (error) return toast.error(error.message);
+      machineId = data?.id;
       toast.success('Máquina cadastrada');
     }
-    setOpen(false); refetch();
+    if (machineId) {
+      try { await setMachineTags(machineId, formTagIds); } catch (e: any) { toast.error('Erro ao salvar tags: ' + e.message); }
+    }
+    setOpen(false); refetch(); refetchTags();
   };
 
   const addType = async () => {
@@ -213,7 +236,10 @@ export function MachinesPage({ companyId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-semibold">Inventário</h1>
-        <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Novo item</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setTagsManagerOpen(true)}><Tags className="w-4 h-4 mr-1" /> Gerenciar tags</Button>
+          <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Novo item</Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -300,19 +326,23 @@ export function MachinesPage({ companyId }: Props) {
           <Table>
             <TableHeader><TableRow>
               <TableHead>Nome</TableHead><TableHead>Categoria</TableHead><TableHead>Marca/Modelo</TableHead>
+              <TableHead>Nº Série</TableHead>
               <TableHead>Local</TableHead>
               <TableHead>Status comercial</TableHead><TableHead>Status técnico</TableHead>
               <TableHead>Horímetro</TableHead><TableHead>Origem</TableHead>
-              <TableHead>Valor</TableHead><TableHead className="w-40"></TableHead>
+              <TableHead>Valor</TableHead>
+              <TableHead className="min-w-[180px]">Tags / Lembretes</TableHead>
+              <TableHead className="w-40"></TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {loading ? <TableRow><TableCell colSpan={10}>Carregando...</TableCell></TableRow> :
-                filtered.length === 0 ? <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhum item encontrado</TableCell></TableRow> :
+              {loading ? <TableRow><TableCell colSpan={12}>Carregando...</TableCell></TableRow> :
+                filtered.length === 0 ? <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhum item encontrado</TableCell></TableRow> :
                 filtered.map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
                     <TableCell><Badge variant="secondary">{categoryLabel(m.category)}</Badge></TableCell>
                     <TableCell>{[m.brand, m.model].filter(Boolean).join(' ') || '-'}</TableCell>
+                    <TableCell className="font-mono text-xs">{(m as any).serial_number || '-'}</TableCell>
                     <TableCell>{(m as any).location || '-'}</TableCell>
                     <TableCell><Badge variant="outline">{STATUS_LABEL[m.status] || m.status}</Badge></TableCell>
                     <TableCell><Badge variant="outline">{TECH_STATUS_LABEL[(m as any).technical_status || 'operacional']}</Badge></TableCell>
@@ -323,6 +353,16 @@ export function MachinesPage({ companyId }: Props) {
                       </Badge>
                     </TableCell>
                     <TableCell>R$ {Number(m.acquisition_value).toFixed(2)}</TableCell>
+                    <TableCell className="min-w-[180px]">
+                      <MachineTagPicker
+                        companyId={companyId}
+                        value={(tagsMap[m.id] || []).map(t => t.id)}
+                        onChange={async (ids) => {
+                          try { await setMachineTags(m.id, ids); refetchTags(); }
+                          catch (e: any) { toast.error(e.message); }
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Button size="icon" variant="ghost" onClick={() => openPrices(m)} title="Preços de venda e locação"><Tag className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
@@ -369,7 +409,14 @@ export function MachinesPage({ companyId }: Props) {
               <div><Label>Modelo</Label><Input value={form.model} onChange={e => setForm({ ...form, model: e.target.value })} /></div>
               <div><Label>Ano</Label><Input type="number" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} /></div>
             </div>
-            <div><Label>Destinação</Label><Input value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} placeholder="Ex.: Locação, Uso interno" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Número de série</Label><Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} placeholder="Ex.: SN123456" /></div>
+              <div><Label>Destinação</Label><Input value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} placeholder="Ex.: Locação, Uso interno" /></div>
+            </div>
+            <div>
+              <Label>Tags / Lembretes</Label>
+              <MachineTagPicker companyId={companyId} value={formTagIds} onChange={setFormTagIds} />
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -513,6 +560,8 @@ export function MachinesPage({ companyId }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <MachineTagsManagerDialog companyId={companyId} open={tagsManagerOpen} onOpenChange={setTagsManagerOpen} />
     </div>
   );
 }

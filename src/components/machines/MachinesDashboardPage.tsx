@@ -136,12 +136,13 @@ export function MachinesDashboardPage({ companyId }: Props) {
       </div>
 
       {/* Valores */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
         {kpi(<DollarSign className="w-6 h-6" />, 'Valor Total do Inventário', brl(stats.totalValue))}
         {kpi(<DollarSign className="w-6 h-6 text-blue-500" />, 'Valor dos Itens Locados', brl(stats.rentedValue))}
         {kpi(<DollarSign className="w-6 h-6 text-orange-500" />, 'Valor em Manutenção', brl(stats.maintenanceValue))}
         {kpi(<DollarSign className="w-6 h-6 text-green-500" />, 'Valor Disponível', brl(stats.availableValue))}
         {kpi(<DollarSign className="w-6 h-6 text-gray-500" />, 'Valor Indisponível', brl(stats.unavailableValue))}
+        {kpi(<DollarSign className="w-6 h-6 text-red-500" />, 'Valor em Descarte', brl(stats.discardValue))}
       </div>
 
       {/* Locações do mês */}

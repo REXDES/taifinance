@@ -100,6 +100,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'machines-rentals',
   'machines-operators',
   'machines-mechanics',
+  'machines-catalog',
   'credit-applications',
   'credit-ignored',
 ];

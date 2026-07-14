@@ -92,7 +92,7 @@ export function MachinesPage({ companyId }: Props) {
 
   const empty = {
     name: '', brand: '', model: '', year: '', destination: '', type_id: 'none',
-    category: 'equipamento' as 'maquina' | 'equipamento' | 'ferramenta',
+    category: 'equipamento' as string,
     acquisition_value: '', acquisition_date: '', acquisition_source: 'pre_existing' as 'new_purchase' | 'pre_existing',
     current_horimeter: '', preventive_maintenance_interval_hours: '',
     status: 'disponivel' as string,

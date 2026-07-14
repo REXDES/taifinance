@@ -124,7 +124,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
       </div>
 
       {/* KPIs principais */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
         {kpi(<Package className="w-6 h-6" />, 'Total de Itens', stats.total)}
         {kpi(<Truck className="w-6 h-6 text-blue-500" />, 'Locados', stats.rented, pct(stats.pctRented))}
         {kpi(<CheckCircle2 className="w-6 h-6 text-green-500" />, 'Operacionais', stats.operational, pct(stats.pctOperational))}

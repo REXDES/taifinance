@@ -79,6 +79,9 @@ export function MachinesPage({ companyId }: Props) {
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [locDialogOpen, setLocDialogOpen] = useState(false);
   const [newLocName, setNewLocName] = useState('');
+  const [tagsMap, setTagsMap] = useState<Record<string, MachineTag[]>>({});
+  const [tagsManagerOpen, setTagsManagerOpen] = useState(false);
+  const [formTagIds, setFormTagIds] = useState<string[]>([]);
 
   const fetchLocations = useCallback(async () => {
     if (!companyId) return;

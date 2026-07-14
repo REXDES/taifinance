@@ -171,6 +171,7 @@ export function MachinesPage({ companyId }: Props) {
       year: form.year ? parseInt(form.year) : null, destination: form.destination || null,
       type_id: form.type_id !== 'none' ? form.type_id : null,
       category: form.category,
+      serial_number: form.serial_number || null,
       acquisition_value: parseFloat(form.acquisition_value || '0'),
       acquisition_date: form.acquisition_date || null,
       acquisition_source: form.acquisition_source,
@@ -181,16 +182,21 @@ export function MachinesPage({ companyId }: Props) {
       location: form.location || null,
       notes: form.notes || null,
     };
+    let machineId = editing?.id || null;
     if (editing) {
       const { error } = await (supabase as any).from('machines').update(payload).eq('id', editing.id);
       if (error) return toast.error(error.message);
       toast.success('Máquina atualizada');
     } else {
-      const { error } = await (supabase as any).from('machines').insert(payload);
+      const { data, error } = await (supabase as any).from('machines').insert(payload).select('id').single();
       if (error) return toast.error(error.message);
+      machineId = data?.id;
       toast.success('Máquina cadastrada');
     }
-    setOpen(false); refetch();
+    if (machineId) {
+      try { await setMachineTags(machineId, formTagIds); } catch (e: any) { toast.error('Erro ao salvar tags: ' + e.message); }
+    }
+    setOpen(false); refetch(); refetchTags();
   };
 
   const addType = async () => {

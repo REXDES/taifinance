@@ -9,7 +9,7 @@ export interface Machine {
   brand: string | null; model: string | null; year: number | null; destination: string | null;
   acquisition_value: number; acquisition_date: string | null; acquisition_source: 'new_purchase' | 'pre_existing';
   current_horimeter: number; preventive_maintenance_interval_hours: number | null;
-  status: 'disponivel' | 'locada' | 'vendida' | 'reservada' | 'demonstracao';
+  status: 'disponivel' | 'locada' | 'vendida' | 'reservada' | 'demonstracao' | 'indisponivel';
   technical_status?: 'operacional' | 'em_manutencao' | 'em_teste' | 'descarte';
   location?: string | null;
   notes: string | null;

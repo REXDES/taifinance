@@ -107,6 +107,7 @@ export function MachinesPage({ companyId }: Props) {
   const empty = {
     name: '', brand: '', model: '', year: '', destination: '', type_id: 'none',
     category: 'equipamento' as string,
+    serial_number: '',
     acquisition_value: '', acquisition_date: '', acquisition_source: 'pre_existing' as 'new_purchase' | 'pre_existing',
     current_horimeter: '', preventive_maintenance_interval_hours: '',
     status: 'disponivel' as string,
@@ -116,7 +117,14 @@ export function MachinesPage({ companyId }: Props) {
   };
   const [form, setForm] = useState(empty);
 
-  const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm(empty); setFormTagIds([]); setOpen(true); };
+  const openEdit = (m: MachineExt) => {
+    setEditing(m);
+    setForm({
+      name: m.name, brand: m.brand || '', model: m.model || '', year: m.year?.toString() || '',
+      destination: m.destination || '', type_id: m.type_id || 'none',
+      category: ((m as any).category || 'equipamento') as any,
+      serial_number: (m as any).serial_number || '',
   const openEdit = (m: MachineExt) => {
     setEditing(m);
     setForm({

@@ -75,17 +75,6 @@ export function RentalsPage({ companyId }: Props) {
     return true;
   }), [rentals, statusFilter, clientFilter, fromDate, toDate]);
 
-  const filteredMachines = useMemo(() => {
-    const term = machineFilter.trim().toLowerCase();
-    return machines.filter(m =>
-      (m.status === 'disponivel' || originalMachineIds.includes(m.id)) &&
-      (!term ||
-        m.name.toLowerCase().includes(term) ||
-        (m.brand || '').toLowerCase().includes(term) ||
-        (m.model || '').toLowerCase().includes(term))
-    );
-  }, [machines, machineFilter, originalMachineIds]);
-
   // ---------- Resumos ----------
   const activeRentals = useMemo(() => rentals.filter(r => r.status === 'active'), [rentals]);
   const totalActiveAmount = useMemo(() => activeRentals.reduce((s, r) => s + Number(r.total_amount || 0), 0), [activeRentals]);

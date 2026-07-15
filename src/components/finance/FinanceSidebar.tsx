@@ -588,7 +588,37 @@ export function FinanceSidebar({
                         </Button>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                        {machinesMenuItems.map(renderMenuItem)}
+                        {machinesTopMenuItems.map(renderMenuItem)}
+
+                        <Collapsible defaultOpen={machinesGestaoMenuItems.some(i => currentView === i.view)}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                              <span className="flex items-center gap-2">
+                                <Briefcase className="w-4 h-4" />
+                                Gestão
+                              </span>
+                              <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                            {machinesGestaoMenuItems.map(renderMenuItem)}
+                          </CollapsibleContent>
+                        </Collapsible>
+
+                        <Collapsible defaultOpen={machinesCadastrosMenuItems.some(i => currentView === i.view)}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                              <span className="flex items-center gap-2">
+                                <FolderCog className="w-4 h-4" />
+                                Cadastros
+                              </span>
+                              <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                            {machinesCadastrosMenuItems.map(renderMenuItem)}
+                          </CollapsibleContent>
+                        </Collapsible>
                       </CollapsibleContent>
                     </Collapsible>
                   )

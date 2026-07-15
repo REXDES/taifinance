@@ -348,7 +348,14 @@ export function MachinesPage({ companyId }: Props) {
                 filtered.map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
-                    <TableCell><Badge variant="secondary">{categoryLabel(m.category)}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="secondary">{categoryLabel(m.category)}</Badge>
+                        {((m as any).usage_purpose || ['locacao']).map((u: string) => (
+                          <Badge key={u} variant="outline" className="text-[10px]">{USAGE_OPTIONS.find(o => o.value === u)?.label || u}</Badge>
+                        ))}
+                      </div>
+                    </TableCell>
                     <TableCell>{[m.brand, m.model].filter(Boolean).join(' ') || '-'}</TableCell>
                     <TableCell className="font-mono text-xs">{(m as any).serial_number || '-'}</TableCell>
                     <TableCell>{(m as any).location || '-'}</TableCell>

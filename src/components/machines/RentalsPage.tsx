@@ -484,7 +484,7 @@ export function RentalsPage({ companyId }: Props) {
               <div>
                 <Label>Máquinas / Implementos</Label>
                 <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded p-2">
-                  {machines.filter(m => m.status === 'disponivel').map(m => (
+                  {machines.filter(m => m.status === 'disponivel' || originalMachineIds.includes(m.id)).map(m => (
                     <label key={m.id} className="flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={form.machine_ids.includes(m.id)}
                         onChange={e => setForm({
@@ -496,7 +496,7 @@ export function RentalsPage({ companyId }: Props) {
                       {m.name}
                     </label>
                   ))}
-                  {machines.filter(m => m.status === 'disponivel').length === 0 && <span className="text-xs text-muted-foreground col-span-2">Nenhuma máquina disponível</span>}
+                  {machines.filter(m => m.status === 'disponivel' || originalMachineIds.includes(m.id)).length === 0 && <span className="text-xs text-muted-foreground col-span-2">Nenhuma máquina disponível</span>}
                 </div>
               </div>
             )}

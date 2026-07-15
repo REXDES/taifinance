@@ -74,6 +74,7 @@ export type FinanceView =
   | 'machines-operators'
   | 'machines-mechanics'
   | 'machines-catalog'
+  | 'machines-pricing'
   | 'credit-admin'
   | 'credit-applications'
   | 'credit-ignored';

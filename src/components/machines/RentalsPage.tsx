@@ -447,7 +447,7 @@ export function RentalsPage({ companyId }: Props) {
       {/* Nova Locação */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl overflow-y-auto max-h-[85vh]">
-          <DialogHeader><DialogTitle>Nova Locação</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? 'Editar Locação' : 'Nova Locação'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>

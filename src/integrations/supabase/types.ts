@@ -1560,6 +1560,7 @@ export type Database = {
           technical_status: string
           type_id: string | null
           updated_at: string
+          usage_purpose: string[]
           year: number | null
         }
         Insert: {
@@ -1588,6 +1589,7 @@ export type Database = {
           technical_status?: string
           type_id?: string | null
           updated_at?: string
+          usage_purpose?: string[]
           year?: number | null
         }
         Update: {
@@ -1616,6 +1618,7 @@ export type Database = {
           technical_status?: string
           type_id?: string | null
           updated_at?: string
+          usage_purpose?: string[]
           year?: number | null
         }
         Relationships: [

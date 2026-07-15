@@ -118,6 +118,7 @@ export function MachinesPage({ companyId }: Props) {
     status: 'disponivel' as string,
     technical_status: 'operacional' as string,
     location: '' as string,
+    usage_purpose: ['locacao'] as string[],
     notes: '',
   };
   const [form, setForm] = useState(empty);

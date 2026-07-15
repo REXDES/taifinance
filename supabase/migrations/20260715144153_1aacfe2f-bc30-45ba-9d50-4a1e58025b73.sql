@@ -1,0 +1,1 @@
+ALTER TABLE public.machines ADD COLUMN IF NOT EXISTS usage_purpose text[] NOT NULL DEFAULT ARRAY['locacao']::text[];

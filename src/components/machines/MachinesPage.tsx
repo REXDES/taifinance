@@ -26,6 +26,11 @@ const TECH_STATUS_LABEL: Record<string, string> = {
   operacional: 'Operacional', em_manutencao: 'Em manutenção', em_teste: 'Em teste', descarte: 'Descarte',
 };
 const DEFAULT_LOCATIONS = ['No pátio', 'Em trânsito', 'No cliente'];
+const USAGE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'locacao', label: 'Locação' },
+  { value: 'venda', label: 'Venda' },
+  { value: 'estoque', label: 'Estoque' },
+];
 
 type MachineExt = Machine & {
   category?: string | null;
@@ -113,6 +118,7 @@ export function MachinesPage({ companyId }: Props) {
     status: 'disponivel' as string,
     technical_status: 'operacional' as string,
     location: '' as string,
+    usage_purpose: ['locacao'] as string[],
     notes: '',
   };
   const [form, setForm] = useState(empty);
@@ -133,6 +139,7 @@ export function MachinesPage({ companyId }: Props) {
       status: m.status,
       technical_status: (m as any).technical_status || 'operacional',
       location: (m as any).location || '',
+      usage_purpose: ((m as any).usage_purpose && (m as any).usage_purpose.length > 0) ? (m as any).usage_purpose : ['locacao'],
       notes: m.notes || '',
     });
     setFormTagIds((tagsMap[m.id] || []).map(t => t.id));
@@ -180,6 +187,7 @@ export function MachinesPage({ companyId }: Props) {
       status: form.status,
       technical_status: form.technical_status,
       location: form.location || null,
+      usage_purpose: form.usage_purpose && form.usage_purpose.length > 0 ? form.usage_purpose : ['locacao'],
       notes: form.notes || null,
     };
     let machineId = editing?.id || null;
@@ -340,7 +348,14 @@ export function MachinesPage({ companyId }: Props) {
                 filtered.map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
-                    <TableCell><Badge variant="secondary">{categoryLabel(m.category)}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="secondary">{categoryLabel(m.category)}</Badge>
+                        {((m as any).usage_purpose || ['locacao']).map((u: string) => (
+                          <Badge key={u} variant="outline" className="text-[10px]">{USAGE_OPTIONS.find(o => o.value === u)?.label || u}</Badge>
+                        ))}
+                      </div>
+                    </TableCell>
                     <TableCell>{[m.brand, m.model].filter(Boolean).join(' ') || '-'}</TableCell>
                     <TableCell className="font-mono text-xs">{(m as any).serial_number || '-'}</TableCell>
                     <TableCell>{(m as any).location || '-'}</TableCell>
@@ -473,6 +488,32 @@ export function MachinesPage({ companyId }: Props) {
                 </Select>
               </div>
             </div>
+
+            <div>
+              <Label>Utilização *</Label>
+              <div className="flex flex-wrap gap-4 border rounded p-2">
+                {USAGE_OPTIONS.map(opt => {
+                  const checked = form.usage_purpose.includes(opt.value);
+                  return (
+                    <label key={opt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...form.usage_purpose, opt.value]
+                            : form.usage_purpose.filter(u => u !== opt.value);
+                          setForm({ ...form, usage_purpose: next });
+                        }}
+                      />
+                      {opt.label}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">Selecione uma ou mais finalidades: locação, venda ou estoque interno.</div>
+            </div>
+
 
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Valor de aquisição</Label><Input type="number" step="0.01" value={form.acquisition_value} onChange={e => setForm({ ...form, acquisition_value: e.target.value })} /></div>

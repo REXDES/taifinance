@@ -184,6 +184,7 @@ export function RentalPricingPage({ companyId }: Props) {
                 <TableHead className="min-w-[200px]">Item</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Tipo</TableHead>
+                <TableHead>Status Técnico</TableHead>
                 <TableHead>Utilização</TableHead>
                 {UNITS.map(u => (
                   <TableHead key={u.key} className="min-w-[150px]">{u.label}</TableHead>
@@ -192,16 +193,22 @@ export function RentalPricingPage({ companyId }: Props) {
             </TableHeader>
             <TableBody>
               {mLoading ? (
-                <TableRow><TableCell colSpan={4 + UNITS.length}>Carregando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5 + UNITS.length}>Carregando...</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={4 + UNITS.length} className="text-center py-8 text-muted-foreground">Nenhum item encontrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5 + UNITS.length} className="text-center py-8 text-muted-foreground">Nenhum item encontrado</TableCell></TableRow>
               ) : filtered.map((m: any) => {
                 const usages: string[] = m.usage_purpose || ['locacao'];
+                const tech = m.technical_status || 'operacional';
                 return (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
                     <TableCell><Badge variant="secondary">{m.category || 'equipamento'}</Badge></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{typeName(m.type_id)}</TableCell>
+                    <TableCell>
+                      <Badge variant={TECH_STATUS_VARIANT[tech] || 'outline'} className="text-xs">
+                        {TECH_STATUS_LABEL[tech] || tech}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap items-center">
                         {(['locacao','venda','estoque'] as const).map(u => {

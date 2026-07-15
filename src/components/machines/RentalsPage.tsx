@@ -102,6 +102,17 @@ export function RentalsPage({ companyId }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [originalMachineIds, setOriginalMachineIds] = useState<string[]>([]);
   const [originalTotal, setOriginalTotal] = useState<number>(0);
+
+  const filteredMachines = useMemo(() => {
+    const term = machineFilter.trim().toLowerCase();
+    return machines.filter(m =>
+      (m.status === 'disponivel' || originalMachineIds.includes(m.id)) &&
+      (!term ||
+        m.name.toLowerCase().includes(term) ||
+        (m.brand || '').toLowerCase().includes(term) ||
+        (m.model || '').toLowerCase().includes(term))
+    );
+  }, [machines, machineFilter, originalMachineIds]);
   const empty = {
     client_id: '', operator_id: 'none', kit_id: 'none', machine_ids: [] as string[],
     start_date: todayLocal(), end_date: '',

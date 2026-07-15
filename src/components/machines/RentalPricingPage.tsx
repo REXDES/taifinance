@@ -224,9 +224,12 @@ export function RentalPricingPage({ companyId }: Props) {
                             <Checkbox
                               checked={cell.enabled}
                               onCheckedChange={(v) => {
-                                setKey(m.id, u.key, { enabled: !!v });
-                                // save immediately when toggling
-                                setTimeout(() => persist(m.id, u.key), 0);
+                                const enabled = !!v;
+                                setKey(m.id, u.key, { enabled });
+                                // Only persist immediately when DISABLING (removes row).
+                                // When enabling, wait until the user types a price and blurs,
+                                // otherwise a stale-state persist reverts the toggle.
+                                if (!enabled) setTimeout(() => persist(m.id, u.key), 0);
                               }}
                             />
                             <Input

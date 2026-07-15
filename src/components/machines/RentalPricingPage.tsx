@@ -26,7 +26,23 @@ const USAGE_LABEL: Record<string, string> = { locacao: 'Locação', venda: 'Vend
 type SaveState = 'idle' | 'saving' | 'saved';
 
 export function RentalPricingPage({ companyId }: Props) {
-  const { machines, loading: mLoading } = useMachines(companyId) as any;
+  const { machines, loading: mLoading, refetch: refetchMachines } = useMachines(companyId) as any;
+  const [usageSaving, setUsageSaving] = useState<Record<string, boolean>>({});
+
+  const toggleUsage = async (machine: any, value: string) => {
+    const current: string[] = machine.usage_purpose || ['locacao'];
+    const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
+    setUsageSaving(s => ({ ...s, [machine.id]: true }));
+    try {
+      const { error } = await (supabase as any).from('machines').update({ usage_purpose: next }).eq('id', machine.id);
+      if (error) throw error;
+      await refetchMachines();
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao atualizar utilização');
+    } finally {
+      setUsageSaving(s => ({ ...s, [machine.id]: false }));
+    }
+  };
   const { types } = useMachineTypes(companyId);
   const { categories: dbCategories } = useMachineCategories(companyId);
   const { tables, refetch } = useRentalPriceTables(companyId);

@@ -96,8 +96,11 @@ export function RentalsPage({ companyId }: Props) {
     })();
   }, [companyId, rentals]);
 
-  // ---------- Form Nova ----------
+  // ---------- Form Nova / Editar ----------
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [originalMachineIds, setOriginalMachineIds] = useState<string[]>([]);
+  const [originalTotal, setOriginalTotal] = useState<number>(0);
   const empty = {
     client_id: '', operator_id: 'none', kit_id: 'none', machine_ids: [] as string[],
     start_date: todayLocal(), end_date: '',
@@ -109,7 +112,38 @@ export function RentalsPage({ companyId }: Props) {
     paid_account_id: 'none', notes: '',
   };
   const [form, setForm] = useState(empty);
-  const openNew = () => { setForm({ ...empty, start_date: todayLocal() }); setOpen(true); };
+  const openNew = () => {
+    setEditingId(null); setOriginalMachineIds([]); setOriginalTotal(0);
+    setForm({ ...empty, start_date: todayLocal() });
+    setOpen(true);
+  };
+  const openEdit = (r: Rental) => {
+    const machineIds = (r.rental_machines || []).map(rm => rm.machine_id);
+    setEditingId(r.id);
+    setOriginalMachineIds(machineIds);
+    setOriginalTotal(Number(r.total_amount || 0));
+    setForm({
+      client_id: r.client_id || '',
+      operator_id: r.operator_id || 'none',
+      kit_id: r.kit_id || 'none',
+      machine_ids: machineIds,
+      start_date: r.start_date,
+      end_date: r.end_date || '',
+      unit: r.unit,
+      duration: String(r.qty ?? 1),
+      unit_price: String(r.unit_price ?? ''),
+      total_amount: String(r.total_amount ?? ''),
+      horimeter_start: r.horimeter_start != null ? String(r.horimeter_start) : '',
+      payment_mode: r.payment_mode,
+      installments_count: r.installments_count ? String(r.installments_count) : '1',
+      installments_manual: true,
+      billing_frequency: (r.billing_frequency as any) || 'daily',
+      first_due_offset: '1',
+      paid_account_id: r.paid_account_id || 'none',
+      notes: r.notes || '',
+    });
+    setOpen(true);
+  };
 
   const computedEnd = useMemo(() => {
     const dur = parseFloat(form.duration || '0');
@@ -154,84 +188,90 @@ export function RentalsPage({ companyId }: Props) {
       installments_count: form.payment_mode === 'installments' ? parseInt(form.installments_count) : null,
       billing_frequency: form.payment_mode === 'installments' ? form.billing_frequency : null,
       paid_account_id: form.paid_account_id !== 'none' ? form.paid_account_id : null,
-      notes: form.notes || null, status: 'active', created_by: user?.id ?? null,
+      notes: form.notes || null,
     };
 
-    const { data: rental, error } = await (supabase as any).from('rentals').insert(rentalPayload).select().single();
-    if (error) return toast.error(error.message);
+    let rentalId: string | null = editingId;
+    if (editingId) {
+      const { error } = await (supabase as any).from('rentals').update(rentalPayload).eq('id', editingId);
+      if (error) return toast.error(error.message);
+    } else {
+      const { data: rental, error } = await (supabase as any).from('rentals').insert({
+        ...rentalPayload, status: 'active', created_by: user?.id ?? null,
+      }).select().single();
+      if (error) return toast.error(error.message);
+      rentalId = rental.id;
+    }
 
+    // Máquinas alvo (via kit ou seleção)
     let machineIds = form.machine_ids;
     if (form.kit_id !== 'none') {
       const kit = kits.find(k => k.id === form.kit_id);
       machineIds = kit?.items?.map(i => i.machine_id) || [];
     }
-    if (machineIds.length > 0) {
-      await (supabase as any).from('rental_machines').insert(
-        machineIds.map(mid => ({ rental_id: rental.id, machine_id: mid }))
-      );
-      for (const mid of machineIds) {
-        await (supabase as any).from('machines').update({ status: 'locada' }).eq('id', mid);
+
+    if (editingId) {
+      const toRemove = originalMachineIds.filter(id => !machineIds.includes(id));
+      const toAdd = machineIds.filter(id => !originalMachineIds.includes(id));
+      if (toRemove.length) {
+        await (supabase as any).from('rental_machines').delete().eq('rental_id', rentalId).in('machine_id', toRemove);
+        for (const mid of toRemove) await (supabase as any).from('machines').update({ status: 'disponivel' }).eq('id', mid);
       }
+      if (toAdd.length) {
+        await (supabase as any).from('rental_machines').insert(toAdd.map(mid => ({ rental_id: rentalId, machine_id: mid })));
+        for (const mid of toAdd) await (supabase as any).from('machines').update({ status: 'locada' }).eq('id', mid);
+      }
+    } else if (machineIds.length > 0) {
+      await (supabase as any).from('rental_machines').insert(machineIds.map(mid => ({ rental_id: rentalId, machine_id: mid })));
+      for (const mid of machineIds) await (supabase as any).from('machines').update({ status: 'locada' }).eq('id', mid);
       if (form.horimeter_start) {
         await (supabase as any).from('machine_horimeter_logs').insert(
-          machineIds.map(mid => ({ machine_id: mid, reading: parseFloat(form.horimeter_start), source: 'rental_start', reference_id: rental.id }))
+          machineIds.map(mid => ({ machine_id: mid, reading: parseFloat(form.horimeter_start), source: 'rental_start', reference_id: rentalId }))
         );
       }
     }
 
     try {
-      if (form.payment_mode === 'cash') {
-        const { data: tx } = await (supabase as any).from('transactions').insert({
-          company_id: companyId, account_id: form.paid_account_id, type: 'income',
-          amount: total, description: `Locação #${rental.id.slice(0, 8)}`,
-          date: form.start_date, created_by: user?.id ?? null,
-        }).select().single();
-        if (tx) await (supabase as any).from('rentals').update({ transaction_id: tx.id }).eq('id', rental.id);
+      if (editingId) {
+        if (form.payment_mode === 'installments') {
+          if (Math.abs(total - originalTotal) > 0.001) {
+            await recalculatePendingInstallments({ rentalId: rentalId!, newTotal: total });
+          }
+        } else {
+          const { data: cur } = await (supabase as any).from('rentals').select('transaction_id').eq('id', rentalId).maybeSingle();
+          if (cur?.transaction_id) {
+            await (supabase as any).from('transactions').update({
+              amount: total, date: form.start_date,
+              account_id: form.paid_account_id !== 'none' ? form.paid_account_id : null,
+            }).eq('id', cur.transaction_id);
+          }
+        }
       } else {
-        await generateRentalReceivables({
-          companyId, rentalId: rental.id,
-          description: `Locação para ${clientsSuppliers.find(c => c.id === form.client_id)?.name || 'cliente'}`,
-          totalAmount: total, startDate: form.start_date,
-          installments: parseInt(form.installments_count || '1'),
-          frequency: form.billing_frequency,
-          clientId: form.client_id, userId: user?.id,
-          firstDueOffset: form.first_due_offset === '0' ? 0 : 1,
-        });
+        if (form.payment_mode === 'cash') {
+          const { data: tx } = await (supabase as any).from('transactions').insert({
+            company_id: companyId, account_id: form.paid_account_id, type: 'income',
+            amount: total, description: `Locação #${rentalId!.slice(0, 8)}`,
+            date: form.start_date, created_by: user?.id ?? null,
+          }).select().single();
+          if (tx) await (supabase as any).from('rentals').update({ transaction_id: tx.id }).eq('id', rentalId);
+        } else {
+          await generateRentalReceivables({
+            companyId, rentalId: rentalId!,
+            description: `Locação para ${clientsSuppliers.find(c => c.id === form.client_id)?.name || 'cliente'}`,
+            totalAmount: total, startDate: form.start_date,
+            installments: parseInt(form.installments_count || '1'),
+            frequency: form.billing_frequency,
+            clientId: form.client_id, userId: user?.id,
+            firstDueOffset: form.first_due_offset === '0' ? 0 : 1,
+          });
+        }
       }
-    } catch (e: any) { toast.error('Erro ao gerar lançamento financeiro: ' + e.message); }
+    } catch (e: any) { toast.error('Erro ao processar lançamento financeiro: ' + e.message); }
 
-    toast.success('Locação criada');
-    setOpen(false); refetch();
+    toast.success(editingId ? 'Locação atualizada' : 'Locação criada');
+    setOpen(false); setEditingId(null); refetch();
   };
 
-  // ---------- Editar ----------
-  const [editing, setEditing] = useState<Rental | null>(null);
-  const [editForm, setEditForm] = useState({ qty: '', unit_price: '', total_amount: '' });
-  const openEdit = (r: Rental) => {
-    setEditing(r);
-    setEditForm({ qty: r.qty.toString(), unit_price: r.unit_price.toString(), total_amount: r.total_amount.toString() });
-  };
-  const saveEdit = async () => {
-    if (!editing) return;
-    const newTotal = parseFloat(editForm.total_amount || '0') || (parseFloat(editForm.qty) * parseFloat(editForm.unit_price));
-    const { error } = await (supabase as any).from('rentals').update({
-      qty: parseFloat(editForm.qty), unit_price: parseFloat(editForm.unit_price), total_amount: newTotal,
-    }).eq('id', editing.id);
-    if (error) return toast.error(error.message);
-
-    if (editing.payment_mode === 'installments') {
-      try {
-        await recalculatePendingInstallments({ rentalId: editing.id, newTotal });
-        toast.success('Locação atualizada e parcelas pendentes recalculadas');
-      } catch (e: any) { toast.error('Erro ao recalcular: ' + e.message); }
-    } else {
-      if (editing.transaction_id) {
-        await (supabase as any).from('transactions').update({ amount: newTotal }).eq('id', editing.transaction_id);
-      }
-      toast.success('Locação atualizada');
-    }
-    setEditing(null); refetch();
-  };
 
   // ---------- Cancelar / Encerrar / Excluir ----------
   const cancel = async (r: Rental) => {
@@ -407,7 +447,7 @@ export function RentalsPage({ companyId }: Props) {
       {/* Nova Locação */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl overflow-y-auto max-h-[85vh]">
-          <DialogHeader><DialogTitle>Nova Locação</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? 'Editar Locação' : 'Nova Locação'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -444,7 +484,7 @@ export function RentalsPage({ companyId }: Props) {
               <div>
                 <Label>Máquinas / Implementos</Label>
                 <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded p-2">
-                  {machines.filter(m => m.status === 'disponivel').map(m => (
+                  {machines.filter(m => m.status === 'disponivel' || originalMachineIds.includes(m.id)).map(m => (
                     <label key={m.id} className="flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={form.machine_ids.includes(m.id)}
                         onChange={e => setForm({
@@ -456,7 +496,7 @@ export function RentalsPage({ companyId }: Props) {
                       {m.name}
                     </label>
                   ))}
-                  {machines.filter(m => m.status === 'disponivel').length === 0 && <span className="text-xs text-muted-foreground col-span-2">Nenhuma máquina disponível</span>}
+                  {machines.filter(m => m.status === 'disponivel' || originalMachineIds.includes(m.id)).length === 0 && <span className="text-xs text-muted-foreground col-span-2">Nenhuma máquina disponível</span>}
                 </div>
               </div>
             )}
@@ -570,34 +610,12 @@ export function RentalsPage({ companyId }: Props) {
             <div><Label>Observações</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save}>Criar locação</Button>
+            <Button variant="outline" onClick={() => { setOpen(false); setEditingId(null); }}>Cancelar</Button>
+            <Button onClick={save}>{editingId ? 'Salvar alterações' : 'Criar locação'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Editar */}
-      <Dialog open={!!editing} onOpenChange={() => setEditing(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Editar Locação</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-              {editing?.payment_mode === 'installments'
-                ? 'Alterar o valor recalculará apenas as parcelas pendentes (parcelas já pagas permanecem inalteradas).'
-                : 'A transação à vista vinculada será atualizada com o novo valor.'}
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><Label>Quantidade</Label><Input type="number" step="0.5" value={editForm.qty} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} /></div>
-              <div><Label>Preço unit.</Label><Input type="number" step="0.01" value={editForm.unit_price} onChange={e => setEditForm({ ...editForm, unit_price: e.target.value })} /></div>
-              <div><Label>Total</Label><Input type="number" step="0.01" value={editForm.total_amount} onChange={e => setEditForm({ ...editForm, total_amount: e.target.value })} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button onClick={saveEdit}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Encerrar */}
       <Dialog open={!!closing} onOpenChange={() => setClosing(null)}>

@@ -187,6 +187,7 @@ export function MachinesPage({ companyId }: Props) {
       status: form.status,
       technical_status: form.technical_status,
       location: form.location || null,
+      usage_purpose: form.usage_purpose && form.usage_purpose.length > 0 ? form.usage_purpose : ['locacao'],
       notes: form.notes || null,
     };
     let machineId = editing?.id || null;

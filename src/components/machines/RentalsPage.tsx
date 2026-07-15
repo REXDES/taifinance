@@ -610,8 +610,8 @@ export function RentalsPage({ companyId }: Props) {
             <div><Label>Observações</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save}>Criar locação</Button>
+            <Button variant="outline" onClick={() => { setOpen(false); setEditingId(null); }}>Cancelar</Button>
+            <Button onClick={save}>{editingId ? 'Salvar alterações' : 'Criar locação'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

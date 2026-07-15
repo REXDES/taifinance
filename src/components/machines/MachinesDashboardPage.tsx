@@ -148,7 +148,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
       {/* Locações do mês */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {kpi(<Calendar className="w-6 h-6 text-green-500" />, 'A Receber no Mês', brl(stats.monthReceivable), 'Locações vigentes no mês corrente')}
-        {kpi(<TrendingUp className="w-6 h-6" />, 'Locações Ativas', stats.activeRentalsCount, `Total contratado: ${brl(stats.activeRentalsTotal)}`)}
+        {kpi(<TrendingUp className="w-6 h-6" />, 'Contratos de locações ativos', stats.activeRentalsCount, `Total contratado: ${brl(stats.activeRentalsTotal)}`)}
         {kpi(<Package className="w-6 h-6" />, 'Disponíveis', stats.available, pct(stats.pctAvailable))}
       </div>
 

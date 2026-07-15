@@ -32,6 +32,7 @@ import { AccessModeDialog } from '@/components/AccessModeDialog';
 import { MachinesPage } from '@/components/machines/MachinesPage';
 import { MachinesDashboardPage } from '@/components/machines/MachinesDashboardPage';
 import { MachineCatalogPage } from '@/components/machines/MachineCatalogPage';
+import { RentalPricingPage } from '@/components/machines/RentalPricingPage';
 import { MaintenancePage } from '@/components/machines/MaintenancePage';
 import { RentalsPage } from '@/components/machines/RentalsPage';
 import { PeoplePage } from '@/components/machines/PeoplePage';

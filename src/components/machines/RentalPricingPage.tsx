@@ -190,8 +190,28 @@ export function RentalPricingPage({ companyId }: Props) {
                     <TableCell><Badge variant="secondary">{m.category || 'equipamento'}</Badge></TableCell>
                     <TableCell className="text-sm text-muted-foreground">{typeName(m.type_id)}</TableCell>
                     <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {usages.map(u => <Badge key={u} variant="outline" className="text-xs">{USAGE_LABEL[u] || u}</Badge>)}
+                      <div className="flex gap-1 flex-wrap items-center">
+                        {(['locacao','venda','estoque'] as const).map(u => {
+                          const active = usages.includes(u);
+                          return (
+                            <button
+                              key={u}
+                              type="button"
+                              disabled={usageSaving[m.id]}
+                              onClick={() => toggleUsage(m, u)}
+                              className="focus:outline-none"
+                              title="Clique para alternar"
+                            >
+                              <Badge
+                                variant={active ? 'default' : 'outline'}
+                                className={`text-xs cursor-pointer ${active ? '' : 'opacity-50 hover:opacity-100'}`}
+                              >
+                                {USAGE_LABEL[u]}
+                              </Badge>
+                            </button>
+                          );
+                        })}
+                        {usageSaving[m.id] && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
                       </div>
                     </TableCell>
                     {UNITS.map(u => {

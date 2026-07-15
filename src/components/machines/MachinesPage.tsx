@@ -139,6 +139,7 @@ export function MachinesPage({ companyId }: Props) {
       status: m.status,
       technical_status: (m as any).technical_status || 'operacional',
       location: (m as any).location || '',
+      usage_purpose: ((m as any).usage_purpose && (m as any).usage_purpose.length > 0) ? (m as any).usage_purpose : ['locacao'],
       notes: m.notes || '',
     });
     setFormTagIds((tagsMap[m.id] || []).map(t => t.id));

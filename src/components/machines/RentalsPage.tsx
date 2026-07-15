@@ -65,6 +65,7 @@ export function RentalsPage({ companyId }: Props) {
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
+  const [machineFilter, setMachineFilter] = useState<string>('');
 
   const filtered = useMemo(() => rentals.filter(r => {
     if (statusFilter !== 'all' && r.status !== statusFilter) return false;

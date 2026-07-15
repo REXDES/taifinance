@@ -65,6 +65,7 @@ export function RentalsPage({ companyId }: Props) {
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
+  const [machineFilter, setMachineFilter] = useState<string>('');
 
   const filtered = useMemo(() => rentals.filter(r => {
     if (statusFilter !== 'all' && r.status !== statusFilter) return false;
@@ -101,6 +102,17 @@ export function RentalsPage({ companyId }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [originalMachineIds, setOriginalMachineIds] = useState<string[]>([]);
   const [originalTotal, setOriginalTotal] = useState<number>(0);
+
+  const filteredMachines = useMemo(() => {
+    const term = machineFilter.trim().toLowerCase();
+    return machines.filter(m =>
+      (m.status === 'disponivel' || originalMachineIds.includes(m.id)) &&
+      (!term ||
+        m.name.toLowerCase().includes(term) ||
+        (m.brand || '').toLowerCase().includes(term) ||
+        (m.model || '').toLowerCase().includes(term))
+    );
+  }, [machines, machineFilter, originalMachineIds]);
   const empty = {
     client_id: '', operator_id: 'none', kit_id: 'none', machine_ids: [] as string[],
     start_date: todayLocal(), end_date: '',
@@ -483,8 +495,14 @@ export function RentalsPage({ companyId }: Props) {
             {form.kit_id === 'none' && (
               <div>
                 <Label>Máquinas / Implementos</Label>
+                <Input
+                  placeholder="Filtrar por nome, marca ou modelo..."
+                  value={machineFilter}
+                  onChange={e => setMachineFilter(e.target.value)}
+                  className="mb-2"
+                />
                 <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded p-2">
-                  {machines.filter(m => m.status === 'disponivel' || originalMachineIds.includes(m.id)).map(m => (
+                  {filteredMachines.map(m => (
                     <label key={m.id} className="flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={form.machine_ids.includes(m.id)}
                         onChange={e => setForm({
@@ -493,10 +511,13 @@ export function RentalsPage({ companyId }: Props) {
                             ? [...form.machine_ids, m.id]
                             : form.machine_ids.filter(id => id !== m.id)
                         })} />
-                      {m.name}
+                      <span className="truncate" title={`${m.name}${m.brand ? ` - ${m.brand}` : ''}${m.model ? ` ${m.model}` : ''}`}>
+                        {m.name}
+                        {m.brand || m.model ? <span className="text-muted-foreground text-xs ml-1">({[m.brand, m.model].filter(Boolean).join(' ')})</span> : null}
+                      </span>
                     </label>
                   ))}
-                  {machines.filter(m => m.status === 'disponivel' || originalMachineIds.includes(m.id)).length === 0 && <span className="text-xs text-muted-foreground col-span-2">Nenhuma máquina disponível</span>}
+                  {filteredMachines.length === 0 && <span className="text-xs text-muted-foreground col-span-2">Nenhuma máquina encontrada</span>}
                 </div>
               </div>
             )}

@@ -131,15 +131,25 @@ const cadastrosMenuItems: MenuItem[] = [
   { view: 'split-pix', label: 'Split de PIX', icon: <Split className="w-4 h-4" /> },
 ];
 
-const machinesMenuItems: MenuItem[] = [
+const machinesTopMenuItems: MenuItem[] = [
   { view: 'machines-dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
   { view: 'machines-inventory', label: 'Inventário', icon: <Truck className="w-4 h-4" /> },
-  { view: 'machines-rentals', label: 'Locações', icon: <ClipboardCheck className="w-4 h-4" /> },
   { view: 'machines-maintenance', label: 'Manutenções', icon: <Hammer className="w-4 h-4" /> },
+];
+const machinesGestaoMenuItems: MenuItem[] = [
+  { view: 'machines-rentals', label: 'Locações', icon: <ClipboardCheck className="w-4 h-4" /> },
+  { view: 'machines-pricing', label: 'Tabela de Preços', icon: <Tags className="w-4 h-4" /> },
+];
+const machinesCadastrosMenuItems: MenuItem[] = [
   { view: 'machines-operators', label: 'Operadores', icon: <HardHat className="w-4 h-4" /> },
   { view: 'machines-mechanics', label: 'Mecânicos', icon: <Wrench className="w-4 h-4" /> },
-  { view: 'machines-pricing', label: 'Tabela de Preços', icon: <Tags className="w-4 h-4" /> },
   { view: 'machines-catalog', label: 'Categorias e Tipos', icon: <Tags className="w-4 h-4" /> },
+  { view: 'clients-suppliers', label: 'Clientes/Fornecedores', icon: <Users className="w-4 h-4" /> },
+];
+const machinesMenuItems: MenuItem[] = [
+  ...machinesTopMenuItems,
+  ...machinesGestaoMenuItems,
+  ...machinesCadastrosMenuItems,
 ];
 
 const creditMenuItems: MenuItem[] = [
@@ -578,7 +588,37 @@ export function FinanceSidebar({
                         </Button>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                        {machinesMenuItems.map(renderMenuItem)}
+                        {machinesTopMenuItems.map(renderMenuItem)}
+
+                        <Collapsible defaultOpen={machinesGestaoMenuItems.some(i => currentView === i.view)}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                              <span className="flex items-center gap-2">
+                                <Briefcase className="w-4 h-4" />
+                                Gestão
+                              </span>
+                              <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                            {machinesGestaoMenuItems.map(renderMenuItem)}
+                          </CollapsibleContent>
+                        </Collapsible>
+
+                        <Collapsible defaultOpen={machinesCadastrosMenuItems.some(i => currentView === i.view)}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                              <span className="flex items-center gap-2">
+                                <FolderCog className="w-4 h-4" />
+                                Cadastros
+                              </span>
+                              <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                            {machinesCadastrosMenuItems.map(renderMenuItem)}
+                          </CollapsibleContent>
+                        </Collapsible>
                       </CollapsibleContent>
                     </Collapsible>
                   )

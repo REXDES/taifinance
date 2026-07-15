@@ -12,6 +12,7 @@ export interface Machine {
   status: 'disponivel' | 'locada' | 'vendida' | 'reservada' | 'demonstracao' | 'indisponivel';
   technical_status?: 'operacional' | 'em_manutencao' | 'em_teste' | 'descarte';
   location?: string | null;
+  usage_purpose?: string[] | null;
   notes: string | null;
 }
 export interface Operator { id: string; company_id: string; name: string; document: string | null; phone: string | null; notes: string | null; }

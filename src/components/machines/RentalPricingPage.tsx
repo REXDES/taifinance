@@ -23,6 +23,19 @@ const UNITS: { key: Unit; label: string }[] = [
 
 const USAGE_LABEL: Record<string, string> = { locacao: 'Locação', venda: 'Venda', estoque: 'Estoque' };
 
+const TECH_STATUS_LABEL: Record<string, string> = {
+  operacional: 'Operacional',
+  em_manutencao: 'Em Manutenção',
+  em_teste: 'Em Teste',
+  descarte: 'Descarte',
+};
+const TECH_STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  operacional: 'default',
+  em_manutencao: 'secondary',
+  em_teste: 'outline',
+  descarte: 'destructive',
+};
+
 type SaveState = 'idle' | 'saving' | 'saved';
 
 export function RentalPricingPage({ companyId }: Props) {

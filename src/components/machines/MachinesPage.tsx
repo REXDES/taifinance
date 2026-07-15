@@ -482,6 +482,32 @@ export function MachinesPage({ companyId }: Props) {
               </div>
             </div>
 
+            <div>
+              <Label>Utilização *</Label>
+              <div className="flex flex-wrap gap-4 border rounded p-2">
+                {USAGE_OPTIONS.map(opt => {
+                  const checked = form.usage_purpose.includes(opt.value);
+                  return (
+                    <label key={opt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...form.usage_purpose, opt.value]
+                            : form.usage_purpose.filter(u => u !== opt.value);
+                          setForm({ ...form, usage_purpose: next });
+                        }}
+                      />
+                      {opt.label}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">Selecione uma ou mais finalidades: locação, venda ou estoque interno.</div>
+            </div>
+
+
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Valor de aquisição</Label><Input type="number" step="0.01" value={form.acquisition_value} onChange={e => setForm({ ...form, acquisition_value: e.target.value })} /></div>
               <div><Label>Data de aquisição</Label><Input type="date" value={form.acquisition_date} onChange={e => setForm({ ...form, acquisition_date: e.target.value })} /></div>

@@ -616,28 +616,6 @@ export function RentalsPage({ companyId }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Editar */}
-      <Dialog open={!!editing} onOpenChange={() => setEditing(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Editar Locação</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-              {editing?.payment_mode === 'installments'
-                ? 'Alterar o valor recalculará apenas as parcelas pendentes (parcelas já pagas permanecem inalteradas).'
-                : 'A transação à vista vinculada será atualizada com o novo valor.'}
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><Label>Quantidade</Label><Input type="number" step="0.5" value={editForm.qty} onChange={e => setEditForm({ ...editForm, qty: e.target.value })} /></div>
-              <div><Label>Preço unit.</Label><Input type="number" step="0.01" value={editForm.unit_price} onChange={e => setEditForm({ ...editForm, unit_price: e.target.value })} /></div>
-              <div><Label>Total</Label><Input type="number" step="0.01" value={editForm.total_amount} onChange={e => setEditForm({ ...editForm, total_amount: e.target.value })} /></div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button onClick={saveEdit}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Encerrar */}
       <Dialog open={!!closing} onOpenChange={() => setClosing(null)}>

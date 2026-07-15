@@ -26,6 +26,11 @@ const TECH_STATUS_LABEL: Record<string, string> = {
   operacional: 'Operacional', em_manutencao: 'Em manutenção', em_teste: 'Em teste', descarte: 'Descarte',
 };
 const DEFAULT_LOCATIONS = ['No pátio', 'Em trânsito', 'No cliente'];
+const USAGE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'locacao', label: 'Locação' },
+  { value: 'venda', label: 'Venda' },
+  { value: 'estoque', label: 'Estoque' },
+];
 
 type MachineExt = Machine & {
   category?: string | null;

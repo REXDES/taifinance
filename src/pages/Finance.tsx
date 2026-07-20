@@ -39,9 +39,18 @@ import { PeoplePage } from '@/components/machines/PeoplePage';
 import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
 import { useCompanyCreditFlag } from '@/hooks/useCreditModule';
 import { useCompanyBankDigitalFlag } from '@/hooks/useBankConnections';
+import { useCompanyPaymentsFlag } from '@/hooks/usePaymentsModule';
 import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
 import { CreditApplicationsPage } from '@/components/credit/CreditApplicationsPage';
 import { CreditIgnoredOccurrencesPage } from '@/components/credit/CreditIgnoredOccurrencesPage';
+import { PaymentsDashboardPage } from '@/components/payments/PaymentsDashboardPage';
+import { PaymentsMerchantsPage } from '@/components/payments/PaymentsMerchantsPage';
+import { PaymentsTerminalsPage } from '@/components/payments/PaymentsTerminalsPage';
+import { PaymentsPlansPage } from '@/components/payments/PaymentsPlansPage';
+import { PaymentsTransactionsPage } from '@/components/payments/PaymentsTransactionsPage';
+import { PaymentsChargesPage } from '@/components/payments/PaymentsChargesPage';
+import { PaymentsSettlementsPage } from '@/components/payments/PaymentsSettlementsPage';
+import { PaymentsWebhooksPage } from '@/components/payments/PaymentsWebhooksPage';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -78,7 +87,15 @@ export type FinanceView =
   | 'machines-pricing'
   | 'credit-admin'
   | 'credit-applications'
-  | 'credit-ignored';
+  | 'credit-ignored'
+  | 'payments-dashboard'
+  | 'payments-merchants'
+  | 'payments-terminals'
+  | 'payments-plans'
+  | 'payments-transactions'
+  | 'payments-charges'
+  | 'payments-settlements'
+  | 'payments-webhooks';
 
 const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital', 'credit-admin'];
 // Views available only in normal mode for supervisors
@@ -110,6 +127,14 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'machines-pricing',
   'credit-applications',
   'credit-ignored',
+  'payments-dashboard',
+  'payments-merchants',
+  'payments-terminals',
+  'payments-plans',
+  'payments-transactions',
+  'payments-charges',
+  'payments-settlements',
+  'payments-webhooks',
 ];
 
 interface UserRoleInfo {
@@ -222,6 +247,7 @@ const Finance = () => {
   const { enabled: machinesEnabled, refetch: refetchMachinesFlag } = useCompanyMachinesFlag(selectedCompanyId);
   const { enabled: creditEnabled, refetch: refetchCreditFlag } = useCompanyCreditFlag(selectedCompanyId);
   const { enabled: bankDigitalEnabled, refetch: refetchBankDigitalFlag } = useCompanyBankDigitalFlag(selectedCompanyId);
+  const { enabled: paymentsEnabled, refetch: refetchPaymentsFlag } = useCompanyPaymentsFlag(selectedCompanyId);
 
   const handleCreateCompany = async (name: string, color: string) => {
     const result = await createCompany(name, color);
@@ -307,6 +333,22 @@ const Finance = () => {
         return creditEnabled ? <CreditApplicationsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'credit-ignored':
         return creditEnabled ? <CreditIgnoredOccurrencesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-dashboard':
+        return paymentsEnabled ? <PaymentsDashboardPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-merchants':
+        return paymentsEnabled ? <PaymentsMerchantsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-terminals':
+        return paymentsEnabled ? <PaymentsTerminalsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-plans':
+        return paymentsEnabled ? <PaymentsPlansPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-transactions':
+        return paymentsEnabled ? <PaymentsTransactionsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-charges':
+        return paymentsEnabled ? <PaymentsChargesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-settlements':
+        return paymentsEnabled ? <PaymentsSettlementsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-webhooks':
+        return paymentsEnabled ? <PaymentsWebhooksPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }
@@ -337,6 +379,7 @@ const Finance = () => {
         machinesEnabled={machinesEnabled}
         creditEnabled={creditEnabled}
         bankDigitalEnabled={bankDigitalEnabled}
+        paymentsEnabled={paymentsEnabled}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <FinanceHeader
@@ -389,7 +432,7 @@ const Finance = () => {
         companyId={effectiveMode === 'admin' ? null : selectedCompanyId}
         showPicker={effectiveMode === 'admin'}
         showModulesTab={effectiveMode === 'admin'}
-        onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); }}
+        onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); refetchPaymentsFlag(); }}
       />
     </div>
   );

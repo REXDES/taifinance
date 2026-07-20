@@ -85,6 +85,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
   const [machinesModuleEnabled, setMachinesModuleEnabled] = useState(false);
   const [creditModuleEnabled, setCreditModuleEnabled] = useState(false);
   const [bankDigitalModuleEnabled, setBankDigitalModuleEnabled] = useState(false);
+  const [paymentsModuleEnabled, setPaymentsModuleEnabled] = useState(false);
 
   // Reset picked when dialog reopens in picker mode
   useEffect(() => {
@@ -144,6 +145,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
         setMachinesModuleEnabled(!!d.machines_module_enabled);
         setCreditModuleEnabled(!!d.credit_module_enabled);
         setBankDigitalModuleEnabled(!!d.bank_digital_module_enabled);
+        setPaymentsModuleEnabled(!!d.payments_module_enabled);
       }
     } catch (error) {
       console.error('Error loading company settings:', error);
@@ -197,6 +199,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           machines_module_enabled: machinesModuleEnabled,
           credit_module_enabled: creditModuleEnabled,
           bank_digital_module_enabled: bankDigitalModuleEnabled,
+          payments_module_enabled: paymentsModuleEnabled,
         } as any)
         .eq('id', effectiveCompanyId!);
 
@@ -544,6 +547,20 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                         </p>
                       </div>
                       <Switch checked={bankDigitalModuleEnabled} onCheckedChange={setBankDigitalModuleEnabled} />
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-base flex items-center gap-2">
+                          <Wrench className="w-4 h-4" />
+                          Pagamentos (Cappta)
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Habilita o módulo de meios de pagamento via Cappta White Label: credenciamento de estabelecimentos, terminais POS, planos e taxas, transações, cobranças (link/boleto/PIX), liquidações e webhooks.
+                        </p>
+                      </div>
+                      <Switch checked={paymentsModuleEnabled} onCheckedChange={setPaymentsModuleEnabled} />
                     </div>
                   </div>
                 </TabsContent>

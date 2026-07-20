@@ -39,9 +39,18 @@ import { PeoplePage } from '@/components/machines/PeoplePage';
 import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
 import { useCompanyCreditFlag } from '@/hooks/useCreditModule';
 import { useCompanyBankDigitalFlag } from '@/hooks/useBankConnections';
+import { useCompanyPaymentsFlag } from '@/hooks/usePaymentsModule';
 import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
 import { CreditApplicationsPage } from '@/components/credit/CreditApplicationsPage';
 import { CreditIgnoredOccurrencesPage } from '@/components/credit/CreditIgnoredOccurrencesPage';
+import { PaymentsDashboardPage } from '@/components/payments/PaymentsDashboardPage';
+import { PaymentsMerchantsPage } from '@/components/payments/PaymentsMerchantsPage';
+import { PaymentsTerminalsPage } from '@/components/payments/PaymentsTerminalsPage';
+import { PaymentsPlansPage } from '@/components/payments/PaymentsPlansPage';
+import { PaymentsTransactionsPage } from '@/components/payments/PaymentsTransactionsPage';
+import { PaymentsChargesPage } from '@/components/payments/PaymentsChargesPage';
+import { PaymentsSettlementsPage } from '@/components/payments/PaymentsSettlementsPage';
+import { PaymentsWebhooksPage } from '@/components/payments/PaymentsWebhooksPage';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -78,7 +87,15 @@ export type FinanceView =
   | 'machines-pricing'
   | 'credit-admin'
   | 'credit-applications'
-  | 'credit-ignored';
+  | 'credit-ignored'
+  | 'payments-dashboard'
+  | 'payments-merchants'
+  | 'payments-terminals'
+  | 'payments-plans'
+  | 'payments-transactions'
+  | 'payments-charges'
+  | 'payments-settlements'
+  | 'payments-webhooks';
 
 const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital', 'credit-admin'];
 // Views available only in normal mode for supervisors
@@ -110,6 +127,14 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'machines-pricing',
   'credit-applications',
   'credit-ignored',
+  'payments-dashboard',
+  'payments-merchants',
+  'payments-terminals',
+  'payments-plans',
+  'payments-transactions',
+  'payments-charges',
+  'payments-settlements',
+  'payments-webhooks',
 ];
 
 interface UserRoleInfo {

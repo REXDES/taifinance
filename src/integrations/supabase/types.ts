@@ -209,6 +209,502 @@ export type Database = {
           },
         ]
       }
+      cappta_charges: {
+        Row: {
+          amount: number
+          boleto_barcode: string | null
+          cappta_charge_id: string | null
+          charge_type: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          linked_payable_id: string | null
+          linked_transaction_id: string | null
+          merchant_id: string | null
+          paid_at: string | null
+          payer_document: string | null
+          payer_email: string | null
+          payer_name: string | null
+          payer_phone: string | null
+          payment_url: string | null
+          pix_copy_paste: string | null
+          pix_qrcode: string | null
+          raw_payload: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          boleto_barcode?: string | null
+          cappta_charge_id?: string | null
+          charge_type: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_payable_id?: string | null
+          linked_transaction_id?: string | null
+          merchant_id?: string | null
+          paid_at?: string | null
+          payer_document?: string | null
+          payer_email?: string | null
+          payer_name?: string | null
+          payer_phone?: string | null
+          payment_url?: string | null
+          pix_copy_paste?: string | null
+          pix_qrcode?: string | null
+          raw_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          boleto_barcode?: string | null
+          cappta_charge_id?: string | null
+          charge_type?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          linked_payable_id?: string | null
+          linked_transaction_id?: string | null
+          merchant_id?: string | null
+          paid_at?: string | null
+          payer_document?: string | null
+          payer_email?: string | null
+          payer_name?: string | null
+          payer_phone?: string | null
+          payment_url?: string | null
+          pix_copy_paste?: string | null
+          pix_qrcode?: string | null
+          raw_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cappta_charges_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cappta_charges_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "cappta_merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cappta_merchants: {
+        Row: {
+          address_city: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          address_zip: string | null
+          bank_account: string | null
+          bank_account_digit: string | null
+          bank_agency: string | null
+          bank_code: string | null
+          cappta_merchant_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          document: string
+          document_type: string
+          email: string | null
+          id: string
+          legal_name: string
+          phone: string | null
+          plan_id: string | null
+          raw_payload: Json | null
+          status: string
+          trade_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
+          bank_account?: string | null
+          bank_account_digit?: string | null
+          bank_agency?: string | null
+          bank_code?: string | null
+          cappta_merchant_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          document: string
+          document_type?: string
+          email?: string | null
+          id?: string
+          legal_name: string
+          phone?: string | null
+          plan_id?: string | null
+          raw_payload?: Json | null
+          status?: string
+          trade_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
+          bank_account?: string | null
+          bank_account_digit?: string | null
+          bank_agency?: string | null
+          bank_code?: string | null
+          cappta_merchant_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          document?: string
+          document_type?: string
+          email?: string | null
+          id?: string
+          legal_name?: string
+          phone?: string | null
+          plan_id?: string | null
+          raw_payload?: Json | null
+          status?: string
+          trade_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cappta_merchants_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cappta_plans: {
+        Row: {
+          cappta_plan_id: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          rates: Json
+          raw_payload: Json | null
+          updated_at: string
+        }
+        Insert: {
+          cappta_plan_id?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          rates?: Json
+          raw_payload?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          cappta_plan_id?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          rates?: Json
+          raw_payload?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cappta_plans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cappta_settlements: {
+        Row: {
+          cappta_settlement_id: string | null
+          company_id: string
+          created_at: string
+          fee_amount: number
+          gross_amount: number
+          id: string
+          merchant_id: string | null
+          net_amount: number
+          raw_payload: Json | null
+          settlement_date: string
+          status: string
+          transactions_count: number | null
+        }
+        Insert: {
+          cappta_settlement_id?: string | null
+          company_id: string
+          created_at?: string
+          fee_amount?: number
+          gross_amount?: number
+          id?: string
+          merchant_id?: string | null
+          net_amount?: number
+          raw_payload?: Json | null
+          settlement_date: string
+          status?: string
+          transactions_count?: number | null
+        }
+        Update: {
+          cappta_settlement_id?: string | null
+          company_id?: string
+          created_at?: string
+          fee_amount?: number
+          gross_amount?: number
+          id?: string
+          merchant_id?: string | null
+          net_amount?: number
+          raw_payload?: Json | null
+          settlement_date?: string
+          status?: string
+          transactions_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cappta_settlements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cappta_settlements_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "cappta_merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cappta_terminals: {
+        Row: {
+          activated_at: string | null
+          brand: string | null
+          cappta_terminal_id: string | null
+          company_id: string
+          created_at: string
+          id: string
+          logic_number: string | null
+          merchant_id: string | null
+          model: string | null
+          raw_payload: Json | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          brand?: string | null
+          cappta_terminal_id?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          logic_number?: string | null
+          merchant_id?: string | null
+          model?: string | null
+          raw_payload?: Json | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          brand?: string | null
+          cappta_terminal_id?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          logic_number?: string | null
+          merchant_id?: string | null
+          model?: string | null
+          raw_payload?: Json | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cappta_terminals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cappta_terminals_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "cappta_merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cappta_transactions: {
+        Row: {
+          authorization_code: string | null
+          brand: string | null
+          cappta_transaction_id: string | null
+          captured_at: string | null
+          company_id: string
+          created_at: string
+          fee_amount: number
+          gross_amount: number
+          id: string
+          installments: number | null
+          linked_transaction_id: string | null
+          merchant_id: string | null
+          net_amount: number
+          nsu: string | null
+          product: string | null
+          raw_payload: Json | null
+          settlement_date: string | null
+          status: string
+          terminal_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          authorization_code?: string | null
+          brand?: string | null
+          cappta_transaction_id?: string | null
+          captured_at?: string | null
+          company_id: string
+          created_at?: string
+          fee_amount?: number
+          gross_amount?: number
+          id?: string
+          installments?: number | null
+          linked_transaction_id?: string | null
+          merchant_id?: string | null
+          net_amount?: number
+          nsu?: string | null
+          product?: string | null
+          raw_payload?: Json | null
+          settlement_date?: string | null
+          status?: string
+          terminal_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          authorization_code?: string | null
+          brand?: string | null
+          cappta_transaction_id?: string | null
+          captured_at?: string | null
+          company_id?: string
+          created_at?: string
+          fee_amount?: number
+          gross_amount?: number
+          id?: string
+          installments?: number | null
+          linked_transaction_id?: string | null
+          merchant_id?: string | null
+          net_amount?: number
+          nsu?: string | null
+          product?: string | null
+          raw_payload?: Json | null
+          settlement_date?: string | null
+          status?: string
+          terminal_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cappta_transactions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cappta_transactions_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "cappta_merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cappta_transactions_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "cappta_terminals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cappta_webhook_events: {
+        Row: {
+          company_id: string | null
+          error: string | null
+          event_id: string | null
+          event_type: string
+          id: string
+          payload: Json
+          processed: boolean
+          processed_at: string | null
+          received_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          error?: string | null
+          event_id?: string | null
+          event_type: string
+          id?: string
+          payload: Json
+          processed?: boolean
+          processed_at?: string | null
+          received_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          error?: string | null
+          event_id?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          received_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cappta_webhook_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients_suppliers: {
         Row: {
           biometry_similarity_score: number | null
@@ -292,6 +788,7 @@ export type Database = {
           id: string
           machines_module_enabled: boolean
           name: string
+          payments_module_enabled: boolean
           phone: string | null
           pix_city: string | null
           pix_holder_name: string | null
@@ -318,6 +815,7 @@ export type Database = {
           id?: string
           machines_module_enabled?: boolean
           name: string
+          payments_module_enabled?: boolean
           phone?: string | null
           pix_city?: string | null
           pix_holder_name?: string | null
@@ -344,6 +842,7 @@ export type Database = {
           id?: string
           machines_module_enabled?: boolean
           name?: string
+          payments_module_enabled?: boolean
           phone?: string | null
           pix_city?: string | null
           pix_holder_name?: string | null

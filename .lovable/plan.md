@@ -1,54 +1,107 @@
-## 1. Novo campo "Utilização" no cadastro do inventário
+# Módulo Pagamentos (Cappta White Label)
 
-Cada item do inventário passa a ter um campo obrigatório indicando sua finalidade:
+Novo módulo opcional por empresa (toggle em **Configurações → Módulos**, igual aos módulos Máquinas, Crédito e Banco Digital). Mapeia as áreas da API Cappta em telas nativas do sistema.
 
-- **Locação** — item disponível para alugar (aparece na tabela de preços e em locações)
-- **Venda** — item destinado à revenda
-- **Estoque** — uso interno / imobilizado / peças, não entra em locação nem venda
+## Áreas da API mapeadas → Telas
 
-### Alterações
-- **Migração**: adicionar `usage_purpose text[]` em `machines` (array, pois um mesmo item pode ser "locação" e "venda" ao mesmo tempo — ex.: máquina seminova que loca ou vende). Default `{'locacao'}`.
-- **`MachinesPage.tsx`**: novo campo multi-select "Utilização" no formulário de cadastro; badge visual na listagem; filtro por utilização.
-- **`useMachinesModule.ts`**: incluir `usage_purpose` no tipo `Machine`.
-- **Dashboard (`MachinesDashboardPage`)**: novo KPI "Itens por utilização" (Locação / Venda / Estoque).
+Baseado nos grupos da documentação Cappta: **AUTH, CREDENCIAMENTO, POS, PLANOS, TRANSAÇÕES, GESTÃO FINANCEIRA, GESTÃO DE COBRANÇA, WEBHOOK**.
 
-## 2. Tela "Tabela de Preços de Locação" (planilha editável)
 
-Nova página em **Máquinas & Locação → Tabela de Preços**, cobrindo **todos os itens do inventário** (máquinas, implementos, equipamentos, veículos — tudo que está em `machines`), **filtrando por padrão apenas os marcados com utilização "Locação"** (com opção de mostrar todos).
+| Área Cappta        | Tela no Tai Finance             | Função                                                                               |
+| ------------------ | ------------------------------- | ------------------------------------------------------------------------------------ |
+| AUTH               | (background)                    | Login automático via `POST /connect/token`, cache do JWT em edge function            |
+| CREDENCIAMENTO     | **Estabelecimentos**            | Listar/criar/editar merchants, consultar status de credenciamento                    |
+| POS                | **Terminais (POS)**             | Listar terminais, vincular a estabelecimento, ativar/desativar, consultar status     |
+| PLANOS             | **Planos & Taxas**              | Cadastro de planos comerciais (MDR por bandeira/produto), vincular a estabelecimento |
+| TRANSAÇÕES         | **Transações**                  | Listar vendas com filtros (data, bandeira, status, terminal), detalhe, estorno       |
+| GESTÃO FINANCEIRA  | **Recebíveis & Liquidação**     | Agenda de recebíveis, liquidações do dia, extrato de repasses                        |
+| GESTÃO DE COBRANÇA | **Cobranças (Link/Boleto/PIX)** | Gerar link de pagamento, boleto ou PIX Cappta; listar cobranças e status             |
+| WEBHOOK            | **Webhooks**                    | Configurar URL, ver eventos recebidos, reprocessar                                   |
 
-### Colunas (formato planilha)
-| Item | Categoria | Tipo | Hora ✓ / R$ | Diária ✓ / R$ | Semanal ✓ / R$ | Mensal ✓ / R$ |
 
-- Toggle (checkbox) em cada modalidade indica se o item pode ser locado naquela unidade
-- Input numérico ao lado do toggle para o valor
-- Desmarcar toggle → deleta o registro daquela unidade em `rental_price_tables`
-- Marcar + valor → upsert em `rental_price_tables` (`unit`, `price`, `min_qty=1`)
-- Auto-save on blur com debounce e feedback visual (spinner/check por célula)
+## Sidebar — grupo "Pagamentos"
 
-### Filtros e ações
-- Busca por nome, filtro por categoria, filtro por tipo, filtro por utilização
-- "Aplicar valor em todos filtrados" por coluna (bulk fill opcional)
-- Ordenação por qualquer coluna
+Aparece só quando o módulo está habilitado para a empresa.
 
-### Integração
-- Reaproveita `rental_price_tables` (estrutura atual já suporta 1 registro por par máquina+unidade — sem mudança de schema)
-- `RentalsPage` continua puxando os preços daqui — a sugestão automática de preço na criação de locação passa a refletir o que foi editado na planilha
+```text
+Pagamentos
+├── Dashboard              (KPIs: vendas do dia/mês, ticket médio, a receber, taxas)
+├── Transações
+├── Cobranças
+├── Recebíveis
+├── Terminais (POS)
+├── Estabelecimentos
+├── Planos & Taxas
+└── Webhooks & Config
+```
+
+## Backend
+
+**Migração** (uma migração, com GRANTs completos):
+
+- `companies.payments_enabled boolean default false`
+- `cappta_merchants` — mirror local de estabelecimentos credenciados (company_id, cappta_merchant_id, document, status, plan_id, criado em)
+- `cappta_terminals` — POS (company_id, merchant_id, cappta_terminal_id, serial, model, status)
+- `cappta_plans` — planos/taxas por bandeira/produto
+- `cappta_transactions` — cache local de transações (id, merchant_id, terminal_id, brand, amount, net_amount, mdr, installments, status, captured_at, settlement_date, payload jsonb)
+- `cappta_charges` — cobranças (id, merchant_id, type: link/boleto/pix, amount, status, due_date, payer, url, criado em)
+- `cappta_settlements` — liquidações diárias
+- `cappta_webhook_events` — log de eventos recebidos (event_type, payload, processed_at)
+
+Todas com RLS por `has_company_access` e GRANTs para `authenticated` + `service_role`.
+
+**Edge functions** (com `verify_jwt = false` para o webhook; demais autenticadas):
+
+- `cappta-auth` — obtém e cacheia JWT (usa `CAPPTA_CLIENT_ID`/`CAPPTA_CLIENT_SECRET`)
+- `cappta-api` — proxy genérico que injeta o Bearer token e faz forward para a Cappta (GET/POST/PUT/DELETE em qualquer path da API)
+- `cappta-sync` — sincroniza transações/recebíveis do dia para o cache local
+- `cappta-webhook` — recebe callbacks, grava em `cappta_webhook_events` e atualiza tabelas afetadas (transação estornada, cobrança paga, liquidação, etc.)
+
+**Secrets a solicitar via `add_secret`:** `CAPPTA_CLIENT_ID`, `CAPPTA_CLIENT_SECRET`, `CAPPTA_BASE_URL` (produção vs sandbox), `CAPPTA_WEBHOOK_SECRET`.
+
+## Integração com o resto do sistema
+
+- Cobrança paga (webhook) → cria automaticamente um recebimento em `transactions` (na conta selecionada) e baixa qualquer `payable_receivable` vinculado.
+- Transação de POS liquidada → cria transação de receita com desconto das taxas (MDR) categorizada em "Taxas de cartão".
+- Split PIX existente continua separado (é do sistema PIX estático). O split via Cappta usa a estrutura de planos/repasses da própria Cappta.
 
 ## Arquivos
 
-**Migração:**
-- Nova migration: adicionar `usage_purpose text[]` em `public.machines` com default `{'locacao'}`
-
 **Criar:**
-- `src/components/machines/RentalPricingPage.tsx`
+
+- `src/hooks/usePaymentsModule.ts` — hook `useCompanyPaymentsFlag`
+- `src/hooks/useCappta*.ts` — hooks por recurso (merchants, terminals, transactions, charges, settlements)
+- `src/components/payments/PaymentsDashboardPage.tsx`
+- `src/components/payments/CapptaTransactionsPage.tsx`
+- `src/components/payments/CapptaChargesPage.tsx` (+ dialog criar cobrança link/boleto/pix)
+- `src/components/payments/CapptaSettlementsPage.tsx`
+- `src/components/payments/CapptaTerminalsPage.tsx`
+- `src/components/payments/CapptaMerchantsPage.tsx`
+- `src/components/payments/CapptaPlansPage.tsx`
+- `src/components/payments/CapptaWebhooksPage.tsx`
+- `supabase/functions/cappta-auth/index.ts`
+- `supabase/functions/cappta-api/index.ts`
+- `supabase/functions/cappta-sync/index.ts`
+- `supabase/functions/cappta-webhook/index.ts`
+- Migração completa com tabelas + RLS + GRANTs
 
 **Editar:**
-- `src/hooks/useMachinesModule.ts` — tipo `Machine` com `usage_purpose`
-- `src/components/machines/MachinesPage.tsx` — campo "Utilização" no form + badge + filtro
-- `src/components/machines/MachinesDashboardPage.tsx` — KPIs por utilização
-- `src/components/finance/FinanceSidebar.tsx` — item "Tabela de Preços" no grupo Máquinas
-- `src/pages/Finance.tsx` — rota para a nova view
 
-## Observações
-- Sem quebra: itens existentes recebem `{'locacao'}` como default na migração
-- Split em fases não necessário — é uma feature contida
+- `src/pages/Finance.tsx` — novas views `payments-*` no `FinanceView`
+- `src/components/finance/FinanceSidebar.tsx` — novo grupo "Pagamentos" (condicional ao flag)
+- `src/components/finance/CompanySettingsDialog.tsx` — toggle "Pagamentos (Cappta)" na aba Módulos
+- `supabase/config.toml` — declarar `[functions.cappta-webhook] verify_jwt = false`
+
+## Perguntas antes de implementar
+
+1. **Ambiente**: começo apontando para **sandbox** ou **produção** da Cappta? (você me passa a `base_url` correspondente e o par de credenciais desse ambiente via secure form)
+
+**A URL que possuimos é essa: [https://portal.nectaco.com.br/dashboard](https://portal.nectaco.com.br/dashboard). Me passe o secureform para colocar os secrets da pagina quando implementar.**
+
+1. **Escopo v1**: entrego tudo (todas as 8 telas + sync + webhook) numa entrega só, ou prefere que eu comece só por **Transações + Cobranças + Dashboard** e as demais (Terminais, Planos, Estabelecimentos, Webhooks) numa segunda fase?
+
+**Entregue tudo, para podermos ver uma maquete das funcionalidades que possamos mexer, e daí nos aprofundamos.**
+
+1. **Cobranças criadas na Cappta**: quando forem pagas, elas devem **virar automaticamente** um recebimento em Transações do Tai Finance (baixa em conta escolhida), ou apenas ficar como registro no módulo Pagamentos sem tocar o financeiro?
+
+**A ideia seria integração total de sistemas entre nossos módulos, mas deve ser feito um controle de acesso, pois nem todos irão ter acesso à essa funcionalidade. A tela será entregue para o usuário final apenas.**

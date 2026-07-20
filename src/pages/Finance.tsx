@@ -333,6 +333,22 @@ const Finance = () => {
         return creditEnabled ? <CreditApplicationsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'credit-ignored':
         return creditEnabled ? <CreditIgnoredOccurrencesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-dashboard':
+        return paymentsEnabled ? <PaymentsDashboardPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-merchants':
+        return paymentsEnabled ? <PaymentsMerchantsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-terminals':
+        return paymentsEnabled ? <PaymentsTerminalsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-plans':
+        return paymentsEnabled ? <PaymentsPlansPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-transactions':
+        return paymentsEnabled ? <PaymentsTransactionsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-charges':
+        return paymentsEnabled ? <PaymentsChargesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-settlements':
+        return paymentsEnabled ? <PaymentsSettlementsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-webhooks':
+        return paymentsEnabled ? <PaymentsWebhooksPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }
@@ -363,6 +379,7 @@ const Finance = () => {
         machinesEnabled={machinesEnabled}
         creditEnabled={creditEnabled}
         bankDigitalEnabled={bankDigitalEnabled}
+        paymentsEnabled={paymentsEnabled}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <FinanceHeader
@@ -415,7 +432,7 @@ const Finance = () => {
         companyId={effectiveMode === 'admin' ? null : selectedCompanyId}
         showPicker={effectiveMode === 'admin'}
         showModulesTab={effectiveMode === 'admin'}
-        onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); }}
+        onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); refetchPaymentsFlag(); }}
       />
     </div>
   );

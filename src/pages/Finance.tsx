@@ -247,6 +247,7 @@ const Finance = () => {
   const { enabled: machinesEnabled, refetch: refetchMachinesFlag } = useCompanyMachinesFlag(selectedCompanyId);
   const { enabled: creditEnabled, refetch: refetchCreditFlag } = useCompanyCreditFlag(selectedCompanyId);
   const { enabled: bankDigitalEnabled, refetch: refetchBankDigitalFlag } = useCompanyBankDigitalFlag(selectedCompanyId);
+  const { enabled: paymentsEnabled, refetch: refetchPaymentsFlag } = useCompanyPaymentsFlag(selectedCompanyId);
 
   const handleCreateCompany = async (name: string, color: string) => {
     const result = await createCompany(name, color);

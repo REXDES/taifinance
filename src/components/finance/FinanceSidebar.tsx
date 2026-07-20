@@ -88,6 +88,7 @@ interface FinanceSidebarProps {
   machinesEnabled?: boolean;
   creditEnabled?: boolean;
   bankDigitalEnabled?: boolean;
+  paymentsEnabled?: boolean;
 }
 
 type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };
@@ -159,6 +160,17 @@ const creditAdminMenuItems: MenuItem[] = [
   { view: 'credit-ignored', label: 'Ocorrências Ignoradas', icon: <Shield className="w-4 h-4" /> },
 ];
 
+const paymentsMenuItems: MenuItem[] = [
+  { view: 'payments-dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { view: 'payments-charges', label: 'Cobranças', icon: <Receipt className="w-4 h-4" /> },
+  { view: 'payments-transactions', label: 'Transações', icon: <ArrowUpDown className="w-4 h-4" /> },
+  { view: 'payments-settlements', label: 'Liquidações', icon: <TrendingUp className="w-4 h-4" /> },
+  { view: 'payments-terminals', label: 'Terminais (POS)', icon: <Hammer className="w-4 h-4" /> },
+  { view: 'payments-merchants', label: 'Estabelecimentos', icon: <Building2 className="w-4 h-4" /> },
+  { view: 'payments-plans', label: 'Planos & Taxas', icon: <Tags className="w-4 h-4" /> },
+  { view: 'payments-webhooks', label: 'Webhooks', icon: <Activity className="w-4 h-4" /> },
+];
+
 export function FinanceSidebar({
   companies,
   selectedCompanyId,
@@ -182,9 +194,14 @@ export function FinanceSidebar({
   machinesEnabled = false,
   creditEnabled = false,
   bankDigitalEnabled = false,
+  paymentsEnabled = false,
 }: FinanceSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+  const isAdminMode = accessMode === 'admin';
+
+  // Accordion state for top-level groups in normal mode (only one open at a time)
+  type TopGroup = 'gestao' | 'machines' | 'credit' | 'payments';
   const isAdminMode = accessMode === 'admin';
 
   // Accordion state for top-level groups in normal mode (only one open at a time)

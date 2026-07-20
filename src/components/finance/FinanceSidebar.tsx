@@ -664,6 +664,29 @@ export function FinanceSidebar({
                   )
                 )}
 
+                {/* Pagamentos - Cappta (módulo opcional por empresa) */}
+                {paymentsEnabled && (
+                  collapsed ? (
+                    paymentsMenuItems.map(renderMenuItem)
+                  ) : (
+                    <Collapsible open={openGroup === 'payments'} onOpenChange={setGroup('payments')}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                          <span className="flex items-center gap-2">
+                            <CreditCard className="w-4 h-4" />
+                            Pagamentos
+                          </span>
+                          <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                        {paymentsMenuItems.map(renderMenuItem)}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )
+                )}
+
+
                 {/* Configurações da Empresa (supervisor e gerente) */}
                 {selectedCompanyId && onOpenCompanySettings && (isSupervisor || isGerente) && (
                   collapsed ? (

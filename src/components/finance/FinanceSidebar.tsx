@@ -202,10 +202,6 @@ export function FinanceSidebar({
 
   // Accordion state for top-level groups in normal mode (only one open at a time)
   type TopGroup = 'gestao' | 'machines' | 'credit' | 'payments';
-  const isAdminMode = accessMode === 'admin';
-
-  // Accordion state for top-level groups in normal mode (only one open at a time)
-  type TopGroup = 'gestao' | 'machines' | 'credit';
   type SubGroup = 'transacoes' | 'relatorios' | 'cadastros';
   const isInGestao =
     transacoesMenuItems.some(i => currentView === i.view) ||
@@ -215,6 +211,7 @@ export function FinanceSidebar({
     isInGestao ? 'gestao'
     : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
     : creditMenuItems.some(i => currentView === i.view) ? 'credit'
+    : paymentsMenuItems.some(i => currentView === i.view) ? 'payments'
     : null;
   const initialOpenSub: SubGroup | null =
     transacoesMenuItems.some(i => currentView === i.view) ? 'transacoes'

@@ -2177,15 +2177,20 @@ export type Database = {
           created_by: string | null
           description: string | null
           end_date: string | null
+          has_travel: boolean
           horimeter_at_service: number | null
           id: string
           machine_id: string
           mechanic_id: string | null
+          paid_account_id: string | null
           payment_mode: string
           start_date: string
           status: string
           total_cost: number
           transaction_id: string | null
+          travel_km: number | null
+          travel_notes: string | null
+          travel_vehicle_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2194,15 +2199,20 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           end_date?: string | null
+          has_travel?: boolean
           horimeter_at_service?: number | null
           id?: string
           machine_id: string
           mechanic_id?: string | null
+          paid_account_id?: string | null
           payment_mode?: string
           start_date: string
           status?: string
           total_cost?: number
           transaction_id?: string | null
+          travel_km?: number | null
+          travel_notes?: string | null
+          travel_vehicle_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2211,15 +2221,20 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           end_date?: string | null
+          has_travel?: boolean
           horimeter_at_service?: number | null
           id?: string
           machine_id?: string
           mechanic_id?: string | null
+          paid_account_id?: string | null
           payment_mode?: string
           start_date?: string
           status?: string
           total_cost?: number
           transaction_id?: string | null
+          travel_km?: number | null
+          travel_notes?: string | null
+          travel_vehicle_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2235,6 +2250,20 @@ export type Database = {
             columns: ["mechanic_id"]
             isOneToOne: false
             referencedRelation: "mechanics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_records_paid_account_id_fkey"
+            columns: ["paid_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_records_travel_vehicle_id_fkey"
+            columns: ["travel_vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
             referencedColumns: ["id"]
           },
         ]

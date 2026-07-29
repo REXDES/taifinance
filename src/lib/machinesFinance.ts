@@ -60,10 +60,11 @@ interface MaintenancePayablesArgs {
   startDate: string;
   installments: number;
   userId?: string | null;
+  tagIds?: string[];
 }
 
 export async function generateMaintenancePayables(args: MaintenancePayablesArgs) {
-  const { companyId, maintenanceId, description, totalAmount, startDate, installments, userId } = args;
+  const { companyId, maintenanceId, description, totalAmount, startDate, installments, userId, tagIds } = args;
   const installmentValue = +(totalAmount / installments).toFixed(2);
   const rows = Array.from({ length: installments }).map((_, i) => ({
     company_id: companyId,
@@ -78,9 +79,18 @@ export async function generateMaintenancePayables(args: MaintenancePayablesArgs)
     total_installments: installments,
     created_by: userId ?? null,
   }));
-  const { error } = await (supabase as any).from('payables_receivables').insert(rows);
+  const { data: inserted, error } = await (supabase as any)
+    .from('payables_receivables').insert(rows).select('id');
   if (error) throw error;
+  if (tagIds && tagIds.length && inserted?.length) {
+    const links = inserted.flatMap((row: any) =>
+      tagIds.map(tagId => ({ payable_receivable_id: row.id, tag_id: tagId }))
+    );
+    const { error: tagErr } = await (supabase as any).from('payable_receivable_tags').insert(links);
+    if (tagErr) console.error('link tags', tagErr);
+  }
 }
+
 
 export async function recalculatePendingInstallments(opts: {
   rentalId?: string; maintenanceId?: string; newTotal: number;

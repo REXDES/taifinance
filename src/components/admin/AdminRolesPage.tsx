@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/dialog';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 import { Plus, Pencil, Trash2, Shield } from 'lucide-react';
-import { PERMISSION_GROUPS, ALL_PERMISSIONS } from '@/lib/permissions';
+import { PERMISSION_GROUPS, ALL_PERMISSIONS, type PermissionGroup } from '@/lib/permissions';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useCustomRoles, type CustomRole } from '@/hooks/useCustomRoles';
 import { useRolePermissions } from '@/hooks/useRolePermissions';
 

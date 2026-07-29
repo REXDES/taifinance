@@ -12,6 +12,8 @@ import { StatementPage } from '@/components/finance/StatementPage';
 import { CategoriesPage } from '@/components/finance/CategoriesPage';
 import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
 import { AdminDashboard } from '@/components/finance/AdminDashboard';
+import { AdminUsersPage } from '@/components/admin/AdminUsersPage';
+import { AdminRolesPage } from '@/components/admin/AdminRolesPage';
 import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
 import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
 import { AuditLogsPage } from '@/components/finance/AuditLogsPage';
@@ -59,6 +61,8 @@ type AppRole = Database['public']['Enums']['app_role'];
 export type FinanceView =
   | 'dashboard'
   | 'admin-dashboard'
+  | 'admin-users'
+  | 'admin-roles'
   | 'quick-entry'
   | 'accounts'
   | 'transactions'
@@ -97,7 +101,7 @@ export type FinanceView =
   | 'payments-settlements'
   | 'payments-webhooks';
 
-const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital', 'credit-admin'];
+const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'audit-logs', 'bank-digital', 'credit-admin'];
 // Views available only in normal mode for supervisors
 const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'dashboard',
@@ -263,6 +267,13 @@ const Finance = () => {
     if (effectiveMode === 'admin' && currentView === 'admin-dashboard') {
       return <AdminDashboard />;
     }
+    if (effectiveMode === 'admin' && currentView === 'admin-users') {
+      return <AdminUsersPage />;
+    }
+    if (effectiveMode === 'admin' && currentView === 'admin-roles') {
+      return <AdminRolesPage />;
+    }
+
 
     if (!selectedCompanyId) {
       return (

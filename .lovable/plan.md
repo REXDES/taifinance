@@ -1,107 +1,95 @@
-# Módulo Pagamentos (Cappta White Label)
 
-Novo módulo opcional por empresa (toggle em **Configurações → Módulos**, igual aos módulos Máquinas, Crédito e Banco Digital). Mapeia as áreas da API Cappta em telas nativas do sistema.
+# Gestão de Usuários Global + Cargos com Permissões
 
-## Áreas da API mapeadas → Telas
+## Objetivo
+No modo administrativo, transformar a Gestão de Usuários em uma tela global (todos os usuários de todas as empresas) com filtro por nome, edição de dados, criação de cargos customizados e matriz de permissões (cargo × módulo/submenu).
 
-Baseado nos grupos da documentação Cappta: **AUTH, CREDENCIAMENTO, POS, PLANOS, TRANSAÇÕES, GESTÃO FINANCEIRA, GESTÃO DE COBRANÇA, WEBHOOK**.
+Regra: **supervisor sempre tem acesso total** e não aparece na matriz.
 
+---
 
-| Área Cappta        | Tela no Tai Finance             | Função                                                                               |
-| ------------------ | ------------------------------- | ------------------------------------------------------------------------------------ |
-| AUTH               | (background)                    | Login automático via `POST /connect/token`, cache do JWT em edge function            |
-| CREDENCIAMENTO     | **Estabelecimentos**            | Listar/criar/editar merchants, consultar status de credenciamento                    |
-| POS                | **Terminais (POS)**             | Listar terminais, vincular a estabelecimento, ativar/desativar, consultar status     |
-| PLANOS             | **Planos & Taxas**              | Cadastro de planos comerciais (MDR por bandeira/produto), vincular a estabelecimento |
-| TRANSAÇÕES         | **Transações**                  | Listar vendas com filtros (data, bandeira, status, terminal), detalhe, estorno       |
-| GESTÃO FINANCEIRA  | **Recebíveis & Liquidação**     | Agenda de recebíveis, liquidações do dia, extrato de repasses                        |
-| GESTÃO DE COBRANÇA | **Cobranças (Link/Boleto/PIX)** | Gerar link de pagamento, boleto ou PIX Cappta; listar cobranças e status             |
-| WEBHOOK            | **Webhooks**                    | Configurar URL, ver eventos recebidos, reprocessar                                   |
+## 1. Backend (banco de dados)
 
+### 1.1 Cargos customizáveis
+Hoje `app_role` é enum fixo (`supervisor`, `gerente`, `operador`). Para permitir criar novos cargos sem quebrar o resto do sistema, vamos adicionar uma tabela paralela:
 
-## Sidebar — grupo "Pagamentos"
+- **`custom_roles`**: cargos criados pelo supervisor (nome, descrição, cor).
+- Mantemos o enum atual para compatibilidade. O campo `user_roles.role` continua sendo `supervisor` / `gerente` / `operador` (base), e adicionamos `user_roles.custom_role_id` opcional para cargos criados.
 
-Aparece só quando o módulo está habilitado para a empresa.
+### 1.2 Matriz de permissões
+- **`role_permissions`**: uma linha por cargo + chave de permissão.
+  - `role_key` (texto: `gerente`, `operador`, ou id do custom_role)
+  - `permission_key` (texto: ex. `finance.transactions`, `finance.reports.balance_sheet`, `machines.rentals`, `payments.dashboard`, etc.)
+  - `allowed` (boolean)
+- Função `has_permission(_user_id, _permission_key)` — retorna true se supervisor OU se o cargo do usuário tem a permissão marcada.
 
-```text
-Pagamentos
-├── Dashboard              (KPIs: vendas do dia/mês, ticket médio, a receber, taxas)
-├── Transações
-├── Cobranças
-├── Recebíveis
-├── Terminais (POS)
-├── Estabelecimentos
-├── Planos & Taxas
-└── Webhooks & Config
+### 1.3 Catálogo de permissões
+Definido em código (arquivo `src/lib/permissions.ts`) — lista fixa das chaves com rótulos e agrupamento por módulo:
+- Gestão Financeira (dashboard, contas, transações, transferências, pagar/receber, quick entry, split pix, banco digital)
+- Relatórios (balancete, movimentações, fluxo de caixa, categorias, pagar/receber, auditoria)
+- Cadastros (categorias, tags, clientes/fornecedores)
+- Máquinas (dashboard, inventário, locações, tabela de preços, manutenção, operadores, mecânicos, catálogo)
+- Pagamentos (dashboard, cobranças, transações, liquidações, terminais, estabelecimentos, planos, webhooks)
+- Crédito (aplicações, admin, ocorrências ignoradas)
+- Configurações (empresas, usuários, convites)
+
+---
+
+## 2. UI Admin — Gestão de Usuários global
+
+### 2.1 Nova tela `AdminUsersPage`
+Substitui/expande o `UsersDialog` atual quando acessado pelo supervisor no modo administrativo:
+- Lista global de **todos** os usuários (join `profiles` + `user_roles` + `user_companies` → nomes das empresas)
+- Campo de busca por nome/email (filtro client-side)
+- Colunas: avatar, nome, email, cargo (base + custom), empresas vinculadas, ações
+- Ações por linha: editar dados (nome, email display, cargo), gerenciar acessos (dialog existente), remover
+
+### 2.2 Nova tela `AdminRolesPage` (Cargos & Permissões)
+Acessada a partir da tela de usuários (botão "Cargos & permissões"):
+- Bloco superior: lista de cargos (gerente, operador, + customizados). Botão "Novo cargo" para criar (nome, descrição, cor). Editar/excluir custom roles.
+- Bloco principal: **matriz de permissões**
+  - Coluna 1 (vertical): cargos
+  - Linhas do cabeçalho horizontal: módulos e submenus (agrupados)
+  - Células: checkbox `allowed` — salva em `role_permissions` on-change (com debounce/toast)
+  - Cabeçalho tem checkbox "marcar todos do módulo" para agilidade
+  - Supervisor não aparece (sempre acesso total)
+
+### 2.3 Aplicação das permissões
+- Hook `usePermissions()` — carrega permissões do usuário logado (via função RPC) e expõe `can(key)`.
+- Sidebar (`FinanceSidebar`) filtra itens usando `can(permission_key)`.
+- Rotas sensíveis ficam com guard leve (retorna "Sem acesso" se não permitido).
+- Supervisor: `can()` sempre retorna true.
+
+---
+
+## 3. Detalhes técnicos
+
+**Migração SQL** (uma migração):
+```
+CREATE TABLE public.custom_roles (id, company_scope_null, name, description, color, created_by, created_at, updated_at);
+CREATE TABLE public.role_permissions (id, role_key text, permission_key text, allowed bool, UNIQUE(role_key, permission_key));
+ALTER TABLE public.user_roles ADD COLUMN custom_role_id uuid REFERENCES custom_roles(id);
+CREATE FUNCTION public.has_permission(_user_id, _permission_key) RETURNS boolean SECURITY DEFINER;
+-- GRANTs + RLS: só supervisor lê/escreve custom_roles e role_permissions; usuários autenticados leem apenas as próprias permissões via RPC.
 ```
 
-## Backend
+**Arquivos front-end**:
+- `src/lib/permissions.ts` — catálogo de chaves + labels + grupos
+- `src/hooks/usePermissions.ts` — carrega e expõe `can()`
+- `src/hooks/useCustomRoles.ts` — CRUD de cargos customizados
+- `src/hooks/useRolePermissions.ts` — leitura/escrita da matriz
+- `src/components/admin/AdminUsersPage.tsx` — listagem global
+- `src/components/admin/AdminRolesPage.tsx` — matriz + gestão de cargos
+- Ajustes em `FinanceSidebar.tsx` para filtrar por `can()`
+- Ajuste no roteamento de `Finance.tsx` (ou onde o modo admin renderiza) para exibir as duas novas telas
 
-**Migração** (uma migração, com GRANTs completos):
+**Compatibilidade**: cargos existentes (`gerente`, `operador`) continuam funcionando; se `role_permissions` estiver vazio para um cargo, assume-se **acesso total** (para não travar quem já usa) até o supervisor customizar — depois exibimos aviso na UI de matriz.
 
-- `companies.payments_enabled boolean default false`
-- `cappta_merchants` — mirror local de estabelecimentos credenciados (company_id, cappta_merchant_id, document, status, plan_id, criado em)
-- `cappta_terminals` — POS (company_id, merchant_id, cappta_terminal_id, serial, model, status)
-- `cappta_plans` — planos/taxas por bandeira/produto
-- `cappta_transactions` — cache local de transações (id, merchant_id, terminal_id, brand, amount, net_amount, mdr, installments, status, captured_at, settlement_date, payload jsonb)
-- `cappta_charges` — cobranças (id, merchant_id, type: link/boleto/pix, amount, status, due_date, payer, url, criado em)
-- `cappta_settlements` — liquidações diárias
-- `cappta_webhook_events` — log de eventos recebidos (event_type, payload, processed_at)
+---
 
-Todas com RLS por `has_company_access` e GRANTs para `authenticated` + `service_role`.
+## Fora de escopo
+- Migrar o enum `app_role` para tabela (mantido por compatibilidade).
+- Permissões por linha/registro (só por módulo/menu).
+- Reescrever telas para checagem granular além do que a sidebar já filtra.
 
-**Edge functions** (com `verify_jwt = false` para o webhook; demais autenticadas):
-
-- `cappta-auth` — obtém e cacheia JWT (usa `CAPPTA_CLIENT_ID`/`CAPPTA_CLIENT_SECRET`)
-- `cappta-api` — proxy genérico que injeta o Bearer token e faz forward para a Cappta (GET/POST/PUT/DELETE em qualquer path da API)
-- `cappta-sync` — sincroniza transações/recebíveis do dia para o cache local
-- `cappta-webhook` — recebe callbacks, grava em `cappta_webhook_events` e atualiza tabelas afetadas (transação estornada, cobrança paga, liquidação, etc.)
-
-**Secrets a solicitar via `add_secret`:** `CAPPTA_CLIENT_ID`, `CAPPTA_CLIENT_SECRET`, `CAPPTA_BASE_URL` (produção vs sandbox), `CAPPTA_WEBHOOK_SECRET`.
-
-## Integração com o resto do sistema
-
-- Cobrança paga (webhook) → cria automaticamente um recebimento em `transactions` (na conta selecionada) e baixa qualquer `payable_receivable` vinculado.
-- Transação de POS liquidada → cria transação de receita com desconto das taxas (MDR) categorizada em "Taxas de cartão".
-- Split PIX existente continua separado (é do sistema PIX estático). O split via Cappta usa a estrutura de planos/repasses da própria Cappta.
-
-## Arquivos
-
-**Criar:**
-
-- `src/hooks/usePaymentsModule.ts` — hook `useCompanyPaymentsFlag`
-- `src/hooks/useCappta*.ts` — hooks por recurso (merchants, terminals, transactions, charges, settlements)
-- `src/components/payments/PaymentsDashboardPage.tsx`
-- `src/components/payments/CapptaTransactionsPage.tsx`
-- `src/components/payments/CapptaChargesPage.tsx` (+ dialog criar cobrança link/boleto/pix)
-- `src/components/payments/CapptaSettlementsPage.tsx`
-- `src/components/payments/CapptaTerminalsPage.tsx`
-- `src/components/payments/CapptaMerchantsPage.tsx`
-- `src/components/payments/CapptaPlansPage.tsx`
-- `src/components/payments/CapptaWebhooksPage.tsx`
-- `supabase/functions/cappta-auth/index.ts`
-- `supabase/functions/cappta-api/index.ts`
-- `supabase/functions/cappta-sync/index.ts`
-- `supabase/functions/cappta-webhook/index.ts`
-- Migração completa com tabelas + RLS + GRANTs
-
-**Editar:**
-
-- `src/pages/Finance.tsx` — novas views `payments-*` no `FinanceView`
-- `src/components/finance/FinanceSidebar.tsx` — novo grupo "Pagamentos" (condicional ao flag)
-- `src/components/finance/CompanySettingsDialog.tsx` — toggle "Pagamentos (Cappta)" na aba Módulos
-- `supabase/config.toml` — declarar `[functions.cappta-webhook] verify_jwt = false`
-
-## Perguntas antes de implementar
-
-1. **Ambiente**: começo apontando para **sandbox** ou **produção** da Cappta? (você me passa a `base_url` correspondente e o par de credenciais desse ambiente via secure form)
-
-**A URL que possuimos é essa: [https://portal.nectaco.com.br/dashboard](https://portal.nectaco.com.br/dashboard). Me passe o secureform para colocar os secrets da pagina quando implementar.**
-
-1. **Escopo v1**: entrego tudo (todas as 8 telas + sync + webhook) numa entrega só, ou prefere que eu comece só por **Transações + Cobranças + Dashboard** e as demais (Terminais, Planos, Estabelecimentos, Webhooks) numa segunda fase?
-
-**Entregue tudo, para podermos ver uma maquete das funcionalidades que possamos mexer, e daí nos aprofundamos.**
-
-1. **Cobranças criadas na Cappta**: quando forem pagas, elas devem **virar automaticamente** um recebimento em Transações do Tai Finance (baixa em conta escolhida), ou apenas ficar como registro no módulo Pagamentos sem tocar o financeiro?
-
-**A ideia seria integração total de sistemas entre nossos módulos, mas deve ser feito um controle de acesso, pois nem todos irão ter acesso à essa funcionalidade. A tela será entregue para o usuário final apenas.**
+Confirma que posso implementar assim?

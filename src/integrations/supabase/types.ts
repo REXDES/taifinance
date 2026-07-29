@@ -1470,6 +1470,36 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_roles: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       element_favorites: {
         Row: {
           created_at: string
@@ -2960,6 +2990,33 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          allowed: boolean
+          created_at: string
+          id: string
+          permission_key: string
+          role_key: string
+          updated_at: string
+        }
+        Insert: {
+          allowed?: boolean
+          created_at?: string
+          id?: string
+          permission_key: string
+          role_key: string
+          updated_at?: string
+        }
+        Update: {
+          allowed?: boolean
+          created_at?: string
+          id?: string
+          permission_key?: string
+          role_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       split_recipients: {
         Row: {
           active: boolean
@@ -3697,6 +3754,7 @@ export type Database = {
       user_roles: {
         Row: {
           company_limit: number | null
+          custom_role_id: string | null
           id: string
           invitation_limit: number | null
           role: Database["public"]["Enums"]["app_role"]
@@ -3704,6 +3762,7 @@ export type Database = {
         }
         Insert: {
           company_limit?: number | null
+          custom_role_id?: string | null
           id?: string
           invitation_limit?: number | null
           role?: Database["public"]["Enums"]["app_role"]
@@ -3711,12 +3770,21 @@ export type Database = {
         }
         Update: {
           company_limit?: number | null
+          custom_role_id?: string | null
           id?: string
           invitation_limit?: number | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "custom_roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -3758,8 +3826,19 @@ export type Database = {
         }[]
       }
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
+      get_user_permissions: {
+        Args: { _user_id: string }
+        Returns: {
+          allowed: boolean
+          permission_key: string
+        }[]
+      }
       has_company_access: {
         Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      has_permission: {
+        Args: { _permission_key: string; _user_id: string }
         Returns: boolean
       }
       has_role: {

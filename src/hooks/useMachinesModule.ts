@@ -22,8 +22,11 @@ export interface MaintenanceRecord {
   start_date: string; end_date: string | null; description: string | null; horimeter_at_service: number | null;
   total_cost: number; payment_mode: 'cash' | 'installments' | 'none';
   status: 'in_progress' | 'completed' | 'cancelled'; transaction_id: string | null;
+  paid_account_id?: string | null;
+  has_travel?: boolean; travel_vehicle_id?: string | null; travel_km?: number | null; travel_notes?: string | null;
   machine?: Machine; mechanic?: Mechanic | null;
 }
+
 export interface RentalPriceTable {
   id: string; company_id: string; machine_id: string; unit: 'hour' | 'day' | 'week' | 'month';
   min_qty: number; max_qty: number | null; price: number; valid_from: string | null; valid_to: string | null;

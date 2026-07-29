@@ -22,6 +22,16 @@ const BASE_ROLES: RoleRow[] = [
   { key: 'operador', label: 'Operador', color: '#64748b', isCustom: false },
 ];
 
+// Abas de módulos: sistema nativo + módulos opcionais (mesmos listados em Configurações da empresa).
+// Ao criar um novo módulo, adicione uma aba aqui e agrupe as permissões pelos labels de PERMISSION_GROUPS.
+const MODULE_TABS: { key: string; label: string; groups: string[] }[] = [
+  { key: 'system', label: 'Sistema', groups: ['Gestão Financeira', 'Relatórios', 'Cadastros', 'Administração'] },
+  { key: 'bank_digital', label: 'Banco Digital', groups: ['Banco Digital'] },
+  { key: 'machines', label: 'Máquinas & Locação', groups: ['Máquinas & Locação'] },
+  { key: 'credit', label: 'Crédito', groups: ['Crédito'] },
+  { key: 'payments', label: 'Pagamentos', groups: ['Pagamentos'] },
+];
+
 export function AdminRolesPage() {
   const { roles: customRoles, createRole, updateRole, deleteRole } = useCustomRoles();
   const { isAllowed, setAllowed } = useRolePermissions();

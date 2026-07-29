@@ -1,6 +1,12 @@
 // Catálogo de permissões do sistema.
 // Cada `key` representa um módulo/menu/submenu que pode ser liberado ou bloqueado por cargo.
 // Supervisor SEMPRE tem acesso total (ignora esta lista).
+//
+// IMPORTANTE (convenção de desenvolvimento):
+// Sempre que um novo módulo, menu ou tela for criado e ele precise aparecer na matriz de
+// "Cargos & Permissões" (src/components/admin/AdminRolesPage.tsx), adicione uma entrada
+// aqui no formato "modulo.submenu". Após incluir a key, ela será exibida automaticamente
+// como coluna na matriz e poderá ser consultada via usePermissions().can(key).
 
 export interface PermissionDef {
   key: string;
@@ -92,3 +98,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
 ];
 
 export const ALL_PERMISSIONS: PermissionDef[] = PERMISSION_GROUPS.flatMap(g => g.items);
+
+/**
+ * Retorna o rótulo legível de uma permissão a partir da sua key.
+ * Útil para exibir nomes de módulos em mensagens, logs ou telas dinâmicas.
+ */
+export function getPermissionLabel(key: string): string {
+  const found = ALL_PERMISSIONS.find(p => p.key === key);
+  return found?.label || key;
+}

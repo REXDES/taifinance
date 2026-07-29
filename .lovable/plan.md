@@ -1,95 +1,60 @@
-
-# Gestão de Usuários Global + Cargos com Permissões
-
 ## Objetivo
-No modo administrativo, transformar a Gestão de Usuários em uma tela global (todos os usuários de todas as empresas) com filtro por nome, edição de dados, criação de cargos customizados e matriz de permissões (cargo × módulo/submenu).
-
-Regra: **supervisor sempre tem acesso total** e não aparece na matriz.
-
----
-
-## 1. Backend (banco de dados)
-
-### 1.1 Cargos customizáveis
-Hoje `app_role` é enum fixo (`supervisor`, `gerente`, `operador`). Para permitir criar novos cargos sem quebrar o resto do sistema, vamos adicionar uma tabela paralela:
-
-- **`custom_roles`**: cargos criados pelo supervisor (nome, descrição, cor).
-- Mantemos o enum atual para compatibilidade. O campo `user_roles.role` continua sendo `supervisor` / `gerente` / `operador` (base), e adicionamos `user_roles.custom_role_id` opcional para cargos criados.
-
-### 1.2 Matriz de permissões
-- **`role_permissions`**: uma linha por cargo + chave de permissão.
-  - `role_key` (texto: `gerente`, `operador`, ou id do custom_role)
-  - `permission_key` (texto: ex. `finance.transactions`, `finance.reports.balance_sheet`, `machines.rentals`, `payments.dashboard`, etc.)
-  - `allowed` (boolean)
-- Função `has_permission(_user_id, _permission_key)` — retorna true se supervisor OU se o cargo do usuário tem a permissão marcada.
-
-### 1.3 Catálogo de permissões
-Definido em código (arquivo `src/lib/permissions.ts`) — lista fixa das chaves com rótulos e agrupamento por módulo:
-- Gestão Financeira (dashboard, contas, transações, transferências, pagar/receber, quick entry, split pix, banco digital)
-- Relatórios (balancete, movimentações, fluxo de caixa, categorias, pagar/receber, auditoria)
-- Cadastros (categorias, tags, clientes/fornecedores)
-- Máquinas (dashboard, inventário, locações, tabela de preços, manutenção, operadores, mecânicos, catálogo)
-- Pagamentos (dashboard, cobranças, transações, liquidações, terminais, estabelecimentos, planos, webhooks)
-- Crédito (aplicações, admin, ocorrências ignoradas)
-- Configurações (empresas, usuários, convites)
+1. Permitir que um convite já seja criado com um **cargo customizado** vinculado, propagando-o para `user_roles.custom_role_id` quando o convite for aceito.
+2. Tornar `src/lib/permissions.ts` a fonte única e documentada para novos módulos/menus, garantindo que apareçam automaticamente na matriz de **Cargos & Permissões**.
 
 ---
 
-## 2. UI Admin — Gestão de Usuários global
+## 1. Banco de dados — campo `custom_role_id` no convite
+- Adicionar coluna `custom_role_id uuid references public.custom_roles(id) on delete set null` na tabela `public.invitations`.
+- Atualizar a função `public.handle_new_user()` para, ao encontrar um convite válido, copiar `invitations.custom_role_id` para `user_roles.custom_role_id` junto com `role` e `company_limit`.
+- Atualizar a função `public.accept_invitation(_invitation_id uuid, _user_id uuid)` para também gravar `custom_role_id` em `user_roles`.
+- Garantir que, se o convite não tiver cargo customizado, o comportamento atual se mantenha (`custom_role_id = null`).
 
-### 2.1 Nova tela `AdminUsersPage`
-Substitui/expande o `UsersDialog` atual quando acessado pelo supervisor no modo administrativo:
-- Lista global de **todos** os usuários (join `profiles` + `user_roles` + `user_companies` → nomes das empresas)
-- Campo de busca por nome/email (filtro client-side)
-- Colunas: avatar, nome, email, cargo (base + custom), empresas vinculadas, ações
-- Ações por linha: editar dados (nome, email display, cargo), gerenciar acessos (dialog existente), remover
+## 2. Hook de convites
+- Alterar `src/hooks/useUsers.ts`:
+  - A função `createInvitation` deve aceitar um novo parâmetro opcional `customRoleId?: string | null`.
+  - Incluir `custom_role_id: customRoleId || null` no `insert` da tabela `invitations`.
 
-### 2.2 Nova tela `AdminRolesPage` (Cargos & Permissões)
-Acessada a partir da tela de usuários (botão "Cargos & permissões"):
-- Bloco superior: lista de cargos (gerente, operador, + customizados). Botão "Novo cargo" para criar (nome, descrição, cor). Editar/excluir custom roles.
-- Bloco principal: **matriz de permissões**
-  - Coluna 1 (vertical): cargos
-  - Linhas do cabeçalho horizontal: módulos e submenus (agrupados)
-  - Células: checkbox `allowed` — salva em `role_permissions` on-change (com debounce/toast)
-  - Cabeçalho tem checkbox "marcar todos do módulo" para agilidade
-  - Supervisor não aparece (sempre acesso total)
+## 3. UI de convites
+- Em `src/components/dialogs/FinanceInvitationsDialog.tsx`:
+  - Adicionar estado `customRoleId` (string | null).
+  - Incluir seletor **"Cargo customizado (opcional)"** abaixo do cargo base, listando os cargos criados em **Cargos & Permissões**.
+  - Passar o `customRoleId` para `createInvitation`.
+  - Mostrar helper explicando que, se informado, as permissões do cargo customizado se somam/sobrepõem às do cargo base.
+- Verificar se `src/components/dialogs/InvitationsDialog.tsx` (fluxo antigo de projetos/elementos) ainda é utilizado; se sim, aplicar a mesma alteração. Caso contrário, deixar documentado na análise.
 
-### 2.3 Aplicação das permissões
-- Hook `usePermissions()` — carrega permissões do usuário logado (via função RPC) e expõe `can(key)`.
-- Sidebar (`FinanceSidebar`) filtra itens usando `can(permission_key)`.
-- Rotas sensíveis ficam com guard leve (retorna "Sem acesso" se não permitido).
-- Supervisor: `can()` sempre retorna true.
+## 4. Catálogo de permissões como fonte única
+- Em `src/lib/permissions.ts`:
+  - Adicionar um comentário de cabeçalho explicando que **toda nova tela, menu ou módulo deve ser registrada aqui** para aparecer na matriz de permissões.
+  - Manter a estrutura atual de `PERMISSION_GROUPS` e `ALL_PERMISSIONS`.
+  - Opcionalmente criar uma função utilitária `getPermissionLabel(key: string)` para centralizar a resolução de nomes.
+- Em `src/components/admin/AdminRolesPage.tsx`:
+  - Garantir que a matriz continue lendo de `PERMISSION_GROUPS`/`ALL_PERMISSIONS` (já está assim; apenas validar após eventuais ajustes).
 
----
+## 5. Registro de memória / convenção
+- Atualizar `mem://index.md` (se aplicável) ou criar memória de desenvolvimento lembrando:
+  > "Ao criar novos módulos/menus, sempre adicionar a `key` correspondente em `src/lib/permissions.ts` para que apareça na matriz de Cargos & Permissões."
 
-## 3. Detalhes técnicos
-
-**Migração SQL** (uma migração):
-```
-CREATE TABLE public.custom_roles (id, company_scope_null, name, description, color, created_by, created_at, updated_at);
-CREATE TABLE public.role_permissions (id, role_key text, permission_key text, allowed bool, UNIQUE(role_key, permission_key));
-ALTER TABLE public.user_roles ADD COLUMN custom_role_id uuid REFERENCES custom_roles(id);
-CREATE FUNCTION public.has_permission(_user_id, _permission_key) RETURNS boolean SECURITY DEFINER;
--- GRANTs + RLS: só supervisor lê/escreve custom_roles e role_permissions; usuários autenticados leem apenas as próprias permissões via RPC.
-```
-
-**Arquivos front-end**:
-- `src/lib/permissions.ts` — catálogo de chaves + labels + grupos
-- `src/hooks/usePermissions.ts` — carrega e expõe `can()`
-- `src/hooks/useCustomRoles.ts` — CRUD de cargos customizados
-- `src/hooks/useRolePermissions.ts` — leitura/escrita da matriz
-- `src/components/admin/AdminUsersPage.tsx` — listagem global
-- `src/components/admin/AdminRolesPage.tsx` — matriz + gestão de cargos
-- Ajustes em `FinanceSidebar.tsx` para filtrar por `can()`
-- Ajuste no roteamento de `Finance.tsx` (ou onde o modo admin renderiza) para exibir as duas novas telas
-
-**Compatibilidade**: cargos existentes (`gerente`, `operador`) continuam funcionando; se `role_permissions` estiver vazio para um cargo, assume-se **acesso total** (para não travar quem já usa) até o supervisor customizar — depois exibimos aviso na UI de matriz.
+## 6. Validação
+- Testar o fluxo completo:
+  1. Criar um cargo customizado em **Cargos & Permissões**.
+  2. Criar um convite selecionando esse cargo customizado.
+  3. Aceitar o convite e confirmar que `user_roles.custom_role_id` foi preenchido corretamente.
+  4. Verificar que a sidebar respeita as permissões do cargo customizado (`usePermissions`/`can`).
 
 ---
 
-## Fora de escopo
-- Migrar o enum `app_role` para tabela (mantido por compatibilidade).
-- Permissões por linha/registro (só por módulo/menu).
-- Reescrever telas para checagem granular além do que a sidebar já filtra.
+## Arquivos esperados de alteração
+- `supabase/functions` (migração): adicionar `custom_role_id` em `invitations` e atualizar `handle_new_user` / `accept_invitation`.
+- `src/hooks/useUsers.ts`
+- `src/components/dialogs/FinanceInvitationsDialog.tsx`
+- `src/components/dialogs/InvitationsDialog.tsx` (se ainda em uso)
+- `src/lib/permissions.ts`
+- `mem://index.md` (convenção de desenvolvimento)
 
-Confirma que posso implementar assim?
+---
+
+## Notas
+- Nenhuma alteração visual drástica; o objetivo é funcional.
+- Supervisor continua com acesso total e não aparece na matriz.
+- Cargos base (`gerente`, `operador`) continuam funcionando normalmente quando nenhum cargo customizado for selecionado.

@@ -132,7 +132,15 @@ export function useUsers(companyId: string | null) {
     fetchInvitations();
   }, [fetchUsers, fetchInvitations]);
 
-  const createInvitation = async (email: string, role: AppRole, name: string, expiresAt: string, inviteCompanyId?: string, companyLimitValue?: number | null): Promise<{ id: string; tempPassword: string } | null> => {
+  const createInvitation = async (
+    email: string,
+    role: AppRole,
+    name: string,
+    expiresAt: string,
+    inviteCompanyId?: string,
+    companyLimitValue?: number | null,
+    customRoleId?: string | null,
+  ): Promise<{ id: string; tempPassword: string } | null> => {
     const targetCompanyId = inviteCompanyId || companyId;
     if (!targetCompanyId) return null;
 
@@ -169,6 +177,7 @@ export function useUsers(companyId: string | null) {
           token_hash: hashData as string,
           expires_at: expiresAt,
           company_limit: role === 'gerente' ? companyLimitValue : null,
+          custom_role_id: customRoleId || null,
         })
         .select('id')
         .single();

@@ -59,6 +59,8 @@ type AppRole = Database['public']['Enums']['app_role'];
 export type FinanceView =
   | 'dashboard'
   | 'admin-dashboard'
+  | 'admin-users'
+  | 'admin-roles'
   | 'quick-entry'
   | 'accounts'
   | 'transactions'
@@ -97,7 +99,7 @@ export type FinanceView =
   | 'payments-settlements'
   | 'payments-webhooks';
 
-const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'audit-logs', 'bank-digital', 'credit-admin'];
+const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'audit-logs', 'bank-digital', 'credit-admin'];
 // Views available only in normal mode for supervisors
 const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'dashboard',

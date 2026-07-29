@@ -12,6 +12,8 @@ import { StatementPage } from '@/components/finance/StatementPage';
 import { CategoriesPage } from '@/components/finance/CategoriesPage';
 import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
 import { AdminDashboard } from '@/components/finance/AdminDashboard';
+import { AdminUsersPage } from '@/components/admin/AdminUsersPage';
+import { AdminRolesPage } from '@/components/admin/AdminRolesPage';
 import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
 import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
 import { AuditLogsPage } from '@/components/finance/AuditLogsPage';
@@ -265,6 +267,13 @@ const Finance = () => {
     if (effectiveMode === 'admin' && currentView === 'admin-dashboard') {
       return <AdminDashboard />;
     }
+    if (effectiveMode === 'admin' && currentView === 'admin-users') {
+      return <AdminUsersPage />;
+    }
+    if (effectiveMode === 'admin' && currentView === 'admin-roles') {
+      return <AdminRolesPage />;
+    }
+
 
     if (!selectedCompanyId) {
       return (

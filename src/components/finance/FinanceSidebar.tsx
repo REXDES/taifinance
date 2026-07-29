@@ -543,7 +543,7 @@ export function FinanceSidebar({
               /* ============== NORMAL MODE MENU ============== */
               <>
                 {filterAllowed(mainMenuItems).map(renderMenuItem)}
-                {bankDigitalEnabled && renderMenuItem(bankDigitalMenuItem)}
+                {bankDigitalEnabled && can('finance.bank_digital') && renderMenuItem(bankDigitalMenuItem)}
 
                 {/* Gestão Financeira (engloba Transações, Relatórios, Cadastros) */}
                 {collapsed ? (

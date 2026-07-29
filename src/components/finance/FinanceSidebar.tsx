@@ -244,6 +244,18 @@ export function FinanceSidebar({
   const [collapsed, setCollapsed] = useState(false);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
+  const { can } = usePermissions();
+
+  // Filter helper: hide sidebar items whose permission key is denied for this role.
+  // Supervisor and unknown views always pass (unmapped views default to allowed).
+  const filterAllowed = (items: MenuItem[]) =>
+    isAdminMode || isSupervisor
+      ? items
+      : items.filter(i => {
+          const key = VIEW_PERMISSION_KEY[i.view];
+          return !key || can(key);
+        });
+
 
   // Accordion state for top-level groups in normal mode (only one open at a time)
   type TopGroup = 'gestao' | 'machines' | 'credit' | 'payments';

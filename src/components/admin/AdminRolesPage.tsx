@@ -112,73 +112,94 @@ export function AdminRolesPage() {
 
       <Card>
         <CardHeader><CardTitle className="text-base">Matriz de permissões</CardTitle></CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="sticky left-0 bg-background text-left p-2 border-b min-w-[180px]">Cargo</th>
-                {PERMISSION_GROUPS.map(g => (
-                  <th key={g.label} colSpan={g.items.length} className="p-2 border-b border-l text-center bg-muted/50">
-                    {g.label}
-                  </th>
-                ))}
-              </tr>
-              <tr>
-                <th className="sticky left-0 bg-background border-b p-2 text-left">
-                  <span className="text-xs text-muted-foreground">Item</span>
-                </th>
-                {PERMISSION_GROUPS.map(g => g.items.map((it, idx) => (
-                  <th
-                    key={it.key}
-                    className={`p-2 border-b text-xs font-normal text-muted-foreground align-bottom ${idx === 0 ? 'border-l' : ''}`}
-                    style={{ minWidth: 90 }}
-                  >
-                    <div className="rotate-[-40deg] origin-bottom-left whitespace-nowrap translate-y-1">
-                      {it.label}
-                    </div>
-                  </th>
-                )))}
-              </tr>
-            </thead>
-            <tbody>
-              {allRoles.map(role => (
-                <tr key={role.key} className="hover:bg-muted/30">
-                  <td className="sticky left-0 bg-background border-b p-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: role.color }} />
-                      <span className="font-medium">{role.label}</span>
-                      {role.isCustom && <Badge variant="outline" className="text-[10px]">custom</Badge>}
-                    </div>
-                    <div className="mt-1 flex gap-1">
-                      <button
-                        className="text-[10px] text-primary hover:underline"
-                        onClick={() => toggleAll(role.key, ALL_PERMISSIONS.map(p => p.key), true)}
-                      >tudo</button>
-                      <span className="text-[10px] text-muted-foreground">·</span>
-                      <button
-                        className="text-[10px] text-muted-foreground hover:underline"
-                        onClick={() => toggleAll(role.key, ALL_PERMISSIONS.map(p => p.key), false)}
-                      >nada</button>
-                    </div>
-                  </td>
-                  {PERMISSION_GROUPS.map(g => g.items.map((it, idx) => (
-                    <td key={it.key} className={`border-b p-2 text-center ${idx === 0 ? 'border-l' : ''}`}>
-                      <Checkbox
-                        checked={isAllowed(role.key, it.key)}
-                        onCheckedChange={(v) => setAllowed(role.key, it.key, !!v)}
-                      />
-                    </td>
-                  )))}
-                </tr>
+        <CardContent>
+          <Tabs defaultValue="system">
+            <TabsList className="flex flex-wrap h-auto">
+              {MODULE_TABS.map(t => (
+                <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>
               ))}
-            </tbody>
-          </table>
-          <p className="text-xs text-muted-foreground mt-3">
-            Dica: marque um item para liberar o acesso àquele menu/submenu para o cargo selecionado.
-            Enquanto não configurado, o comportamento padrão é liberar (para não travar usuários existentes).
-          </p>
+            </TabsList>
+
+            {MODULE_TABS.map(tab => {
+              const groups: PermissionGroup[] = PERMISSION_GROUPS.filter(g => tab.groups.includes(g.label));
+              const tabItems = groups.flatMap(g => g.items);
+              if (groups.length === 0) return (
+                <TabsContent key={tab.key} value={tab.key}>
+                  <p className="text-sm text-muted-foreground p-4">Nenhuma permissão registrada para este módulo.</p>
+                </TabsContent>
+              );
+              return (
+                <TabsContent key={tab.key} value={tab.key} className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr>
+                        <th className="sticky left-0 bg-background text-left p-2 border-b min-w-[180px]">Cargo</th>
+                        {groups.map(g => (
+                          <th key={g.label} colSpan={g.items.length} className="p-2 border-b border-l text-center bg-muted/50">
+                            {g.label}
+                          </th>
+                        ))}
+                      </tr>
+                      <tr>
+                        <th className="sticky left-0 bg-background border-b p-2 text-left">
+                          <span className="text-xs text-muted-foreground">Item</span>
+                        </th>
+                        {groups.map(g => g.items.map((it, idx) => (
+                          <th
+                            key={it.key}
+                            className={`p-2 border-b text-xs font-normal text-muted-foreground align-bottom ${idx === 0 ? 'border-l' : ''}`}
+                            style={{ minWidth: 90 }}
+                          >
+                            <div className="rotate-[-40deg] origin-bottom-left whitespace-nowrap translate-y-1">
+                              {it.label}
+                            </div>
+                          </th>
+                        )))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allRoles.map(role => (
+                        <tr key={role.key} className="hover:bg-muted/30">
+                          <td className="sticky left-0 bg-background border-b p-2">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ background: role.color }} />
+                              <span className="font-medium">{role.label}</span>
+                              {role.isCustom && <Badge variant="outline" className="text-[10px]">custom</Badge>}
+                            </div>
+                            <div className="mt-1 flex gap-1">
+                              <button
+                                className="text-[10px] text-primary hover:underline"
+                                onClick={() => toggleAll(role.key, tabItems.map(p => p.key), true)}
+                              >tudo</button>
+                              <span className="text-[10px] text-muted-foreground">·</span>
+                              <button
+                                className="text-[10px] text-muted-foreground hover:underline"
+                                onClick={() => toggleAll(role.key, tabItems.map(p => p.key), false)}
+                              >nada</button>
+                            </div>
+                          </td>
+                          {groups.map(g => g.items.map((it, idx) => (
+                            <td key={it.key} className={`border-b p-2 text-center ${idx === 0 ? 'border-l' : ''}`}>
+                              <Checkbox
+                                checked={isAllowed(role.key, it.key)}
+                                onCheckedChange={(v) => setAllowed(role.key, it.key, !!v)}
+                              />
+                            </td>
+                          )))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Dica: os botões "tudo/nada" aplicam apenas às permissões desta aba. Enquanto não configurado, o padrão é liberar.
+                  </p>
+                </TabsContent>
+              );
+            })}
+          </Tabs>
         </CardContent>
       </Card>
+
 
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent>

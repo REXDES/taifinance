@@ -542,15 +542,15 @@ export function FinanceSidebar({
             ) : (
               /* ============== NORMAL MODE MENU ============== */
               <>
-                {mainMenuItems.map(renderMenuItem)}
+                {filterAllowed(mainMenuItems).map(renderMenuItem)}
                 {bankDigitalEnabled && renderMenuItem(bankDigitalMenuItem)}
 
                 {/* Gestão Financeira (engloba Transações, Relatórios, Cadastros) */}
                 {collapsed ? (
                   <>
-                    {transacoesMenuItems.map(renderMenuItem)}
-                    {allRelatoriosItems.map(renderMenuItem)}
-                    {cadastrosMenuItems.map(renderMenuItem)}
+                    {filterAllowed(transacoesMenuItems).map(renderMenuItem)}
+                    {filterAllowed(allRelatoriosItems).map(renderMenuItem)}
+                    {filterAllowed(cadastrosMenuItems).map(renderMenuItem)}
                   </>
                 ) : (
                   <Collapsible open={openGroup === 'gestao'} onOpenChange={setGroup('gestao')}>
@@ -576,7 +576,7 @@ export function FinanceSidebar({
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                          {transacoesMenuItems.map(renderMenuItem)}
+                          {filterAllowed(transacoesMenuItems).map(renderMenuItem)}
                         </CollapsibleContent>
                       </Collapsible>
 
@@ -592,7 +592,7 @@ export function FinanceSidebar({
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                          {relatoriosMainItems.map(renderMenuItem)}
+                          {filterAllowed(relatoriosMainItems).map(renderMenuItem)}
 
                           <Collapsible defaultOpen={movimentacoesMenuItems.some(item => currentView === item.view)}>
                             <CollapsibleTrigger asChild>
@@ -605,7 +605,7 @@ export function FinanceSidebar({
                               </Button>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                              {movimentacoesMenuItems.map(renderMenuItem)}
+                              {filterAllowed(movimentacoesMenuItems).map(renderMenuItem)}
                             </CollapsibleContent>
                           </Collapsible>
 
@@ -620,7 +620,7 @@ export function FinanceSidebar({
                               </Button>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                              {pagarReceberMenuItems.map(renderMenuItem)}
+                              {filterAllowed(pagarReceberMenuItems).map(renderMenuItem)}
                             </CollapsibleContent>
                           </Collapsible>
                         </CollapsibleContent>
@@ -638,7 +638,7 @@ export function FinanceSidebar({
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                          {cadastrosMenuItems.map(renderMenuItem)}
+                          {filterAllowed(cadastrosMenuItems).map(renderMenuItem)}
                         </CollapsibleContent>
                       </Collapsible>
                     </CollapsibleContent>
@@ -648,7 +648,7 @@ export function FinanceSidebar({
                 {/* Máquinas & Locação (módulo opcional por empresa) */}
                 {machinesEnabled && (
                   collapsed ? (
-                    machinesMenuItems.map(renderMenuItem)
+                    filterAllowed(machinesMenuItems).map(renderMenuItem)
                   ) : (
                     <Collapsible open={openGroup === 'machines'} onOpenChange={setGroup('machines')}>
                       <CollapsibleTrigger asChild>
@@ -661,7 +661,7 @@ export function FinanceSidebar({
                         </Button>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                        {machinesTopMenuItems.map(renderMenuItem)}
+                        {filterAllowed(machinesTopMenuItems).map(renderMenuItem)}
 
                         <Collapsible defaultOpen={machinesGestaoMenuItems.some(i => currentView === i.view)}>
                           <CollapsibleTrigger asChild>
@@ -674,7 +674,7 @@ export function FinanceSidebar({
                             </Button>
                           </CollapsibleTrigger>
                           <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                            {machinesGestaoMenuItems.map(renderMenuItem)}
+                            {filterAllowed(machinesGestaoMenuItems).map(renderMenuItem)}
                           </CollapsibleContent>
                         </Collapsible>
 
@@ -689,7 +689,7 @@ export function FinanceSidebar({
                             </Button>
                           </CollapsibleTrigger>
                           <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                            {machinesCadastrosMenuItems.map(renderMenuItem)}
+                            {filterAllowed(machinesCadastrosMenuItems).map(renderMenuItem)}
                           </CollapsibleContent>
                         </Collapsible>
                       </CollapsibleContent>
@@ -701,8 +701,8 @@ export function FinanceSidebar({
                 {creditEnabled && (
                   collapsed ? (
                     <>
-                      {creditMenuItems.map(renderMenuItem)}
-                      {(isSupervisor || isGerente) && creditAdminMenuItems.map(renderMenuItem)}
+                      {filterAllowed(creditMenuItems).map(renderMenuItem)}
+                      {(isSupervisor || isGerente) && filterAllowed(creditAdminMenuItems).map(renderMenuItem)}
                     </>
                   ) : (
                     <Collapsible open={openGroup === 'credit'} onOpenChange={setGroup('credit')}>
@@ -716,8 +716,8 @@ export function FinanceSidebar({
                         </Button>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                        {creditMenuItems.map(renderMenuItem)}
-                        {(isSupervisor || isGerente) && creditAdminMenuItems.map(renderMenuItem)}
+                        {filterAllowed(creditMenuItems).map(renderMenuItem)}
+                        {(isSupervisor || isGerente) && filterAllowed(creditAdminMenuItems).map(renderMenuItem)}
                       </CollapsibleContent>
                     </Collapsible>
                   )
@@ -726,7 +726,7 @@ export function FinanceSidebar({
                 {/* Pagamentos - Cappta (módulo opcional por empresa) */}
                 {paymentsEnabled && (
                   collapsed ? (
-                    paymentsMenuItems.map(renderMenuItem)
+                    filterAllowed(paymentsMenuItems).map(renderMenuItem)
                   ) : (
                     <Collapsible open={openGroup === 'payments'} onOpenChange={setGroup('payments')}>
                       <CollapsibleTrigger asChild>
@@ -739,7 +739,7 @@ export function FinanceSidebar({
                         </Button>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                        {paymentsMenuItems.map(renderMenuItem)}
+                        {filterAllowed(paymentsMenuItems).map(renderMenuItem)}
                       </CollapsibleContent>
                     </Collapsible>
                   )

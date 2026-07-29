@@ -27,6 +27,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { useUsers } from '@/hooks/useUsers';
 import { useProjects } from '@/hooks/useProjects';
+import { useCustomRoles } from '@/hooks/useCustomRoles';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Mail, Plus, Trash2, Clock, CalendarIcon, Copy, Check, ChevronDown, ChevronRight, FolderOpen, Layers } from 'lucide-react';
@@ -79,6 +80,8 @@ export function InvitationsDialog({ open, onOpenChange, companyId }: Invitations
   const [accessAll, setAccessAll] = useState(true);
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [selectedElements, setSelectedElements] = useState<Set<string>>(new Set());
+  const [customRoleId, setCustomRoleId] = useState<string | null>(null);
+  const { roles: customRoles } = useCustomRoles();
 
   useEffect(() => {
     const checkSupervisor = async () => {
@@ -174,7 +177,7 @@ export function InvitationsDialog({ open, onOpenChange, companyId }: Invitations
     if (!email.trim() || !name.trim()) return;
     
     setSaving(true);
-    const result = await createInvitation(email.trim(), role, name.trim(), expiresAt.toISOString());
+    const result = await createInvitation(email.trim(), role, name.trim(), expiresAt.toISOString(), undefined, undefined, customRoleId);
     
     if (result) {
       // Save access selections
@@ -246,6 +249,7 @@ export function InvitationsDialog({ open, onOpenChange, companyId }: Invitations
     setSelectedProjects(new Set());
     setSelectedElements(new Set());
     setExpandedProjects(new Set());
+    setCustomRoleId(null);
   };
 
   const totalAccessSelected = selectedProjects.size + selectedElements.size;
@@ -353,6 +357,27 @@ export function InvitationsDialog({ open, onOpenChange, companyId }: Invitations
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Custom role selector */}
+              {customRoles.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="inviteCustomRole">Cargo customizado (opcional)</Label>
+                  <Select value={customRoleId || 'none'} onValueChange={(v) => setCustomRoleId(v === 'none' ? null : v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {customRoles.map(r => (
+                        <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Se informado, as permissões do cargo customizado serão aplicadas ao usuário após aceitar o convite.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Validade do Convite</Label>

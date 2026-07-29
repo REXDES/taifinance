@@ -1820,6 +1820,7 @@ export type Database = {
           company_id: string
           company_limit: number | null
           created_at: string
+          custom_role_id: string | null
           email: string
           expires_at: string
           id: string
@@ -1835,6 +1836,7 @@ export type Database = {
           company_id: string
           company_limit?: number | null
           created_at?: string
+          custom_role_id?: string | null
           email: string
           expires_at?: string
           id?: string
@@ -1850,6 +1852,7 @@ export type Database = {
           company_id?: string
           company_limit?: number | null
           created_at?: string
+          custom_role_id?: string | null
           email?: string
           expires_at?: string
           id?: string
@@ -1866,6 +1869,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitations_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "custom_roles"
             referencedColumns: ["id"]
           },
         ]

@@ -29,6 +29,7 @@ import {
   Zap,
   Landmark,
   Shield,
+  ShieldCheck,
   LayoutDashboard,
   Wrench,
   Truck,

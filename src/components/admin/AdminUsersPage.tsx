@@ -63,7 +63,7 @@ export function AdminUsersPage() {
     });
 
     const merged: AdminUserRow[] = (profilesRes.data || []).map((p: any) => {
-      const r = rolesByUser.get(p.user_id);
+      const r = rolesByUser.get(p.user_id) as any;
       return {
         user_id: p.user_id,
         email: p.email,

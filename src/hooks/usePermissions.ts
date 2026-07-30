@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -62,12 +62,12 @@ export function usePermissions() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  const can = (key: string) => {
+  const can = useCallback((key: string) => {
     if (isSupervisor) return true;
     if (loading) return false;
     if (key in allowedMap) return allowedMap[key];
     return !configured && !hasCustomRole;
-  };
+  }, [allowedMap, configured, hasCustomRole, isSupervisor, loading]);
 
 
   return { can, isSupervisor, loading };

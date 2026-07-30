@@ -55,6 +55,8 @@ import { PaymentsSettlementsPage } from '@/components/payments/PaymentsSettlemen
 import { PaymentsWebhooksPage } from '@/components/payments/PaymentsWebhooksPage';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { usePermissions } from '@/hooks/usePermissions';
+import { FINANCE_VIEW_PERMISSION_KEY } from '@/lib/permissions';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -162,11 +164,13 @@ const Finance = () => {
   const [showUsers, setShowUsers] = useState(false);
   const [showInvitations, setShowInvitations] = useState(false);
   const [showCompanySettings, setShowCompanySettings] = useState(false);
+  const { can, loading: permissionsLoading } = usePermissions();
 
   const isSupervisor = userRole?.role === 'supervisor';
   const isGerente = userRole?.role === 'gerente';
-  const canAccessUserManagement = isSupervisor || isGerente;
-  const canCreateCompany = isSupervisor || (isGerente && userRole?.companyLimit !== null && (userRole?.companiesCreated ?? 0) < (userRole?.companyLimit ?? 0));
+  const canAccessUserManagement = isSupervisor || (isGerente && can('admin.users'));
+  const canCreateCompany = isSupervisor || (isGerente && can('admin.companies') && userRole?.companyLimit !== null && (userRole?.companiesCreated ?? 0) < (userRole?.companyLimit ?? 0));
+  const canInviteUsers = isSupervisor || (isGerente && can('admin.invitations') && userRole?.invitationLimit !== null && (userRole?.invitationsCreated ?? 0) < (userRole?.invitationLimit ?? 0));
 
   // Force non-supervisors to "normal" mode automatically
   useEffect(() => {
@@ -193,6 +197,20 @@ const Finance = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveMode, showAccessModeDialog]);
+
+  // Impede que uma tela sem permissão permaneça aberta por estado anterior,
+  // atualização de cargo ou manipulação direta da navegação.
+  useEffect(() => {
+    if (permissionsLoading || isSupervisor || effectiveMode === 'admin') return;
+    const currentKey = FINANCE_VIEW_PERMISSION_KEY[currentView];
+    if (currentKey && can(currentKey)) return;
+
+    const firstAllowedView = NORMAL_ONLY_VIEWS.find(view => {
+      const key = FINANCE_VIEW_PERMISSION_KEY[view];
+      return !!key && can(key);
+    });
+    if (firstAllowedView && firstAllowedView !== currentView) setCurrentView(firstAllowedView);
+  }, [permissionsLoading, isSupervisor, effectiveMode, currentView, can]);
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -281,6 +299,17 @@ const Finance = () => {
           <p className="text-muted-foreground">Selecione uma empresa para começar</p>
         </div>
       );
+    }
+
+    if (permissionsLoading) {
+      return <div className="flex-1 flex items-center justify-center text-muted-foreground">Carregando permissões...</div>;
+    }
+
+    if (!isSupervisor) {
+      const permissionKey = FINANCE_VIEW_PERMISSION_KEY[currentView];
+      if (!permissionKey || !can(permissionKey)) {
+        return <div className="flex-1 flex items-center justify-center text-muted-foreground">Acesso não autorizado para esta função.</div>;
+      }
     }
 
     switch (currentView) {
@@ -379,7 +408,7 @@ const Finance = () => {
         canCreateCompany={canCreateCompany}
         companyLimit={userRole?.companyLimit ?? null}
         companiesCreated={userRole?.companiesCreated ?? 0}
-        canInvite={isSupervisor || (isGerente && userRole?.invitationLimit !== null && (userRole?.invitationsCreated ?? 0) < (userRole?.invitationLimit ?? 0))}
+        canInvite={canInviteUsers}
         invitationLimit={userRole?.invitationLimit ?? null}
         invitationsCreated={userRole?.invitationsCreated ?? 0}
         onCreateCompany={() => setIsCreateCompanyOpen(true)}

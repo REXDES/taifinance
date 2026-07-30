@@ -42,6 +42,9 @@ export function usePermissions() {
       const map: Record<string, boolean> = {};
       (perms || []).forEach((p: any) => { map[p.permission_key] = !!p.allowed; });
       setAllowedMap(map);
+      // Se a matriz já foi configurada para o cargo deste usuário, ela é a fonte da verdade:
+      // qualquer key sem registro é considerada BLOQUEADA.
+      setConfigured((perms || []).length > 0);
       setLoading(false);
     };
     load();
@@ -51,8 +54,9 @@ export function usePermissions() {
   const can = (key: string) => {
     if (isSupervisor) return true;
     if (key in allowedMap) return allowedMap[key];
-    return true; // sensible default when matrix hasn't been configured yet
+    return !configured; // matriz configurada => nega o que não foi liberado
   };
+
 
   return { can, isSupervisor, loading };
 }

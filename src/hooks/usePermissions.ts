@@ -12,7 +12,9 @@ export function usePermissions() {
   const { user } = useAuth();
   const [isSupervisor, setIsSupervisor] = useState(false);
   const [allowedMap, setAllowedMap] = useState<Record<string, boolean>>({});
+  const [configured, setConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     let cancelled = false;

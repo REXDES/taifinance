@@ -104,6 +104,50 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
 
 export const ALL_PERMISSIONS: PermissionDef[] = PERMISSION_GROUPS.flatMap(g => g.items);
 
+// Fonte única para relacionar telas do Finance às permissões da matriz.
+// Toda tela funcional deve estar mapeada para que a navegação e o conteúdo
+// usem exatamente a mesma regra de autorização.
+export const FINANCE_VIEW_PERMISSION_KEY: Record<string, string> = {
+  dashboard: 'finance.dashboard',
+  'quick-entry': 'finance.quick_entry',
+  accounts: 'finance.accounts',
+  transactions: 'finance.transactions',
+  transfers: 'finance.transfers',
+  'payables-receivables': 'finance.payables_receivables',
+  'split-pix': 'finance.split_pix',
+  'bank-digital': 'finance.bank_digital',
+  balance: 'reports.balance_sheet',
+  statement: 'reports.statement',
+  'cash-flow': 'reports.cash_flow',
+  'category-report': 'reports.category',
+  'payables-receivables-report': 'reports.payables_receivables',
+  'payables-receivables-calendar': 'reports.payables_receivables_calendar',
+  'payables-receivables-flow': 'reports.payables_receivables_flow',
+  'audit-logs': 'reports.audit_logs',
+  categories: 'registry.categories',
+  tags: 'registry.tags',
+  'clients-suppliers': 'registry.clients_suppliers',
+  'machines-dashboard': 'machines.dashboard',
+  'machines-inventory': 'machines.inventory',
+  'machines-rentals': 'machines.rentals',
+  'machines-pricing': 'machines.pricing',
+  'machines-maintenance': 'machines.maintenance',
+  'machines-operators': 'machines.operators',
+  'machines-mechanics': 'machines.mechanics',
+  'machines-catalog': 'machines.catalog',
+  'payments-dashboard': 'payments.dashboard',
+  'payments-charges': 'payments.charges',
+  'payments-transactions': 'payments.transactions',
+  'payments-settlements': 'payments.settlements',
+  'payments-terminals': 'payments.terminals',
+  'payments-merchants': 'payments.merchants',
+  'payments-plans': 'payments.plans',
+  'payments-webhooks': 'payments.webhooks',
+  'credit-applications': 'credit.applications',
+  'credit-ignored': 'credit.ignored',
+  'credit-admin': 'credit.admin',
+};
+
 /**
  * Retorna o rótulo legível de uma permissão a partir da sua key.
  * Útil para exibir nomes de módulos em mensagens, logs ou telas dinâmicas.

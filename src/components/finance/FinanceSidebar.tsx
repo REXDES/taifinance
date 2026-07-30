@@ -60,49 +60,7 @@ import {
 } from '@/components/ui/collapsible';
 import { FinanceView } from '@/pages/Finance';
 import { usePermissions } from '@/hooks/usePermissions';
-
-// Maps each FinanceView (sidebar item) to a permission key from PERMISSION_GROUPS.
-// Views not listed here are always allowed (base navigation, admin-only, etc.).
-const VIEW_PERMISSION_KEY: Partial<Record<FinanceView, string>> = {
-  'dashboard': 'finance.dashboard',
-  'quick-entry': 'finance.quick_entry',
-  'accounts': 'finance.accounts',
-  'transactions': 'finance.transactions',
-  'transfers': 'finance.transfers',
-  'payables-receivables': 'finance.payables_receivables',
-  'split-pix': 'finance.split_pix',
-  'bank-digital': 'finance.bank_digital',
-  'balance': 'reports.balance_sheet',
-  'statement': 'reports.statement',
-  'cash-flow': 'reports.cash_flow',
-  'category-report': 'reports.category',
-  'payables-receivables-report': 'reports.payables_receivables',
-  'payables-receivables-calendar': 'reports.payables_receivables_calendar',
-  'payables-receivables-flow': 'reports.payables_receivables_flow',
-  'audit-logs': 'reports.audit_logs',
-  'categories': 'registry.categories',
-  'tags': 'registry.tags',
-  'clients-suppliers': 'registry.clients_suppliers',
-  'machines-dashboard': 'machines.dashboard',
-  'machines-inventory': 'machines.inventory',
-  'machines-rentals': 'machines.rentals',
-  'machines-pricing': 'machines.pricing',
-  'machines-maintenance': 'machines.maintenance',
-  'machines-operators': 'machines.operators',
-  'machines-mechanics': 'machines.mechanics',
-  'machines-catalog': 'machines.catalog',
-  'payments-dashboard': 'payments.dashboard',
-  'payments-charges': 'payments.charges',
-  'payments-transactions': 'payments.transactions',
-  'payments-settlements': 'payments.settlements',
-  'payments-terminals': 'payments.terminals',
-  'payments-merchants': 'payments.merchants',
-  'payments-plans': 'payments.plans',
-  'payments-webhooks': 'payments.webhooks',
-  'credit-applications': 'credit.applications',
-  'credit-ignored': 'credit.ignored',
-  'credit-admin': 'credit.admin',
-};
+import { FINANCE_VIEW_PERMISSION_KEY } from '@/lib/permissions';
 
 interface Company {
   id: string;
@@ -252,8 +210,8 @@ export function FinanceSidebar({
     isAdminMode || isSupervisor
       ? items
       : items.filter(i => {
-          const key = VIEW_PERMISSION_KEY[i.view];
-          return !key || can(key);
+           const key = FINANCE_VIEW_PERMISSION_KEY[i.view];
+           return !!key && can(key);
         });
 
 
@@ -747,7 +705,7 @@ export function FinanceSidebar({
 
 
                 {/* Configurações da Empresa (supervisor e gerente) */}
-                {selectedCompanyId && onOpenCompanySettings && (isSupervisor || isGerente) && (
+                {selectedCompanyId && onOpenCompanySettings && (isSupervisor || (isGerente && can('admin.companies'))) && (
                   collapsed ? (
                     <Tooltip>
                       <TooltipTrigger asChild>

@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+interface EffectivePermission {
+  permission_key: string;
+  allowed: boolean;
+}
+
 /**
  * Loads the current user's effective permissions and exposes a `can(key)` helper.
  * Supervisor bypasses everything (always true).
@@ -46,11 +51,13 @@ export function usePermissions() {
       setIsSupervisor(false);
       setHasCustomRole(!!roleRow?.custom_role_id);
 
-      const { data: perms, error } = await (supabase as any).rpc('get_user_permissions', { _user_id: user.id });
+      const { data: perms, error } = await supabase.rpc('get_user_permissions', { _user_id: user.id });
       if (cancelled) return;
 
       const map: Record<string, boolean> = {};
-      (perms || []).forEach((p: any) => { map[p.permission_key] = !!p.allowed; });
+      ((perms || []) as EffectivePermission[]).forEach((permission) => {
+        map[permission.permission_key] = !!permission.allowed;
+      });
       setAllowedMap(map);
       // Se a matriz já foi configurada para o cargo deste usuário, ela é a fonte da verdade:
       // qualquer key sem registro é considerada BLOQUEADA.

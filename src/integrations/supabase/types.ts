@@ -3178,6 +3178,222 @@ export type Database = {
           },
         ]
       }
+      statement_imports: {
+        Row: {
+          account_id: string | null
+          bank_name: string | null
+          closing_balance: number | null
+          company_id: string
+          computed_closing_balance: number | null
+          created_at: string
+          created_by: string | null
+          file_format: string
+          file_name: string
+          id: string
+          notes: string | null
+          opening_balance: number | null
+          period_end: string | null
+          period_start: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          bank_name?: string | null
+          closing_balance?: number | null
+          company_id: string
+          computed_closing_balance?: number | null
+          created_at?: string
+          created_by?: string | null
+          file_format?: string
+          file_name: string
+          id?: string
+          notes?: string | null
+          opening_balance?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          bank_name?: string | null
+          closing_balance?: number | null
+          company_id?: string
+          computed_closing_balance?: number | null
+          created_at?: string
+          created_by?: string | null
+          file_format?: string
+          file_name?: string
+          id?: string
+          notes?: string | null
+          opening_balance?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_imports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_imports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statement_lines: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          date: string
+          duplicate_of_transaction_id: string | null
+          duplicate_reason: string | null
+          external_id: string | null
+          fingerprint: string | null
+          id: string
+          import_id: string
+          line_index: number
+          payable_receivable_id: string | null
+          raw_description: string
+          reconciled_at: string | null
+          reconciled_by: string | null
+          running_balance: number | null
+          status: string
+          suggested_account_id: string | null
+          suggested_category_id: string | null
+          suggested_description: string | null
+          suggested_subcategory_id: string | null
+          suggestion_confidence: number | null
+          suggestion_source: string | null
+          transaction_id: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          created_at?: string
+          date: string
+          duplicate_of_transaction_id?: string | null
+          duplicate_reason?: string | null
+          external_id?: string | null
+          fingerprint?: string | null
+          id?: string
+          import_id: string
+          line_index?: number
+          payable_receivable_id?: string | null
+          raw_description: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          running_balance?: number | null
+          status?: string
+          suggested_account_id?: string | null
+          suggested_category_id?: string | null
+          suggested_description?: string | null
+          suggested_subcategory_id?: string | null
+          suggestion_confidence?: number | null
+          suggestion_source?: string | null
+          transaction_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          date?: string
+          duplicate_of_transaction_id?: string | null
+          duplicate_reason?: string | null
+          external_id?: string | null
+          fingerprint?: string | null
+          id?: string
+          import_id?: string
+          line_index?: number
+          payable_receivable_id?: string | null
+          raw_description?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          running_balance?: number | null
+          status?: string
+          suggested_account_id?: string | null
+          suggested_category_id?: string | null
+          suggested_description?: string | null
+          suggested_subcategory_id?: string | null
+          suggestion_confidence?: number | null
+          suggestion_source?: string | null
+          transaction_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_lines_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_lines_duplicate_of_transaction_id_fkey"
+            columns: ["duplicate_of_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_lines_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "statement_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_lines_payable_receivable_id_fkey"
+            columns: ["payable_receivable_id"]
+            isOneToOne: false
+            referencedRelation: "payables_receivables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_lines_suggested_account_id_fkey"
+            columns: ["suggested_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_lines_suggested_category_id_fkey"
+            columns: ["suggested_category_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_lines_suggested_subcategory_id_fkey"
+            columns: ["suggested_subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_subcategories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_lines_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       status_configs: {
         Row: {
           color: string

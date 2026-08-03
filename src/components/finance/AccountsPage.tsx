@@ -302,6 +302,20 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
                   />
                 </div>
                 <div>
+                  <Label>Tolerância de conciliação (R$)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={accountForm.reconciliation_tolerance}
+                    onChange={(e) => setAccountForm({ ...accountForm, reconciliation_tolerance: e.target.value })}
+                    placeholder="0,00"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Diferenças de saldo até esse valor poderão ser ajustadas automaticamente.
+                  </p>
+                </div>
+                <div>
                   <Label>Cor</Label>
                   <Input
                     type="color"

@@ -323,6 +323,8 @@ export function StatementImportPage({ companyId }: Props) {
   const appAccount = currentImport?.account_id ? accounts.find((a) => a.id === currentImport.account_id) : null;
   const appBalance = appAccount?.current_balance ?? null;
   const appBalanceDiff = informedClosing !== null && appBalance !== null ? Number((informedClosing - appBalance).toFixed(2)) : null;
+  const tolerance = appAccount?.reconciliation_tolerance ?? 0;
+  const withinTolerance = appBalanceDiff !== null && Math.abs(appBalanceDiff) <= Math.max(tolerance, 0.01);
 
 
   // Continuidade da linha do tempo: procura buracos entre importações da mesma conta

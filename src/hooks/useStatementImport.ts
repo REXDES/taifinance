@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
+import { setEntityTags } from '@/hooks/useFinanceTags';
 import { toast } from 'sonner';
+
+const RECEIPT_BUCKET = 'statement-receipts';
 
 export type StatementImportStatus = 'pending' | 'partial' | 'done';
 

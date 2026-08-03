@@ -289,18 +289,27 @@ export function StatementImportPage({ companyId }: Props) {
   const reconciled = lines.filter((l) => l.status === 'reconciled').length;
   const duplicates = lines.filter((l) => l.duplicate_of_transaction_id && l.status === 'pending').length;
 
-  // Situação real da importação: só marca "Conciliado" quando existem linhas e nenhuma está pendente.
+  // Situação real da importação: marcar "Conciliado" quando não há pendentes ou quando o usuário encerrou manualmente.
   const derivedStatus: 'pending' | 'partial' | 'done' | null =
-    linesLoading || lines.length === 0 ? null : pending === 0 ? 'done' : pending === lines.length ? 'pending' : 'partial';
+    linesLoading || lines.length === 0
+      ? null
+      : currentImport?.status === 'done'
+        ? 'done'
+        : pending === 0
+          ? 'done'
+          : pending === lines.length
+            ? 'pending'
+            : 'partial';
 
   useEffect(() => {
+    if (finishing) return;
     if (!currentImport || !derivedStatus) return;
     if (currentImport.status === derivedStatus) return;
     (async () => {
       await setImportStatus(currentImport.id, derivedStatus);
       await refetchImports();
     })();
-  }, [currentImport?.id, currentImport?.status, derivedStatus, refetchImports]);
+  }, [currentImport?.id, currentImport?.status, derivedStatus, refetchImports, finishing]);
 
 
   const sumSigned = lines.reduce((s, l) => s + (l.type === 'income' ? l.amount : -l.amount), 0);

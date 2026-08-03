@@ -883,6 +883,49 @@ export function StatementImportPage({ companyId }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={finishOpen} onOpenChange={(open) => !open && setFinishOpen(false)}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Encerrar conciliação</DialogTitle>
+            <DialogDescription>
+              O saldo do extrato já está batendo com o saldo calculado. Você pode encerrar sem efetivar as linhas
+              restantes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {pending > 0 && (
+              <div className="flex items-start gap-3 rounded-md border p-3">
+                <Checkbox
+                  id="ignore-remaining"
+                  checked={ignoreRemaining}
+                  onCheckedChange={(checked) => setIgnoreRemaining(!!checked)}
+                />
+                <div className="grid gap-1">
+                  <Label htmlFor="ignore-remaining" className="font-medium">
+                    Ignorar {pending} linha(s) pendente(s)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    As linhas marcadas como ignoradas não gerarão transações e não aparecerão em novas conciliações.
+                  </p>
+                </div>
+              </div>
+            )}
+            {pending === 0 && (
+              <p className="text-sm text-muted-foreground">Não há linhas pendentes. A conciliação será encerrada.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinishOpen(false)} disabled={finishing}>
+              Cancelar
+            </Button>
+            <Button onClick={handleFinishReconciliation} disabled={finishing}>
+              {finishing ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+              Encerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

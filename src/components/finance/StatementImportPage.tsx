@@ -757,6 +757,35 @@ export function StatementImportPage({ companyId }: Props) {
         A situação da importação é atualizada automaticamente conforme as linhas são conciliadas ou ignoradas.
       </div>
 
+      <input
+        ref={lineReceiptRef}
+        type="file"
+        accept="image/*,.pdf,.txt"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleLineReceipt(file);
+        }}
+      />
+
+      <Dialog open={!!detailsLine} onOpenChange={(open) => !open && setDetailsLine(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do comprovante</DialogTitle>
+            <DialogDescription>{detailsLine?.receipt_name}</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm whitespace-pre-wrap text-muted-foreground">{detailsLine?.receipt_details}</p>
+          <DialogFooter>
+            {detailsLine?.receipt_path && (
+              <Button variant="outline" onClick={() => openReceipt(detailsLine.receipt_path!)}>
+                <ExternalLink className="w-4 h-4 mr-2" /> Abrir arquivo
+              </Button>
+            )}
+            <Button onClick={() => setDetailsLine(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       <Dialog open={!!settleLine} onOpenChange={(open) => !open && setSettleLine(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">

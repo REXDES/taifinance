@@ -631,7 +631,7 @@ export interface ReceiptAnalysis {
   confidence: number | null;
 }
 
-interface ReceiptContext {
+export interface ReceiptContext {
   categories: { id: string; name: string; type: string; subcategories?: { id: string; name: string }[] }[];
   tags: { id: string; name: string }[];
 }
@@ -689,6 +689,21 @@ export async function getReceiptUrl(path: string) {
   const { data, error } = await supabase.storage.from(RECEIPT_BUCKET).createSignedUrl(path, 3600);
   if (error) throw error;
   return data.signedUrl;
+}
+
+/** Lê um comprovante com IA e devolve os dados interpretados (sem vincular a extrato). */
+export async function analyzeReceiptFile(file: File, ctx: ReceiptContext): Promise<ReceiptAnalysis> {
+  const read = await readReceipt(file);
+  const raw = await callParser({
+    action: 'receipt',
+    fileName: file.name,
+    mimeType: read.mimeType,
+    fileBase64: read.fileBase64,
+    text: read.text,
+    categories: ctx.categories,
+    tags: ctx.tags,
+  });
+  return sanitizeAnalysis(raw, ctx, file.name);
 }
 
 /** Anexa um comprovante a uma linha do extrato, lê os detalhes com IA e atualiza as sugestões. */

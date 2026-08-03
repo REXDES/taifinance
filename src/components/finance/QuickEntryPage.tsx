@@ -150,6 +150,13 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
 
     setSubmitting(true);
     try {
+      let receiptPath: string | null = null;
+      if (receiptFile) {
+        try { receiptPath = await uploadReceiptFile(companyId, receiptFile, 'quick-entry'); } catch {}
+      }
+      const notes = [receiptDetails, receiptPath ? `Comprovante: ${receiptPath}` : null]
+        .filter(Boolean).join('\n') || undefined;
+
       const created = await createTransaction({
         account_id: selectedAccountId,
         category_id: subcatInfo?.category_id,
@@ -158,6 +165,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         type: isIncome ? 'income' : 'expense',
         description: description || (isIncome ? 'Receita rápida' : 'Despesa rápida'),
         date: selectedDate.toISOString().split('T')[0],
+        notes,
       });
 
       if (created && selectedTags.length > 0) {
@@ -175,6 +183,9 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       setShowMoreSubcategories(false);
       setSelectedDate(new Date());
       setSelectedTags([]);
+      setReceiptFile(null);
+      setReceiptDetails(null);
+
       
       // Refetch recent selections
       refetchRecent();

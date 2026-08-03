@@ -73,6 +73,10 @@ export function StatementImportPage({ companyId }: Props) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [settleLine, setSettleLine] = useState<StatementLine | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const receiptsRef = useRef<HTMLInputElement>(null);
+  const lineReceiptRef = useRef<HTMLInputElement>(null);
+  const [receiptTargetLine, setReceiptTargetLine] = useState<StatementLine | null>(null);
+  const [detailsLine, setDetailsLine] = useState<StatementLine | null>(null);
 
   const currentImport = imports.find((i) => i.id === selectedImportId) || null;
 
@@ -81,6 +85,62 @@ export function StatementImportPage({ companyId }: Props) {
     [categories]
   );
   const accountsPayload = useMemo(() => accounts.map((a) => ({ id: a.id, name: a.name })), [accounts]);
+  const tagsPayload = useMemo(() => tags.map((t) => ({ id: t.id, name: t.name })), [tags]);
+  const receiptCtx = useMemo(() => ({ categories: categoriesPayload, tags: tagsPayload }), [categoriesPayload, tagsPayload]);
+
+  const openReceiptPicker = (line: StatementLine) => {
+    setReceiptTargetLine(line);
+    setTimeout(() => lineReceiptRef.current?.click(), 0);
+  };
+
+  const handleLineReceipt = async (file: File) => {
+    const line = receiptTargetLine;
+    if (!line) return;
+    setBusyLine(line.id);
+    try {
+      await attachReceiptToLine(line, file, receiptCtx);
+      await refetchLines();
+      toast.success('Comprovante anexado e sugestões atualizadas');
+    } catch (error) {
+      toast.error('Erro ao anexar comprovante: ' + ((error as Error).message || 'desconhecido'));
+    } finally {
+      setBusyLine(null);
+      setReceiptTargetLine(null);
+      if (lineReceiptRef.current) lineReceiptRef.current.value = '';
+    }
+  };
+
+  const openReceipt = async (path: string) => {
+    try {
+      const url = await getReceiptUrl(path);
+      window.open(url, '_blank', 'noopener');
+    } catch (error) {
+      toast.error('Erro ao abrir comprovante: ' + (error as Error).message);
+    }
+  };
+
+  const handleReceiptsUpload = async (files: File[]) => {
+    setUploading(true);
+    try {
+      const { importRow, skipped } = await createReceiptsImport({
+        companyId,
+        accountId: accountId || null,
+        files,
+        ctx: receiptCtx,
+      });
+      await refetchImports();
+      selectImport(importRow.id);
+      toast.success(
+        `Comprovantes lidos com sucesso${skipped ? ` (${skipped} sem valor/data identificados foram ignorados)` : ''}`
+      );
+    } catch (error) {
+      toast.error('Erro ao ler comprovantes: ' + ((error as Error).message || 'desconhecido'));
+    } finally {
+      setUploading(false);
+      if (receiptsRef.current) receiptsRef.current.value = '';
+    }
+  };
+
 
   const handleUpload = async (file: File) => {
     setUploading(true);

@@ -631,7 +631,7 @@ export interface ReceiptAnalysis {
   confidence: number | null;
 }
 
-interface ReceiptContext {
+export interface ReceiptContext {
   categories: { id: string; name: string; type: string; subcategories?: { id: string; name: string }[] }[];
   tags: { id: string; name: string }[];
 }

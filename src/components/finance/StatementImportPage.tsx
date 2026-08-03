@@ -319,6 +319,11 @@ export function StatementImportPage({ companyId }: Props) {
   const informedClosing = currentImport?.closing_balance ?? null;
   const balanceDiff = computed !== null && informedClosing !== null ? Number((informedClosing - computed).toFixed(2)) : null;
 
+  const appAccount = currentImport?.account_id ? accounts.find((a) => a.id === currentImport.account_id) : null;
+  const appBalance = appAccount?.current_balance ?? null;
+  const appBalanceDiff = informedClosing !== null && appBalance !== null ? Number((informedClosing - appBalance).toFixed(2)) : null;
+
+
   // Continuidade da linha do tempo: procura buracos entre importações da mesma conta
   const timelineGap = useMemo(() => {
     if (!currentImport?.account_id || !currentImport.period_start) return null;
@@ -542,6 +547,18 @@ export function StatementImportPage({ companyId }: Props) {
         </CardContent></Card>
       </div>
 
+      {appBalanceDiff !== null && Math.abs(appBalanceDiff) >= 0.01 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="w-4 h-4" />
+          <AlertTitle>Saldo do app diverge do extrato</AlertTitle>
+          <AlertDescription>
+            O saldo atual da conta <strong>{appAccount?.name}</strong> no app é {currency(appBalance)}, mas o extrato
+            importado informa saldo final de {currency(informedClosing)} (diferença de {currency(appBalanceDiff)}).{' '}
+            É necessário efetivar os lançamentos pendentes para equalizar os saldos antes de encerrar a conciliação.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {balanceDiff !== null && Math.abs(balanceDiff) >= 0.01 && (
         <Alert variant="destructive">
           <AlertTriangle className="w-4 h-4" />
@@ -561,15 +578,20 @@ export function StatementImportPage({ companyId }: Props) {
           <AlertDescription className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <span>
               Saldo inicial {currency(currentImport?.opening_balance)} + movimentações {currency(sumSigned)} ={' '}
-              {currency(computed)}, igual ao saldo final informado pelo extrato. Você pode encerrar a conciliação sem
-              efetivar as linhas restantes.
+              {currency(computed)}, igual ao saldo final informado pelo extrato.
+              {appBalanceDiff !== null && Math.abs(appBalanceDiff) >= 0.01 && (
+                <> No entanto, o saldo da conta no app ainda diverge — efetive os lançamentos pendentes para encerrar.</>
+              )}
             </span>
-            <Button size="sm" variant="default" onClick={() => setFinishOpen(true)}>
-              <CheckCircle2 className="w-4 h-4 mr-2" /> Encerrar conciliação
-            </Button>
+            {appBalanceDiff !== null && Math.abs(appBalanceDiff) < 0.01 && (
+              <Button size="sm" variant="default" onClick={() => setFinishOpen(true)}>
+                <CheckCircle2 className="w-4 h-4 mr-2" /> Encerrar conciliação
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}
+
 
       {computed === null && (
         <Alert>

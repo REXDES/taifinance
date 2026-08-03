@@ -574,6 +574,8 @@ export function StatementImportPage({ companyId }: Props) {
                 <TableHead className="min-w-[180px]">Categoria</TableHead>
                 <TableHead className="min-w-[180px]">Subcategoria</TableHead>
                 <TableHead className="min-w-[200px]">Descrição</TableHead>
+                <TableHead className="min-w-[170px]">Tags</TableHead>
+                <TableHead className="min-w-[130px]">Comprovante</TableHead>
                 <TableHead className="w-32">Situação</TableHead>
                 <TableHead className="w-40 text-right">Ações</TableHead>
               </TableRow>

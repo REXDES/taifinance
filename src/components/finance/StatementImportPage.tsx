@@ -674,9 +674,9 @@ export function StatementImportPage({ companyId }: Props) {
                       <TagPicker
                         companyId={companyId}
                         value={line.tag_ids || []}
-                        onChange={(ids) => patchLine(line, { tag_ids: ids } as Partial<StatementLine>)}
-                        disabled={done}
-                        compact
+                        onChange={(ids) => { if (!done) patchLine(line, { tag_ids: ids } as Partial<StatementLine>); }}
+                        size="sm"
+                        placeholder="Tags..."
                       />
                     </TableCell>
                     <TableCell>

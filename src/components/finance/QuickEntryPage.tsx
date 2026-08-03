@@ -224,6 +224,62 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         <span className={cn("text-sm font-medium", isIncome && "text-green-600")}>Receita</span>
       </div>
 
+      {/* Receipt upload */}
+      <Card className="border-dashed">
+        <CardContent className="py-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Paperclip className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <Label className="text-sm font-medium">Comprovante (opcional)</Label>
+                <p className="text-xs text-muted-foreground">A IA lê o comprovante e preenche valor, descrição, data, categoria e tags.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="quick-entry-receipt"
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) handleReceiptSelected(file);
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={analyzing}
+                onClick={() => document.getElementById('quick-entry-receipt')?.click()}
+              >
+                {analyzing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                {analyzing ? 'Analisando...' : 'Subir comprovante'}
+              </Button>
+            </div>
+          </div>
+
+          {receiptFile && (
+            <div className="flex items-start justify-between gap-2 rounded-md bg-muted/50 p-2">
+              <div className="min-w-0 space-y-1">
+                <p className="text-xs font-medium truncate">{receiptFile.name}</p>
+                {receiptDetails && <p className="text-xs text-muted-foreground whitespace-pre-line">{receiptDetails}</p>}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 flex-shrink-0"
+                onClick={() => { setReceiptFile(null); setReceiptDetails(null); }}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Amount Input */}
       <Card className="border-2 border-primary/20">
         <CardContent className="py-4">

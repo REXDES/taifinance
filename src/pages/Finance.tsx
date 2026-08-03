@@ -9,6 +9,7 @@ import { TransactionsPage } from '@/components/finance/TransactionsPage';
 import { TransfersPage } from '@/components/finance/TransfersPage';
 import { BalanceSheetPage } from '@/components/finance/BalanceSheetPage';
 import { StatementPage } from '@/components/finance/StatementPage';
+import { StatementImportPage } from '@/components/finance/StatementImportPage';
 import { CategoriesPage } from '@/components/finance/CategoriesPage';
 import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
 import { AdminDashboard } from '@/components/finance/AdminDashboard';

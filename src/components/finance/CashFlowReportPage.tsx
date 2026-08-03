@@ -491,7 +491,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
           <CardTitle>Fluxo Financeiro</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table wrapperClassName="max-h-[65vh] border rounded-md">
+          <Table wrapperClassName="max-h-[65vh] border rounded-md accessible-scrollbar">
             <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
               <TableRow>
                 <TableHead>Data</TableHead>

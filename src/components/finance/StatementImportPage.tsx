@@ -604,20 +604,10 @@ export function StatementImportPage({ companyId }: Props) {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={async () => {
-            if (!currentImport) return;
-            await setImportStatus(currentImport.id, pending === 0 ? 'done' : 'partial');
-            await refetchImports();
-            toast.success('Situação da importação atualizada');
-          }}
-        >
-          <Upload className="w-4 h-4 mr-2" /> Atualizar situação da importação
-        </Button>
+      <div className="flex justify-end gap-2 text-xs text-muted-foreground">
+        A situação da importação é atualizada automaticamente conforme as linhas são conciliadas ou ignoradas.
       </div>
+
 
       <Dialog open={!!settleLine} onOpenChange={(open) => !open && setSettleLine(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">

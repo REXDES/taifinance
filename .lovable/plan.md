@@ -1,48 +1,33 @@
 ## Objetivo
 
-Em **Manutenções de máquinas**:
-1. Tanto "à vista" quanto "parcelado" apenas **agendam** o pagamento (título em Contas a Pagar com status `pending`). Baixa efetiva só quando marcado como pago.
-2. Permitir **selecionar Tags (finance)** na manutenção, propagadas para os títulos gerados.
-3. Adicionar aba **"Deslocamento de equipe"** no diálogo de manutenção, com veículo e km previstos.
+Na tela de **Importar Extrato Bancário**, quando o saldo informado pelo extrato já estiver batendo com o saldo calculado do app, permitir ao usuário **encerrar a conciliação** sem precisar efetivar linhas que estejam como **Pendente** ou **Duplicidade**. Isso evita criar transações duplicadas e deixar o saldo errado.
 
 ## Mudanças
 
-### `src/components/machines/MaintenancePage.tsx`
-- Reorganizar o diálogo em abas (Tabs shadcn):
-  - **Dados** — campos atuais (máquina, mecânico, datas, descrição, horímetro, custo, status).
-  - **Pagamento** — forma de pagamento, parcelas, conta de baixa, tags.
-  - **Deslocamento** — novos campos:
-    - Toggle `has_travel` ("Haverá deslocamento de equipe?").
-    - Quando ligado: `travel_vehicle_id` (Select com veículos = máquinas com `usage_purpose` contendo veículo, ou lista livre de todas as máquinas), `travel_km` (número).
-    - Campo texto opcional `travel_notes`.
-- Unificar `save()`:
-  - Se `cost > 0` e `paid_account_id !== 'none'` → sempre `generateMaintenancePayables(...)` (à vista = 1 parcela).
-  - Remover `insert` direto em `transactions` no caso `cash`.
-- Adicionar `TagPicker` (`@/components/finance/TagPicker`) na aba Pagamento; propagar `tag_ids` aos títulos gerados.
-- Persistir campos de deslocamento no `maintenance_records`.
+### `src/hooks/useStatementImport.ts`
+- Adicionar função `finishReconciliation(importId: string, lineIdsToIgnore?: string[])` que:
+  - Marca o `statement_imports.status` como `done`.
+  - Opcionalmente marca as linhas ainda pendentes como `ignored` (para não ficarem eternamente pendentes no banco).
+  - Retorna o import atualizado.
 
-### `src/lib/machinesFinance.ts`
-- `generateMaintenancePayables` aceita `tagIds?: string[]` e insere em `payable_receivable_tags` após criar os títulos.
+### `src/components/finance/StatementImportPage.tsx`
+- Quando `balanceDiff` for nulo ou menor que `0.01` (saldo batendo), exibir um alerta/destaque claro com:
+  - Mensagem: "Saldo já está consistente com o extrato. Você pode encerrar a conciliação sem efetivar as linhas restantes."
+  - Botão **"Encerrar conciliação"**.
+- Ao clicar no botão:
+  - Perguntar se deseja ignorar as linhas pendentes restantes (checkbox padrão marcado) ou mantê-las pendentes.
+  - Chamar `finishReconciliation`.
+  - Voltar automaticamente para a lista de importações.
+- Ajustar o status derivado (`derivedStatus`) para considerar `done` também quando o usuário encerra manualmente, mesmo com linhas pendentes.
+- Garantir que o botão **"Efetivar selecionadas"** continue funcionando normalmente para quem quer converter linhas em transações.
 
-### `src/hooks/useMachinesModule.ts`
-- Estender `MaintenanceRecord` com: `paid_account_id`, `has_travel`, `travel_vehicle_id`, `travel_km`, `travel_notes`.
-
-### DB (migration)
-```sql
-ALTER TABLE public.maintenance_records
-  ADD COLUMN paid_account_id uuid REFERENCES public.accounts(id),
-  ADD COLUMN has_travel boolean NOT NULL DEFAULT false,
-  ADD COLUMN travel_vehicle_id uuid REFERENCES public.machines(id),
-  ADD COLUMN travel_km numeric,
-  ADD COLUMN travel_notes text;
-```
-Sem novas tabelas — `payable_receivable_tags` já existe.
-
-### Sem alteração
-- `deletePendingInstallments` mantém limpeza de pendências.
-- Locações e edição de manutenção existente mantêm comportamento atual.
+### `src/components/finance/StatementImportPage.tsx` (UX)
+- Melhorar a badge de duplicidade: oferecer ação rápida "Marcar como duplicidade/ignorar" para limpar a lista.
+- No card de resumo, trocar o label "Conciliadas" para algo mais claro quando o saldo bate, reforçando que a conciliação pode ser encerrada.
 
 ## Resultado
 
-- Manutenção à vista R$ 500 com tag "Frota A" e deslocamento (Van, 120 km) → 1 título pendente em Contas a Pagar (vence em `start_date`) com tag, e registro guarda o deslocamento previsto. Vira `transaction` real só na baixa.
-- Parcelada 3x → 3 títulos pendentes com as tags escolhidas.
+- Usuário importa extrato, saldo bate, mas restam 2 linhas marcadas como duplicidade.
+- App mostra: "Saldo consistente. Clique em Encerrar conciliação."
+- Usuário clica, as linhas restantes são ignoradas e a importação vai para status **Conciliado**.
+- O saldo da conta permanece correto, sem transações duplicadas.

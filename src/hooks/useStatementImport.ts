@@ -477,6 +477,11 @@ export async function reconcileLineAsTransaction(line: StatementLine, override?:
     .single();
   if (error) throw error;
 
+  if ((merged.tag_ids || []).length > 0) {
+    try { await setEntityTags('transaction', transaction.id, merged.tag_ids as string[]); } catch { /* tags são acessórias */ }
+  }
+
+
   const { error: updateError } = await (supabase as any)
     .from('statement_lines')
     .update({

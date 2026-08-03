@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Upload, RefreshCw, Sparkles, CheckCircle2, Trash2, AlertTriangle, FileSpreadsheet,
   Copy, Ban, Link2, ChevronLeft,
@@ -41,8 +41,19 @@ export function StatementImportPage({ companyId }: Props) {
   const { payablesReceivables } = usePayablesReceivables(companyId, { status: ['pending'] });
   const { imports, loading: importsLoading, refetch: refetchImports, deleteImport } = useStatementImports(companyId);
 
-  const [selectedImportId, setSelectedImportId] = useState<string | null>(null);
-  const { lines, refetch: refetchLines } = useStatementLines(selectedImportId);
+  const storageKey = `statement_import_selected_${companyId}`;
+  const [selectedImportId, setSelectedImportId] = useState<string | null>(() => {
+    try { return localStorage.getItem(`statement_import_selected_${companyId}`); } catch { return null; }
+  });
+  const { lines, loading: linesLoading, refetch: refetchLines } = useStatementLines(selectedImportId);
+
+  useEffect(() => {
+    try {
+      if (selectedImportId) localStorage.setItem(storageKey, selectedImportId);
+      else localStorage.removeItem(storageKey);
+    } catch { /* ignore */ }
+  }, [selectedImportId, storageKey]);
+
 
   const [accountId, setAccountId] = useState<string>('');
   const [uploading, setUploading] = useState(false);
@@ -180,6 +191,20 @@ export function StatementImportPage({ companyId }: Props) {
   const pending = lines.filter((l) => l.status === 'pending').length;
   const reconciled = lines.filter((l) => l.status === 'reconciled').length;
   const duplicates = lines.filter((l) => l.duplicate_of_transaction_id && l.status === 'pending').length;
+
+  // Situação real da importação: só marca "Conciliado" quando existem linhas e nenhuma está pendente.
+  const derivedStatus: 'pending' | 'partial' | 'done' | null =
+    linesLoading || lines.length === 0 ? null : pending === 0 ? 'done' : pending === lines.length ? 'pending' : 'partial';
+
+  useEffect(() => {
+    if (!currentImport || !derivedStatus) return;
+    if (currentImport.status === derivedStatus) return;
+    (async () => {
+      await setImportStatus(currentImport.id, derivedStatus);
+      await refetchImports();
+    })();
+  }, [currentImport?.id, currentImport?.status, derivedStatus, refetchImports]);
+
 
   const sumSigned = lines.reduce((s, l) => s + (l.type === 'income' ? l.amount : -l.amount), 0);
   const computed = currentImport?.opening_balance !== null && currentImport?.opening_balance !== undefined
@@ -579,20 +604,10 @@ export function StatementImportPage({ companyId }: Props) {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={async () => {
-            if (!currentImport) return;
-            await setImportStatus(currentImport.id, pending === 0 ? 'done' : 'partial');
-            await refetchImports();
-            toast.success('Situação da importação atualizada');
-          }}
-        >
-          <Upload className="w-4 h-4 mr-2" /> Atualizar situação da importação
-        </Button>
+      <div className="flex justify-end gap-2 text-xs text-muted-foreground">
+        A situação da importação é atualizada automaticamente conforme as linhas são conciliadas ou ignoradas.
       </div>
+
 
       <Dialog open={!!settleLine} onOpenChange={(open) => !open && setSettleLine(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">

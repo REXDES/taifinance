@@ -263,6 +263,28 @@ export function StatementImportPage({ companyId }: Props) {
     toast[failed ? 'warning' : 'success'](`${ok} linha(s) conciliada(s)${failed ? `, ${failed} com erro` : ''}`);
   };
 
+  const handleFinishReconciliation = async () => {
+    if (!currentImport) return;
+    const remainingPending = lines.filter((l) => l.status === 'pending').map((l) => l.id);
+    if (!ignoreRemaining && remainingPending.length > 0) {
+      toast.error('Existem linhas pendentes. Marque a opção para ignorá-las ou efetive-as antes de encerrar.');
+      return;
+    }
+    setFinishing(true);
+    try {
+      await finishReconciliation(currentImport.id, ignoreRemaining ? remainingPending : undefined);
+      await refetchLines();
+      await refetchImports();
+      setFinishOpen(false);
+      selectImport(null);
+      toast.success('Conciliação encerrada com sucesso');
+    } catch (error) {
+      toast.error('Erro ao encerrar conciliação: ' + (error as Error).message);
+    } finally {
+      setFinishing(false);
+    }
+  };
+
   const pending = lines.filter((l) => l.status === 'pending').length;
   const reconciled = lines.filter((l) => l.status === 'reconciled').length;
   const duplicates = lines.filter((l) => l.duplicate_of_transaction_id && l.status === 'pending').length;

@@ -134,9 +134,12 @@ const receiptSchema = {
     category_id: { type: ["string", "null"] },
     subcategory_id: { type: ["string", "null"] },
     tag_ids: { type: "array", items: { type: "string" } },
+    amount: { type: ["number", "null"], description: "valor do comprovante, sempre positivo" },
+    date: { type: ["string", "null"], description: "AAAA-MM-DD" },
+    type: { type: ["string", "null"], enum: ["income", "expense", null] },
     confidence: { type: "number", description: "0 a 1" },
   },
-  required: ["details", "description", "category_id", "subcategory_id", "tag_ids", "confidence"],
+  required: ["details", "description", "category_id", "subcategory_id", "tag_ids", "amount", "date", "type", "confidence"],
 };
 
 serve(async (req) => {

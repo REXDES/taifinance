@@ -523,6 +523,12 @@ export async function reconcileLineAsSettlement(line: StatementLine, payableId: 
     .single();
   if (transactionError) throw transactionError;
 
+  if ((line.tag_ids || []).length > 0) {
+    try { await setEntityTags('transaction', transaction.id, line.tag_ids as string[]); } catch { /* tags são acessórias */ }
+    try { await setEntityTags('payable_receivable', payableId, line.tag_ids as string[]); } catch { /* tags são acessórias */ }
+  }
+
+
   const { error: prError } = await supabase
     .from('payables_receivables')
     .update({

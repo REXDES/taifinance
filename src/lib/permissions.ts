@@ -29,6 +29,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'finance.transfers', label: 'Transferências' },
       { key: 'finance.payables_receivables', label: 'Pagar / Receber' },
       { key: 'finance.split_pix', label: 'Split de PIX' },
+      { key: 'finance.statement_import', label: 'Importar Extrato (Conciliação)' },
     ],
   },
   {
@@ -115,6 +116,7 @@ export const FINANCE_VIEW_PERMISSION_KEY: Record<string, string> = {
   transfers: 'finance.transfers',
   'payables-receivables': 'finance.payables_receivables',
   'split-pix': 'finance.split_pix',
+  'statement-import': 'finance.statement_import',
   'bank-digital': 'finance.bank_digital',
   balance: 'reports.balance_sheet',
   statement: 'reports.statement',

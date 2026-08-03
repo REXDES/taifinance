@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
+import { setEntityTags } from '@/hooks/useFinanceTags';
 import { toast } from 'sonner';
+
+const RECEIPT_BUCKET = 'statement-receipts';
 
 export type StatementImportStatus = 'pending' | 'partial' | 'done';
 
@@ -45,6 +48,10 @@ export interface StatementLine {
   status: 'pending' | 'reconciled' | 'ignored';
   transaction_id: string | null;
   payable_receivable_id: string | null;
+  receipt_path?: string | null;
+  receipt_name?: string | null;
+  receipt_details?: string | null;
+  tag_ids?: string[] | null;
 }
 
 export interface ParsedLine {
@@ -470,6 +477,11 @@ export async function reconcileLineAsTransaction(line: StatementLine, override?:
     .single();
   if (error) throw error;
 
+  if ((merged.tag_ids || []).length > 0) {
+    try { await setEntityTags('transaction', transaction.id, merged.tag_ids as string[]); } catch { /* tags são acessórias */ }
+  }
+
+
   const { error: updateError } = await (supabase as any)
     .from('statement_lines')
     .update({
@@ -511,6 +523,12 @@ export async function reconcileLineAsSettlement(line: StatementLine, payableId: 
     .single();
   if (transactionError) throw transactionError;
 
+  if ((line.tag_ids || []).length > 0) {
+    try { await setEntityTags('transaction', transaction.id, line.tag_ids as string[]); } catch { /* tags são acessórias */ }
+    try { await setEntityTags('payable_receivable', payableId, line.tag_ids as string[]); } catch { /* tags são acessórias */ }
+  }
+
+
   const { error: prError } = await supabase
     .from('payables_receivables')
     .update({
@@ -546,4 +564,189 @@ export async function updateStatementLine(id: string, patch: Partial<StatementLi
 
 export async function setImportStatus(importId: string, status: StatementImportStatus) {
   await (supabase as any).from('statement_imports').update({ status }).eq('id', importId);
+}
+
+/* ============================ Comprovantes ============================ */
+
+export interface ReceiptAnalysis {
+  details: string;
+  description: string;
+  category_id: string | null;
+  subcategory_id: string | null;
+  tag_ids: string[];
+  amount: number | null;
+  date: string | null;
+  type: 'income' | 'expense' | null;
+  confidence: number | null;
+}
+
+interface ReceiptContext {
+  categories: { id: string; name: string; type: string; subcategories?: { id: string; name: string }[] }[];
+  tags: { id: string; name: string }[];
+}
+
+async function readReceipt(file: File) {
+  const format = detectFormat(file.name);
+  const isImage = (file.type || '').startsWith('image/');
+  if (!isImage && format !== 'pdf') {
+    return { text: await file.text(), fileBase64: null as string | null, mimeType: file.type || 'text/plain' };
+  }
+  return {
+    text: null as string | null,
+    fileBase64: await fileToBase64(file),
+    mimeType: file.type || (isImage ? 'image/jpeg' : 'application/pdf'),
+  };
+}
+
+function sanitizeAnalysis(raw: any, ctx: ReceiptContext, fallbackDescription: string): ReceiptAnalysis {
+  const validCategories = new Set(ctx.categories.map((c) => c.id));
+  const validSubcategories = new Set(ctx.categories.flatMap((c) => (c.subcategories || []).map((s) => s.id)));
+  const subToCategory = new Map<string, string>();
+  ctx.categories.forEach((c) => (c.subcategories || []).forEach((s) => subToCategory.set(s.id, c.id)));
+  const validTags = new Set(ctx.tags.map((t) => t.id));
+
+  let categoryId = raw?.category_id && validCategories.has(raw.category_id) ? raw.category_id : null;
+  const subcategoryId = raw?.subcategory_id && validSubcategories.has(raw.subcategory_id) ? raw.subcategory_id : null;
+  if (subcategoryId && !categoryId) categoryId = subToCategory.get(subcategoryId) ?? null;
+
+  const amount = raw?.amount === null || raw?.amount === undefined ? null : Math.abs(Number(raw.amount)) || null;
+  const date = raw?.date ? toIsoDate(String(raw.date)) : null;
+
+  return {
+    details: String(raw?.details || '').trim(),
+    description: String(raw?.description || fallbackDescription).trim(),
+    category_id: categoryId,
+    subcategory_id: subcategoryId,
+    tag_ids: (raw?.tag_ids || []).filter((id: string) => validTags.has(id)),
+    amount,
+    date,
+    type: raw?.type === 'income' ? 'income' : raw?.type === 'expense' ? 'expense' : null,
+    confidence: typeof raw?.confidence === 'number' ? raw.confidence : null,
+  };
+}
+
+/** Envia o comprovante ao cofre e devolve o caminho salvo. */
+export async function uploadReceiptFile(companyId: string, file: File, prefix: string) {
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+  const path = `${companyId}/${prefix}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from(RECEIPT_BUCKET).upload(path, file, { upsert: true });
+  if (error) throw error;
+  return path;
+}
+
+export async function getReceiptUrl(path: string) {
+  const { data, error } = await supabase.storage.from(RECEIPT_BUCKET).createSignedUrl(path, 3600);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+/** Anexa um comprovante a uma linha do extrato, lê os detalhes com IA e atualiza as sugestões. */
+export async function attachReceiptToLine(line: StatementLine, file: File, ctx: ReceiptContext) {
+  const path = await uploadReceiptFile(line.company_id, file, `line-${line.id}`);
+  const read = await readReceipt(file);
+
+  const raw = await callParser({
+    action: 'receipt',
+    fileName: file.name,
+    mimeType: read.mimeType,
+    fileBase64: read.fileBase64,
+    text: read.text,
+    line: { date: line.date, amount: line.amount, type: line.type, raw_description: line.raw_description },
+    categories: ctx.categories,
+    tags: ctx.tags,
+  });
+
+  const analysis = sanitizeAnalysis(raw, ctx, line.suggested_description || line.raw_description);
+
+  await updateStatementLine(line.id, {
+    receipt_path: path,
+    receipt_name: file.name,
+    receipt_details: analysis.details || null,
+    suggested_description: analysis.description || line.suggested_description,
+    suggested_category_id: analysis.category_id ?? line.suggested_category_id,
+    suggested_subcategory_id: analysis.subcategory_id ?? line.suggested_subcategory_id,
+    tag_ids: analysis.tag_ids.length > 0 ? analysis.tag_ids : (line.tag_ids || []),
+    suggestion_source: 'receipt',
+    suggestion_confidence: analysis.confidence,
+  } as Partial<StatementLine>);
+
+  return analysis;
+}
+
+/** Cria uma conciliação a partir de comprovantes soltos (sem extrato). */
+export async function createReceiptsImport(params: {
+  companyId: string;
+  accountId: string | null;
+  files: File[];
+  ctx: ReceiptContext;
+}) {
+  const { companyId, accountId, files, ctx } = params;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const analyses: { file: File; path: string; analysis: ReceiptAnalysis }[] = [];
+  for (const file of files) {
+    const path = await uploadReceiptFile(companyId, file, 'receipt');
+    const read = await readReceipt(file);
+    const raw = await callParser({
+      action: 'receipt',
+      fileName: file.name,
+      mimeType: read.mimeType,
+      fileBase64: read.fileBase64,
+      text: read.text,
+      categories: ctx.categories,
+      tags: ctx.tags,
+    });
+    analyses.push({ file, path, analysis: sanitizeAnalysis(raw, ctx, file.name) });
+  }
+
+  const usable = analyses.filter((a) => a.analysis.amount && a.analysis.date);
+  if (usable.length === 0) throw new Error('Não foi possível identificar valor e data nos comprovantes enviados');
+
+  const dates = usable.map((a) => a.analysis.date!).sort();
+
+  const { data: importRow, error: importError } = await (supabase as any)
+    .from('statement_imports')
+    .insert({
+      company_id: companyId,
+      account_id: accountId,
+      file_name: usable.length === 1 ? usable[0].file.name : `${usable.length} comprovantes`,
+      file_format: 'receipt',
+      period_start: dates[0],
+      period_end: dates[dates.length - 1],
+      notes: 'Importação por comprovantes',
+      created_by: user?.id ?? null,
+    })
+    .select('*')
+    .single();
+  if (importError) throw importError;
+
+  const rows = usable.map((item, index) => {
+    const a = item.analysis;
+    const type = a.type || 'expense';
+    return {
+      import_id: importRow.id,
+      company_id: companyId,
+      line_index: index,
+      date: a.date,
+      raw_description: a.details || a.description || item.file.name,
+      amount: a.amount,
+      type,
+      fingerprint: buildFingerprint({ date: a.date!, amount: a.amount!, type, description: a.description }),
+      suggested_account_id: accountId,
+      suggested_category_id: a.category_id,
+      suggested_subcategory_id: a.subcategory_id,
+      suggested_description: a.description,
+      suggestion_source: 'receipt',
+      suggestion_confidence: a.confidence,
+      receipt_path: item.path,
+      receipt_name: item.file.name,
+      receipt_details: a.details || null,
+      tag_ids: a.tag_ids,
+    };
+  });
+
+  const { error: linesError } = await (supabase as any).from('statement_lines').insert(rows);
+  if (linesError) throw linesError;
+
+  return { importRow: importRow as StatementImport, skipped: analyses.length - usable.length };
 }

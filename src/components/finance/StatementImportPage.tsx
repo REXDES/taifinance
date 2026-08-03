@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Upload, RefreshCw, Sparkles, CheckCircle2, Trash2, AlertTriangle, FileSpreadsheet,
-  Copy, Ban, Link2, ChevronLeft,
+  Copy, Ban, Link2, ChevronLeft, Paperclip, ExternalLink, Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,10 +18,12 @@ import { format, parseISO } from 'date-fns';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
+import { useFinanceTags } from '@/hooks/useFinanceTags';
+import { TagPicker } from '@/components/finance/TagPicker';
 import {
   useStatementImports, useStatementLines, parseStatementFile, createStatementImport,
   suggestForLines, reconcileLineAsTransaction, reconcileLineAsSettlement, updateStatementLine,
-  setImportStatus, detectFormat, StatementLine,
+  setImportStatus, detectFormat, StatementLine, attachReceiptToLine, createReceiptsImport, getReceiptUrl,
 } from '@/hooks/useStatementImport';
 
 interface Props {
@@ -39,6 +41,7 @@ export function StatementImportPage({ companyId }: Props) {
   const { accounts } = useAccounts(companyId);
   const { categories } = useTransactionCategories(companyId);
   const { payablesReceivables } = usePayablesReceivables(companyId, { status: ['pending'] });
+  const { tags } = useFinanceTags(companyId);
   const { imports, loading: importsLoading, refetch: refetchImports, deleteImport } = useStatementImports(companyId);
 
   const storageKey = `statement_import_selected_${companyId}`;
@@ -70,6 +73,10 @@ export function StatementImportPage({ companyId }: Props) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [settleLine, setSettleLine] = useState<StatementLine | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const receiptsRef = useRef<HTMLInputElement>(null);
+  const lineReceiptRef = useRef<HTMLInputElement>(null);
+  const [receiptTargetLine, setReceiptTargetLine] = useState<StatementLine | null>(null);
+  const [detailsLine, setDetailsLine] = useState<StatementLine | null>(null);
 
   const currentImport = imports.find((i) => i.id === selectedImportId) || null;
 
@@ -78,6 +85,62 @@ export function StatementImportPage({ companyId }: Props) {
     [categories]
   );
   const accountsPayload = useMemo(() => accounts.map((a) => ({ id: a.id, name: a.name })), [accounts]);
+  const tagsPayload = useMemo(() => tags.map((t) => ({ id: t.id, name: t.name })), [tags]);
+  const receiptCtx = useMemo(() => ({ categories: categoriesPayload, tags: tagsPayload }), [categoriesPayload, tagsPayload]);
+
+  const openReceiptPicker = (line: StatementLine) => {
+    setReceiptTargetLine(line);
+    setTimeout(() => lineReceiptRef.current?.click(), 0);
+  };
+
+  const handleLineReceipt = async (file: File) => {
+    const line = receiptTargetLine;
+    if (!line) return;
+    setBusyLine(line.id);
+    try {
+      await attachReceiptToLine(line, file, receiptCtx);
+      await refetchLines();
+      toast.success('Comprovante anexado e sugestões atualizadas');
+    } catch (error) {
+      toast.error('Erro ao anexar comprovante: ' + ((error as Error).message || 'desconhecido'));
+    } finally {
+      setBusyLine(null);
+      setReceiptTargetLine(null);
+      if (lineReceiptRef.current) lineReceiptRef.current.value = '';
+    }
+  };
+
+  const openReceipt = async (path: string) => {
+    try {
+      const url = await getReceiptUrl(path);
+      window.open(url, '_blank', 'noopener');
+    } catch (error) {
+      toast.error('Erro ao abrir comprovante: ' + (error as Error).message);
+    }
+  };
+
+  const handleReceiptsUpload = async (files: File[]) => {
+    setUploading(true);
+    try {
+      const { importRow, skipped } = await createReceiptsImport({
+        companyId,
+        accountId: accountId || null,
+        files,
+        ctx: receiptCtx,
+      });
+      await refetchImports();
+      selectImport(importRow.id);
+      toast.success(
+        `Comprovantes lidos com sucesso${skipped ? ` (${skipped} sem valor/data identificados foram ignorados)` : ''}`
+      );
+    } catch (error) {
+      toast.error('Erro ao ler comprovantes: ' + ((error as Error).message || 'desconhecido'));
+    } finally {
+      setUploading(false);
+      if (receiptsRef.current) receiptsRef.current.value = '';
+    }
+  };
+
 
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -306,7 +369,34 @@ export function StatementImportPage({ companyId }: Props) {
                   Formatos aceitos: CSV, Excel (XLSX/XLS), OFX/OFC e PDF.
                 </p>
               </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-primary" /> Comprovantes (sem extrato)
+                </Label>
+                <Input
+                  ref={receiptsRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.txt"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length === 0) return;
+                    if (!accountId) {
+                      toast.error('Selecione a conta antes de enviar os comprovantes');
+                      if (receiptsRef.current) receiptsRef.current.value = '';
+                      return;
+                    }
+                    handleReceiptsUpload(files);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Envie PIX, TED, boletos ou notas (imagem ou PDF). A IA lê os detalhes do comprovante e sugere
+                  categoria, subcategoria, descrição e tags com muito mais precisão.
+                </p>
+              </div>
             </div>
+
             {uploading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <RefreshCw className="w-4 h-4 animate-spin" /> Lendo o extrato e gerando sugestões...
@@ -484,13 +574,15 @@ export function StatementImportPage({ companyId }: Props) {
                 <TableHead className="min-w-[180px]">Categoria</TableHead>
                 <TableHead className="min-w-[180px]">Subcategoria</TableHead>
                 <TableHead className="min-w-[200px]">Descrição</TableHead>
+                <TableHead className="min-w-[170px]">Tags</TableHead>
+                <TableHead className="min-w-[130px]">Comprovante</TableHead>
                 <TableHead className="w-32">Situação</TableHead>
                 <TableHead className="w-40 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {lines.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma linha</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhuma linha</TableCell></TableRow>
               ) : lines.map((line) => {
                 const done = line.status !== 'pending';
                 return (
@@ -579,6 +671,55 @@ export function StatementImportPage({ companyId }: Props) {
                       )}
                     </TableCell>
                     <TableCell>
+                      <TagPicker
+                        companyId={companyId}
+                        value={line.tag_ids || []}
+                        onChange={(ids) => { if (!done) patchLine(line, { tag_ids: ids } as Partial<StatementLine>); }}
+                        size="sm"
+                        placeholder="Tags..."
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {line.receipt_path ? (
+                          <>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs max-w-[110px] justify-start"
+                                title={line.receipt_name || 'Ver comprovante'}
+                                onClick={() => openReceipt(line.receipt_path!)}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 mr-1 shrink-0" />
+                                <span className="truncate">{line.receipt_name || 'Ver'}</span>
+                              </Button>
+                            </div>
+                            {line.receipt_details && (
+                              <button
+                                type="button"
+                                className="text-[10px] text-primary underline text-left"
+                                onClick={() => setDetailsLine(line)}
+                              >
+                                Ver detalhes lidos
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs"
+                            disabled={done || busyLine === line.id}
+                            onClick={() => openReceiptPicker(line)}
+                          >
+                            <Paperclip className="w-3.5 h-3.5 mr-1" />
+                            Anexar
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       {line.status === 'reconciled' ? (
                         <Badge variant="default" className="text-xs">Conciliado</Badge>
                       ) : line.status === 'ignored' ? (
@@ -615,6 +756,35 @@ export function StatementImportPage({ companyId }: Props) {
       <div className="flex justify-end gap-2 text-xs text-muted-foreground">
         A situação da importação é atualizada automaticamente conforme as linhas são conciliadas ou ignoradas.
       </div>
+
+      <input
+        ref={lineReceiptRef}
+        type="file"
+        accept="image/*,.pdf,.txt"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleLineReceipt(file);
+        }}
+      />
+
+      <Dialog open={!!detailsLine} onOpenChange={(open) => !open && setDetailsLine(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do comprovante</DialogTitle>
+            <DialogDescription>{detailsLine?.receipt_name}</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm whitespace-pre-wrap text-muted-foreground">{detailsLine?.receipt_details}</p>
+          <DialogFooter>
+            {detailsLine?.receipt_path && (
+              <Button variant="outline" onClick={() => openReceipt(detailsLine.receipt_path!)}>
+                <ExternalLink className="w-4 h-4 mr-2" /> Abrir arquivo
+              </Button>
+            )}
+            <Button onClick={() => setDetailsLine(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
 
       <Dialog open={!!settleLine} onOpenChange={(open) => !open && setSettleLine(null)}>

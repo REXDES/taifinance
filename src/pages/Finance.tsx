@@ -331,6 +331,8 @@ const Finance = () => {
         return <BalanceSheetPage companyId={selectedCompanyId} />;
       case 'statement':
         return <StatementPage companyId={selectedCompanyId} />;
+      case 'statement-import':
+        return <StatementImportPage companyId={selectedCompanyId} />;
       case 'categories':
         return <CategoriesPage companyId={selectedCompanyId} />;
       case 'tags':

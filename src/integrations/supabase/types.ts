@@ -3265,6 +3265,9 @@ export type Database = {
           line_index: number
           payable_receivable_id: string | null
           raw_description: string
+          receipt_details: string | null
+          receipt_name: string | null
+          receipt_path: string | null
           reconciled_at: string | null
           reconciled_by: string | null
           running_balance: number | null
@@ -3275,6 +3278,7 @@ export type Database = {
           suggested_subcategory_id: string | null
           suggestion_confidence: number | null
           suggestion_source: string | null
+          tag_ids: string[]
           transaction_id: string | null
           type: string
           updated_at: string
@@ -3293,6 +3297,9 @@ export type Database = {
           line_index?: number
           payable_receivable_id?: string | null
           raw_description: string
+          receipt_details?: string | null
+          receipt_name?: string | null
+          receipt_path?: string | null
           reconciled_at?: string | null
           reconciled_by?: string | null
           running_balance?: number | null
@@ -3303,6 +3310,7 @@ export type Database = {
           suggested_subcategory_id?: string | null
           suggestion_confidence?: number | null
           suggestion_source?: string | null
+          tag_ids?: string[]
           transaction_id?: string | null
           type?: string
           updated_at?: string
@@ -3321,6 +3329,9 @@ export type Database = {
           line_index?: number
           payable_receivable_id?: string | null
           raw_description?: string
+          receipt_details?: string | null
+          receipt_name?: string | null
+          receipt_path?: string | null
           reconciled_at?: string | null
           reconciled_by?: string | null
           running_balance?: number | null
@@ -3331,6 +3342,7 @@ export type Database = {
           suggested_subcategory_id?: string | null
           suggestion_confidence?: number | null
           suggestion_source?: string | null
+          tag_ids?: string[]
           transaction_id?: string | null
           type?: string
           updated_at?: string

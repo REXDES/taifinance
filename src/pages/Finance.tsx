@@ -72,6 +72,7 @@ export type FinanceView =
   | 'payables-receivables'
   | 'balance'
   | 'statement'
+  | 'statement-import'
   | 'categories'
   | 'tags'
   | 'split-pix'

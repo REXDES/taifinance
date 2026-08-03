@@ -41,8 +41,19 @@ export function StatementImportPage({ companyId }: Props) {
   const { payablesReceivables } = usePayablesReceivables(companyId, { status: ['pending'] });
   const { imports, loading: importsLoading, refetch: refetchImports, deleteImport } = useStatementImports(companyId);
 
-  const [selectedImportId, setSelectedImportId] = useState<string | null>(null);
-  const { lines, refetch: refetchLines } = useStatementLines(selectedImportId);
+  const storageKey = `statement_import_selected_${companyId}`;
+  const [selectedImportId, setSelectedImportId] = useState<string | null>(() => {
+    try { return localStorage.getItem(`statement_import_selected_${companyId}`); } catch { return null; }
+  });
+  const { lines, loading: linesLoading, refetch: refetchLines } = useStatementLines(selectedImportId);
+
+  useEffect(() => {
+    try {
+      if (selectedImportId) localStorage.setItem(storageKey, selectedImportId);
+      else localStorage.removeItem(storageKey);
+    } catch { /* ignore */ }
+  }, [selectedImportId, storageKey]);
+
 
   const [accountId, setAccountId] = useState<string>('');
   const [uploading, setUploading] = useState(false);

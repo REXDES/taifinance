@@ -90,6 +90,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
         color: accountForm.color,
         initial_balance: newInitialBalance,
         current_balance: editingAccount.current_balance + balanceDiff,
+        reconciliation_tolerance: parseFloat(accountForm.reconciliation_tolerance) || 0,
       });
     } else {
       await createAccount({
@@ -97,12 +98,13 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
         description: accountForm.description,
         group_id: accountForm.group_id || undefined,
         initial_balance: parseFloat(accountForm.initial_balance) || 0,
+        reconciliation_tolerance: parseFloat(accountForm.reconciliation_tolerance) || 0,
         color: accountForm.color,
       });
     }
     setShowAccountDialog(false);
     setEditingAccount(null);
-    setAccountForm({ name: '', description: '', group_id: '', initial_balance: '', color: '#10B981' });
+    setAccountForm({ name: '', description: '', group_id: '', initial_balance: '', reconciliation_tolerance: '0', color: '#10B981' });
   };
 
   const handleEditAccount = (account: Account) => {

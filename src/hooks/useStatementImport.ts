@@ -583,6 +583,40 @@ export async function finishReconciliation(importId: string, lineIdsToIgnore?: s
   if (error) throw error;
 }
 
+/** Cria uma transação de ajuste de arredondamento para equalizar pequenas diferenças de saldo na conciliação. */
+export async function createReconciliationAdjustment(params: {
+  companyId: string;
+  accountId: string;
+  amount: number;
+  date: string;
+  importId: string;
+  description?: string;
+}) {
+  const { companyId, accountId, amount, date, importId, description } = params;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const type = amount >= 0 ? 'income' : 'expense';
+  const absAmount = Number(Math.abs(amount).toFixed(2));
+
+  const { data: transaction, error } = await supabase
+    .from('transactions')
+    .insert({
+      company_id: companyId,
+      account_id: accountId,
+      type,
+      amount: absAmount,
+      description: description || 'Ajuste de arredondamento - conciliação',
+      date,
+      notes: `Ajuste gerado pela conciliação ${importId}`,
+      created_by: user?.id ?? null,
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+
+  return transaction.id as string;
+}
+
 /* ============================ Comprovantes ============================ */
 
 export interface ReceiptAnalysis {

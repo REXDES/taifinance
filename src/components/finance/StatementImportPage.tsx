@@ -23,8 +23,8 @@ import { TagPicker } from '@/components/finance/TagPicker';
 import {
   useStatementImports, useStatementLines, parseStatementFile, createStatementImport,
   suggestForLines, reconcileLineAsTransaction, reconcileLineAsSettlement, updateStatementLine,
-  setImportStatus, finishReconciliation, detectFormat, StatementLine, attachReceiptToLine,
-  createReceiptsImport, getReceiptUrl,
+  setImportStatus, finishReconciliation, createReconciliationAdjustment, detectFormat, StatementLine,
+  attachReceiptToLine, createReceiptsImport, getReceiptUrl,
 } from '@/hooks/useStatementImport';
 
 interface Props {
@@ -81,6 +81,7 @@ export function StatementImportPage({ companyId }: Props) {
   const [finishOpen, setFinishOpen] = useState(false);
   const [ignoreRemaining, setIgnoreRemaining] = useState(true);
   const [finishing, setFinishing] = useState(false);
+  const [adjusting, setAdjusting] = useState(false);
 
   const currentImport = imports.find((i) => i.id === selectedImportId) || null;
 
@@ -285,6 +286,27 @@ export function StatementImportPage({ companyId }: Props) {
     }
   };
 
+  const handleCreateAdjustment = async () => {
+    if (!currentImport?.account_id || appBalanceDiff === null || !withinTolerance) return;
+    setAdjusting(true);
+    try {
+      await createReconciliationAdjustment({
+        companyId,
+        accountId: currentImport.account_id,
+        amount: appBalanceDiff,
+        date: currentImport.period_end || currentImport.period_start || new Date().toISOString().slice(0, 10),
+        importId: currentImport.id,
+      });
+      await refetchLines();
+      await refetchImports();
+      toast.success('Ajuste de arredondamento criado com sucesso');
+    } catch (error) {
+      toast.error('Erro ao criar ajuste: ' + (error as Error).message);
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
   const pending = lines.filter((l) => l.status === 'pending').length;
   const reconciled = lines.filter((l) => l.status === 'reconciled').length;
   const duplicates = lines.filter((l) => l.duplicate_of_transaction_id && l.status === 'pending').length;
@@ -322,6 +344,8 @@ export function StatementImportPage({ companyId }: Props) {
   const appAccount = currentImport?.account_id ? accounts.find((a) => a.id === currentImport.account_id) : null;
   const appBalance = appAccount?.current_balance ?? null;
   const appBalanceDiff = informedClosing !== null && appBalance !== null ? Number((informedClosing - appBalance).toFixed(2)) : null;
+  const tolerance = appAccount?.reconciliation_tolerance ?? 0;
+  const withinTolerance = appBalanceDiff !== null && Math.abs(appBalanceDiff) <= Math.max(tolerance, 0.01);
 
 
   // Continuidade da linha do tempo: procura buracos entre importações da mesma conta
@@ -548,13 +572,25 @@ export function StatementImportPage({ companyId }: Props) {
       </div>
 
       {appBalanceDiff !== null && Math.abs(appBalanceDiff) >= 0.01 && (
-        <Alert variant="destructive">
+        <Alert variant={withinTolerance ? 'default' : 'destructive'}>
           <AlertTriangle className="w-4 h-4" />
-          <AlertTitle>Saldo do app diverge do extrato</AlertTitle>
-          <AlertDescription>
-            O saldo atual da conta <strong>{appAccount?.name}</strong> no app é {currency(appBalance)}, mas o extrato
-            importado informa saldo final de {currency(informedClosing)} (diferença de {currency(appBalanceDiff)}).{' '}
-            É necessário efetivar os lançamentos pendentes para equalizar os saldos antes de encerrar a conciliação.
+          <AlertTitle>
+            {withinTolerance ? 'Diferença dentro da tolerância' : 'Saldo do app diverge do extrato'}
+          </AlertTitle>
+          <AlertDescription className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <span>
+              O saldo atual da conta <strong>{appAccount?.name}</strong> no app é {currency(appBalance)}, mas o extrato
+              importado informa saldo final de {currency(informedClosing)} (diferença de {currency(appBalanceDiff)}).{' '}
+              {withinTolerance
+                ? `A diferença está dentro da tolerância configurada (${currency(tolerance)}). Você pode gerar um ajuste de arredondamento ou encerrar a conciliação.`
+                : 'É necessário efetivar os lançamentos pendentes para equalizar os saldos antes de encerrar a conciliação.'}
+            </span>
+            {withinTolerance && (
+              <Button size="sm" variant="outline" onClick={handleCreateAdjustment} disabled={adjusting}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${adjusting ? 'animate-spin' : ''}`} />
+                Gerar ajuste
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -579,11 +615,11 @@ export function StatementImportPage({ companyId }: Props) {
             <span>
               Saldo inicial {currency(currentImport?.opening_balance)} + movimentações {currency(sumSigned)} ={' '}
               {currency(computed)}, igual ao saldo final informado pelo extrato.
-              {appBalanceDiff !== null && Math.abs(appBalanceDiff) >= 0.01 && (
+              {appBalanceDiff !== null && Math.abs(appBalanceDiff) >= 0.01 && !withinTolerance && (
                 <> No entanto, o saldo da conta no app ainda diverge — efetive os lançamentos pendentes para encerrar.</>
               )}
             </span>
-            {appBalanceDiff !== null && Math.abs(appBalanceDiff) < 0.01 && (
+            {appBalanceDiff !== null && (Math.abs(appBalanceDiff) < 0.01 || withinTolerance) && (
               <Button size="sm" variant="default" onClick={() => setFinishOpen(true)}>
                 <CheckCircle2 className="w-4 h-4 mr-2" /> Encerrar conciliação
               </Button>

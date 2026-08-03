@@ -41,6 +41,7 @@ export function StatementImportPage({ companyId }: Props) {
   const { accounts } = useAccounts(companyId);
   const { categories } = useTransactionCategories(companyId);
   const { payablesReceivables } = usePayablesReceivables(companyId, { status: ['pending'] });
+  const { tags } = useFinanceTags(companyId);
   const { imports, loading: importsLoading, refetch: refetchImports, deleteImport } = useStatementImports(companyId);
 
   const storageKey = `statement_import_selected_${companyId}`;

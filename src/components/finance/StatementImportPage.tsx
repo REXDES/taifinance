@@ -549,9 +549,15 @@ export function StatementImportPage({ companyId }: Props) {
         <Alert>
           <CheckCircle2 className="w-4 h-4" />
           <AlertTitle>Saldo consistente</AlertTitle>
-          <AlertDescription>
-            Saldo inicial {currency(currentImport?.opening_balance)} + movimentações {currency(sumSigned)} ={' '}
-            {currency(computed)}, igual ao saldo final informado pelo extrato.
+          <AlertDescription className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <span>
+              Saldo inicial {currency(currentImport?.opening_balance)} + movimentações {currency(sumSigned)} ={' '}
+              {currency(computed)}, igual ao saldo final informado pelo extrato. Você pode encerrar a conciliação sem
+              efetivar as linhas restantes.
+            </span>
+            <Button size="sm" variant="default" onClick={() => setFinishOpen(true)}>
+              <CheckCircle2 className="w-4 h-4 mr-2" /> Encerrar conciliação
+            </Button>
           </AlertDescription>
         </Alert>
       )}

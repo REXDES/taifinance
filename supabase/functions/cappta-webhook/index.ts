@@ -26,12 +26,12 @@ Deno.serve(async (req) => {
   const eventType = payload?.event ?? payload?.type ?? 'unknown';
   const eventId = payload?.id ?? payload?.eventId ?? null;
 
-  const { error } = await supabase.from('cappta_webhook_events').insert({
+  const { data: eventRow, error } = await supabase.from('cappta_webhook_events').insert({
     event_type: String(eventType),
     event_id: eventId ? String(eventId) : null,
     payload,
     processed: false,
-  });
+  }).select('id').maybeSingle();
   if (error) {
     console.error('webhook insert error:', error);
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

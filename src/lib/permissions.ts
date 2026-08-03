@@ -116,6 +116,7 @@ export const FINANCE_VIEW_PERMISSION_KEY: Record<string, string> = {
   transfers: 'finance.transfers',
   'payables-receivables': 'finance.payables_receivables',
   'split-pix': 'finance.split_pix',
+  'statement-import': 'finance.statement_import',
   'bank-digital': 'finance.bank_digital',
   balance: 'reports.balance_sheet',
   statement: 'reports.statement',

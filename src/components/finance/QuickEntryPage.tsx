@@ -37,6 +37,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const { accounts, loading: loadingAccounts } = useAccounts(companyId);
   const { categories, loading: loadingCategories } = useTransactionCategories(companyId);
   const { createTransaction } = useTransactions(companyId);
+  const { tags: financeTags } = useFinanceTags(companyId);
 
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null);
@@ -48,6 +49,10 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptDetails, setReceiptDetails] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+
 
   const activeAccounts = accounts.filter(a => a.is_active);
   const filteredCategories = categories.filter(c => c.type === (isIncome ? 'income' : 'expense') || c.type === 'both');

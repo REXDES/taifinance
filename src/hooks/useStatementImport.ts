@@ -691,6 +691,21 @@ export async function getReceiptUrl(path: string) {
   return data.signedUrl;
 }
 
+/** Lê um comprovante com IA e devolve os dados interpretados (sem vincular a extrato). */
+export async function analyzeReceiptFile(file: File, ctx: ReceiptContext): Promise<ReceiptAnalysis> {
+  const read = await readReceipt(file);
+  const raw = await callParser({
+    action: 'receipt',
+    fileName: file.name,
+    mimeType: read.mimeType,
+    fileBase64: read.fileBase64,
+    text: read.text,
+    categories: ctx.categories,
+    tags: ctx.tags,
+  });
+  return sanitizeAnalysis(raw, ctx, file.name);
+}
+
 /** Anexa um comprovante a uma linha do extrato, lê os detalhes com IA e atualiza as sugestões. */
 export async function attachReceiptToLine(line: StatementLine, file: File, ctx: ReceiptContext) {
   const path = await uploadReceiptFile(line.company_id, file, `line-${line.id}`);

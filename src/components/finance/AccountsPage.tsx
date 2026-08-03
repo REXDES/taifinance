@@ -245,7 +245,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
             <DialogTrigger asChild>
               <Button onClick={() => {
                 setEditingAccount(null);
-                setAccountForm({ name: '', description: '', group_id: '', initial_balance: '', color: '#10B981' });
+                setAccountForm({ name: '', description: '', group_id: '', initial_balance: '', reconciliation_tolerance: '0', color: '#10B981' });
               }}>
                 <Plus className="w-4 h-4 mr-2" />
                 Nova Conta

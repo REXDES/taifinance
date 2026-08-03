@@ -238,6 +238,60 @@ REGRAS:
       return json(result);
     }
 
+    if (action === "receipt") {
+      const { fileBase64, mimeType, fileName, text, line, categories, tags } = body;
+      if (!fileBase64 && !text) return json({ error: "Comprovante vazio" }, 400);
+
+      const categoriesCtx = (categories || [])
+        .map((c: any) => {
+          const subs = (c.subcategories || []).map((s: any) => `    - ${s.name} (id: ${s.id})`).join("\n");
+          return `- ${c.name} [${c.type}] (id: ${c.id})\n${subs || "    (sem subcategorias)"}`;
+        })
+        .join("\n") || "(nenhuma)";
+
+      const tagsCtx = (tags || []).map((t: any) => `- ${t.name} (id: ${t.id})`).join("\n") || "(nenhuma)";
+
+      const system = `Você analisa comprovantes de pagamento/recebimento brasileiros (PIX, TED, boleto, cartão, nota fiscal) para conciliação bancária.
+
+CATEGORIAS E SUBCATEGORIAS DISPONÍVEIS:
+${categoriesCtx}
+
+TAGS DISPONÍVEIS:
+${tagsCtx}
+
+REGRAS:
+1. Leia o comprovante e extraia os detalhes reais: pagador, favorecido, CNPJ/CPF, banco, documento, finalidade, valor e data.
+2. "details" deve ser um resumo objetivo em português, em uma ou duas frases, com os dados que ajudam a entender o lançamento.
+3. "description" curta e clara para o lançamento financeiro (ex.: "PIX - Auto Posto Central - combustível").
+4. Só use ids que existem nas listas acima; se nada se encaixa, devolva null. Nunca invente id.
+5. Prefira indicar subcategoria sempre que a categoria escolhida tiver subcategorias compatíveis.
+6. tag_ids: liste apenas tags realmente pertinentes (pode ser lista vazia).
+7. confidence entre 0 e 1, honesto.`;
+
+      const lineCtx = line
+        ? `Linha do extrato relacionada: ${line.date} | ${line.type === "income" ? "ENTRADA" : "SAÍDA"} | R$ ${line.amount} | ${line.raw_description}`
+        : "Sem linha de extrato relacionada.";
+
+      const userContent: unknown[] = [];
+      if (fileBase64) {
+        if (String(mimeType || "").startsWith("image/")) {
+          userContent.push({ type: "input_image", image_url: `data:${mimeType};base64,${fileBase64}` });
+        } else {
+          userContent.push({
+            type: "input_file",
+            filename: fileName || "comprovante.pdf",
+            file_data: `data:${mimeType || "application/pdf"};base64,${fileBase64}`,
+          });
+        }
+        userContent.push({ type: "input_text", text: `${lineCtx}\n\nAnalise este comprovante.` });
+      } else {
+        userContent.push({ type: "input_text", text: `${lineCtx}\n\nConteúdo do comprovante:\n\n${String(text).slice(0, 200000)}` });
+      }
+
+      const result = await callAI({ apiKey, system, userContent, schemaName: "comprovante", schema: receiptSchema });
+      return json(result);
+    }
+
     return json({ error: "Ação inválida" }, 400);
   } catch (error: any) {
     const status = error?.status;

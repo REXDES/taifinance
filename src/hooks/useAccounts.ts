@@ -77,6 +77,7 @@ export function useAccounts(companyId: string | null) {
     description?: string;
     group_id?: string;
     initial_balance?: number;
+    reconciliation_tolerance?: number;
     color?: string;
   }) => {
     if (!companyId) return null;
@@ -91,6 +92,7 @@ export function useAccounts(companyId: string | null) {
           group_id: data.group_id || null,
           initial_balance: data.initial_balance || 0,
           current_balance: data.initial_balance || 0,
+          reconciliation_tolerance: data.reconciliation_tolerance ?? 0,
           color: data.color || '#10B981',
         })
         .select()

@@ -671,6 +671,55 @@ export function StatementImportPage({ companyId }: Props) {
                       )}
                     </TableCell>
                     <TableCell>
+                      <TagPicker
+                        companyId={companyId}
+                        value={line.tag_ids || []}
+                        onChange={(ids) => patchLine(line, { tag_ids: ids } as Partial<StatementLine>)}
+                        disabled={done}
+                        compact
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {line.receipt_path ? (
+                          <>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs max-w-[110px] justify-start"
+                                title={line.receipt_name || 'Ver comprovante'}
+                                onClick={() => openReceipt(line.receipt_path!)}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 mr-1 shrink-0" />
+                                <span className="truncate">{line.receipt_name || 'Ver'}</span>
+                              </Button>
+                            </div>
+                            {line.receipt_details && (
+                              <button
+                                type="button"
+                                className="text-[10px] text-primary underline text-left"
+                                onClick={() => setDetailsLine(line)}
+                              >
+                                Ver detalhes lidos
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs"
+                            disabled={done || busyLine === line.id}
+                            onClick={() => openReceiptPicker(line)}
+                          >
+                            <Paperclip className="w-3.5 h-3.5 mr-1" />
+                            Anexar
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       {line.status === 'reconciled' ? (
                         <Badge variant="default" className="text-xs">Conciliado</Badge>
                       ) : line.status === 'ignored' ? (

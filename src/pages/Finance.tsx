@@ -165,6 +165,10 @@ const Finance = () => {
     const savedView = localStorage.getItem('tai-finance-current-view') as FinanceView | null;
     return savedView && NORMAL_ONLY_VIEWS.includes(savedView) ? savedView : 'dashboard';
   });
+  const changeView = (view: FinanceView) => {
+    localStorage.setItem('tai-finance-current-view', view);
+    setCurrentView(view);
+  };
   const [userRole, setUserRole] = useState<UserRoleInfo | null>(null);
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
@@ -194,11 +198,11 @@ const Finance = () => {
     if (showAccessModeDialog) return;
     if (effectiveMode === 'admin') {
       if (!ADMIN_VIEWS.includes(currentView)) {
-        setCurrentView('admin-dashboard');
+        changeView('admin-dashboard');
       }
     } else {
       if (!NORMAL_ONLY_VIEWS.includes(currentView) && currentView !== 'bank-digital') {
-        setCurrentView('dashboard');
+        changeView('dashboard');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -215,7 +219,7 @@ const Finance = () => {
       const key = FINANCE_VIEW_PERMISSION_KEY[view];
       return !!key && can(key);
     });
-    if (firstAllowedView && firstAllowedView !== currentView) setCurrentView(firstAllowedView);
+    if (firstAllowedView && firstAllowedView !== currentView) changeView(firstAllowedView);
   }, [permissionsLoading, isSupervisor, effectiveMode, currentView, can]);
 
   useEffect(() => {
@@ -413,7 +417,7 @@ const Finance = () => {
         selectedCompanyId={selectedCompanyId}
         onSelectCompany={setSelectedCompanyId}
         currentView={currentView}
-        onChangeView={setCurrentView}
+        onChangeView={changeView}
         isSupervisor={isSupervisor}
         isGerente={isGerente}
         accessMode={effectiveMode}

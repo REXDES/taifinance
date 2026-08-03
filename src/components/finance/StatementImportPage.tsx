@@ -286,6 +286,27 @@ export function StatementImportPage({ companyId }: Props) {
     }
   };
 
+  const handleCreateAdjustment = async () => {
+    if (!currentImport?.account_id || appBalanceDiff === null || !withinTolerance) return;
+    setAdjusting(true);
+    try {
+      await createReconciliationAdjustment({
+        companyId,
+        accountId: currentImport.account_id,
+        amount: appBalanceDiff,
+        date: currentImport.period_end || currentImport.period_start || new Date().toISOString().slice(0, 10),
+        importId: currentImport.id,
+      });
+      await refetchLines();
+      await refetchImports();
+      toast.success('Ajuste de arredondamento criado com sucesso');
+    } catch (error) {
+      toast.error('Erro ao criar ajuste: ' + (error as Error).message);
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
   const pending = lines.filter((l) => l.status === 'pending').length;
   const reconciled = lines.filter((l) => l.status === 'reconciled').length;
   const duplicates = lines.filter((l) => l.duplicate_of_transaction_id && l.status === 'pending').length;

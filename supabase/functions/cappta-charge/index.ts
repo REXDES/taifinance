@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
     new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   try {
-    const cronSecret = Deno.env.get('CAPPTA_WEBHOOK_SECRET');
+    const cronSecret = Deno.env.get('CAPPTA_CRON_SECRET') ?? Deno.env.get('CAPPTA_WEBHOOK_SECRET');
     const url = new URL(req.url);
     const providedSecret = req.headers.get('x-cron-secret') ?? url.searchParams.get('secret');
     const isCron = !!cronSecret && providedSecret === cronSecret;

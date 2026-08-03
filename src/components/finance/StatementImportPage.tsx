@@ -319,6 +319,11 @@ export function StatementImportPage({ companyId }: Props) {
   const informedClosing = currentImport?.closing_balance ?? null;
   const balanceDiff = computed !== null && informedClosing !== null ? Number((informedClosing - computed).toFixed(2)) : null;
 
+  const appAccount = currentImport?.account_id ? accounts.find((a) => a.id === currentImport.account_id) : null;
+  const appBalance = appAccount?.current_balance ?? null;
+  const appBalanceDiff = informedClosing !== null && appBalance !== null ? Number((informedClosing - appBalance).toFixed(2)) : null;
+
+
   // Continuidade da linha do tempo: procura buracos entre importações da mesma conta
   const timelineGap = useMemo(() => {
     if (!currentImport?.account_id || !currentImport.period_start) return null;

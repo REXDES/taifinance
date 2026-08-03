@@ -616,11 +616,11 @@ export function StatementImportPage({ companyId }: Props) {
       )}
 
       <Card>
-        <CardContent className="p-0 overflow-auto">
-          <Table>
-            <TableHeader>
+        <CardContent className="p-0">
+          <Table wrapperClassName="max-h-[65vh] overflow-auto accessible-scrollbar">
+            <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
-                <TableHead className="w-8">
+                <TableHead className="w-8 bg-background">
                   <Checkbox
                     checked={lines.length > 0 && lines.filter((l) => l.status === 'pending').every((l) => selected[l.id])}
                     onCheckedChange={(checked) => {
@@ -630,17 +630,17 @@ export function StatementImportPage({ companyId }: Props) {
                     }}
                   />
                 </TableHead>
-                <TableHead className="w-24">Data</TableHead>
-                <TableHead className="min-w-[200px]">Histórico do banco</TableHead>
-                <TableHead className="text-right w-28">Valor</TableHead>
-                <TableHead className="min-w-[180px]">Conta</TableHead>
-                <TableHead className="min-w-[180px]">Categoria</TableHead>
-                <TableHead className="min-w-[180px]">Subcategoria</TableHead>
-                <TableHead className="min-w-[200px]">Descrição</TableHead>
-                <TableHead className="min-w-[170px]">Tags</TableHead>
-                <TableHead className="min-w-[130px]">Comprovante</TableHead>
-                <TableHead className="w-32">Situação</TableHead>
-                <TableHead className="w-40 text-right">Ações</TableHead>
+                <TableHead className="w-24 bg-background">Data</TableHead>
+                <TableHead className="min-w-[200px] bg-background">Histórico do banco</TableHead>
+                <TableHead className="text-right w-28 bg-background">Valor</TableHead>
+                <TableHead className="min-w-[180px] bg-background">Conta</TableHead>
+                <TableHead className="min-w-[180px] bg-background">Categoria</TableHead>
+                <TableHead className="min-w-[180px] bg-background">Subcategoria</TableHead>
+                <TableHead className="min-w-[200px] bg-background">Descrição</TableHead>
+                <TableHead className="min-w-[170px] bg-background">Tags</TableHead>
+                <TableHead className="min-w-[130px] bg-background">Comprovante</TableHead>
+                <TableHead className="w-32 bg-background">Situação</TableHead>
+                <TableHead className="w-40 text-right bg-background">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

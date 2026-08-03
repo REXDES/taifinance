@@ -114,6 +114,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
       description: account.description || '',
       group_id: account.group_id || '',
       initial_balance: account.initial_balance.toString(),
+      reconciliation_tolerance: (account.reconciliation_tolerance ?? 0).toString(),
       color: account.color,
     });
     setShowAccountDialog(true);

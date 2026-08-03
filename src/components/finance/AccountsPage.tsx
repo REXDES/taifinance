@@ -61,6 +61,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
     description: '',
     group_id: '',
     initial_balance: '',
+    reconciliation_tolerance: '0',
     color: '#10B981',
   });
 

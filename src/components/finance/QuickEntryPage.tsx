@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Check, Loader2, Plus, Wallet, Tags, Sparkles, CalendarIcon } from 'lucide-react';
+import { Check, Loader2, Plus, Wallet, Tags, Sparkles, CalendarIcon, Paperclip, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -24,7 +24,8 @@ import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useToast } from '@/hooks/use-toast';
 import { TagPicker } from './TagPicker';
-import { setEntityTags } from '@/hooks/useFinanceTags';
+import { setEntityTags, useFinanceTags } from '@/hooks/useFinanceTags';
+import { analyzeReceiptFile, uploadReceiptFile } from '@/hooks/useStatementImport';
 
 interface QuickEntryPageProps {
   companyId: string;

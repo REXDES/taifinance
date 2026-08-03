@@ -47,6 +47,14 @@ export function StatementImportPage({ companyId }: Props) {
   });
   const { lines, loading: linesLoading, refetch: refetchLines } = useStatementLines(selectedImportId);
 
+  const selectImport = (importId: string | null) => {
+    try {
+      if (importId) localStorage.setItem(storageKey, importId);
+      else localStorage.removeItem(storageKey);
+    } catch { /* ignore */ }
+    setSelectedImportId(importId);
+  };
+
   useEffect(() => {
     try {
       if (selectedImportId) localStorage.setItem(storageKey, selectedImportId);
@@ -90,7 +98,7 @@ export function StatementImportPage({ companyId }: Props) {
       });
       toast.success(`${parsed.lines.length} lançamentos importados. Gerando sugestões...`);
       await refetchImports();
-      setSelectedImportId(created.id);
+      selectImport(created.id);
 
       const { data } = await (await import('@/integrations/supabase/client')).supabase
         .from('statement_lines' as never)
@@ -331,8 +339,8 @@ export function StatementImportPage({ companyId }: Props) {
                   <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
                 ) : imports.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum extrato importado ainda</TableCell></TableRow>
-                ) : imports.map((imp) => (
-                  <TableRow key={imp.id} className="cursor-pointer" onClick={() => setSelectedImportId(imp.id)}>
+                  ) : imports.map((imp) => (
+                  <TableRow key={imp.id} className="cursor-pointer" onClick={() => selectImport(imp.id)}>
                     <TableCell className="font-medium">
                       {imp.file_name}
                       <span className="ml-2 text-xs text-muted-foreground uppercase">{imp.file_format}</span>
@@ -369,7 +377,7 @@ export function StatementImportPage({ companyId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => { setSelectedImportId(null); setSelected({}); }}>
+          <Button variant="ghost" size="sm" onClick={() => { selectImport(null); setSelected({}); }}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
           </Button>
           <div>

@@ -23,7 +23,8 @@ import { TagPicker } from '@/components/finance/TagPicker';
 import {
   useStatementImports, useStatementLines, parseStatementFile, createStatementImport,
   suggestForLines, reconcileLineAsTransaction, reconcileLineAsSettlement, updateStatementLine,
-  setImportStatus, detectFormat, StatementLine, attachReceiptToLine, createReceiptsImport, getReceiptUrl,
+  setImportStatus, finishReconciliation, detectFormat, StatementLine, attachReceiptToLine,
+  createReceiptsImport, getReceiptUrl,
 } from '@/hooks/useStatementImport';
 
 interface Props {
@@ -77,6 +78,9 @@ export function StatementImportPage({ companyId }: Props) {
   const lineReceiptRef = useRef<HTMLInputElement>(null);
   const [receiptTargetLine, setReceiptTargetLine] = useState<StatementLine | null>(null);
   const [detailsLine, setDetailsLine] = useState<StatementLine | null>(null);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [ignoreRemaining, setIgnoreRemaining] = useState(true);
+  const [finishing, setFinishing] = useState(false);
 
   const currentImport = imports.find((i) => i.id === selectedImportId) || null;
 
@@ -259,22 +263,53 @@ export function StatementImportPage({ companyId }: Props) {
     toast[failed ? 'warning' : 'success'](`${ok} linha(s) conciliada(s)${failed ? `, ${failed} com erro` : ''}`);
   };
 
+  const handleFinishReconciliation = async () => {
+    if (!currentImport) return;
+    const remainingPending = lines.filter((l) => l.status === 'pending').map((l) => l.id);
+    if (!ignoreRemaining && remainingPending.length > 0) {
+      toast.error('Existem linhas pendentes. Marque a opção para ignorá-las ou efetive-as antes de encerrar.');
+      return;
+    }
+    setFinishing(true);
+    try {
+      await finishReconciliation(currentImport.id, ignoreRemaining ? remainingPending : undefined);
+      await refetchLines();
+      await refetchImports();
+      setFinishOpen(false);
+      selectImport(null);
+      toast.success('Conciliação encerrada com sucesso');
+    } catch (error) {
+      toast.error('Erro ao encerrar conciliação: ' + (error as Error).message);
+    } finally {
+      setFinishing(false);
+    }
+  };
+
   const pending = lines.filter((l) => l.status === 'pending').length;
   const reconciled = lines.filter((l) => l.status === 'reconciled').length;
   const duplicates = lines.filter((l) => l.duplicate_of_transaction_id && l.status === 'pending').length;
 
-  // Situação real da importação: só marca "Conciliado" quando existem linhas e nenhuma está pendente.
+  // Situação real da importação: marcar "Conciliado" quando não há pendentes ou quando o usuário encerrou manualmente.
   const derivedStatus: 'pending' | 'partial' | 'done' | null =
-    linesLoading || lines.length === 0 ? null : pending === 0 ? 'done' : pending === lines.length ? 'pending' : 'partial';
+    linesLoading || lines.length === 0
+      ? null
+      : currentImport?.status === 'done'
+        ? 'done'
+        : pending === 0
+          ? 'done'
+          : pending === lines.length
+            ? 'pending'
+            : 'partial';
 
   useEffect(() => {
+    if (finishing) return;
     if (!currentImport || !derivedStatus) return;
     if (currentImport.status === derivedStatus) return;
     (async () => {
       await setImportStatus(currentImport.id, derivedStatus);
       await refetchImports();
     })();
-  }, [currentImport?.id, currentImport?.status, derivedStatus, refetchImports]);
+  }, [currentImport?.id, currentImport?.status, derivedStatus, refetchImports, finishing]);
 
 
   const sumSigned = lines.reduce((s, l) => s + (l.type === 'income' ? l.amount : -l.amount), 0);
@@ -523,9 +558,15 @@ export function StatementImportPage({ companyId }: Props) {
         <Alert>
           <CheckCircle2 className="w-4 h-4" />
           <AlertTitle>Saldo consistente</AlertTitle>
-          <AlertDescription>
-            Saldo inicial {currency(currentImport?.opening_balance)} + movimentações {currency(sumSigned)} ={' '}
-            {currency(computed)}, igual ao saldo final informado pelo extrato.
+          <AlertDescription className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <span>
+              Saldo inicial {currency(currentImport?.opening_balance)} + movimentações {currency(sumSigned)} ={' '}
+              {currency(computed)}, igual ao saldo final informado pelo extrato. Você pode encerrar a conciliação sem
+              efetivar as linhas restantes.
+            </span>
+            <Button size="sm" variant="default" onClick={() => setFinishOpen(true)}>
+              <CheckCircle2 className="w-4 h-4 mr-2" /> Encerrar conciliação
+            </Button>
           </AlertDescription>
         </Alert>
       )}
@@ -848,6 +889,49 @@ export function StatementImportPage({ companyId }: Props) {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettleLine(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={finishOpen} onOpenChange={(open) => !open && setFinishOpen(false)}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Encerrar conciliação</DialogTitle>
+            <DialogDescription>
+              O saldo do extrato já está batendo com o saldo calculado. Você pode encerrar sem efetivar as linhas
+              restantes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {pending > 0 && (
+              <div className="flex items-start gap-3 rounded-md border p-3">
+                <Checkbox
+                  id="ignore-remaining"
+                  checked={ignoreRemaining}
+                  onCheckedChange={(checked) => setIgnoreRemaining(!!checked)}
+                />
+                <div className="grid gap-1">
+                  <Label htmlFor="ignore-remaining" className="font-medium">
+                    Ignorar {pending} linha(s) pendente(s)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    As linhas marcadas como ignoradas não gerarão transações e não aparecerão em novas conciliações.
+                  </p>
+                </div>
+              </div>
+            )}
+            {pending === 0 && (
+              <p className="text-sm text-muted-foreground">Não há linhas pendentes. A conciliação será encerrada.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFinishOpen(false)} disabled={finishing}>
+              Cancelar
+            </Button>
+            <Button onClick={handleFinishReconciliation} disabled={finishing}>
+              {finishing ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+              Encerrar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

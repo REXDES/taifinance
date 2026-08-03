@@ -369,7 +369,34 @@ export function StatementImportPage({ companyId }: Props) {
                   Formatos aceitos: CSV, Excel (XLSX/XLS), OFX/OFC e PDF.
                 </p>
               </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-primary" /> Comprovantes (sem extrato)
+                </Label>
+                <Input
+                  ref={receiptsRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.txt"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length === 0) return;
+                    if (!accountId) {
+                      toast.error('Selecione a conta antes de enviar os comprovantes');
+                      if (receiptsRef.current) receiptsRef.current.value = '';
+                      return;
+                    }
+                    handleReceiptsUpload(files);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Envie PIX, TED, boletos ou notas (imagem ou PDF). A IA lê os detalhes do comprovante e sugere
+                  categoria, subcategoria, descrição e tags com muito mais precisão.
+                </p>
+              </div>
             </div>
+
             {uploading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <RefreshCw className="w-4 h-4 animate-spin" /> Lendo o extrato e gerando sugestões...

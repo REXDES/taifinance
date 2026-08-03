@@ -23,8 +23,8 @@ import { TagPicker } from '@/components/finance/TagPicker';
 import {
   useStatementImports, useStatementLines, parseStatementFile, createStatementImport,
   suggestForLines, reconcileLineAsTransaction, reconcileLineAsSettlement, updateStatementLine,
-  setImportStatus, finishReconciliation, detectFormat, StatementLine, attachReceiptToLine,
-  createReceiptsImport, getReceiptUrl,
+  setImportStatus, finishReconciliation, createReconciliationAdjustment, detectFormat, StatementLine,
+  attachReceiptToLine, createReceiptsImport, getReceiptUrl,
 } from '@/hooks/useStatementImport';
 
 interface Props {

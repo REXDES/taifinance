@@ -29,6 +29,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'finance.transfers', label: 'Transferências' },
       { key: 'finance.payables_receivables', label: 'Pagar / Receber' },
       { key: 'finance.split_pix', label: 'Split de PIX' },
+      { key: 'finance.statement_import', label: 'Importar Extrato (Conciliação)' },
     ],
   },
   {

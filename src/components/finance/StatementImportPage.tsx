@@ -78,6 +78,9 @@ export function StatementImportPage({ companyId }: Props) {
   const lineReceiptRef = useRef<HTMLInputElement>(null);
   const [receiptTargetLine, setReceiptTargetLine] = useState<StatementLine | null>(null);
   const [detailsLine, setDetailsLine] = useState<StatementLine | null>(null);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [ignoreRemaining, setIgnoreRemaining] = useState(true);
+  const [finishing, setFinishing] = useState(false);
 
   const currentImport = imports.find((i) => i.id === selectedImportId) || null;
 

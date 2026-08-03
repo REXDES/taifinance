@@ -107,6 +107,7 @@ const transacoesMenuItems: MenuItem[] = [
   { view: 'transactions', label: 'Lançamentos', icon: <ArrowUpDown className="w-4 h-4" /> },
   { view: 'transfers', label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" /> },
   { view: 'payables-receivables', label: 'Contas a Pagar/Receber', icon: <CreditCard className="w-4 h-4" /> },
+  { view: 'statement-import', label: 'Importar Extrato', icon: <FileSearch className="w-4 h-4" /> },
 ];
 
 const relatoriosMainItems: MenuItem[] = [

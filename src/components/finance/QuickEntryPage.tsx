@@ -86,6 +86,47 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
     setSelectedSubcategoryId(null);
   };
 
+  const formatAmountValue = (value: number) => {
+    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const handleReceiptSelected = async (file: File) => {
+    setReceiptFile(file);
+    setReceiptDetails(null);
+    setAnalyzing(true);
+    try {
+      const analysis = await analyzeReceiptFile(file, {
+        categories: categories.map(c => ({
+          id: c.id,
+          name: c.name,
+          type: c.type,
+          subcategories: (c.subcategories || []).map(s => ({ id: s.id, name: s.name })),
+        })),
+        tags: financeTags.map(t => ({ id: t.id, name: t.name })),
+      });
+
+      const filled: string[] = [];
+      if (analysis.type) { setIsIncome(analysis.type === 'income'); filled.push('tipo'); }
+      if (analysis.amount) { setAmount(formatAmountValue(analysis.amount)); filled.push('valor'); }
+      if (analysis.description) { setDescription(analysis.description); filled.push('descrição'); }
+      if (analysis.date) { setSelectedDate(new Date(`${analysis.date}T00:00:00`)); filled.push('data'); }
+      if (analysis.subcategory_id) { setSelectedSubcategoryId(analysis.subcategory_id); setShowMoreSubcategories(true); filled.push('subcategoria'); }
+      if (analysis.tag_ids.length > 0) { setSelectedTags(analysis.tag_ids); filled.push('tags'); }
+      if (analysis.details) setReceiptDetails(analysis.details);
+
+      toast({
+        title: filled.length > 0 ? 'Comprovante interpretado' : 'Não foi possível extrair dados',
+        description: filled.length > 0 ? `Campos preenchidos: ${filled.join(', ')}` : 'Preencha manualmente os campos.',
+        variant: filled.length > 0 ? 'default' : 'destructive',
+      });
+    } catch (error: any) {
+      toast({ title: 'Erro ao analisar comprovante', description: error?.message, variant: 'destructive' });
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+
   const handleSubmit = async () => {
     if (!selectedAccountId) {
       toast({ title: 'Selecione uma conta', variant: 'destructive' });

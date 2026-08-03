@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
         ? await q.eq('id', String(externalId))
         : await q.eq('cappta_charge_id', String(providerId));
       if (upErr) console.error('charge update error:', upErr);
-      else await supabase.from('cappta_webhook_events').update({ processed: true }).eq('payload', payload as any);
+      else if (eventRow?.id) await supabase.from('cappta_webhook_events').update({ processed: true }).eq('id', eventRow.id);
     }
   } catch (e) {
     console.error('charge sync from webhook failed:', e);

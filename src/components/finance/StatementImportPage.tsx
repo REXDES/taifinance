@@ -572,13 +572,25 @@ export function StatementImportPage({ companyId }: Props) {
       </div>
 
       {appBalanceDiff !== null && Math.abs(appBalanceDiff) >= 0.01 && (
-        <Alert variant="destructive">
+        <Alert variant={withinTolerance ? 'default' : 'destructive'}>
           <AlertTriangle className="w-4 h-4" />
-          <AlertTitle>Saldo do app diverge do extrato</AlertTitle>
-          <AlertDescription>
-            O saldo atual da conta <strong>{appAccount?.name}</strong> no app é {currency(appBalance)}, mas o extrato
-            importado informa saldo final de {currency(informedClosing)} (diferença de {currency(appBalanceDiff)}).{' '}
-            É necessário efetivar os lançamentos pendentes para equalizar os saldos antes de encerrar a conciliação.
+          <AlertTitle>
+            {withinTolerance ? 'Diferença dentro da tolerância' : 'Saldo do app diverge do extrato'}
+          </AlertTitle>
+          <AlertDescription className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <span>
+              O saldo atual da conta <strong>{appAccount?.name}</strong> no app é {currency(appBalance)}, mas o extrato
+              importado informa saldo final de {currency(informedClosing)} (diferença de {currency(appBalanceDiff)}).{' '}
+              {withinTolerance
+                ? `A diferença está dentro da tolerância configurada (${currency(tolerance)}). Você pode gerar um ajuste de arredondamento ou encerrar a conciliação.`
+                : 'É necessário efetivar os lançamentos pendentes para equalizar os saldos antes de encerrar a conciliação.'}
+            </span>
+            {withinTolerance && (
+              <Button size="sm" variant="outline" onClick={handleCreateAdjustment} disabled={adjusting}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${adjusting ? 'animate-spin' : ''}`} />
+                Gerar ajuste
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -603,11 +615,11 @@ export function StatementImportPage({ companyId }: Props) {
             <span>
               Saldo inicial {currency(currentImport?.opening_balance)} + movimentações {currency(sumSigned)} ={' '}
               {currency(computed)}, igual ao saldo final informado pelo extrato.
-              {appBalanceDiff !== null && Math.abs(appBalanceDiff) >= 0.01 && (
+              {appBalanceDiff !== null && Math.abs(appBalanceDiff) >= 0.01 && !withinTolerance && (
                 <> No entanto, o saldo da conta no app ainda diverge — efetive os lançamentos pendentes para encerrar.</>
               )}
             </span>
-            {appBalanceDiff !== null && Math.abs(appBalanceDiff) < 0.01 && (
+            {appBalanceDiff !== null && (Math.abs(appBalanceDiff) < 0.01 || withinTolerance) && (
               <Button size="sm" variant="default" onClick={() => setFinishOpen(true)}>
                 <CheckCircle2 className="w-4 h-4 mr-2" /> Encerrar conciliação
               </Button>

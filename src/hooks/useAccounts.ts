@@ -20,6 +20,7 @@ export interface Account {
   description: string | null;
   initial_balance: number;
   current_balance: number;
+  reconciliation_tolerance: number;
   color: string;
   is_active: boolean;
   created_at: string;

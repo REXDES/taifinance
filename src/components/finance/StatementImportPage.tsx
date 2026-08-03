@@ -582,7 +582,7 @@ export function StatementImportPage({ companyId }: Props) {
             </TableHeader>
             <TableBody>
               {lines.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma linha</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhuma linha</TableCell></TableRow>
               ) : lines.map((line) => {
                 const done = line.status !== 'pending';
                 return (

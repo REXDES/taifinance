@@ -491,55 +491,54 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
           <CardTitle>Fluxo Financeiro</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
+          <Table wrapperClassName="max-h-[65vh] border rounded-md">
+            <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Conta</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead className="text-right">Saída</TableHead>
+                <TableHead className="text-right">Entrada</TableHead>
+                <TableHead className="text-right">Saldo</TableHead>
+                <TableHead>Usuário</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {flowData.length === 0 ? (
                 <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Conta</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="text-right">Saída</TableHead>
-                  <TableHead className="text-right">Entrada</TableHead>
-                  <TableHead className="text-right">Saldo</TableHead>
-                  <TableHead>Usuário</TableHead>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    Nenhum lançamento encontrado no período
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {flowData.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                      Nenhum lançamento encontrado no período
+              ) : (
+                flowData.map((entry) => (
+                  <TableRow
+                    key={entry.id}
+                    className={entry.isInitialBalance ? 'bg-muted/50 font-medium' : ''}
+                  >
+                    <TableCell>{format(parseISO(entry.date), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell>{entry.accountName}</TableCell>
+                    <TableCell>{entry.category}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{entry.description}</TableCell>
+                    <TableCell className="text-right text-red-600">
+                      {entry.expense > 0 ? formatCurrency(entry.expense) : '-'}
                     </TableCell>
+                    <TableCell className="text-right text-emerald-600">
+                      {entry.income > 0 ? formatCurrency(entry.income) : '-'}
+                    </TableCell>
+                    <TableCell className={`text-right font-medium ${entry.runningBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {formatCurrency(entry.runningBalance)}
+                    </TableCell>
+                    <TableCell>{entry.userName}</TableCell>
                   </TableRow>
-                ) : (
-                  flowData.map((entry) => (
-                    <TableRow 
-                      key={entry.id} 
-                      className={entry.isInitialBalance ? 'bg-muted/50 font-medium' : ''}
-                    >
-                      <TableCell>{format(parseISO(entry.date), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell>{entry.accountName}</TableCell>
-                      <TableCell>{entry.category}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{entry.description}</TableCell>
-                      <TableCell className="text-right text-red-600">
-                        {entry.expense > 0 ? formatCurrency(entry.expense) : '-'}
-                      </TableCell>
-                      <TableCell className="text-right text-emerald-600">
-                        {entry.income > 0 ? formatCurrency(entry.income) : '-'}
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${entry.runningBalance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {formatCurrency(entry.runningBalance)}
-                      </TableCell>
-                      <TableCell>{entry.userName}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+
     </div>
   );
 }

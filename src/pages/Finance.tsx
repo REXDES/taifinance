@@ -161,7 +161,10 @@ const Finance = () => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(() => {
     return localStorage.getItem('tai-finance-last-company') || null;
   });
-  const [currentView, setCurrentView] = useState<FinanceView>('dashboard');
+  const [currentView, setCurrentView] = useState<FinanceView>(() => {
+    const savedView = localStorage.getItem('tai-finance-current-view') as FinanceView | null;
+    return savedView && NORMAL_ONLY_VIEWS.includes(savedView) ? savedView : 'dashboard';
+  });
   const [userRole, setUserRole] = useState<UserRoleInfo | null>(null);
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
@@ -267,6 +270,10 @@ const Finance = () => {
       localStorage.setItem('tai-finance-last-company', selectedCompanyId);
     }
   }, [selectedCompanyId]);
+
+  useEffect(() => {
+    localStorage.setItem('tai-finance-current-view', currentView);
+  }, [currentView]);
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const { enabled: machinesEnabled, refetch: refetchMachinesFlag } = useCompanyMachinesFlag(selectedCompanyId);

@@ -45,6 +45,10 @@ export interface StatementLine {
   status: 'pending' | 'reconciled' | 'ignored';
   transaction_id: string | null;
   payable_receivable_id: string | null;
+  receipt_path?: string | null;
+  receipt_name?: string | null;
+  receipt_details?: string | null;
+  tag_ids?: string[] | null;
 }
 
 export interface ParsedLine {

@@ -81,6 +81,7 @@ export function StatementImportPage({ companyId }: Props) {
   const [finishOpen, setFinishOpen] = useState(false);
   const [ignoreRemaining, setIgnoreRemaining] = useState(true);
   const [finishing, setFinishing] = useState(false);
+  const [adjusting, setAdjusting] = useState(false);
 
   const currentImport = imports.find((i) => i.id === selectedImportId) || null;
 

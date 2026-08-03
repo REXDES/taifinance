@@ -26,15 +26,49 @@ Deno.serve(async (req) => {
   const eventType = payload?.event ?? payload?.type ?? 'unknown';
   const eventId = payload?.id ?? payload?.eventId ?? null;
 
-  const { error } = await supabase.from('cappta_webhook_events').insert({
+  const { data: eventRow, error } = await supabase.from('cappta_webhook_events').insert({
     event_type: String(eventType),
     event_id: eventId ? String(eventId) : null,
     payload,
     processed: false,
-  });
+  }).select('id').maybeSingle();
   if (error) {
     console.error('webhook insert error:', error);
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+
+  // ---- Update the related charge status (boleto/PIX tracking) --------------
+  try {
+    const data = payload?.data ?? payload?.charge ?? payload?.billet ?? payload;
+    const providerId = data?.id ?? data?.chargeId ?? data?.billetId ?? data?.documentNumber ?? null;
+    const externalId = data?.externalId ?? data?.external_id ?? null;
+    const rawStatus = String(data?.status ?? data?.situation ?? payload?.event ?? payload?.type ?? '').toLowerCase();
+
+    let mapped: string | null = null;
+    if (/(paid|pago|liquidad|settled|received|recebid|confirmed|approved)/.test(rawStatus)) mapped = 'paid';
+    else if (/(cancel|revers|void)/.test(rawStatus)) mapped = 'canceled';
+    else if (/(expired|vencid|overdue|atras)/.test(rawStatus)) mapped = 'overdue';
+    else if (/(registered|registrad|issued|emitid|generated|gerad|open|aberto)/.test(rawStatus)) mapped = 'issued';
+
+    if (mapped && (providerId || externalId)) {
+      const update: Record<string, unknown> = {
+        status: mapped,
+        provider_status: rawStatus || null,
+        last_sync_at: new Date().toISOString(),
+        raw_payload: payload,
+      };
+      if (mapped === 'paid') update.paid_at = data?.paidAt ?? data?.paymentDate ?? new Date().toISOString();
+      if (mapped === 'canceled') update.canceled_at = new Date().toISOString();
+
+      const q = supabase.from('cappta_charges').update(update);
+      const { error: upErr } = externalId
+        ? await q.eq('id', String(externalId))
+        : await q.eq('cappta_charge_id', String(providerId));
+      if (upErr) console.error('charge update error:', upErr);
+      else if (eventRow?.id) await supabase.from('cappta_webhook_events').update({ processed: true }).eq('id', eventRow.id);
+    }
+  } catch (e) {
+    console.error('charge sync from webhook failed:', e);
   }
 
   return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

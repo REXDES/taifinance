@@ -216,6 +216,10 @@ export type Database = {
         Row: {
           amount: number
           boleto_barcode: string | null
+          boleto_digitable_line: string | null
+          boleto_our_number: string | null
+          boleto_url: string | null
+          canceled_at: string | null
           cappta_charge_id: string | null
           charge_type: string
           company_id: string
@@ -224,6 +228,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          last_sync_at: string | null
           linked_payable_id: string | null
           linked_transaction_id: string | null
           merchant_id: string | null
@@ -235,13 +240,19 @@ export type Database = {
           payment_url: string | null
           pix_copy_paste: string | null
           pix_qrcode: string | null
+          provider_status: string | null
           raw_payload: Json | null
           status: string
+          sync_error: string | null
           updated_at: string
         }
         Insert: {
           amount: number
           boleto_barcode?: string | null
+          boleto_digitable_line?: string | null
+          boleto_our_number?: string | null
+          boleto_url?: string | null
+          canceled_at?: string | null
           cappta_charge_id?: string | null
           charge_type: string
           company_id: string
@@ -250,6 +261,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          last_sync_at?: string | null
           linked_payable_id?: string | null
           linked_transaction_id?: string | null
           merchant_id?: string | null
@@ -261,13 +273,19 @@ export type Database = {
           payment_url?: string | null
           pix_copy_paste?: string | null
           pix_qrcode?: string | null
+          provider_status?: string | null
           raw_payload?: Json | null
           status?: string
+          sync_error?: string | null
           updated_at?: string
         }
         Update: {
           amount?: number
           boleto_barcode?: string | null
+          boleto_digitable_line?: string | null
+          boleto_our_number?: string | null
+          boleto_url?: string | null
+          canceled_at?: string | null
           cappta_charge_id?: string | null
           charge_type?: string
           company_id?: string
@@ -276,6 +294,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          last_sync_at?: string | null
           linked_payable_id?: string | null
           linked_transaction_id?: string | null
           merchant_id?: string | null
@@ -287,8 +306,10 @@ export type Database = {
           payment_url?: string | null
           pix_copy_paste?: string | null
           pix_qrcode?: string | null
+          provider_status?: string | null
           raw_payload?: Json | null
           status?: string
+          sync_error?: string | null
           updated_at?: string
         }
         Relationships: [

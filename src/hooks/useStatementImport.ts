@@ -566,6 +566,23 @@ export async function setImportStatus(importId: string, status: StatementImportS
   await (supabase as any).from('statement_imports').update({ status }).eq('id', importId);
 }
 
+/** Encerra a conciliação marcando a importação como done e, opcionalmente, ignorando linhas pendentes restantes. */
+export async function finishReconciliation(importId: string, lineIdsToIgnore?: string[]) {
+  if (lineIdsToIgnore && lineIdsToIgnore.length > 0) {
+    const { error } = await (supabase as any)
+      .from('statement_lines')
+      .update({ status: 'ignored' })
+      .in('id', lineIdsToIgnore);
+    if (error) throw error;
+  }
+
+  const { error } = await (supabase as any)
+    .from('statement_imports')
+    .update({ status: 'done' })
+    .eq('id', importId);
+  if (error) throw error;
+}
+
 /* ============================ Comprovantes ============================ */
 
 export interface ReceiptAnalysis {

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Upload, RefreshCw, Sparkles, CheckCircle2, Trash2, AlertTriangle, FileSpreadsheet,
   Copy, Ban, Link2, ChevronLeft,

@@ -125,6 +125,20 @@ const suggestSchema = {
   required: ["suggestions"],
 };
 
+const receiptSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    details: { type: "string", description: "Resumo detalhado do comprovante (pagador, favorecido, documento, finalidade, valor, data)" },
+    description: { type: "string", description: "Descrição curta e clara para o lançamento" },
+    category_id: { type: ["string", "null"] },
+    subcategory_id: { type: ["string", "null"] },
+    tag_ids: { type: "array", items: { type: "string" } },
+    confidence: { type: "number", description: "0 a 1" },
+  },
+  required: ["details", "description", "category_id", "subcategory_id", "tag_ids", "confidence"],
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });

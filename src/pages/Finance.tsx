@@ -115,6 +115,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'payables-receivables',
   'balance',
   'statement',
+  'statement-import',
   'categories',
   'tags',
   'split-pix',

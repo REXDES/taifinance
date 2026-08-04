@@ -5,14 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useCustomRoles } from '@/hooks/useCustomRoles';
+import { FinanceUserManagementDialog } from '@/components/dialogs/FinanceUserManagementDialog';
 import { UserCog, Search, Users } from 'lucide-react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -39,7 +34,6 @@ export function AdminUsersPage() {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<AdminUserRow | null>(null);
-  const [form, setForm] = useState({ full_name: '', role: 'operador' as AppRole, custom_role_id: 'none' });
   const { toast } = useToast();
   const { roles: customRoles } = useCustomRoles();
 
@@ -92,48 +86,17 @@ export function AdminUsersPage() {
   const initials = (name: string | null, email: string) =>
     name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : email.charAt(0).toUpperCase();
 
-  const openEdit = (u: AdminUserRow) => {
-    setEditing(u);
-    setForm({
-      full_name: u.full_name || '',
-      role: u.role,
-      custom_role_id: u.custom_role_id || 'none',
-    });
-  };
-
-  const save = async () => {
-    if (!editing) return;
-    // Update profile
-    const { error: pErr } = await supabase
-      .from('profiles')
-      .update({ full_name: form.full_name })
-      .eq('user_id', editing.user_id);
-    if (pErr) { toast({ title: 'Erro ao atualizar perfil', description: pErr.message, variant: 'destructive' }); return; }
-
-    // Upsert role
-    const { error: rErr } = await (supabase as any)
-      .from('user_roles')
-      .update({
-        role: form.role,
-        custom_role_id: form.custom_role_id === 'none' ? null : form.custom_role_id,
-      })
-      .eq('user_id', editing.user_id);
-    if (rErr) { toast({ title: 'Erro ao atualizar cargo', description: rErr.message, variant: 'destructive' }); return; }
-
-    toast({ title: 'Usuário atualizado' });
-    setEditing(null);
-    await load();
-  };
+  const openEdit = (u: AdminUserRow) => setEditing(u);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="w-6 h-6" /> Usuários (global)
+            <Users className="w-6 h-6" /> Usuários
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Todos os usuários de todas as empresas. Filtre por nome ou email.
+            Todos os usuários de todas as empresas. Edite perfil, cargo, limites de empresas/convites e acessos.
           </p>
         </div>
         <div className="relative w-72">
@@ -186,7 +149,7 @@ export function AdminUsersPage() {
                       </Badge>
                     )}
                     <Button size="sm" variant="outline" onClick={() => openEdit(u)}>
-                      <UserCog className="w-4 h-4 mr-1" /> Editar
+                      <UserCog className="w-4 h-4 mr-1" /> Gerenciar
                     </Button>
                   </div>
                 </div>
@@ -196,53 +159,23 @@ export function AdminUsersPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Editar usuário</DialogTitle></DialogHeader>
-          {editing && (
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium">Nome completo</label>
-                <Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Email</label>
-                <Input value={editing.email} disabled />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Cargo base</label>
-                <Select value={form.role} onValueChange={(v) => setForm(f => ({ ...f, role: v as AppRole }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="gerente">Gerente</SelectItem>
-                    <SelectItem value="operador">Operador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Cargo customizado (opcional)</label>
-                <Select value={form.custom_role_id} onValueChange={(v) => setForm(f => ({ ...f, custom_role_id: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {customRoles.map(r => (
-                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Se informado, as permissões do cargo customizado sobrepõem as do cargo base.
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button onClick={save}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {editing && (
+        <FinanceUserManagementDialog
+          open={!!editing}
+          onOpenChange={(v) => {
+            if (!v) {
+              setEditing(null);
+              load();
+            }
+          }}
+          userId={editing.user_id}
+          userName={editing.full_name || editing.email}
+          userEmail={editing.email}
+          userAvatar={editing.avatar_url}
+          currentUserRole="supervisor"
+        />
+      )}
+
     </div>
   );
 }

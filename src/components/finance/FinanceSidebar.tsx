@@ -444,28 +444,8 @@ export function FinanceSidebar({
                   )
                 )}
 
-                {/* Usuários */}
-                {(isSupervisor || isGerente) && onOpenUsers && (
-                  collapsed ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="w-full" onClick={onOpenUsers}>
-                          <Users className="w-4 h-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">Usuários</TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
-                      onClick={onOpenUsers}
-                    >
-                      <Users className="w-4 h-4" />
-                      Usuários
-                    </Button>
-                  )
-                )}
+                {/* "Usuários" (dialog por empresa) removido — use o menu "Usuários" global acima. */}
+
 
                 {/* Convites */}
                 {canInvite && onOpenInvitations && (

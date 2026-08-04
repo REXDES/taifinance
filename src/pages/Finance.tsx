@@ -232,10 +232,10 @@ const Finance = () => {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const { count: companiesCount } = await supabase
-        .from('user_companies')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+      // A cota de empresas deve considerar apenas as empresas CRIADAS pelo usuário,
+      // não as empresas às quais ele apenas recebeu acesso.
+      const { data: companiesCount } = await supabase
+        .rpc('count_companies_created_by', { _user_id: user.id });
 
       const { count: invitationsCount } = await supabase
         .from('invitations')

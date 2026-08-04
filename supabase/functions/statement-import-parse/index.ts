@@ -134,12 +134,13 @@ const receiptSchema = {
     category_id: { type: ["string", "null"] },
     subcategory_id: { type: ["string", "null"] },
     tag_ids: { type: "array", items: { type: "string" } },
+    account_id: { type: ["string", "null"], description: "id da conta bancária do app correspondente ao banco/instituição do comprovante" },
     amount: { type: ["number", "null"], description: "valor do comprovante, sempre positivo" },
     date: { type: ["string", "null"], description: "AAAA-MM-DD" },
     type: { type: ["string", "null"], enum: ["income", "expense", null] },
     confidence: { type: "number", description: "0 a 1" },
   },
-  required: ["details", "description", "category_id", "subcategory_id", "tag_ids", "amount", "date", "type", "confidence"],
+  required: ["details", "description", "category_id", "subcategory_id", "tag_ids", "account_id", "amount", "date", "type", "confidence"],
 };
 
 serve(async (req) => {
@@ -242,7 +243,7 @@ REGRAS:
     }
 
     if (action === "receipt") {
-      const { fileBase64, mimeType, fileName, text, line, categories, tags } = body;
+      const { fileBase64, mimeType, fileName, text, line, categories, tags, accounts } = body;
       if (!fileBase64 && !text) return json({ error: "Comprovante vazio" }, 400);
 
       const categoriesCtx = (categories || [])
@@ -254,6 +255,10 @@ REGRAS:
 
       const tagsCtx = (tags || []).map((t: any) => `- ${t.name} (id: ${t.id})`).join("\n") || "(nenhuma)";
 
+      const accountsCtxReceipt = (accounts || [])
+        .map((a: any) => `- ${a.name} (id: ${a.id})`)
+        .join("\n") || "(nenhuma)";
+
       const system = `Você analisa comprovantes de pagamento/recebimento brasileiros (PIX, TED, boleto, cartão, nota fiscal) para conciliação bancária.
 
 CATEGORIAS E SUBCATEGORIAS DISPONÍVEIS:
@@ -262,6 +267,9 @@ ${categoriesCtx}
 TAGS DISPONÍVEIS:
 ${tagsCtx}
 
+CONTAS BANCÁRIAS DISPONÍVEIS NO APP:
+${accountsCtxReceipt}
+
 REGRAS:
 1. Leia o comprovante e extraia os detalhes reais: pagador, favorecido, CNPJ/CPF, banco, documento, finalidade, valor e data.
 2. "details" deve ser um resumo objetivo em português, em uma ou duas frases, com os dados que ajudam a entender o lançamento.
@@ -269,7 +277,8 @@ REGRAS:
 4. Só use ids que existem nas listas acima; se nada se encaixa, devolva null. Nunca invente id.
 5. Prefira indicar subcategoria sempre que a categoria escolhida tiver subcategorias compatíveis.
 6. tag_ids: liste apenas tags realmente pertinentes (pode ser lista vazia).
-7. confidence entre 0 e 1, honesto.`;
+7. account_id: identifique o banco/instituição do comprovante (ex.: Cora, Nubank, Itaú, Sicoob, Bradesco, PagBank, Mercado Pago, Banco Inter) e associe à conta da lista cujo nome corresponda ao mesmo banco, mesmo que o nome não seja idêntico (compare ignorando maiúsculas, acentos e palavras como "Banco", "Conta", "S.A.", "Pagamentos"). Para saídas use a conta do PAGADOR; para entradas use a conta do FAVORECIDO. Se nenhuma conta corresponder, devolva null.
+8. confidence entre 0 e 1, honesto.`;
 
       const lineCtx = line
         ? `Linha do extrato relacionada: ${line.date} | ${line.type === "income" ? "ENTRADA" : "SAÍDA"} | R$ ${line.amount} | ${line.raw_description}`

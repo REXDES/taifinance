@@ -629,11 +629,13 @@ export interface ReceiptAnalysis {
   date: string | null;
   type: 'income' | 'expense' | null;
   confidence: number | null;
+  account_id: string | null;
 }
 
 export interface ReceiptContext {
   categories: { id: string; name: string; type: string; subcategories?: { id: string; name: string }[] }[];
   tags: { id: string; name: string }[];
+  accounts?: { id: string; name: string }[];
 }
 
 async function readReceipt(file: File) {
@@ -647,6 +649,36 @@ async function readReceipt(file: File) {
     fileBase64: await fileToBase64(file),
     mimeType: file.type || (isImage ? 'image/jpeg' : 'application/pdf'),
   };
+}
+
+const normalizeBankName = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\b(banco|conta|corrente|c\/c|pagamentos|pagamento|s\.?a\.?|ltda|instituicao|financeira|digital|pj|pf)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+/** Resolve a conta do app a partir do id sugerido ou pelo nome do banco citado no comprovante. */
+function resolveAccountId(raw: any, ctx: ReceiptContext): string | null {
+  const accounts = ctx.accounts || [];
+  if (accounts.length === 0) return null;
+
+  if (raw?.account_id && accounts.some((a) => a.id === raw.account_id)) return raw.account_id;
+
+  const haystack = normalizeBankName([raw?.details, raw?.description].filter(Boolean).join(' '));
+  if (!haystack) return null;
+
+  const matches = accounts.filter((a) => {
+    const name = normalizeBankName(a.name);
+    if (!name || name.length < 3) return false;
+    return haystack.includes(name) || name.split(' ').some((word) => word.length >= 4 && haystack.includes(word));
+  });
+
+  if (matches.length === 0) return null;
+  matches.sort((a, b) => normalizeBankName(b.name).length - normalizeBankName(a.name).length);
+  return matches[0].id;
 }
 
 function sanitizeAnalysis(raw: any, ctx: ReceiptContext, fallbackDescription: string): ReceiptAnalysis {
@@ -673,6 +705,7 @@ function sanitizeAnalysis(raw: any, ctx: ReceiptContext, fallbackDescription: st
     date,
     type: raw?.type === 'income' ? 'income' : raw?.type === 'expense' ? 'expense' : null,
     confidence: typeof raw?.confidence === 'number' ? raw.confidence : null,
+    account_id: resolveAccountId(raw, ctx),
   };
 }
 
@@ -702,6 +735,7 @@ export async function analyzeReceiptFile(file: File, ctx: ReceiptContext): Promi
     text: read.text,
     categories: ctx.categories,
     tags: ctx.tags,
+    accounts: ctx.accounts,
   });
   return sanitizeAnalysis(raw, ctx, file.name);
 }

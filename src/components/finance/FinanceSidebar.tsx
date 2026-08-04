@@ -684,6 +684,68 @@ export function FinanceSidebar({
                   )
                 )}
 
+                {/* Administração da empresa — disponível também no modo normal */}
+                {!collapsed && (canCreateCompany || canInvite || (selectedCompanyId && onOpenCompanySettings && (isSupervisor || (isGerente && can('admin.companies'))))) && (
+                  <div className="pt-2 pb-1 px-2">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                      Administração
+                    </span>
+                  </div>
+                )}
+
+                {canCreateCompany && onCreateCompany && (
+                  collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="w-full" onClick={onCreateCompany}>
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Nova Empresa</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onCreateCompany}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Nova Empresa
+                      {isGerente && companyLimit !== null && (
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {companiesCreated}/{companyLimit}
+                        </Badge>
+                      )}
+                    </Button>
+                  )
+                )}
+
+                {canInvite && onOpenInvitations && selectedCompanyId && (
+                  collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="w-full" onClick={onOpenInvitations}>
+                          <UserPlus className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Convidar Usuário</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onOpenInvitations}
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Convidar Usuário
+                      {isGerente && invitationLimit !== null && (
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {invitationsCreated}/{invitationLimit}
+                        </Badge>
+                      )}
+                    </Button>
+                  )
+                )}
 
                 {/* Configurações da Empresa (supervisor e gerente) */}
                 {selectedCompanyId && onOpenCompanySettings && (isSupervisor || (isGerente && can('admin.companies'))) && (

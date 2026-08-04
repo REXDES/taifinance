@@ -103,6 +103,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
           subcategories: (c.subcategories || []).map(s => ({ id: s.id, name: s.name })),
         })),
         tags: financeTags.map(t => ({ id: t.id, name: t.name })),
+        accounts: activeAccounts.map(a => ({ id: a.id, name: a.name })),
       });
 
       const filled: string[] = [];
@@ -112,6 +113,10 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       if (analysis.date) { setSelectedDate(new Date(`${analysis.date}T00:00:00`)); filled.push('data'); }
       if (analysis.subcategory_id) { setSelectedSubcategoryId(analysis.subcategory_id); setShowMoreSubcategories(true); filled.push('subcategoria'); }
       if (analysis.tag_ids.length > 0) { setSelectedTags(analysis.tag_ids); filled.push('tags'); }
+      if (analysis.account_id && activeAccounts.some(a => a.id === analysis.account_id)) {
+        setSelectedAccountId(analysis.account_id);
+        filled.push('conta');
+      }
       if (analysis.details) setReceiptDetails(analysis.details);
 
       toast({

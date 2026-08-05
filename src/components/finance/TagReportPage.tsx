@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useFinanceTags } from '@/hooks/useFinanceTags';
 import { useRecordTags } from '@/hooks/useRecordTags';
@@ -278,8 +278,8 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
               {nodes.map((tag) => {
                 const tagOpen = expanded.has(tag.key);
                 return (
-                  <>
-                    <TableRow key={tag.key} className="cursor-pointer font-medium" onClick={() => toggle(tag.key)}>
+                  <Fragment key={tag.key}>
+                    <TableRow className="cursor-pointer font-medium" onClick={() => toggle(tag.key)}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {tagOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -293,8 +293,8 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
                       const catKey = `${tag.key}:${cat.key}`;
                       const catOpen = expanded.has(catKey);
                       return (
-                        <>
-                          <TableRow key={catKey} className="cursor-pointer bg-muted/30" onClick={() => toggle(catKey)}>
+                        <Fragment key={catKey}>
+                          <TableRow className="cursor-pointer bg-muted/30" onClick={() => toggle(catKey)}>
                             <TableCell>
                               <div className="flex items-center gap-2 pl-6">
                                 {catOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -308,8 +308,8 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
                             const subKey = `${catKey}:${sub.key}`;
                             const subOpen = expanded.has(subKey);
                             return (
-                              <>
-                                <TableRow key={subKey} className="cursor-pointer" onClick={() => toggle(subKey)}>
+                              <Fragment key={subKey}>
+                                <TableRow className="cursor-pointer" onClick={() => toggle(subKey)}>
                                   <TableCell>
                                     <div className="flex items-center gap-2 pl-12 text-sm">
                                       {subOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -328,13 +328,13 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
                                     <TableCell className={`text-right text-sm ${amountClass(acc.total)}`}>{currency(acc.total)}</TableCell>
                                   </TableRow>
                                 ))}
-                              </>
+                              </Fragment>
                             );
                           })}
-                        </>
+                        </Fragment>
                       );
                     })}
-                  </>
+                  </Fragment>
                 );
               })}
               {untagged.count > 0 && (

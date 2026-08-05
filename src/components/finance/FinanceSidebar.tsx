@@ -117,6 +117,7 @@ const relatoriosMainItems: MenuItem[] = [
 const movimentacoesMenuItems: MenuItem[] = [
   { view: 'statement', label: 'Extrato', icon: <FileText className="w-4 h-4" /> },
   { view: 'category-report', label: 'Por Categoria', icon: <PieChart className="w-4 h-4" /> },
+  { view: 'tag-report', label: 'Por Tag', icon: <Tags className="w-4 h-4" /> },
   { view: 'cash-flow', label: 'Fluxo Financeiro', icon: <Activity className="w-4 h-4" /> },
 ];
 

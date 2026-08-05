@@ -810,6 +810,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                     type={formData.type === 'payable' ? 'expense' : 'income'}
                     categories={filteredCategories}
                     initialDescription={formData.description}
+                    companyId={companyId}
+                    onSelectTags={(ids) => setFormData(prev => ({ ...prev, tags: Array.from(new Set([...(prev.tags || []), ...ids])) }))}
                     onSelectCategory={(categoryId, subcategoryId) => {
                       if (subcategoryId) {
                         setFormData(prev => ({

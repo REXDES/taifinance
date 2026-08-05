@@ -465,6 +465,8 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
               type={isIncome ? 'income' : 'expense'}
               categories={filteredCategories}
               initialDescription={description}
+              companyId={companyId}
+              onSelectTags={(ids) => setSelectedTags(prev => Array.from(new Set([...prev, ...ids])))}
               onSelectCategory={(categoryId, subcategoryId) => {
                 if (subcategoryId) {
                   setSelectedSubcategoryId(subcategoryId);

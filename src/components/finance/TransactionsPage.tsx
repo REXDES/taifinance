@@ -339,6 +339,8 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                         type={form.type}
                         categories={filteredCategories}
                         initialDescription={form.description}
+                        companyId={companyId}
+                        onSelectTags={(ids) => setForm(prev => ({ ...prev, tags: Array.from(new Set([...(prev.tags || []), ...ids])) }))}
                         onSelectCategory={(categoryId, subcategoryId) => {
                           if (subcategoryId) {
                             setForm({

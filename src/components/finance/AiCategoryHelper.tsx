@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useFinanceTags } from '@/hooks/useFinanceTags';
 
 interface Category {
   id: string;
@@ -29,6 +30,9 @@ interface AiSuggestion {
   subcategory_name?: string;
   suggested_category_name?: string;
   suggested_subcategory_name?: string;
+  tag_ids?: string[];
+  tag_names?: string[];
+  suggested_tag_names?: string[];
   confidence: 'alta' | 'media' | 'baixa';
   explanation: string;
 }
@@ -40,6 +44,8 @@ interface AiCategoryHelperProps {
   onSuggestCreate?: (categoryName: string, subcategoryName?: string) => void;
   trigger?: React.ReactNode;
   initialDescription?: string;
+  companyId?: string | null;
+  onSelectTags?: (tagIds: string[]) => void;
 }
 
 export function AiCategoryHelper({
@@ -49,8 +55,13 @@ export function AiCategoryHelper({
   onSuggestCreate,
   trigger,
   initialDescription,
+  companyId,
+  onSelectTags,
 }: AiCategoryHelperProps) {
   const { toast } = useToast();
+  const { tags, createTag } = useFinanceTags(onSelectTags ? (companyId ?? null) : null);
+  const [creatingTag, setCreatingTag] = useState<string | null>(null);
+  const [extraTagIds, setExtraTagIds] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -82,6 +93,7 @@ export function AiCategoryHelper({
             type: c.type,
             subcategories: c.subcategories || [],
           })),
+          tags: onSelectTags ? tags.map(t => ({ id: t.id, name: t.name })) : [],
         },
       });
 
@@ -105,8 +117,27 @@ export function AiCategoryHelper({
     }
   };
 
+  const applyTags = () => {
+    if (!onSelectTags || !suggestion) return;
+    const valid = (suggestion.tag_ids || []).filter(id => tags.some(t => t.id === id));
+    const all = Array.from(new Set([...valid, ...extraTagIds]));
+    if (all.length > 0) onSelectTags(all);
+  };
+
+  const handleCreateTag = async (name: string) => {
+    if (!companyId) return;
+    setCreatingTag(name);
+    const created = await createTag({ name });
+    setCreatingTag(null);
+    if (created) {
+      setExtraTagIds(prev => [...prev, created.id]);
+      toast({ title: 'Tag criada', description: name });
+    }
+  };
+
   const handleUseSuggestion = () => {
     if (!suggestion) return;
+    applyTags();
 
     if (suggestion.found && suggestion.subcategory_id) {
       onSelectCategory(suggestion.category_id!, suggestion.subcategory_id);
@@ -128,6 +159,8 @@ export function AiCategoryHelper({
   const handleCreateNew = () => {
     if (!suggestion || !onSuggestCreate) return;
 
+    applyTags();
+
     onSuggestCreate(
       suggestion.suggested_category_name || '',
       suggestion.suggested_subcategory_name
@@ -146,6 +179,7 @@ export function AiCategoryHelper({
     setDescription('');
     setSuggestion(null);
     setError(null);
+    setExtraTagIds([]);
   };
 
   const getConfidenceBadge = (confidence: string) => {
@@ -292,6 +326,62 @@ export function AiCategoryHelper({
                     <p className="text-sm text-muted-foreground">{suggestion.explanation}</p>
                   </div>
                 )}
+
+                {/* Tag suggestions */}
+                {onSelectTags && (() => {
+                  const validTags = (suggestion.tag_ids || [])
+                    .map(id => tags.find(t => t.id === id))
+                    .filter(Boolean) as { id: string; name: string; color: string }[];
+                  const newTagNames = (suggestion.suggested_tag_names || []).filter(
+                    n => n && !tags.some(t => t.name.toLowerCase() === n.toLowerCase()),
+                  );
+                  const created = extraTagIds
+                    .map(id => tags.find(t => t.id === id))
+                    .filter(Boolean) as { id: string; name: string; color: string }[];
+                  if (validTags.length === 0 && newTagNames.length === 0 && created.length === 0) return null;
+                  return (
+                    <div className="p-3 rounded-lg border bg-muted/40 space-y-2">
+                      <div className="text-xs font-medium text-muted-foreground">Tags sugeridas</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[...validTags, ...created].map(t => (
+                          <Badge
+                            key={t.id}
+                            variant="outline"
+                            className="text-[11px] border-0"
+                            style={{ backgroundColor: `${t.color}22`, color: t.color }}
+                          >
+                            {t.name}
+                          </Badge>
+                        ))}
+                      </div>
+                      {newTagNames.length > 0 && companyId && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {newTagNames.map(n => (
+                            <Button
+                              key={n}
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 text-[11px] px-2"
+                              disabled={creatingTag === n}
+                              onClick={() => handleCreateTag(n)}
+                            >
+                              {creatingTag === n ? (
+                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                              ) : (
+                                <Plus className="w-3 h-3 mr-1" />
+                              )}
+                              Criar "{n}"
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-[11px] text-muted-foreground">
+                        As tags serão aplicadas ao usar a sugestão.
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {/* Action buttons */}
                 <div className="flex gap-2">

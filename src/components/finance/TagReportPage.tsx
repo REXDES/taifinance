@@ -360,11 +360,48 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
                 );
               })}
               {untagged.count > 0 && (
-                <TableRow className="bg-muted/20">
-                  <TableCell className="text-muted-foreground italic pl-6">Sem tag</TableCell>
-                  <TableCell className="text-right">{untagged.count}</TableCell>
-                  <TableCell className={`text-right ${amountClass(untagged.total)}`}>{currency(untagged.total)}</TableCell>
-                </TableRow>
+                <Fragment>
+                  <TableRow className="bg-muted/20 cursor-pointer" onClick={() => toggle('__untagged__')}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {expanded.has('__untagged__') ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        <span className="text-muted-foreground italic">Sem tag</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">{untagged.count}</TableCell>
+                    <TableCell className={`text-right ${amountClass(untagged.total)}`}>{currency(untagged.total)}</TableCell>
+                  </TableRow>
+                  {expanded.has('__untagged__') && untagged.items.map((t) => (
+                    <TableRow key={`untagged:${t.id}`}>
+                      <TableCell>
+                        <div className="pl-6 flex flex-col gap-1 md:flex-row md:items-center md:gap-3">
+                          <div className="text-sm min-w-0">
+                            <span className="text-muted-foreground mr-2">
+                              {format(new Date(`${t.date}T00:00:00`), 'dd/MM/yyyy')}
+                            </span>
+                            <span className="truncate">{t.description || 'Sem descrição'}</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {t.category?.name}{t.subcategory?.name ? ` / ${t.subcategory.name}` : ''} · {t.account?.name}
+                            </span>
+                          </div>
+                          <div className="md:ml-auto w-full md:w-64" onClick={(e) => e.stopPropagation()}>
+                            <TagPicker
+                              companyId={companyId}
+                              value={[]}
+                              onChange={(ids) => { if (ids.length > 0) assignTag(t.id, ids); }}
+                              size="sm"
+                              placeholder={savingId === t.id ? 'Salvando...' : 'Atribuir tag...'}
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">1</TableCell>
+                      <TableCell className={`text-right text-sm ${amountClass(t.type === 'income' ? t.amount : -t.amount)}`}>
+                        {currency(t.type === 'income' ? t.amount : -t.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </Fragment>
               )}
             </TableBody>
           </Table>

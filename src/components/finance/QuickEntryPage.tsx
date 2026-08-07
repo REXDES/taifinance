@@ -104,10 +104,44 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  const checkDuplicates = async (params: {
+    amount: number;
+    date: Date;
+    type: 'income' | 'expense';
+    accountId?: string | null;
+  }): Promise<DuplicateCandidate[]> => {
+    try {
+      const from = new Date(params.date); from.setDate(from.getDate() - 3);
+      const to = new Date(params.date); to.setDate(to.getDate() + 3);
+      const iso = (d: Date) => d.toISOString().split('T')[0];
+
+      let query = supabase
+        .from('transactions')
+        .select('id, date, amount, description, account_id')
+        .eq('company_id', companyId)
+        .eq('type', params.type)
+        .gte('date', iso(from))
+        .lte('date', iso(to));
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return (data || [])
+        .filter((t: any) => Math.abs(Number(t.amount) - params.amount) < 0.01)
+        .filter((t: any) => !params.accountId || t.account_id === params.accountId)
+        .map((t: any) => ({ id: t.id, date: t.date, amount: Number(t.amount), description: t.description }));
+    } catch {
+      return [];
+    }
+  };
+
   const handleReceiptSelected = async (file: File) => {
     setReceiptFile(file);
     setReceiptDetails(null);
+    setDuplicates([]);
+    setDuplicateConfirmed(false);
     setAnalyzing(true);
+
     try {
       const analysis = await analyzeReceiptFile(file, {
         categories: categories.map(c => ({

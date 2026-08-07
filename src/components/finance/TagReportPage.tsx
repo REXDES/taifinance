@@ -1,7 +1,9 @@
 import { Fragment, useMemo, useState } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
-import { useFinanceTags } from '@/hooks/useFinanceTags';
+import { useFinanceTags, setEntityTags } from '@/hooks/useFinanceTags';
 import { useRecordTags } from '@/hooks/useRecordTags';
+import { TagPicker } from '@/components/finance/TagPicker';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronDown, ChevronRight, Tags as TagsIcon, TrendingDown, TrendingUp } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+
 
 interface TagReportPageProps {
   companyId: string;
@@ -44,6 +47,9 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [tagRefreshKey, setTagRefreshKey] = useState(0);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const periods = useMemo(() => {
     const now = new Date();
@@ -77,10 +83,24 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
 
   const { tags } = useFinanceTags(companyId);
   const txIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
-  const tagsMap = useRecordTags('transaction', txIds);
+  const tagsMap = useRecordTags('transaction', txIds, tagRefreshKey);
+
+  const assignTag = async (txId: string, tagIds: string[]) => {
+    setSavingId(txId);
+    try {
+      await setEntityTags('transaction', txId, tagIds);
+      setTagRefreshKey((k) => k + 1);
+      toast({ title: 'Tag atribuída' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao atribuir tag', description: e.message, variant: 'destructive' });
+    } finally {
+      setSavingId(null);
+    }
+  };
 
   const { nodes, untagged, grandTotal } = useMemo(() => {
     const map = new Map<string, TagNode>();
+    const untaggedItems: (typeof transactions) = [];
     let untaggedTotal = 0;
     let untaggedCount = 0;
     let total = 0;
@@ -95,6 +115,7 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
       if (txTags.length === 0) {
         untaggedTotal += value;
         untaggedCount += 1;
+        untaggedItems.push(t);
         return;
       }
       txTags.forEach((tag) => {
@@ -157,10 +178,11 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
 
     return {
       nodes: list,
-      untagged: { total: untaggedTotal, count: untaggedCount },
+      untagged: { total: untaggedTotal, count: untaggedCount, items: untaggedItems },
       grandTotal: total,
     };
   }, [transactions, tagsMap]);
+
 
   const totals = useMemo(() => {
     const income = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
@@ -338,11 +360,48 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
                 );
               })}
               {untagged.count > 0 && (
-                <TableRow className="bg-muted/20">
-                  <TableCell className="text-muted-foreground italic pl-6">Sem tag</TableCell>
-                  <TableCell className="text-right">{untagged.count}</TableCell>
-                  <TableCell className={`text-right ${amountClass(untagged.total)}`}>{currency(untagged.total)}</TableCell>
-                </TableRow>
+                <Fragment>
+                  <TableRow className="bg-muted/20 cursor-pointer" onClick={() => toggle('__untagged__')}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {expanded.has('__untagged__') ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        <span className="text-muted-foreground italic">Sem tag</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">{untagged.count}</TableCell>
+                    <TableCell className={`text-right ${amountClass(untagged.total)}`}>{currency(untagged.total)}</TableCell>
+                  </TableRow>
+                  {expanded.has('__untagged__') && untagged.items.map((t) => (
+                    <TableRow key={`untagged:${t.id}`}>
+                      <TableCell>
+                        <div className="pl-6 flex flex-col gap-1 md:flex-row md:items-center md:gap-3">
+                          <div className="text-sm min-w-0">
+                            <span className="text-muted-foreground mr-2">
+                              {format(new Date(`${t.date}T00:00:00`), 'dd/MM/yyyy')}
+                            </span>
+                            <span className="truncate">{t.description || 'Sem descrição'}</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {t.category?.name}{t.subcategory?.name ? ` / ${t.subcategory.name}` : ''} · {t.account?.name}
+                            </span>
+                          </div>
+                          <div className="md:ml-auto w-full md:w-64" onClick={(e) => e.stopPropagation()}>
+                            <TagPicker
+                              companyId={companyId}
+                              value={[]}
+                              onChange={(ids) => { if (ids.length > 0) assignTag(t.id, ids); }}
+                              size="sm"
+                              placeholder={savingId === t.id ? 'Salvando...' : 'Atribuir tag...'}
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">1</TableCell>
+                      <TableCell className={`text-right text-sm ${amountClass(t.type === 'income' ? t.amount : -t.amount)}`}>
+                        {currency(t.type === 'income' ? t.amount : -t.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </Fragment>
               )}
             </TableBody>
           </Table>

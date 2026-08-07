@@ -277,6 +277,9 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       setSelectedTags([]);
       setReceiptFile(null);
       setReceiptDetails(null);
+      setDuplicates([]);
+      setDuplicateConfirmed(false);
+
 
       
       // Refetch recent selections

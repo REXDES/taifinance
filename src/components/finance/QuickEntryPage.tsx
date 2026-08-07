@@ -26,6 +26,17 @@ import { useToast } from '@/hooks/use-toast';
 import { TagPicker } from './TagPicker';
 import { setEntityTags, useFinanceTags } from '@/hooks/useFinanceTags';
 import { analyzeReceiptFile, uploadReceiptFile } from '@/hooks/useStatementImport';
+import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
+
+interface DuplicateCandidate {
+  id: string;
+  date: string;
+  amount: number;
+  description: string | null;
+}
+
 
 interface QuickEntryPageProps {
   companyId: string;
@@ -52,6 +63,9 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptDetails, setReceiptDetails] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [duplicates, setDuplicates] = useState<DuplicateCandidate[]>([]);
+  const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
+
 
 
   const activeAccounts = accounts.filter(a => a.is_active);
@@ -90,10 +104,44 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  const checkDuplicates = async (params: {
+    amount: number;
+    date: Date;
+    type: 'income' | 'expense';
+    accountId?: string | null;
+  }): Promise<DuplicateCandidate[]> => {
+    try {
+      const from = new Date(params.date); from.setDate(from.getDate() - 3);
+      const to = new Date(params.date); to.setDate(to.getDate() + 3);
+      const iso = (d: Date) => d.toISOString().split('T')[0];
+
+      let query = supabase
+        .from('transactions')
+        .select('id, date, amount, description, account_id')
+        .eq('company_id', companyId)
+        .eq('type', params.type)
+        .gte('date', iso(from))
+        .lte('date', iso(to));
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return (data || [])
+        .filter((t: any) => Math.abs(Number(t.amount) - params.amount) < 0.01)
+        .filter((t: any) => !params.accountId || t.account_id === params.accountId)
+        .map((t: any) => ({ id: t.id, date: t.date, amount: Number(t.amount), description: t.description }));
+    } catch {
+      return [];
+    }
+  };
+
   const handleReceiptSelected = async (file: File) => {
     setReceiptFile(file);
     setReceiptDetails(null);
+    setDuplicates([]);
+    setDuplicateConfirmed(false);
     setAnalyzing(true);
+
     try {
       const analysis = await analyzeReceiptFile(file, {
         categories: categories.map(c => ({
@@ -124,6 +172,25 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         description: filled.length > 0 ? `Campos preenchidos: ${filled.join(', ')}` : 'Preencha manualmente os campos.',
         variant: filled.length > 0 ? 'default' : 'destructive',
       });
+
+      if (analysis.amount && analysis.type) {
+        const refDate = analysis.date ? new Date(`${analysis.date}T00:00:00`) : new Date();
+        const found = await checkDuplicates({
+          amount: analysis.amount,
+          date: refDate,
+          type: analysis.type as 'income' | 'expense',
+          accountId: analysis.account_id && activeAccounts.some(a => a.id === analysis.account_id) ? analysis.account_id : null,
+        });
+        setDuplicates(found);
+        if (found.length > 0) {
+          toast({
+            title: 'Possível duplicidade',
+            description: `Encontrei ${found.length} lançamento(s) com o mesmo valor em datas próximas.`,
+            variant: 'destructive',
+          });
+        }
+      }
+
     } catch (error: any) {
       toast({ title: 'Erro ao analisar comprovante', description: error?.message, variant: 'destructive' });
     } finally {
@@ -149,11 +216,31 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       return;
     }
 
+    if (receiptFile && !duplicateConfirmed) {
+      const found = await checkDuplicates({
+        amount: numAmount,
+        date: selectedDate,
+        type: isIncome ? 'income' : 'expense',
+        accountId: selectedAccountId,
+      });
+      if (found.length > 0) {
+        setDuplicates(found);
+        setDuplicateConfirmed(true);
+        toast({
+          title: 'Possível duplicidade',
+          description: 'Já existe lançamento com o mesmo valor em data próxima. Clique novamente em salvar para confirmar.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     // Find the category_id from the subcategory
     const subcatInfo = allSubcategories.find(s => s.id === selectedSubcategoryId) || 
       recentSubcategories.find(s => s.id === selectedSubcategoryId);
 
     setSubmitting(true);
+
     try {
       let receiptPath: string | null = null;
       if (receiptFile) {
@@ -190,6 +277,9 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       setSelectedTags([]);
       setReceiptFile(null);
       setReceiptDetails(null);
+      setDuplicates([]);
+      setDuplicateConfirmed(false);
+
 
       
       // Refetch recent selections
@@ -276,12 +366,34 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 flex-shrink-0"
-                onClick={() => { setReceiptFile(null); setReceiptDetails(null); }}
+                onClick={() => { setReceiptFile(null); setReceiptDetails(null); setDuplicates([]); setDuplicateConfirmed(false); }}
               >
                 <X className="w-3 h-3" />
               </Button>
             </div>
           )}
+
+          {duplicates.length > 0 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Possível duplicidade</AlertTitle>
+              <AlertDescription className="space-y-1">
+                <p className="text-xs">
+                  Já existe(m) {duplicates.length} lançamento(s) com o mesmo valor em datas próximas:
+                </p>
+                <ul className="text-xs list-disc pl-4">
+                  {duplicates.slice(0, 5).map(d => (
+                    <li key={d.id}>
+                      {format(new Date(`${d.date}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR })} — R$ {formatAmountValue(d.amount)}
+                      {d.description ? ` — ${d.description}` : ''}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs">Confira antes de salvar para não duplicar o lançamento.</p>
+              </AlertDescription>
+            </Alert>
+          )}
+
         </CardContent>
       </Card>
 

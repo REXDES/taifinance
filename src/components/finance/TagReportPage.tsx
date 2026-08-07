@@ -83,7 +83,20 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
 
   const { tags } = useFinanceTags(companyId);
   const txIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
-  const tagsMap = useRecordTags('transaction', txIds);
+  const tagsMap = useRecordTags('transaction', txIds, tagRefreshKey);
+
+  const assignTag = async (txId: string, tagIds: string[]) => {
+    setSavingId(txId);
+    try {
+      await setEntityTags('transaction', txId, tagIds);
+      setTagRefreshKey((k) => k + 1);
+      toast({ title: 'Tag atribuída' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao atribuir tag', description: e.message, variant: 'destructive' });
+    } finally {
+      setSavingId(null);
+    }
+  };
 
   const { nodes, untagged, grandTotal } = useMemo(() => {
     const map = new Map<string, TagNode>();

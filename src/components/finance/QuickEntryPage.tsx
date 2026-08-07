@@ -26,6 +26,17 @@ import { useToast } from '@/hooks/use-toast';
 import { TagPicker } from './TagPicker';
 import { setEntityTags, useFinanceTags } from '@/hooks/useFinanceTags';
 import { analyzeReceiptFile, uploadReceiptFile } from '@/hooks/useStatementImport';
+import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
+
+interface DuplicateCandidate {
+  id: string;
+  date: string;
+  amount: number;
+  description: string | null;
+}
+
 
 interface QuickEntryPageProps {
   companyId: string;

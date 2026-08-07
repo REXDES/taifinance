@@ -1,7 +1,9 @@
 import { Fragment, useMemo, useState } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
-import { useFinanceTags } from '@/hooks/useFinanceTags';
+import { useFinanceTags, setEntityTags } from '@/hooks/useFinanceTags';
 import { useRecordTags } from '@/hooks/useRecordTags';
+import { TagPicker } from '@/components/finance/TagPicker';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronDown, ChevronRight, Tags as TagsIcon, TrendingDown, TrendingUp } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+
 
 interface TagReportPageProps {
   companyId: string;

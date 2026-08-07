@@ -172,6 +172,25 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         description: filled.length > 0 ? `Campos preenchidos: ${filled.join(', ')}` : 'Preencha manualmente os campos.',
         variant: filled.length > 0 ? 'default' : 'destructive',
       });
+
+      if (analysis.amount && analysis.type) {
+        const refDate = analysis.date ? new Date(`${analysis.date}T00:00:00`) : new Date();
+        const found = await checkDuplicates({
+          amount: analysis.amount,
+          date: refDate,
+          type: analysis.type as 'income' | 'expense',
+          accountId: analysis.account_id && activeAccounts.some(a => a.id === analysis.account_id) ? analysis.account_id : null,
+        });
+        setDuplicates(found);
+        if (found.length > 0) {
+          toast({
+            title: 'Possível duplicidade',
+            description: `Encontrei ${found.length} lançamento(s) com o mesmo valor em datas próximas.`,
+            variant: 'destructive',
+          });
+        }
+      }
+
     } catch (error: any) {
       toast({ title: 'Erro ao analisar comprovante', description: error?.message, variant: 'destructive' });
     } finally {

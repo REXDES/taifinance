@@ -81,6 +81,7 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
 
   const { nodes, untagged, grandTotal } = useMemo(() => {
     const map = new Map<string, TagNode>();
+    const untaggedItems: (typeof transactions) = [];
     let untaggedTotal = 0;
     let untaggedCount = 0;
     let total = 0;

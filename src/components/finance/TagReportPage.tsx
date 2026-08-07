@@ -96,6 +96,7 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
       if (txTags.length === 0) {
         untaggedTotal += value;
         untaggedCount += 1;
+        untaggedItems.push(t);
         return;
       }
       txTags.forEach((tag) => {

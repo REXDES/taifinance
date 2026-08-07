@@ -63,6 +63,9 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptDetails, setReceiptDetails] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [duplicates, setDuplicates] = useState<DuplicateCandidate[]>([]);
+  const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
+
 
 
   const activeAccounts = accounts.filter(a => a.is_active);

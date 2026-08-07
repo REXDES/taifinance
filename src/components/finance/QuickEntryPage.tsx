@@ -216,11 +216,31 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       return;
     }
 
+    if (receiptFile && !duplicateConfirmed) {
+      const found = await checkDuplicates({
+        amount: numAmount,
+        date: selectedDate,
+        type: isIncome ? 'income' : 'expense',
+        accountId: selectedAccountId,
+      });
+      if (found.length > 0) {
+        setDuplicates(found);
+        setDuplicateConfirmed(true);
+        toast({
+          title: 'Possível duplicidade',
+          description: 'Já existe lançamento com o mesmo valor em data próxima. Clique novamente em salvar para confirmar.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     // Find the category_id from the subcategory
     const subcatInfo = allSubcategories.find(s => s.id === selectedSubcategoryId) || 
       recentSubcategories.find(s => s.id === selectedSubcategoryId);
 
     setSubmitting(true);
+
     try {
       let receiptPath: string | null = null;
       if (receiptFile) {

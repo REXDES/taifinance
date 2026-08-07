@@ -366,12 +366,34 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 flex-shrink-0"
-                onClick={() => { setReceiptFile(null); setReceiptDetails(null); }}
+                onClick={() => { setReceiptFile(null); setReceiptDetails(null); setDuplicates([]); setDuplicateConfirmed(false); }}
               >
                 <X className="w-3 h-3" />
               </Button>
             </div>
           )}
+
+          {duplicates.length > 0 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Possível duplicidade</AlertTitle>
+              <AlertDescription className="space-y-1">
+                <p className="text-xs">
+                  Já existe(m) {duplicates.length} lançamento(s) com o mesmo valor em datas próximas:
+                </p>
+                <ul className="text-xs list-disc pl-4">
+                  {duplicates.slice(0, 5).map(d => (
+                    <li key={d.id}>
+                      {format(new Date(`${d.date}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR })} — R$ {formatAmountValue(d.amount)}
+                      {d.description ? ` — ${d.description}` : ''}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs">Confira antes de salvar para não duplicar o lançamento.</p>
+              </AlertDescription>
+            </Alert>
+          )}
+
         </CardContent>
       </Card>
 

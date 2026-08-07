@@ -159,10 +159,11 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
 
     return {
       nodes: list,
-      untagged: { total: untaggedTotal, count: untaggedCount },
+      untagged: { total: untaggedTotal, count: untaggedCount, items: untaggedItems },
       grandTotal: total,
     };
   }, [transactions, tagsMap]);
+
 
   const totals = useMemo(() => {
     const income = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);

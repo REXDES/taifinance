@@ -47,6 +47,9 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [tagRefreshKey, setTagRefreshKey] = useState(0);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const periods = useMemo(() => {
     const now = new Date();

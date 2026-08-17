@@ -669,7 +669,7 @@ export function FinanceSidebar({
                   )
                 )}
 
-                {/* Pagamentos - Cappta (módulo opcional por empresa) */}
+                {/* Pagamentos - Necta (módulo opcional por empresa) */}
                 {paymentsEnabled && (
                   collapsed ? (
                     filterAllowed(paymentsMenuItems).map(renderMenuItem)

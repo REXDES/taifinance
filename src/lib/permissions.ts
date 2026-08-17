@@ -77,13 +77,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     label: 'Pagamentos',
     items: [
       { key: 'payments.dashboard', label: 'Dashboard' },
+      { key: 'payments.registration', label: 'Cadastro' },
       { key: 'payments.charges', label: 'Cobranças' },
-      { key: 'payments.transactions', label: 'Transações' },
-      { key: 'payments.settlements', label: 'Liquidações' },
-      { key: 'payments.terminals', label: 'Terminais' },
-      { key: 'payments.merchants', label: 'Estabelecimentos' },
-      { key: 'payments.plans', label: 'Planos' },
-      { key: 'payments.webhooks', label: 'Webhooks' },
+      { key: 'payments.admin_dashboard', label: 'Admin — Dashboard' },
+      { key: 'payments.admin_registration', label: 'Admin — Cadastros' },
+      { key: 'payments.admin_settlements', label: 'Admin — Liquidações' },
+      { key: 'payments.admin_settings', label: 'Admin — Configurações' },
+
     ],
   },
   {

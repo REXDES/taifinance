@@ -99,15 +99,15 @@ export type FinanceView =
   | 'credit-applications'
   | 'credit-ignored'
   | 'payments-dashboard'
-  | 'payments-merchants'
-  | 'payments-terminals'
-  | 'payments-plans'
-  | 'payments-transactions'
+  | 'payments-registration'
   | 'payments-charges'
-  | 'payments-settlements'
-  | 'payments-webhooks';
+  | 'payments-admin-dashboard'
+  | 'payments-admin-registration'
+  | 'payments-admin-settlements'
+  | 'payments-admin-settings';
 
-const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'audit-logs', 'bank-digital', 'credit-admin'];
+const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'audit-logs', 'bank-digital', 'credit-admin', 'payments-admin-dashboard', 'payments-admin-registration', 'payments-admin-settlements', 'payments-admin-settings'];
+
 // Views available only in normal mode for supervisors
 const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'dashboard',

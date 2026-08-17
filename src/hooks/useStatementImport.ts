@@ -503,9 +503,48 @@ export async function suggestForLines(params: {
 }
 
 /** Efetiva uma linha criando uma transação. */
-export async function reconcileLineAsTransaction(line: StatementLine, override?: Partial<StatementLine>) {
+export class DuplicateLineError extends Error {
+  transactionId: string;
+  constructor(message: string, transactionId: string) {
+    super(message);
+    this.name = 'DuplicateLineError';
+    this.transactionId = transactionId;
+  }
+}
+
+/** Reverifica, no momento da efetivação, se a linha já existe como transação. */
+export async function checkLineDuplicate(line: StatementLine) {
+  const accountId = line.suggested_account_id;
+  let query = supabase
+    .from('transactions')
+    .select('id, date, amount, type, description')
+    .eq('company_id', line.company_id)
+    .gte('date', shiftDate(line.date, -3))
+    .lte('date', shiftDate(line.date, 3));
+  if (accountId) query = query.eq('account_id', accountId);
+  const { data } = await query;
+  return matchDuplicate(line, (data || []) as any[]);
+}
+
+export async function reconcileLineAsTransaction(
+  line: StatementLine,
+  override?: Partial<StatementLine>,
+  options?: { confirmDuplicate?: boolean }
+) {
   const merged = { ...line, ...override };
   if (!merged.suggested_account_id) throw new Error('Selecione a conta antes de efetivar');
+
+  if (!options?.confirmDuplicate) {
+    const dup = await checkLineDuplicate(merged);
+    if (dup) {
+      await (supabase as any)
+        .from('statement_lines')
+        .update({ duplicate_of_transaction_id: dup.id, duplicate_reason: dup.reason })
+        .eq('id', merged.id);
+      throw new DuplicateLineError(dup.reason, dup.id);
+    }
+  }
+
 
   const { data: { user } } = await supabase.auth.getUser();
   const { data: transaction, error } = await supabase

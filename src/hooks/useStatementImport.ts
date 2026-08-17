@@ -87,6 +87,65 @@ export function buildFingerprint(line: { date: string; amount: number; type: str
   return `${line.date}|${line.type}|${Number(line.amount).toFixed(2)}|${desc}`;
 }
 
+/** Soma/subtrai dias de uma data AAAA-MM-DD sem sofrer com fuso horário. */
+export function shiftDate(value: string, days: number) {
+  const d = new Date(`${value}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+const dayDiff = (a: string, b: string) =>
+  Math.round(Math.abs(new Date(`${a}T00:00:00`).getTime() - new Date(`${b}T00:00:00`).getTime()) / 86400000);
+
+interface DuplicateCandidateTx {
+  id: string;
+  date: string;
+  amount: number | string;
+  type: string;
+  description?: string | null;
+}
+
+/**
+ * Procura um lançamento já existente equivalente a uma linha do extrato.
+ * Aceita diferença de até 3 dias na data (lançamentos manuais costumam divergir da data do banco).
+ */
+export function matchDuplicate(
+  line: { date: string; amount: number; type: string; description?: string; raw_description?: string },
+  existing: DuplicateCandidateTx[],
+  used?: Set<string>
+) {
+  const desc = normalizeDescription(line.description ?? line.raw_description ?? '');
+  const sameValue = existing.filter(
+    (t) =>
+      !used?.has(t.id) &&
+      t.type === line.type &&
+      Math.abs(Number(t.amount) - Number(line.amount)) < 0.01 &&
+      dayDiff(t.date, line.date) <= 3
+  );
+  if (sameValue.length === 0) return null;
+
+  const scored = sameValue
+    .map((t) => {
+      const other = normalizeDescription(t.description || '');
+      const similar =
+        desc.length > 5 && other.length > 5 &&
+        (other.includes(desc.slice(0, 12)) || desc.includes(other.slice(0, 12)));
+      return { tx: t, similar, distance: dayDiff(t.date, line.date) };
+    })
+    .sort((a, b) => Number(b.similar) - Number(a.similar) || a.distance - b.distance);
+
+  const best = scored[0];
+  const sameDay = best.distance === 0;
+  return {
+    id: best.tx.id,
+    reason: best.similar
+      ? `Valor${sameDay ? ' e data iguais' : ' igual'} e histórico semelhante ao lançamento de ${best.tx.date}`
+      : sameDay
+        ? 'Mesma data e valor de um lançamento já existente'
+        : `Mesmo valor de um lançamento já existente em ${best.tx.date} (${best.distance} dia(s) de diferença)`,
+  };
+}
+
 export function detectFormat(fileName: string) {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   if (ext === 'ofx' || ext === 'ofc') return 'ofx';
@@ -324,7 +383,7 @@ export async function createStatementImport(params: CreateImportParams) {
 
   if (importError) throw importError;
 
-  // --- Duplicidade: transações já existentes no período ---
+  // --- Duplicidade: transações já existentes no período (com folga de 3 dias) ---
   const start = parsed.period_start || parsed.lines[0]?.date;
   const end = parsed.period_end || parsed.lines[parsed.lines.length - 1]?.date;
   let existing: any[] = [];
@@ -333,29 +392,19 @@ export async function createStatementImport(params: CreateImportParams) {
       .from('transactions')
       .select('id, date, amount, type, description')
       .eq('company_id', companyId)
-      .gte('date', start)
-      .lte('date', end);
+      .gte('date', shiftDate(start, -3))
+      .lte('date', shiftDate(end, 3));
     existing = data || [];
   }
 
+  const usedTransactionIds = new Set<string>();
+
   const findDuplicate = (line: ParsedLine) => {
-    const sameValue = existing.filter(
-      (t) => t.date === line.date && Math.abs(Number(t.amount) - line.amount) < 0.01 && t.type === line.type
-    );
-    if (sameValue.length === 0) return null;
-    const normalized = normalizeDescription(line.description);
-    const exact = sameValue.find((t) => {
-      const other = normalizeDescription(t.description);
-      return other.includes(normalized.slice(0, 12)) || normalized.includes(other.slice(0, 12));
-    });
-    const match = exact || sameValue[0];
-    return {
-      id: match.id,
-      reason: exact
-        ? 'Mesma data, valor e histórico semelhante a um lançamento já existente'
-        : 'Mesma data e valor de um lançamento já existente',
-    };
+    const match = matchDuplicate(line, existing, usedTransactionIds);
+    if (match) usedTransactionIds.add(match.id);
+    return match;
   };
+
 
   const rows = parsed.lines.map((line, index) => {
     const duplicate = findDuplicate(line);
@@ -454,9 +503,48 @@ export async function suggestForLines(params: {
 }
 
 /** Efetiva uma linha criando uma transação. */
-export async function reconcileLineAsTransaction(line: StatementLine, override?: Partial<StatementLine>) {
+export class DuplicateLineError extends Error {
+  transactionId: string;
+  constructor(message: string, transactionId: string) {
+    super(message);
+    this.name = 'DuplicateLineError';
+    this.transactionId = transactionId;
+  }
+}
+
+/** Reverifica, no momento da efetivação, se a linha já existe como transação. */
+export async function checkLineDuplicate(line: StatementLine) {
+  const accountId = line.suggested_account_id;
+  let query = supabase
+    .from('transactions')
+    .select('id, date, amount, type, description')
+    .eq('company_id', line.company_id)
+    .gte('date', shiftDate(line.date, -3))
+    .lte('date', shiftDate(line.date, 3));
+  if (accountId) query = query.eq('account_id', accountId);
+  const { data } = await query;
+  return matchDuplicate(line, (data || []) as any[]);
+}
+
+export async function reconcileLineAsTransaction(
+  line: StatementLine,
+  override?: Partial<StatementLine>,
+  options?: { confirmDuplicate?: boolean }
+) {
   const merged = { ...line, ...override };
   if (!merged.suggested_account_id) throw new Error('Selecione a conta antes de efetivar');
+
+  if (!options?.confirmDuplicate) {
+    const dup = await checkLineDuplicate(merged);
+    if (dup) {
+      await (supabase as any)
+        .from('statement_lines')
+        .update({ duplicate_of_transaction_id: dup.id, duplicate_reason: dup.reason })
+        .eq('id', merged.id);
+      throw new DuplicateLineError(dup.reason, dup.id);
+    }
+  }
+
 
   const { data: { user } } = await supabase.auth.getUser();
   const { data: transaction, error } = await supabase

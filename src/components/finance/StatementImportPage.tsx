@@ -24,6 +24,7 @@ import {
   useStatementImports, useStatementLines, parseStatementFile, createStatementImport,
   suggestForLines, reconcileLineAsTransaction, reconcileLineAsSettlement, updateStatementLine,
   setImportStatus, finishReconciliation, createReconciliationAdjustment, detectFormat, StatementLine,
+  DuplicateLineError,
   attachReceiptToLine, createReceiptsImport, getReceiptUrl,
 } from '@/hooks/useStatementImport';
 
@@ -39,7 +40,7 @@ const currency = (value: number | null | undefined) =>
 const fmtDate = (value?: string | null) => (value ? format(parseISO(`${value}T00:00:00`), 'dd/MM/yyyy') : '—');
 
 export function StatementImportPage({ companyId }: Props) {
-  const { accounts } = useAccounts(companyId);
+  const { accounts, refetch: refetchAccounts } = useAccounts(companyId);
   const { categories } = useTransactionCategories(companyId);
   const { payablesReceivables } = usePayablesReceivables(companyId, { status: ['pending'] });
   const { tags } = useFinanceTags(companyId);
@@ -82,6 +83,7 @@ export function StatementImportPage({ companyId }: Props) {
   const [ignoreRemaining, setIgnoreRemaining] = useState(true);
   const [finishing, setFinishing] = useState(false);
   const [adjusting, setAdjusting] = useState(false);
+  const [confirmDup, setConfirmDup] = useState<{ line: StatementLine; reason: string } | null>(null);
 
   const currentImport = imports.find((i) => i.id === selectedImportId) || null;
 
@@ -220,14 +222,40 @@ export function StatementImportPage({ companyId }: Props) {
     }
   };
 
-  const effectivate = async (line: StatementLine) => {
+  /** Após efetivar, reconfere o saldo real da conta contra o saldo final do extrato. */
+  const recheckBalance = async () => {
+    await refetchAccounts();
+    if (!currentImport?.account_id || currentImport.closing_balance === null || currentImport.closing_balance === undefined) return;
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data } = await supabase
+      .from('accounts')
+      .select('current_balance')
+      .eq('id', currentImport.account_id)
+      .maybeSingle();
+    const balance = data?.current_balance;
+    if (balance === null || balance === undefined) return;
+    const diff = Number((Number(currentImport.closing_balance) - Number(balance)).toFixed(2));
+    if (Math.abs(diff) < 0.01) {
+      toast.success('Saldo do app já está igual ao do extrato. Você pode encerrar a conciliação.');
+    } else {
+      toast.warning(`Ainda há diferença de ${currency(diff)} entre o saldo do app e o extrato.`);
+    }
+  };
+
+  const effectivate = async (line: StatementLine, confirmDuplicate = false) => {
     setBusyLine(line.id);
     try {
-      await reconcileLineAsTransaction(line);
+      await reconcileLineAsTransaction(line, undefined, { confirmDuplicate });
       await refetchLines();
       toast.success('Linha conciliada');
+      await recheckBalance();
     } catch (error) {
-      toast.error('Erro ao efetivar: ' + (error as Error).message);
+      if (error instanceof DuplicateLineError) {
+        await refetchLines();
+        setConfirmDup({ line, reason: error.message });
+      } else {
+        toast.error('Erro ao efetivar: ' + (error as Error).message);
+      }
     } finally {
       setBusyLine(null);
     }
@@ -251,18 +279,29 @@ export function StatementImportPage({ companyId }: Props) {
     }
     let ok = 0;
     let failed = 0;
+    let blocked = 0;
     for (const line of targets) {
       try {
         await reconcileLineAsTransaction(line);
         ok += 1;
-      } catch {
-        failed += 1;
+      } catch (error) {
+        if (error instanceof DuplicateLineError) blocked += 1;
+        else failed += 1;
       }
     }
     setSelected({});
     await refetchLines();
-    toast[failed ? 'warning' : 'success'](`${ok} linha(s) conciliada(s)${failed ? `, ${failed} com erro` : ''}`);
+    const extra = [
+      blocked ? `${blocked} bloqueada(s) por duplicidade` : '',
+      failed ? `${failed} com erro` : '',
+    ].filter(Boolean).join(', ');
+    toast[blocked || failed ? 'warning' : 'success'](`${ok} linha(s) conciliada(s)${extra ? `, ${extra}` : ''}`);
+    if (blocked) {
+      toast.warning('Linhas marcadas como duplicidade não foram efetivadas. Revise e confirme individualmente se realmente deve lançar.');
+    }
+    await recheckBalance();
   };
+
 
   const handleFinishReconciliation = async () => {
     if (!currentImport) return;
@@ -947,6 +986,60 @@ export function StatementImportPage({ companyId }: Props) {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettleLine(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmDup} onOpenChange={(open) => !open && setConfirmDup(null)}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Possível duplicidade</DialogTitle>
+            <DialogDescription>
+              Este lançamento parece já existir no app, por isso não foi efetivado.
+            </DialogDescription>
+          </DialogHeader>
+          {confirmDup && (
+            <div className="space-y-3 py-2 text-sm">
+              <div className="rounded-md border p-3">
+                <p className="font-medium">{confirmDup.line.suggested_description || confirmDup.line.raw_description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {fmtDate(confirmDup.line.date)} · {confirmDup.line.type === 'income' ? 'Entrada' : 'Saída'} ·{' '}
+                  {currency(confirmDup.line.amount)}
+                </p>
+              </div>
+              <p className="text-muted-foreground">{confirmDup.reason}</p>
+              <p className="text-muted-foreground">
+                Se já estava lançado, use <strong>Ignorar</strong> para limpar a linha sem alterar o saldo.
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmDup(null)}>Cancelar</Button>
+            {confirmDup && (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  const line = confirmDup.line;
+                  setConfirmDup(null);
+                  await ignoreLine(line);
+                  await recheckBalance();
+                }}
+              >
+                <Ban className="w-4 h-4 mr-2" /> Ignorar linha
+              </Button>
+            )}
+            {confirmDup && (
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  const line = confirmDup.line;
+                  setConfirmDup(null);
+                  await effectivate(line, true);
+                }}
+              >
+                Efetivar mesmo assim
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

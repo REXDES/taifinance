@@ -391,21 +391,20 @@ const Finance = () => {
       case 'credit-ignored':
         return creditEnabled ? <CreditIgnoredOccurrencesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-dashboard':
-        return paymentsEnabled ? <PaymentsDashboardPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-merchants':
-        return paymentsEnabled ? <PaymentsMerchantsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-terminals':
-        return paymentsEnabled ? <PaymentsTerminalsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-plans':
-        return paymentsEnabled ? <PaymentsPlansPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-transactions':
-        return paymentsEnabled ? <PaymentsTransactionsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+        return paymentsEnabled ? <NectaDashboardPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-registration':
+        return paymentsEnabled ? <NectaRegistrationPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-charges':
-        return paymentsEnabled ? <PaymentsChargesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-settlements':
-        return paymentsEnabled ? <PaymentsSettlementsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-webhooks':
-        return paymentsEnabled ? <PaymentsWebhooksPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+        return paymentsEnabled ? <NectaChargesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-admin-dashboard':
+        return <NectaAdminDashboardPage />;
+      case 'payments-admin-registration':
+        return <NectaAdminRegistrationPage companyId={selectedCompanyId} />;
+      case 'payments-admin-settlements':
+        return <NectaAdminSettlementsPage />;
+      case 'payments-admin-settings':
+        return <NectaAdminSettingsPage companyId={selectedCompanyId} />;
+
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }

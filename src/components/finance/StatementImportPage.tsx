@@ -24,6 +24,7 @@ import {
   useStatementImports, useStatementLines, parseStatementFile, createStatementImport,
   suggestForLines, reconcileLineAsTransaction, reconcileLineAsSettlement, updateStatementLine,
   setImportStatus, finishReconciliation, createReconciliationAdjustment, detectFormat, StatementLine,
+  DuplicateLineError,
   attachReceiptToLine, createReceiptsImport, getReceiptUrl,
 } from '@/hooks/useStatementImport';
 

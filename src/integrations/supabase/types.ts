@@ -2369,6 +2369,626 @@ export type Database = {
           },
         ]
       }
+      necta_establishments: {
+        Row: {
+          address_city: string | null
+          address_complement: string | null
+          address_district: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          address_zip: string | null
+          bank_account: string | null
+          bank_account_document: string | null
+          bank_account_holder: string | null
+          bank_account_type: string | null
+          bank_agency: string | null
+          bank_code: string | null
+          bank_name: string | null
+          billet_config: Json | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          document: string | null
+          documents: Json | null
+          email: string | null
+          fee_plan_id: string | null
+          fee_plan_name: string | null
+          homologation_notes: string | null
+          homologation_sent_at: string | null
+          homologation_status: string
+          id: string
+          is_active: boolean
+          legal_name: string | null
+          necta_establishment_id: string | null
+          phone: string | null
+          pix_key: string | null
+          pix_key_type: string | null
+          raw: Json | null
+          term_accepted_at: string | null
+          term_slug: string | null
+          trade_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_district?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
+          bank_account?: string | null
+          bank_account_document?: string | null
+          bank_account_holder?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_code?: string | null
+          bank_name?: string | null
+          billet_config?: Json | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document?: string | null
+          documents?: Json | null
+          email?: string | null
+          fee_plan_id?: string | null
+          fee_plan_name?: string | null
+          homologation_notes?: string | null
+          homologation_sent_at?: string | null
+          homologation_status?: string
+          id?: string
+          is_active?: boolean
+          legal_name?: string | null
+          necta_establishment_id?: string | null
+          phone?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          raw?: Json | null
+          term_accepted_at?: string | null
+          term_slug?: string | null
+          trade_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_district?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
+          bank_account?: string | null
+          bank_account_document?: string | null
+          bank_account_holder?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_code?: string | null
+          bank_name?: string | null
+          billet_config?: Json | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document?: string | null
+          documents?: Json | null
+          email?: string | null
+          fee_plan_id?: string | null
+          fee_plan_name?: string | null
+          homologation_notes?: string | null
+          homologation_sent_at?: string | null
+          homologation_status?: string
+          id?: string
+          is_active?: boolean
+          legal_name?: string | null
+          necta_establishment_id?: string | null
+          phone?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          raw?: Json | null
+          term_accepted_at?: string | null
+          term_slug?: string | null
+          trade_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_establishments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_fee_plans: {
+        Row: {
+          anticipation_fee: number | null
+          bank_slip_fee: number | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          credit_fee: number | null
+          credit_installment_fee: number | null
+          debit_fee: number | null
+          description: string | null
+          id: string
+          is_default: boolean
+          name: string
+          necta_plan_id: string | null
+          pix_fee: number | null
+          raw: Json | null
+          royalty_percent: number | null
+          updated_at: string
+        }
+        Insert: {
+          anticipation_fee?: number | null
+          bank_slip_fee?: number | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_fee?: number | null
+          credit_installment_fee?: number | null
+          debit_fee?: number | null
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          necta_plan_id?: string | null
+          pix_fee?: number | null
+          raw?: Json | null
+          royalty_percent?: number | null
+          updated_at?: string
+        }
+        Update: {
+          anticipation_fee?: number | null
+          bank_slip_fee?: number | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          credit_fee?: number | null
+          credit_installment_fee?: number | null
+          debit_fee?: number | null
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          necta_plan_id?: string | null
+          pix_fee?: number | null
+          raw?: Json | null
+          royalty_percent?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_fee_plans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_pos: {
+        Row: {
+          bound_at: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          establishment_id: string | null
+          id: string
+          model: string | null
+          model_id: string | null
+          necta_pos_id: string | null
+          raw: Json | null
+          serial_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bound_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          establishment_id?: string | null
+          id?: string
+          model?: string | null
+          model_id?: string | null
+          necta_pos_id?: string | null
+          raw?: Json | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bound_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          establishment_id?: string | null
+          id?: string
+          model?: string | null
+          model_id?: string | null
+          necta_pos_id?: string | null
+          raw?: Json | null
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_pos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_pos_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "necta_establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_sales: {
+        Row: {
+          account_id: string | null
+          amount: number
+          boleto_barcode: string | null
+          boleto_digitable_line: string | null
+          boleto_url: string | null
+          category_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          establishment_id: string | null
+          fee_amount: number | null
+          id: string
+          installments: number
+          is_recurring: boolean
+          last_sync_at: string | null
+          method: string
+          necta_payment_link_id: string | null
+          necta_sale_id: string | null
+          net_amount: number | null
+          paid_at: string | null
+          parent_sale_id: string | null
+          payable_receivable_id: string | null
+          payer_document: string | null
+          payer_email: string | null
+          payer_name: string | null
+          payer_phone: string | null
+          payment_url: string | null
+          pix_copy_paste: string | null
+          pix_qr_code: string | null
+          provider_status: string | null
+          raw: Json | null
+          recurrence_count: number | null
+          recurrence_index: number | null
+          recurrence_interval: string | null
+          refunded_at: string | null
+          status: string
+          subcategory_id: string | null
+          sync_error: string | null
+          transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount?: number
+          boleto_barcode?: string | null
+          boleto_digitable_line?: string | null
+          boleto_url?: string | null
+          category_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          establishment_id?: string | null
+          fee_amount?: number | null
+          id?: string
+          installments?: number
+          is_recurring?: boolean
+          last_sync_at?: string | null
+          method?: string
+          necta_payment_link_id?: string | null
+          necta_sale_id?: string | null
+          net_amount?: number | null
+          paid_at?: string | null
+          parent_sale_id?: string | null
+          payable_receivable_id?: string | null
+          payer_document?: string | null
+          payer_email?: string | null
+          payer_name?: string | null
+          payer_phone?: string | null
+          payment_url?: string | null
+          pix_copy_paste?: string | null
+          pix_qr_code?: string | null
+          provider_status?: string | null
+          raw?: Json | null
+          recurrence_count?: number | null
+          recurrence_index?: number | null
+          recurrence_interval?: string | null
+          refunded_at?: string | null
+          status?: string
+          subcategory_id?: string | null
+          sync_error?: string | null
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          boleto_barcode?: string | null
+          boleto_digitable_line?: string | null
+          boleto_url?: string | null
+          category_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          establishment_id?: string | null
+          fee_amount?: number | null
+          id?: string
+          installments?: number
+          is_recurring?: boolean
+          last_sync_at?: string | null
+          method?: string
+          necta_payment_link_id?: string | null
+          necta_sale_id?: string | null
+          net_amount?: number | null
+          paid_at?: string | null
+          parent_sale_id?: string | null
+          payable_receivable_id?: string | null
+          payer_document?: string | null
+          payer_email?: string | null
+          payer_name?: string | null
+          payer_phone?: string | null
+          payment_url?: string | null
+          pix_copy_paste?: string | null
+          pix_qr_code?: string | null
+          provider_status?: string | null
+          raw?: Json | null
+          recurrence_count?: number | null
+          recurrence_index?: number | null
+          recurrence_interval?: string | null
+          refunded_at?: string | null
+          status?: string
+          subcategory_id?: string | null
+          sync_error?: string | null
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_sales_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_sales_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_sales_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_sales_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "necta_establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_sales_parent_sale_id_fkey"
+            columns: ["parent_sale_id"]
+            isOneToOne: false
+            referencedRelation: "necta_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_sales_payable_receivable_id_fkey"
+            columns: ["payable_receivable_id"]
+            isOneToOne: false
+            referencedRelation: "payables_receivables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_sales_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_subcategories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_sales_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_settlements: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          establishment_id: string | null
+          fee_amount: number | null
+          gross_amount: number | null
+          id: string
+          merchant_document: string | null
+          merchant_name: string | null
+          necta_merchant_settlement_id: string | null
+          necta_settlement_id: string | null
+          net_amount: number | null
+          orders_count: number | null
+          raw: Json | null
+          settlement_date: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          establishment_id?: string | null
+          fee_amount?: number | null
+          gross_amount?: number | null
+          id?: string
+          merchant_document?: string | null
+          merchant_name?: string | null
+          necta_merchant_settlement_id?: string | null
+          necta_settlement_id?: string | null
+          net_amount?: number | null
+          orders_count?: number | null
+          raw?: Json | null
+          settlement_date?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          establishment_id?: string | null
+          fee_amount?: number | null
+          gross_amount?: number | null
+          id?: string
+          merchant_document?: string | null
+          merchant_name?: string | null
+          necta_merchant_settlement_id?: string | null
+          necta_settlement_id?: string | null
+          net_amount?: number | null
+          orders_count?: number | null
+          raw?: Json | null
+          settlement_date?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_settlements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_settlements_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "necta_establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_webhook_endpoints: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          events: string[]
+          id: string
+          is_active: boolean
+          necta_endpoint_id: string | null
+          raw: Json | null
+          scope: string
+          scope_uuid: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          necta_endpoint_id?: string | null
+          raw?: Json | null
+          scope?: string
+          scope_uuid?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          necta_endpoint_id?: string | null
+          raw?: Json | null
+          scope?: string
+          scope_uuid?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_webhook_endpoints_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_webhook_events: {
+        Row: {
+          company_id: string | null
+          event_type: string | null
+          id: string
+          necta_reference_id: string | null
+          payload: Json
+          process_error: string | null
+          processed: boolean
+          received_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          event_type?: string | null
+          id?: string
+          necta_reference_id?: string | null
+          payload?: Json
+          process_error?: string | null
+          processed?: boolean
+          received_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          event_type?: string | null
+          id?: string
+          necta_reference_id?: string | null
+          payload?: Json
+          process_error?: string | null
+          processed?: boolean
+          received_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_webhook_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string

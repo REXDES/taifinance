@@ -386,7 +386,10 @@ export function FinanceSidebar({
                 {bankDigitalEnabled && renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
                 {renderMenuItem({ view: 'credit-admin', label: 'Gestão de Crédito (config)', icon: <CreditCard className="w-4 h-4" /> })}
 
+                {paymentsAdminMenuItems.map(renderMenuItem)}
+
                 {!collapsed && (
+
                   <div className="pt-2 pb-1 px-2">
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
                       Gestão da Plataforma

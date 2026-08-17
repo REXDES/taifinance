@@ -140,13 +140,9 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'credit-applications',
   'credit-ignored',
   'payments-dashboard',
-  'payments-merchants',
-  'payments-terminals',
-  'payments-plans',
-  'payments-transactions',
+  'payments-registration',
   'payments-charges',
-  'payments-settlements',
-  'payments-webhooks',
+
 ];
 
 interface UserRoleInfo {

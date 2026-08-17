@@ -220,14 +220,40 @@ export function StatementImportPage({ companyId }: Props) {
     }
   };
 
-  const effectivate = async (line: StatementLine) => {
+  /** Após efetivar, reconfere o saldo real da conta contra o saldo final do extrato. */
+  const recheckBalance = async () => {
+    await refetchAccounts();
+    if (!currentImport?.account_id || currentImport.closing_balance === null || currentImport.closing_balance === undefined) return;
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data } = await supabase
+      .from('accounts')
+      .select('current_balance')
+      .eq('id', currentImport.account_id)
+      .maybeSingle();
+    const balance = data?.current_balance;
+    if (balance === null || balance === undefined) return;
+    const diff = Number((Number(currentImport.closing_balance) - Number(balance)).toFixed(2));
+    if (Math.abs(diff) < 0.01) {
+      toast.success('Saldo do app já está igual ao do extrato. Você pode encerrar a conciliação.');
+    } else {
+      toast.warning(`Ainda há diferença de ${currency(diff)} entre o saldo do app e o extrato.`);
+    }
+  };
+
+  const effectivate = async (line: StatementLine, confirmDuplicate = false) => {
     setBusyLine(line.id);
     try {
-      await reconcileLineAsTransaction(line);
+      await reconcileLineAsTransaction(line, undefined, { confirmDuplicate });
       await refetchLines();
       toast.success('Linha conciliada');
+      await recheckBalance();
     } catch (error) {
-      toast.error('Erro ao efetivar: ' + (error as Error).message);
+      if (error instanceof DuplicateLineError) {
+        await refetchLines();
+        setConfirmDup({ line, reason: error.message });
+      } else {
+        toast.error('Erro ao efetivar: ' + (error as Error).message);
+      }
     } finally {
       setBusyLine(null);
     }
@@ -251,18 +277,29 @@ export function StatementImportPage({ companyId }: Props) {
     }
     let ok = 0;
     let failed = 0;
+    let blocked = 0;
     for (const line of targets) {
       try {
         await reconcileLineAsTransaction(line);
         ok += 1;
-      } catch {
-        failed += 1;
+      } catch (error) {
+        if (error instanceof DuplicateLineError) blocked += 1;
+        else failed += 1;
       }
     }
     setSelected({});
     await refetchLines();
-    toast[failed ? 'warning' : 'success'](`${ok} linha(s) conciliada(s)${failed ? `, ${failed} com erro` : ''}`);
+    const extra = [
+      blocked ? `${blocked} bloqueada(s) por duplicidade` : '',
+      failed ? `${failed} com erro` : '',
+    ].filter(Boolean).join(', ');
+    toast[blocked || failed ? 'warning' : 'success'](`${ok} linha(s) conciliada(s)${extra ? `, ${extra}` : ''}`);
+    if (blocked) {
+      toast.warning('Linhas marcadas como duplicidade não foram efetivadas. Revise e confirme individualmente se realmente deve lançar.');
+    }
+    await recheckBalance();
   };
+
 
   const handleFinishReconciliation = async () => {
     if (!currentImport) return;

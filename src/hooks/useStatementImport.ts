@@ -324,7 +324,7 @@ export async function createStatementImport(params: CreateImportParams) {
 
   if (importError) throw importError;
 
-  // --- Duplicidade: transações já existentes no período ---
+  // --- Duplicidade: transações já existentes no período (com folga de 3 dias) ---
   const start = parsed.period_start || parsed.lines[0]?.date;
   const end = parsed.period_end || parsed.lines[parsed.lines.length - 1]?.date;
   let existing: any[] = [];
@@ -333,29 +333,19 @@ export async function createStatementImport(params: CreateImportParams) {
       .from('transactions')
       .select('id, date, amount, type, description')
       .eq('company_id', companyId)
-      .gte('date', start)
-      .lte('date', end);
+      .gte('date', shiftDate(start, -3))
+      .lte('date', shiftDate(end, 3));
     existing = data || [];
   }
 
+  const usedTransactionIds = new Set<string>();
+
   const findDuplicate = (line: ParsedLine) => {
-    const sameValue = existing.filter(
-      (t) => t.date === line.date && Math.abs(Number(t.amount) - line.amount) < 0.01 && t.type === line.type
-    );
-    if (sameValue.length === 0) return null;
-    const normalized = normalizeDescription(line.description);
-    const exact = sameValue.find((t) => {
-      const other = normalizeDescription(t.description);
-      return other.includes(normalized.slice(0, 12)) || normalized.includes(other.slice(0, 12));
-    });
-    const match = exact || sameValue[0];
-    return {
-      id: match.id,
-      reason: exact
-        ? 'Mesma data, valor e histórico semelhante a um lançamento já existente'
-        : 'Mesma data e valor de um lançamento já existente',
-    };
+    const match = matchDuplicate(line, existing, usedTransactionIds);
+    if (match) usedTransactionIds.add(match.id);
+    return match;
   };
+
 
   const rows = parsed.lines.map((line, index) => {
     const duplicate = findDuplicate(line);

@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
           const description = `Cobrança ${sale.method}${sale.payer_name ? ` - ${sale.payer_name}` : ''}`;
           if (sale.payable_receivable_id) {
             await admin.from('payables_receivables')
-              .update({ status: 'paid', paid_date: paidAt.slice(0, 10) })
+              .update({ status: 'paid', paid_date: paidAt.slice(0, 10), paid_account_id: sale.account_id ?? null })
               .eq('id', sale.payable_receivable_id);
           }
           if (sale.account_id && !sale.transaction_id) {

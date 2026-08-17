@@ -125,7 +125,7 @@ async function mirrorFinance(admin: any, sale: any, status: string, paidAt?: str
       amount: sale.amount,
       due_date: sale.due_date ?? new Date().toISOString().slice(0, 10),
       status: isPaid ? 'paid' : 'pending',
-      account_id: sale.account_id ?? null,
+      paid_account_id: isPaid ? (sale.account_id ?? null) : null,
       category_id: sale.category_id ?? null,
       subcategory_id: sale.subcategory_id ?? null,
       paid_date: isPaid ? (paidAt ?? new Date().toISOString()).slice(0, 10) : null,
@@ -134,7 +134,7 @@ async function mirrorFinance(admin: any, sale: any, status: string, paidAt?: str
     if (pr) update.payable_receivable_id = pr.id;
   } else if (isPaid) {
     await admin.from('payables_receivables')
-      .update({ status: 'paid', paid_date: (paidAt ?? new Date().toISOString()).slice(0, 10) })
+      .update({ status: 'paid', paid_date: (paidAt ?? new Date().toISOString()).slice(0, 10), paid_account_id: sale.account_id ?? null })
       .eq('id', sale.payable_receivable_id);
   }
 
@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
         last_sync_at: new Date().toISOString(),
       }).eq('id', saleId).select('*').maybeSingle();
       if (sale.payable_receivable_id && !isRefund) {
-        await admin.from('payables_receivables').update({ status: 'canceled' }).eq('id', sale.payable_receivable_id);
+        await admin.from('payables_receivables').update({ status: 'cancelled' }).eq('id', sale.payable_receivable_id);
       }
       return json({ ok: true, sale: updated });
     }

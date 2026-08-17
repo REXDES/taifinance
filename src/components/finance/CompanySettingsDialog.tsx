@@ -554,10 +554,11 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                       <div className="space-y-1">
                         <Label className="text-base flex items-center gap-2">
                           <Wrench className="w-4 h-4" />
-                          Pagamentos (Cappta)
+                          Pagamentos (Necta)
                         </Label>
                         <p className="text-sm text-muted-foreground">
-                          Habilita o módulo de meios de pagamento via Cappta White Label: credenciamento de estabelecimentos, terminais POS, planos e taxas, transações, cobranças (link/boleto/PIX), liquidações e webhooks.
+                          Habilita o módulo de meios de pagamento via Necta Multi-Pay: cadastro/homologação do estabelecimento, cobranças (PIX, boleto, cartão e link), acompanhamento das transações e reflexo automático na gestão financeira.
+
                         </p>
                       </div>
                       <Switch checked={paymentsModuleEnabled} onCheckedChange={setPaymentsModuleEnabled} />

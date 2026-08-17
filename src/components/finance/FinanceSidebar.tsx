@@ -167,14 +167,17 @@ const creditAdminMenuItems: MenuItem[] = [
 
 const paymentsMenuItems: MenuItem[] = [
   { view: 'payments-dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { view: 'payments-registration', label: 'Cadastro', icon: <Building2 className="w-4 h-4" /> },
   { view: 'payments-charges', label: 'Cobranças', icon: <Receipt className="w-4 h-4" /> },
-  { view: 'payments-transactions', label: 'Transações', icon: <ArrowUpDown className="w-4 h-4" /> },
-  { view: 'payments-settlements', label: 'Liquidações', icon: <TrendingUp className="w-4 h-4" /> },
-  { view: 'payments-terminals', label: 'Terminais (POS)', icon: <Hammer className="w-4 h-4" /> },
-  { view: 'payments-merchants', label: 'Estabelecimentos', icon: <Building2 className="w-4 h-4" /> },
-  { view: 'payments-plans', label: 'Planos & Taxas', icon: <Tags className="w-4 h-4" /> },
-  { view: 'payments-webhooks', label: 'Webhooks', icon: <Activity className="w-4 h-4" /> },
 ];
+
+const paymentsAdminMenuItems: MenuItem[] = [
+  { view: 'payments-admin-dashboard', label: 'Pagamentos — Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { view: 'payments-admin-registration', label: 'Pagamentos — Cadastros', icon: <Building2 className="w-4 h-4" /> },
+  { view: 'payments-admin-settlements', label: 'Pagamentos — Liquidações', icon: <TrendingUp className="w-4 h-4" /> },
+  { view: 'payments-admin-settings', label: 'Pagamentos — Configurações', icon: <Settings className="w-4 h-4" /> },
+];
+
 
 export function FinanceSidebar({
   companies,
@@ -383,7 +386,10 @@ export function FinanceSidebar({
                 {bankDigitalEnabled && renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
                 {renderMenuItem({ view: 'credit-admin', label: 'Gestão de Crédito (config)', icon: <CreditCard className="w-4 h-4" /> })}
 
+                {paymentsAdminMenuItems.map(renderMenuItem)}
+
                 {!collapsed && (
+
                   <div className="pt-2 pb-1 px-2">
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
                       Gestão da Plataforma
@@ -663,7 +669,7 @@ export function FinanceSidebar({
                   )
                 )}
 
-                {/* Pagamentos - Cappta (módulo opcional por empresa) */}
+                {/* Pagamentos - Necta (módulo opcional por empresa) */}
                 {paymentsEnabled && (
                   collapsed ? (
                     filterAllowed(paymentsMenuItems).map(renderMenuItem)

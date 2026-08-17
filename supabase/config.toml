@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.cappta-webhook]
 verify_jwt = false
+
+[functions.necta-webhook]
+verify_jwt = false

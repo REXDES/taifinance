@@ -47,14 +47,14 @@ import { useCompanyPaymentsFlag } from '@/hooks/usePaymentsModule';
 import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
 import { CreditApplicationsPage } from '@/components/credit/CreditApplicationsPage';
 import { CreditIgnoredOccurrencesPage } from '@/components/credit/CreditIgnoredOccurrencesPage';
-import { PaymentsDashboardPage } from '@/components/payments/PaymentsDashboardPage';
-import { PaymentsMerchantsPage } from '@/components/payments/PaymentsMerchantsPage';
-import { PaymentsTerminalsPage } from '@/components/payments/PaymentsTerminalsPage';
-import { PaymentsPlansPage } from '@/components/payments/PaymentsPlansPage';
-import { PaymentsTransactionsPage } from '@/components/payments/PaymentsTransactionsPage';
-import { PaymentsChargesPage } from '@/components/payments/PaymentsChargesPage';
-import { PaymentsSettlementsPage } from '@/components/payments/PaymentsSettlementsPage';
-import { PaymentsWebhooksPage } from '@/components/payments/PaymentsWebhooksPage';
+import { NectaDashboardPage } from '@/components/payments/NectaDashboardPage';
+import { NectaRegistrationPage } from '@/components/payments/NectaRegistrationPage';
+import { NectaChargesPage } from '@/components/payments/NectaChargesPage';
+import { NectaAdminDashboardPage } from '@/components/payments/NectaAdminDashboardPage';
+import { NectaAdminRegistrationPage } from '@/components/payments/NectaAdminRegistrationPage';
+import { NectaAdminSettlementsPage } from '@/components/payments/NectaAdminSettlementsPage';
+import { NectaAdminSettingsPage } from '@/components/payments/NectaAdminSettingsPage';
+
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -99,15 +99,15 @@ export type FinanceView =
   | 'credit-applications'
   | 'credit-ignored'
   | 'payments-dashboard'
-  | 'payments-merchants'
-  | 'payments-terminals'
-  | 'payments-plans'
-  | 'payments-transactions'
+  | 'payments-registration'
   | 'payments-charges'
-  | 'payments-settlements'
-  | 'payments-webhooks';
+  | 'payments-admin-dashboard'
+  | 'payments-admin-registration'
+  | 'payments-admin-settlements'
+  | 'payments-admin-settings';
 
-const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'audit-logs', 'bank-digital', 'credit-admin'];
+const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'audit-logs', 'bank-digital', 'credit-admin', 'payments-admin-dashboard', 'payments-admin-registration', 'payments-admin-settlements', 'payments-admin-settings'];
+
 // Views available only in normal mode for supervisors
 const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'dashboard',
@@ -140,13 +140,9 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'credit-applications',
   'credit-ignored',
   'payments-dashboard',
-  'payments-merchants',
-  'payments-terminals',
-  'payments-plans',
-  'payments-transactions',
+  'payments-registration',
   'payments-charges',
-  'payments-settlements',
-  'payments-webhooks',
+
 ];
 
 interface UserRoleInfo {
@@ -395,21 +391,20 @@ const Finance = () => {
       case 'credit-ignored':
         return creditEnabled ? <CreditIgnoredOccurrencesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-dashboard':
-        return paymentsEnabled ? <PaymentsDashboardPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-merchants':
-        return paymentsEnabled ? <PaymentsMerchantsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-terminals':
-        return paymentsEnabled ? <PaymentsTerminalsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-plans':
-        return paymentsEnabled ? <PaymentsPlansPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-transactions':
-        return paymentsEnabled ? <PaymentsTransactionsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+        return paymentsEnabled ? <NectaDashboardPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-registration':
+        return paymentsEnabled ? <NectaRegistrationPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-charges':
-        return paymentsEnabled ? <PaymentsChargesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-settlements':
-        return paymentsEnabled ? <PaymentsSettlementsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
-      case 'payments-webhooks':
-        return paymentsEnabled ? <PaymentsWebhooksPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+        return paymentsEnabled ? <NectaChargesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-admin-dashboard':
+        return <NectaAdminDashboardPage />;
+      case 'payments-admin-registration':
+        return <NectaAdminRegistrationPage companyId={selectedCompanyId} />;
+      case 'payments-admin-settlements':
+        return <NectaAdminSettlementsPage companyId={selectedCompanyId} />;
+      case 'payments-admin-settings':
+        return <NectaAdminSettingsPage companyId={selectedCompanyId} />;
+
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }

@@ -40,7 +40,7 @@ const currency = (value: number | null | undefined) =>
 const fmtDate = (value?: string | null) => (value ? format(parseISO(`${value}T00:00:00`), 'dd/MM/yyyy') : '—');
 
 export function StatementImportPage({ companyId }: Props) {
-  const { accounts } = useAccounts(companyId);
+  const { accounts, refetch: refetchAccounts } = useAccounts(companyId);
   const { categories } = useTransactionCategories(companyId);
   const { payablesReceivables } = usePayablesReceivables(companyId, { status: ['pending'] });
   const { tags } = useFinanceTags(companyId);

@@ -87,6 +87,65 @@ export function buildFingerprint(line: { date: string; amount: number; type: str
   return `${line.date}|${line.type}|${Number(line.amount).toFixed(2)}|${desc}`;
 }
 
+/** Soma/subtrai dias de uma data AAAA-MM-DD sem sofrer com fuso horário. */
+export function shiftDate(value: string, days: number) {
+  const d = new Date(`${value}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+const dayDiff = (a: string, b: string) =>
+  Math.round(Math.abs(new Date(`${a}T00:00:00`).getTime() - new Date(`${b}T00:00:00`).getTime()) / 86400000);
+
+interface DuplicateCandidateTx {
+  id: string;
+  date: string;
+  amount: number | string;
+  type: string;
+  description?: string | null;
+}
+
+/**
+ * Procura um lançamento já existente equivalente a uma linha do extrato.
+ * Aceita diferença de até 3 dias na data (lançamentos manuais costumam divergir da data do banco).
+ */
+export function matchDuplicate(
+  line: { date: string; amount: number; type: string; description?: string; raw_description?: string },
+  existing: DuplicateCandidateTx[],
+  used?: Set<string>
+) {
+  const desc = normalizeDescription(line.description ?? line.raw_description ?? '');
+  const sameValue = existing.filter(
+    (t) =>
+      !used?.has(t.id) &&
+      t.type === line.type &&
+      Math.abs(Number(t.amount) - Number(line.amount)) < 0.01 &&
+      dayDiff(t.date, line.date) <= 3
+  );
+  if (sameValue.length === 0) return null;
+
+  const scored = sameValue
+    .map((t) => {
+      const other = normalizeDescription(t.description || '');
+      const similar =
+        desc.length > 5 && other.length > 5 &&
+        (other.includes(desc.slice(0, 12)) || desc.includes(other.slice(0, 12)));
+      return { tx: t, similar, distance: dayDiff(t.date, line.date) };
+    })
+    .sort((a, b) => Number(b.similar) - Number(a.similar) || a.distance - b.distance);
+
+  const best = scored[0];
+  const sameDay = best.distance === 0;
+  return {
+    id: best.tx.id,
+    reason: best.similar
+      ? `Valor${sameDay ? ' e data iguais' : ' igual'} e histórico semelhante ao lançamento de ${best.tx.date}`
+      : sameDay
+        ? 'Mesma data e valor de um lançamento já existente'
+        : `Mesmo valor de um lançamento já existente em ${best.tx.date} (${best.distance} dia(s) de diferença)`,
+  };
+}
+
 export function detectFormat(fileName: string) {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   if (ext === 'ofx' || ext === 'ofc') return 'ofx';

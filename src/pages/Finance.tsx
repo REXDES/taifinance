@@ -401,7 +401,7 @@ const Finance = () => {
       case 'payments-admin-registration':
         return <NectaAdminRegistrationPage companyId={selectedCompanyId} />;
       case 'payments-admin-settlements':
-        return <NectaAdminSettlementsPage />;
+        return <NectaAdminSettlementsPage companyId={selectedCompanyId} />;
       case 'payments-admin-settings':
         return <NectaAdminSettingsPage companyId={selectedCompanyId} />;
 

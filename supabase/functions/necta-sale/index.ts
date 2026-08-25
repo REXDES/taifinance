@@ -74,22 +74,39 @@ function mapStatus(raw?: string | null): string | null {
   return null;
 }
 
-function buyerPayload(sale: any, est: any) {
-  return {
+/**
+ * Monta o buyer a partir do endereço REAL do pagador (nunca do estabelecimento —
+ * enviar o endereço do lojista como se fosse do comprador quebraria a emissão do
+ * boleto e falsearia o cadastro do pagador na Necta). Boleto exige endereço
+ * completo: se faltar algo, lança erro em vez de inventar dado.
+ */
+function buyerPayload(sale: any, paymentMethod: string) {
+  const hasAddress = sale.payer_address_street && sale.payer_address_number
+    && sale.payer_address_neighborhood && sale.payer_address_city
+    && sale.payer_address_state && sale.payer_address_postal_code;
+
+  if (paymentMethod === 'bank_slip' && !hasAddress) {
+    throw new Error('Endereço completo do pagador é obrigatório para emitir boleto (rua, número, bairro, cidade, UF e CEP).');
+  }
+
+  const buyer: Record<string, unknown> = {
     name: sale.payer_name || 'Consumidor',
     document: digits(sale.payer_document),
     email: sale.payer_email || 'nao-informado@exemplo.com.br',
     phoneNumber: digits(sale.payer_phone) || '11999999999',
-    address: {
-      street: est?.address_street || 'Nao informado',
-      number: est?.address_number || 'S/N',
-      neighborhood: est?.address_district || 'Centro',
-      city: est?.address_city || 'Sao Paulo',
-      state: est?.address_state || 'SP',
-      country: 'BR',
-      postalCode: digits(est?.address_zip) || '01310100',
-    },
   };
+  if (hasAddress) {
+    buyer.address = {
+      street: sale.payer_address_street,
+      number: sale.payer_address_number,
+      neighborhood: sale.payer_address_neighborhood,
+      city: sale.payer_address_city,
+      state: sale.payer_address_state,
+      country: 'BR',
+      postalCode: digits(sale.payer_address_postal_code),
+    };
+  }
+  return buyer;
 }
 
 function extractFields(resp: any) {
@@ -188,10 +205,13 @@ Deno.serve(async (req) => {
       if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
       if (sale.necta_sale_id || sale.necta_payment_link_id) return json({ error: 'Cobrança já emitida' }, 400);
 
-      const { data: est } = await admin.from('necta_establishments').select('*')
-        .eq('company_id', sale.company_id).order('created_at').limit(1).maybeSingle();
-
+      // As rotas /sales/pix, /sales/bank-slip, /sales/credit-card e /sales/pix-cappta foram
+      // descontinuadas pela Necta (respondem 404). O endpoint único e atual é POST /sales
+      // com `paymentMethod` no corpo — pix-cappta (bolepix) virou bank_slip nos gateways
+      // que o suportam, que já devolve o QR PIX embutido junto do boleto.
       let resp: any;
+      let saleDetail: any = null;
+      let billet: any = null;
       try {
         if (sale.method === 'link') {
           const expiration = sale.due_date
@@ -207,32 +227,37 @@ Deno.serve(async (req) => {
             email: sale.payer_email ?? undefined,
             installments: sale.installments ?? 1,
           });
-        } else if (sale.method === 'credit_card') {
-          const card = input?.credit_card;
-          if (!card?.number || !card?.holderName) return json({ error: 'Dados do cartão são obrigatórios' }, 400);
-          resp = await api('/sales/credit-card', 'POST', {
+        } else {
+          const paymentMethod = sale.method === 'pix_cappta' ? 'bank_slip' : sale.method;
+          const body: Record<string, unknown> = {
+            paymentMethod,
             totalAmount: toCents(sale.amount),
             description: sale.description ?? undefined,
-            installments: sale.installments ?? 1,
-            buyer: buyerPayload(sale, est),
-            creditCard: {
+            buyer: buyerPayload(sale, paymentMethod),
+          };
+          if (paymentMethod === 'bank_slip') body.dueDate = sale.due_date ?? undefined;
+          if (paymentMethod === 'credit_card') {
+            const card = input?.credit_card;
+            if (!card?.number || !card?.holderName) return json({ error: 'Dados do cartão são obrigatórios' }, 400);
+            body.installments = sale.installments ?? 1;
+            body.creditCard = {
               holderName: card.holderName,
               number: digits(card.number),
               expirationMonth: String(card.expirationMonth),
               expirationYear: String(card.expirationYear),
               cvv: String(card.cvv ?? ''),
-            },
-          });
-        } else {
-          const endpoint = sale.method === 'bank_slip' ? '/sales/bank-slip'
-            : sale.method === 'pix_cappta' ? '/sales/pix-cappta'
-            : '/sales/pix';
-          resp = await api(endpoint, 'POST', {
-            totalAmount: toCents(sale.amount),
-            description: sale.description ?? undefined,
-            buyer: buyerPayload(sale, est),
-            ...(sale.method === 'pix' ? {} : { dueDate: sale.due_date ?? undefined }),
-          });
+            };
+          }
+          // POST /sales só devolve { id, externalId, status } — QR/linha digitável/boleto
+          // só vêm em seguida, via GET /sales/{id} (+ GET /sales/{id}/billet para boleto).
+          resp = await api('/sales', 'POST', body);
+          const saleUuid = resp?.id;
+          if (saleUuid) {
+            saleDetail = await api(`/sales/${saleUuid}`).catch(() => null);
+            if (paymentMethod === 'bank_slip') {
+              billet = await api(`/sales/${saleUuid}/billet`).catch(() => null);
+            }
+          }
         }
       } catch (e) {
         const msg = (e as Error).message;
@@ -240,10 +265,11 @@ Deno.serve(async (req) => {
         return json({ error: msg }, 502);
       }
 
-      const f = extractFields(resp);
+      const merged = sale.method === 'link' ? resp : { ...resp, ...saleDetail, ...billet };
+      const f = extractFields(merged);
       const status = mapStatus(f.provider_status) ?? 'issued';
       const update: Record<string, unknown> = {
-        raw: resp, sync_error: null, status, last_sync_at: new Date().toISOString(),
+        raw: merged, sync_error: null, status, last_sync_at: new Date().toISOString(),
         provider_status: f.provider_status,
       };
       if (sale.method === 'link') update.necta_payment_link_id = f.necta_sale_id;
@@ -343,9 +369,13 @@ Deno.serve(async (req) => {
     for (const sale of targets) {
       if (!sale.necta_sale_id && !sale.necta_payment_link_id) { results.push({ id: sale.id, skipped: 'não emitida' }); continue; }
       try {
-        const resp = sale.necta_sale_id
+        let resp = sale.necta_sale_id
           ? await api(`/sales/${sale.necta_sale_id}`)
           : await api(`/payment-links/${sale.necta_payment_link_id}`);
+        if (sale.necta_sale_id && (sale.method === 'bank_slip' || sale.method === 'pix_cappta')) {
+          const billet = await api(`/sales/${sale.necta_sale_id}/billet`).catch(() => null);
+          if (billet) resp = { ...resp, ...billet };
+        }
         const f = extractFields(resp);
         const mapped = mapStatus(f.provider_status ?? deepFind(resp, ['statusName']));
         const update: Record<string, unknown> = {
@@ -358,6 +388,12 @@ Deno.serve(async (req) => {
         if (mapped === 'paid') {
           update.paid_at = f.paid_at ?? new Date().toISOString();
           Object.assign(update, await mirrorFinance(admin, sale, 'paid', update.paid_at as string));
+        }
+        // Estorno ou cancelamento de uma cobrança já paga não deve dar baixa/reverter
+        // sozinho — só sinalizar para revisão humana (pode ser fraude ou erro de input).
+        if (mapped === 'refunded' || (mapped === 'canceled' && sale.status === 'paid')) {
+          update.needs_review = true;
+          update.review_reason = `Sincronização detectou status "${mapped}" (era "${sale.status}")`;
         }
         await admin.from('necta_sales').update(update).eq('id', sale.id);
         results.push({ id: sale.id, status: mapped ?? sale.status });

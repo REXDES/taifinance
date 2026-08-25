@@ -1,8 +1,38 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { decode as base64Decode } from 'https://deno.land/std@0.168.0/encoding/base64.ts';
+import { timingSafeEqual } from 'https://deno.land/std@0.168.0/crypto/timing_safe_equal.ts';
 
 // Recebe eventos da Necta Multi-Pay: grava log e atualiza a cobrança correspondente.
-// Público (verify_jwt = false); opcionalmente valida NECTA_WEBHOOK_SECRET.
+// Público (verify_jwt = false); a autenticidade vem da assinatura, não de JWT de usuário.
+//
+// A Necta assina no formato Svix: headers svix-id / svix-timestamp / svix-signature
+// ("v1,<base64> v1,<base64> ..." — pode ter mais de uma durante rotação de segredo).
+// Conteúdo assinado = "{svix-id}.{svix-timestamp}.{corpo-cru}", HMAC-SHA256 com chave =
+// base64-decode do segredo (formato whsec_<base64>) sem o prefixo whsec_.
+
+async function verifyNectaSignature(
+  rawBody: string,
+  svixId: string | null,
+  svixTimestamp: string | null,
+  svixSignature: string | null,
+  secret: string,
+): Promise<boolean> {
+  if (!svixId || !svixTimestamp || !svixSignature) return false;
+  const secretBytes = base64Decode(secret.replace(/^whsec_/, ''));
+  const key = await crypto.subtle.importKey('raw', secretBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signedContent = `${svixId}.${svixTimestamp}.${rawBody}`;
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedContent)));
+
+  const candidates = svixSignature.split(' ').map((part) => part.split(',')[1]).filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      const candidateBytes = base64Decode(candidate);
+      if (candidateBytes.length === mac.length && timingSafeEqual(candidateBytes, mac)) return true;
+    } catch { /* candidato malformado, tenta o próximo */ }
+  }
+  return false;
+}
 
 function deepFind(obj: any, keys: string[], depth = 0): any {
   if (!obj || typeof obj !== 'object' || depth > 5) return undefined;
@@ -40,19 +70,36 @@ Deno.serve(async (req) => {
 
   try {
     const secret = Deno.env.get('NECTA_WEBHOOK_SECRET');
-    if (secret) {
-      const url = new URL(req.url);
-      const provided = req.headers.get('x-webhook-secret') ?? req.headers.get('x-necta-signature') ?? url.searchParams.get('secret');
-      if (provided !== secret) return json({ error: 'Unauthorized' }, 401);
+    if (!secret) {
+      console.error('necta-webhook: NECTA_WEBHOOK_SECRET não configurado — recusando entrega (nunca aceitar sem verificar).');
+      return json({ error: 'Webhook não configurado' }, 500);
     }
 
-    payload = await req.json().catch(() => ({}));
+    const rawBody = await req.text();
+    const svixId = req.headers.get('svix-id');
+    const svixTimestamp = req.headers.get('svix-timestamp');
+    const svixSignature = req.headers.get('svix-signature');
+    const validSignature = await verifyNectaSignature(rawBody, svixId, svixTimestamp, svixSignature, secret);
+    if (!validSignature) return json({ error: 'Invalid signature' }, 401);
+
+    payload = JSON.parse(rawBody);
     const eventType = (deepFind(payload, ['eventType', 'event', 'type']) ?? 'unknown').toString();
     const referenceId = (deepFind(payload, ['saleId', 'id', 'paymentLinkId']) ?? null)?.toString() ?? null;
 
-    const { data: logged } = await admin.from('necta_webhook_events').insert({
-      event_type: eventType, necta_reference_id: referenceId, payload,
-    }).select('id').maybeSingle();
+    // Dedupe atômico por (event_type, necta_reference_id) — a Necta avisa que dois canais
+    // (marketplace e estabelecimento) podem entregar o mesmo fato com svix-id diferente,
+    // então não dá pra confiar só no svix-id pra evitar reprocessar.
+    const { data: logged } = await admin.from('necta_webhook_events')
+      .upsert(
+        { event_type: eventType, necta_reference_id: referenceId, svix_id: svixId, payload },
+        { onConflict: 'event_type,necta_reference_id', ignoreDuplicates: true },
+      )
+      .select('id')
+      .maybeSingle();
+    if (!logged) {
+      // Conflito com a constraint única = evento já processado antes. Confirma recebimento sem reprocessar.
+      return json({ ok: true, duplicate: true });
+    }
 
     if (referenceId) {
       const { data: sale } = await admin.from('necta_sales').select('*')
@@ -84,6 +131,14 @@ Deno.serve(async (req) => {
             if (tx) update.transaction_id = tx.id;
           }
         }
+
+        // Estorno ou falha depois de já paga não devem reverter Contas a Receber
+        // sozinhos — pode ser fraude ou erro de input do usuário. Só sinaliza revisão.
+        if (mapped === 'refunded' || (mapped === 'canceled' && sale.status === 'paid')) {
+          update.needs_review = true;
+          update.review_reason = `Webhook ${eventType}: status mudou de "${sale.status}" para "${mapped}"`;
+        }
+
         await admin.from('necta_sales').update(update).eq('id', sale.id);
         if (logged) await admin.from('necta_webhook_events').update({ processed: true, company_id: sale.company_id }).eq('id', logged.id);
       }

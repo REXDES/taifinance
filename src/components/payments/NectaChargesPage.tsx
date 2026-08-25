@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Copy, FileText, RefreshCw, Receipt, Ban, Loader2 } from 'lucide-react';
+import { Copy, FileText, RefreshCw, Receipt, Ban, Loader2, MessageCircle } from 'lucide-react';
 
 interface Props { companyId: string }
 
@@ -39,34 +39,44 @@ const statusVariant = (s: string): 'default' | 'secondary' | 'outline' | 'destru
   s === 'paid' ? 'default' : s === 'overdue' || s === 'refunded' ? 'destructive' : s === 'canceled' ? 'outline' : 'secondary';
 
 const OPEN_STATUSES = ['pending', 'issued', 'overdue'];
+const ADDRESS_REQUIRED_METHODS = ['bank_slip', 'pix_cappta'];
 
 const emptyForm = {
   method: 'pix', amount: '', description: '', installments: '1',
   payer_name: '', payer_document: '', payer_email: '', payer_phone: '', due_date: '',
+  payer_address_street: '', payer_address_number: '', payer_address_complement: '',
+  payer_address_neighborhood: '', payer_address_city: '', payer_address_state: '', payer_address_postal_code: '',
   account_id: '', is_recurring: false, recurrence_interval: 'monthly', recurrence_count: '12',
   card_holder: '', card_number: '', card_month: '', card_year: '', card_cvv: '',
 };
+
+const digitsOnly = (v: string) => v.replace(/\D/g, '');
 
 export function NectaChargesPage({ companyId }: Props) {
   const { user } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const [tab, setTab] = useState<'open' | 'paid' | 'recurring' | 'all'>('open');
+  const [tab, setTab] = useState<'open' | 'paid' | 'recurring' | 'review' | 'all'>('open');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const timerRef = useRef<number | null>(null);
 
+  const [companyName, setCompanyName] = useState('');
+
   const load = useCallback(async () => {
-    const [{ data }, { data: accs }] = await Promise.all([
+    const [{ data }, { data: accs }, { data: company }] = await Promise.all([
       (supabase as any).from('necta_sales').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(300),
       (supabase as any).from('accounts').select('id, name').eq('company_id', companyId).order('name'),
+      (supabase as any).from('companies').select('name').eq('id', companyId).maybeSingle(),
     ]);
     setRows(data ?? []);
     setAccounts(accs ?? []);
+    setCompanyName(company?.name ?? '');
     return data ?? [];
   }, [companyId]);
 
@@ -116,6 +126,14 @@ export function NectaChargesPage({ companyId }: Props) {
     if (!form.amount || Number(form.amount) <= 0) { toast.error('Informe o valor'); return; }
     if (form.method !== 'pix' && !form.due_date) { toast.error('Informe o vencimento'); return; }
     if (form.method === 'credit_card' && (!form.card_number || !form.card_holder)) { toast.error('Informe os dados do cartão'); return; }
+    const docDigits = digitsOnly(form.payer_document);
+    if (docDigits.length !== 11 && docDigits.length !== 14) { toast.error('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido do pagador'); return; }
+    if (ADDRESS_REQUIRED_METHODS.includes(form.method)) {
+      const addressOk = form.payer_address_street && form.payer_address_number
+        && form.payer_address_neighborhood && form.payer_address_city
+        && form.payer_address_state && digitsOnly(form.payer_address_postal_code).length === 8;
+      if (!addressOk) { toast.error('Endereço completo do pagador é obrigatório para emitir boleto'); return; }
+    }
     setSaving(true);
 
     const recurrenceCount = form.is_recurring ? Math.max(1, Number(form.recurrence_count || 1)) : 1;
@@ -138,6 +156,13 @@ export function NectaChargesPage({ companyId }: Props) {
         description: form.description || null,
         payer_name: form.payer_name || null, payer_document: form.payer_document || null,
         payer_email: form.payer_email || null, payer_phone: form.payer_phone || null,
+        payer_address_street: form.payer_address_street || null,
+        payer_address_number: form.payer_address_number || null,
+        payer_address_complement: form.payer_address_complement || null,
+        payer_address_neighborhood: form.payer_address_neighborhood || null,
+        payer_address_city: form.payer_address_city || null,
+        payer_address_state: form.payer_address_state || null,
+        payer_address_postal_code: form.payer_address_postal_code || null,
         due_date: due, account_id: form.account_id || null,
         is_recurring: form.is_recurring, recurrence_interval: form.is_recurring ? form.recurrence_interval : null,
         recurrence_count: form.is_recurring ? recurrenceCount : null,
@@ -189,15 +214,54 @@ export function NectaChargesPage({ companyId }: Props) {
     toast.success(`${label} copiado`);
   };
 
+  const markReviewed = async (id: string) => {
+    setBusyId(id);
+    const { error } = await (supabase as any).from('necta_sales')
+      .update({ reviewed_at: new Date().toISOString(), reviewed_by: user?.id ?? null })
+      .eq('id', id);
+    setBusyId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Marcada como revisada');
+    setDetail(null);
+    load();
+  };
+
+  const needsReview = (r: any) => r.needs_review && !r.reviewed_at;
+
+  const paymentInfoFor = (sale: any): string | null => {
+    if (sale.method === 'link') return sale.payment_url ?? null;
+    if (sale.method === 'bank_slip' || sale.method === 'pix_cappta') return sale.pix_copy_paste ?? sale.boleto_digitable_line ?? null;
+    return sale.pix_copy_paste ?? null;
+  };
+
+  const sendWhatsapp = async (sale: any) => {
+    if (!sale.payer_phone) { toast.error('Cadastre o telefone do pagador para enviar por WhatsApp'); return; }
+    const paymentInfo = paymentInfoFor(sale);
+    if (!paymentInfo) { toast.error('Ainda não há código/link para enviar'); return; }
+    setSendingWhatsapp(true);
+    const { data, error } = await supabase.functions.invoke('send-necta-charge-whatsapp', {
+      body: {
+        phone: sale.payer_phone, companyName, description: sale.description || 'Cobrança',
+        amount: sale.amount, method: sale.method === 'pix_cappta' ? 'pix_cappta' : sale.method, paymentInfo,
+      },
+    });
+    setSendingWhatsapp(false);
+    const err = error?.message ?? (data as any)?.error;
+    if (err) { toast.error(`Falha ao enviar: ${err}`); return; }
+    toast.success('Enviado por WhatsApp');
+  };
+
   const filtered = rows.filter(r =>
     tab === 'open' ? OPEN_STATUSES.includes(r.status)
     : tab === 'paid' ? r.status === 'paid'
     : tab === 'recurring' ? r.is_recurring
+    : tab === 'review' ? needsReview(r)
     : true);
 
   const totals = {
     open: rows.filter(r => OPEN_STATUSES.includes(r.status)).reduce((s, r) => s + Number(r.amount || 0), 0),
     paid: rows.filter(r => r.status === 'paid').reduce((s, r) => s + Number(r.amount || 0), 0),
+    review: rows.filter(needsReview).length,
   };
 
   return (
@@ -214,6 +278,7 @@ export function NectaChargesPage({ companyId }: Props) {
             <TabsTrigger value="open">Em aberto</TabsTrigger>
             <TabsTrigger value="paid">Pagas</TabsTrigger>
             <TabsTrigger value="recurring">Recorrentes</TabsTrigger>
+            <TabsTrigger value="review">Revisão{totals.review > 0 ? ` (${totals.review})` : ''}</TabsTrigger>
             <TabsTrigger value="all">Todas</TabsTrigger>
           </TabsList>
         </Tabs>
@@ -242,7 +307,10 @@ export function NectaChargesPage({ companyId }: Props) {
                 <TableCell>{c.payer_name ?? '—'}</TableCell>
                 <TableCell>{c.due_date ? new Date(c.due_date + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
                 <TableCell className="text-right">{brl(Number(c.amount || 0))}</TableCell>
-                <TableCell><Badge variant={statusVariant(c.status)}>{STATUS_LABEL[c.status] ?? c.status}</Badge></TableCell>
+                <TableCell>
+                  <Badge variant={statusVariant(c.status)}>{STATUS_LABEL[c.status] ?? c.status}</Badge>
+                  {needsReview(c) && <Badge variant="destructive" className="ml-1">Revisar</Badge>}
+                </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
                   {c.is_recurring ? `${c.recurrence_index ?? 1}/${c.recurrence_count ?? 1}` : '—'}
                 </TableCell>
@@ -277,8 +345,17 @@ export function NectaChargesPage({ companyId }: Props) {
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant={statusVariant(detail.status)}>{STATUS_LABEL[detail.status] ?? detail.status}</Badge>
+                {needsReview(detail) && <Badge variant="destructive">Precisa de revisão</Badge>}
                 {detail.provider_status && <span className="text-xs text-muted-foreground">operadora: {detail.provider_status}</span>}
               </div>
+              {needsReview(detail) && (
+                <div className="border border-destructive/40 bg-destructive/5 rounded-md p-3 text-xs space-y-1">
+                  <p className="font-medium text-destructive">Pendente de revisão manual</p>
+                  <p className="text-muted-foreground">{detail.review_reason ?? 'Situação inesperada detectada nesta cobrança.'}</p>
+                  <p className="text-muted-foreground">Nenhuma baixa em Contas a Receber foi revertida automaticamente — confirme se é um estorno legítimo, erro de input ou possível fraude antes de agir.</p>
+                </div>
+              )}
+              {detail.reviewed_at && <p className="text-xs text-muted-foreground">Revisada em {new Date(detail.reviewed_at).toLocaleString('pt-BR')}</p>}
               {detail.paid_at && <p className="text-muted-foreground">Paga em {new Date(detail.paid_at).toLocaleString('pt-BR')}</p>}
               {detail.transaction_id && <p className="text-xs text-muted-foreground">Lançamento financeiro gerado automaticamente.</p>}
               {detail.payable_receivable_id && <p className="text-xs text-muted-foreground">Vinculada a um recebível em Contas a Pagar/Receber.</p>}
@@ -307,11 +384,21 @@ export function NectaChargesPage({ companyId }: Props) {
             </div>
           )}
           <DialogFooter className="flex-wrap gap-2">
+            {detail && needsReview(detail) && (
+              <Button variant="secondary" onClick={() => markReviewed(detail.id)} disabled={busyId === detail.id}>
+                {busyId === detail.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}Marcar como revisado
+              </Button>
+            )}
             {detail && !detail.necta_sale_id && !detail.necta_payment_link_id && detail.status !== 'canceled' && (
               <Button onClick={() => issue(detail.id)} disabled={busyId === detail.id}><Receipt className="h-4 w-4 mr-2" />Emitir</Button>
             )}
             {detail && (detail.necta_sale_id || detail.necta_payment_link_id) && (
               <Button variant="outline" onClick={() => syncOne(detail.id)} disabled={busyId === detail.id}><RefreshCw className="h-4 w-4 mr-2" />Consultar status</Button>
+            )}
+            {detail && paymentInfoFor(detail) && (
+              <Button variant="outline" onClick={() => sendWhatsapp(detail)} disabled={sendingWhatsapp}>
+                {sendingWhatsapp ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-2" />}Enviar por WhatsApp
+              </Button>
             )}
             {detail && [...OPEN_STATUSES, 'paid'].includes(detail.status) && (
               <Button variant="destructive" onClick={() => voidSale(detail.id)} disabled={busyId === detail.id}>
@@ -346,9 +433,28 @@ export function NectaChargesPage({ companyId }: Props) {
             <div><Label>Descrição</Label><Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Nome do pagador</Label><Input value={form.payer_name} onChange={e => setForm(f => ({ ...f, payer_name: e.target.value }))} /></div>
-              <div><Label>Documento</Label><Input value={form.payer_document} onChange={e => setForm(f => ({ ...f, payer_document: e.target.value }))} /></div>
+              <div><Label>Documento (CPF/CNPJ) *</Label><Input value={form.payer_document} onChange={e => setForm(f => ({ ...f, payer_document: e.target.value }))} /></div>
               <div><Label>E-mail</Label><Input type="email" value={form.payer_email} onChange={e => setForm(f => ({ ...f, payer_email: e.target.value }))} /></div>
               <div><Label>Telefone</Label><Input value={form.payer_phone} onChange={e => setForm(f => ({ ...f, payer_phone: e.target.value }))} /></div>
+            </div>
+
+            <div className="border rounded-md p-3 space-y-3">
+              <Label className="text-xs text-muted-foreground">
+                Endereço do pagador{ADDRESS_REQUIRED_METHODS.includes(form.method) ? ' *' : ' (opcional)'}
+              </Label>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2"><Label>Rua</Label><Input value={form.payer_address_street} onChange={e => setForm(f => ({ ...f, payer_address_street: e.target.value }))} /></div>
+                <div><Label>Número</Label><Input value={form.payer_address_number} onChange={e => setForm(f => ({ ...f, payer_address_number: e.target.value }))} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Complemento</Label><Input value={form.payer_address_complement} onChange={e => setForm(f => ({ ...f, payer_address_complement: e.target.value }))} /></div>
+                <div><Label>Bairro</Label><Input value={form.payer_address_neighborhood} onChange={e => setForm(f => ({ ...f, payer_address_neighborhood: e.target.value }))} /></div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div><Label>Cidade</Label><Input value={form.payer_address_city} onChange={e => setForm(f => ({ ...f, payer_address_city: e.target.value }))} /></div>
+                <div><Label>UF</Label><Input maxLength={2} value={form.payer_address_state} onChange={e => setForm(f => ({ ...f, payer_address_state: e.target.value.toUpperCase() }))} /></div>
+                <div><Label>CEP</Label><Input value={form.payer_address_postal_code} onChange={e => setForm(f => ({ ...f, payer_address_postal_code: e.target.value }))} /></div>
+              </div>
             </div>
 
             {form.method === 'credit_card' && (

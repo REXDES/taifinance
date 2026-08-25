@@ -30,6 +30,9 @@ interface RedeBESummary {
   // Resumo analítico
   score_analise?: string;
   score_rating?: string;
+  rating?: string;
+  faixa_score?: string;
+  possui_restricao?: any;
   max_parcelas?: string;
   parcela_maxima?: string;
   limite_sugerido?: string;
@@ -39,6 +42,7 @@ interface RedeBESummary {
   sugestao_de_negocio?: string;
   faturas_em_atraso?: string;
   contratos_recentes?: string;
+  probabilidade_pagamento?: string;
 }
 
 interface ScoreBand {
@@ -74,6 +78,37 @@ interface CreditRules {
   max_classificacao_score?: string;
   max_faturas_em_atraso?: string;
   max_contratos_recentes?: string;
+  // Score ponderado
+  score_weights?: Record<string, number> | null;
+  score_analise_scale_max?: number | null;
+  /** 'pontuar' (default) ou 'bloquear' por critério qualitativo */
+  letter_criteria_mode?: Record<string, string> | null;
+}
+
+const DEFAULT_SCORE_WEIGHTS: Record<string, number> = {
+  score: 35,
+  probabilidade_pagamento: 25,
+  score_analise: 15,
+  faturas_em_atraso: 10,
+  contratos_recentes: 5,
+  rating: 5,
+  restricoes: 5,
+};
+const WEIGHT_LABELS: Record<string, string> = {
+  score: 'Score do bureau',
+  probabilidade_pagamento: 'Probabilidade de pagamento',
+  score_analise: 'Score de análise',
+  faturas_em_atraso: 'Faturas em atraso',
+  contratos_recentes: 'Contratos recentes',
+  rating: 'Rating / classificação',
+  restricoes: 'Restrições ativas',
+};
+const SOFT_CRITERIA = ['classificacao_score', 'faturas_em_atraso', 'contratos_recentes', 'sugestao_negocio'];
+function criterionMode(rules: CreditRules, criterion: string): 'pontuar' | 'bloquear' {
+  const m = (rules.letter_criteria_mode || {})[criterion];
+  if (m === 'bloquear') return 'bloquear';
+  if (m === 'pontuar') return 'pontuar';
+  return SOFT_CRITERIA.includes(criterion) ? 'pontuar' : 'bloquear';
 }
 
 // A=1 melhor, E=5 pior
@@ -188,22 +223,104 @@ function diffMonths(dateStr: string | undefined | null): number {
   return (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
 }
 
-function computeScoreBreakdown(summary: RedeBESummary): {
+interface WeightedComponent {
+  key: string;
+  label: string;
+  raw: string | null;
+  normalized: number;
+  weight: number;
+  effective_weight: number;
+  contribution: number;
+}
+interface ScoreBreakdown {
   score: number | null;
   score_analise: number | null;
   score_rating: number | null;
+  /** Score final ponderado na escala 0..1000 (usado na régua). */
   media: number | null;
-} {
+  final_score: number | null;
+  weighted_0_100: number | null;
+  components: WeightedComponent[];
+  missing: string[];
+}
+
+const LETTER_SCORE: Record<string, number> = { A: 100, B: 75, C: 50, D: 25, E: 0 };
+function letterToScore(raw: any): number | null {
+  const l = extractLetraAE(raw);
+  return l ? LETTER_SCORE[l] ?? null : null;
+}
+
+/**
+ * Score final ponderado: normaliza cada sinal para 0..100, aplica pesos configuráveis
+ * (redistribuindo os pesos dos sinais ausentes) e devolve na escala 0..1000.
+ */
+function computeWeightedScore(summary: RedeBESummary, rules: CreditRules): ScoreBreakdown {
   const s = toNumberLoose(summary.score);
   const sa = toNumberLoose(summary.score_analise);
   const sr = toNumberLoose(summary.score_rating);
-  const vals = [s, sa, sr].filter((v): v is number => v != null && Number.isFinite(v));
-  const media = vals.length > 0 ? Math.round(vals.reduce((acc, v) => acc + v, 0) / vals.length) : null;
+  const scaleMax = Number(rules.score_analise_scale_max) > 0 ? Number(rules.score_analise_scale_max) : 500;
+  const weights = { ...DEFAULT_SCORE_WEIGHTS, ...(rules.score_weights || {}) };
+
+  const probInad = toNumberLoose(summary.probabilidade_inadimplencia);
+  const probPag = probInad != null ? Math.max(0, Math.min(100, 100 - probInad)) : null;
+
+  const restricoesCount =
+    toInt(summary.quantidade_protestos) +
+    toInt(summary.quantidade_pendencias_financeiras) +
+    toInt(summary.quantidade_ccf_bacen) +
+    toInt(summary.quantidade_ccf_varejo) +
+    toInt(summary.quantidade_alertas_restricoes);
+  const hasRestricaoInfo =
+    summary.quantidade_protestos != null || summary.quantidade_pendencias_financeiras != null ||
+    summary.possui_restricao != null || summary.quantidade_alertas_restricoes != null;
+
+  const ratingRaw = summary.classificacao_score || summary.rating || null;
+
+  const signals: Array<{ key: string; raw: any; normalized: number | null }> = [
+    { key: 'score', raw: summary.score, normalized: s != null ? Math.max(0, Math.min(100, s / 10)) : null },
+    { key: 'probabilidade_pagamento', raw: summary.probabilidade_inadimplencia, normalized: probPag },
+    { key: 'score_analise', raw: summary.score_analise, normalized: sa != null ? Math.max(0, Math.min(100, (sa / scaleMax) * 100)) : null },
+    { key: 'faturas_em_atraso', raw: summary.faturas_em_atraso, normalized: letterToScore(summary.faturas_em_atraso) },
+    { key: 'contratos_recentes', raw: summary.contratos_recentes, normalized: letterToScore(summary.contratos_recentes) },
+    { key: 'rating', raw: ratingRaw, normalized: letterToScore(ratingRaw) },
+    {
+      key: 'restricoes',
+      raw: hasRestricaoInfo ? `${restricoesCount} ocorrência(s)` : null,
+      normalized: hasRestricaoInfo ? Math.max(0, 100 - 25 * restricoesCount) : null,
+    },
+  ];
+
+  const present = signals.filter((x) => x.normalized != null && (weights[x.key] ?? 0) > 0);
+  const totalWeight = present.reduce((acc, x) => acc + (weights[x.key] ?? 0), 0);
+  const components: WeightedComponent[] = present.map((x) => {
+    const w = weights[x.key] ?? 0;
+    const eff = totalWeight > 0 ? (w / totalWeight) * 100 : 0;
+    return {
+      key: x.key,
+      label: WEIGHT_LABELS[x.key] || x.key,
+      raw: x.raw != null ? String(x.raw) : null,
+      normalized: Math.round(x.normalized!),
+      weight: w,
+      effective_weight: Math.round(eff * 10) / 10,
+      contribution: Math.round(((x.normalized! * eff) / 100) * 10) / 10,
+    };
+  });
+  const missing = signals
+    .filter((x) => x.normalized == null && (weights[x.key] ?? 0) > 0)
+    .map((x) => WEIGHT_LABELS[x.key] || x.key);
+
+  const weighted = components.length > 0 ? components.reduce((acc, c) => acc + c.contribution, 0) : null;
+  const finalScore = weighted != null ? Math.round(Math.max(0, Math.min(100, weighted)) * 10) : (s != null ? Math.round(s) : null);
+
   return {
     score: s != null ? Math.round(s) : null,
     score_analise: sa != null ? Math.round(sa) : null,
     score_rating: sr != null ? Math.round(sr) : null,
-    media,
+    media: finalScore,
+    final_score: finalScore,
+    weighted_0_100: weighted != null ? Math.round(weighted) : null,
+    components,
+    missing,
   };
 }
 
@@ -221,7 +338,10 @@ function runDecisionEngine(opts: {
   classification: string;
   reason: string;
   knockouts: string[];
-  score_breakdown: ReturnType<typeof computeScoreBreakdown>;
+  score_breakdown: ScoreBreakdown;
+  signals_favor: string[];
+  signals_contra: string[];
+  soft_penalties: string[];
 } {
   const { rules, summary, principal, tipo_documento } = opts;
   const overridden = opts.overriddenCriteria || new Set<string>();
@@ -296,16 +416,19 @@ function runDecisionEngine(opts: {
   if (blockConf.length > 0 && confiancaBucket && blockConf.includes(confiancaBucket)) {
     pushKO('nivel_de_confianca', `Nível de confiança do bureau "${CONFIANCA_LABEL[confiancaBucket] || confiancaBucket}" não atende ao critério mínimo`);
   }
+  const soft_penalties: string[] = [];
   const sugestaoBucket = classifySugestao(summary.sugestao_de_negocio);
   const blockSug = Array.from(new Set([
     ...(rules.sugestao_negocio_block_levels || []),
     ...(rules.sugestao_negocio_block_buckets || []),
   ]));
   if (blockSug.length > 0 && sugestaoBucket && blockSug.includes(sugestaoBucket)) {
-    pushKO('sugestao_negocio', `Sugestão de negócio do bureau: "${SUGESTAO_LABEL[sugestaoBucket] || sugestaoBucket}" — ${summary.sugestao_de_negocio || ''}`.trim());
+    const msg = `Sugestão de negócio do bureau: "${SUGESTAO_LABEL[sugestaoBucket] || sugestaoBucket}" — ${summary.sugestao_de_negocio || ''}`.trim();
+    if (criterionMode(rules, 'sugestao_negocio') === 'bloquear') pushKO('sugestao_negocio', msg);
+    else soft_penalties.push(msg + ' (pontuado, não bloqueia)');
   }
 
-  // ---- Knockouts ordinais A..E ----
+  // ---- Critérios ordinais A..E (bloqueiam ou apenas pontuam) ----
   const evalLetra = (criterion: string, label: string, raw: any, maxLetra?: string) => {
     if (!maxLetra) return;
     const letra = extractLetraAE(raw);
@@ -313,20 +436,37 @@ function runDecisionEngine(opts: {
     const r = letterRank(letra)!;
     const max = letterRank(maxLetra);
     if (max != null && r > max) {
-      pushKO(criterion, `${label}: ${letra} pior que o máximo aceito (${maxLetra})`);
+      const msg = `${label}: ${letra} pior que o máximo aceito (${maxLetra})`;
+      if (criterionMode(rules, criterion) === 'bloquear') pushKO(criterion, msg);
+      else soft_penalties.push(msg + ' (pontuado no score, não bloqueia)');
     }
   };
-  evalLetra('classificacao_score', 'Classificação do score', summary.classificacao_score, rules.max_classificacao_score);
+  evalLetra('classificacao_score', 'Classificação do score', summary.classificacao_score || summary.rating, rules.max_classificacao_score);
   evalLetra('faturas_em_atraso', 'Faturas em atraso', summary.faturas_em_atraso, rules.max_faturas_em_atraso);
   evalLetra('contratos_recentes', 'Contratos recentes', summary.contratos_recentes, rules.max_contratos_recentes);
 
 
-  // Score usado pela régua = MÉDIA dos scores disponíveis
-  const breakdown = computeScoreBreakdown(summary);
-  const score = breakdown.media ?? (breakdown.score ?? 0);
-  const classification = (summary.classificacao_score || "").toUpperCase();
+  // Score usado pela régua = SCORE FINAL PONDERADO (0..1000)
+  const breakdown = computeWeightedScore(summary, rules);
+  const score = breakdown.final_score ?? 0;
+  const classification = (summary.classificacao_score || summary.rating || "").toUpperCase();
 
-  // Faixa por score (média) — calculada antes para permitir alçada em "score_band"
+  // Sinais a favor / contra (para leitura de casos contraditórios)
+  const signals_favor: string[] = [];
+  const signals_contra: string[] = [];
+  for (const c of breakdown.components) {
+    const txt = `${c.label}: ${c.raw ?? '—'} → ${c.normalized}/100 (peso ${c.effective_weight}%)`;
+    if (c.normalized >= 60) signals_favor.push(txt); else signals_contra.push(txt);
+  }
+  if (summary.possui_restricao === false || String(summary.possui_restricao).toLowerCase() === 'false') {
+    signals_favor.push('Não possui restrição ativa');
+  }
+  if (sugestaoBucket === 'recomendar') signals_favor.push(`Sugestão do bureau: ${summary.sugestao_de_negocio}`);
+  if (sugestaoBucket === 'nao_recomendar') signals_contra.push(`Sugestão do bureau: ${summary.sugestao_de_negocio}`);
+  if (summary.observacao_credito) signals_contra.push(`Observação do bureau: ${summary.observacao_credito}`);
+  if (summary.descricao_rating) signals_contra.push(`Rating: ${summary.descricao_rating}`);
+
+  // Faixa por score ponderado — calculada antes para permitir alçada em "score_band"
   const band =
     rules.score_bands.find(
       (b) =>
@@ -341,8 +481,10 @@ function runDecisionEngine(opts: {
     .filter((b) => b.decision !== "rejected")
     .sort((a, b) => a.min_score - b.min_score)[0];
   if (bandRejected) {
-    pushKO('score_band', `Score médio ${score} (classe bureau ${classification || '—'}) abaixo da faixa mínima aprovada${fallbackBand ? ` (mín ${fallbackBand.min_score})` : ''}`);
+    pushKO('score_band', `Score ponderado ${score} (classe bureau ${classification || '—'}) abaixo da faixa mínima aprovada${fallbackBand ? ` (mín ${fallbackBand.min_score})` : ''}`);
   }
+
+  const extras = { signals_favor, signals_contra, soft_penalties };
 
   if (knockouts.length > 0) {
     return {
@@ -354,6 +496,7 @@ function runDecisionEngine(opts: {
       reason: knockouts.join("; "),
       knockouts,
       score_breakdown: breakdown,
+      ...extras,
     };
   }
 
@@ -369,6 +512,7 @@ function runDecisionEngine(opts: {
       reason: `Sem faixa de score aprovável configurada`,
       knockouts,
       score_breakdown: breakdown,
+      ...extras,
     };
   }
 
@@ -392,6 +536,7 @@ function runDecisionEngine(opts: {
   // Se a faixa original era de rejeição e foi liberada por alçada, força revisão manual
   const finalDecision: "approved" | "manual" = bandRejected ? "manual" : effectiveBand.decision as any;
   const alcadaNote = bandRejected ? ` (faixa liberada por alçada — score ${score} estava abaixo do mínimo)` : '';
+  const softNote = soft_penalties.length > 0 ? ` Pontos de atenção pontuados: ${soft_penalties.join('; ')}.` : '';
 
   return {
     decision: finalDecision,
@@ -401,15 +546,16 @@ function runDecisionEngine(opts: {
     classification,
     reason:
       (finalDecision === "approved"
-        ? `Aprovado com base no score médio ${score} (classe ${classification}) — ${effectiveBand.percent_teto}% do teto`
-        : `Score médio ${score} (classe ${classification}) requer análise manual`) + alcadaNote + bureauCapApplied,
+        ? `Aprovado com base no score ponderado ${score} (classe ${classification || '—'}) — ${effectiveBand.percent_teto}% do teto`
+        : `Score ponderado ${score} (classe ${classification || '—'}) requer análise manual`) + alcadaNote + bureauCapApplied + softNote,
     knockouts,
     score_breakdown: breakdown,
+    ...extras,
   };
 }
 
 // Build the interpreted bureau analysis object used both for display and persistence.
-function buildBureauAnalysis(summary: RedeBESummary) {
+function buildBureauAnalysis(summary: RedeBESummary, rules: CreditRules) {
   const confiancaBucket = classifyConfianca(summary.nivel_de_confianca);
   const sugestaoBucket = classifySugestao(summary.sugestao_de_negocio);
   const classifLetra = extractLetraAE(summary.classificacao_score);
@@ -430,7 +576,7 @@ function buildBureauAnalysis(summary: RedeBESummary) {
     sugestao_de_negocio_bucket: sugestaoBucket,
     sugestao_de_negocio_label: sugestaoBucket ? SUGESTAO_LABEL[sugestaoBucket] : null,
     sugestao_de_negocio_interpreted: !!sugestaoBucket && !!summary.sugestao_de_negocio,
-    score_breakdown: computeScoreBreakdown(summary),
+    score_breakdown: computeWeightedScore(summary, rules),
     classificacao_score_letra: classifLetra,
     classificacao_score_raw: summary.classificacao_score || null,
     classificacao_score_interpreted: isLetraInterpreted(summary.classificacao_score, classifLetra),
@@ -606,9 +752,34 @@ serve(async (req) => {
       // RedeBE responde como array; pegar [0]
       wrapper = Array.isArray(redebeJson) ? redebeJson[0] : redebeJson;
     }
-    const redeBlock = wrapper?.RedeBE || wrapper?.data?.RedeBE || wrapper;
+    // Resolve o bloco do bureau em qualquer envelope conhecido:
+    // { RedeBE }, { data: { RedeBE } }, { data: [ { RedeBE } ] }, [ { RedeBE } ] ou o próprio objeto.
+    const resolveRedeBlock = (w: any): any => {
+      if (!w || typeof w !== 'object') return {};
+      if (w.RedeBE) return w.RedeBE;
+      if (Array.isArray(w)) {
+        for (const item of w) { const r = resolveRedeBlock(item); if (r && (r.resumo || r.retorno)) return r; }
+      }
+      if (w.data) {
+        const d = Array.isArray(w.data) ? w.data : [w.data];
+        for (const item of d) { const r = resolveRedeBlock(item); if (r && (r.resumo || r.retorno)) return r; }
+      }
+      if (w.resumo || w.retorno) return w;
+      // último recurso: procura em profundidade um nó com "resumo"
+      const deep = (node: any, depth = 0): any => {
+        if (!node || typeof node !== 'object' || depth > 5) return null;
+        if (!Array.isArray(node) && (node.resumo || node.retorno)) return node;
+        for (const v of Object.values(node)) {
+          const r = deep(v, depth + 1);
+          if (r) return r;
+        }
+        return null;
+      };
+      return deep(w) || w;
+    };
+    const redeBlock = resolveRedeBlock(wrapper);
     const summary: RedeBESummary = { ...(redeBlock?.resumo || {}) };
-    const principal = redeBlock?.retorno?.principal || {};
+    const principal = redeBlock?.retorno?.principal || redeBlock?.retorno || {};
 
     // Backfill summary fields from principal/raw if not present in resumo
     const findFirstDeep = (node: any, predicate: (k: string, v: any) => boolean): any => {
@@ -751,9 +922,13 @@ serve(async (req) => {
     // Nome — tenta vários caminhos
     const nome =
       summary.nome ||
+      redeBlock?.retorno?.identificacao?.nome ||
+      redeBlock?.retorno?.identificacao?.razao_social ||
+      principal?.identificacao?.nome ||
       principal?.CREDCADASTRAL?.INFORMACOES_DA_EMPRESA?.RAZAO_SOCIAL ||
       principal?.CREDCADASTRAL?.HEADER?.PARAMETROS?.NOME ||
       principal?.CREDCADASTRAL?.HEADER?.PARAMETROS?.RAZAO_SOCIAL ||
+      (findFirstDeep(redeBlock, (k, v) => typeof v === 'string' && /^(nome|razao_social)$/i.test(k) && v.trim().length > 3) as string | undefined) ||
       "";
 
     // Extract PDF "espelho" from the response, if present.
@@ -778,7 +953,7 @@ serve(async (req) => {
     const probInadNum = _probRaw != null ? Math.round(_probRaw) : null;
 
     // Análise interpretada do bureau (nó "resumo")
-    const bureauAnalysis = buildBureauAnalysis(summary);
+    const bureauAnalysis = buildBureauAnalysis(summary, rules);
 
     const result = {
       documento: documentoLimpo,

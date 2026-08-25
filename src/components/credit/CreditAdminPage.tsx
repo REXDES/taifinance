@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useCreditRules, type ScoreBand, DEFAULT_RULES, consultCredit, type ConsultResult, CONFIANCA_OPTIONS, SUGESTAO_OPTIONS } from '@/hooks/useCreditModule';
+import { useCreditRules, type ScoreBand, DEFAULT_RULES, consultCredit, type ConsultResult, CONFIANCA_OPTIONS, SUGESTAO_OPTIONS, SCORE_WEIGHT_KEYS, DEFAULT_SCORE_WEIGHTS } from '@/hooks/useCreditModule';
 import { BureauAnalysisCard } from './BureauAnalysisCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -293,31 +293,108 @@ export function CreditAdminPage({ companyId }: Props) {
 
           <Card>
             <CardHeader>
+              <CardTitle>Pesos do score final</CardTitle>
+              <CardDescription>
+                Cada sinal do bureau é normalizado para 0–100 e combinado por peso. Sinais ausentes têm o peso
+                redistribuído entre os presentes. O resultado é convertido para a escala 0–1000 e usado nas faixas de score.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {SCORE_WEIGHT_KEYS.map((w) => {
+                  const weights = { ...DEFAULT_SCORE_WEIGHTS, ...(draft.score_weights || {}) };
+                  const total = Object.values(weights).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+                  const pct = Math.round(((Number(weights[w.key]) || 0) / total) * 1000) / 10;
+                  return (
+                    <div key={w.key} className="border border-border rounded px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <Label className="text-xs">{w.label}</Label>
+                          <p className="text-[10px] text-muted-foreground">{w.hint}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="w-20"
+                            value={Number(weights[w.key]) || 0}
+                            onChange={(e) => {
+                              const v = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+                              setDraft({ ...draft, score_weights: { ...weights, [w.key]: v } });
+                            }}
+                          />
+                          <span className="text-[10px] text-muted-foreground w-12 text-right">{pct}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="max-w-xs">
+                <Label className="text-xs">Escala máxima do score de análise</Label>
+                <Input type="number" min={1} value={draft.score_analise_scale_max ?? 500}
+                  onChange={(e) => setDraft({ ...draft, score_analise_scale_max: parseInt(e.target.value) || 500 })} />
+                <p className="text-[10px] text-muted-foreground mt-1">Usado para normalizar <code>score_analise</code> (ex.: 500 ou 1000).</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Cortes ordinais A–E</CardTitle>
               <CardDescription>
-                Define a <strong>pior letra aceita</strong> para cada indicador. A é o melhor cenário, E o pior. Tudo abaixo da letra escolhida é reprovado.
+                Define a <strong>pior letra aceita</strong> para cada indicador. A é o melhor cenário, E o pior.
+                Escolha se o indicador <strong>bloqueia</strong> a proposta ou apenas <strong>pontua</strong> (entra no score ponderado).
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {([
-                { key: 'max_classificacao_score', label: 'Classificação do score', a: 'A — Ótimo', e: 'E — Péssimo' },
-                { key: 'max_faturas_em_atraso', label: 'Faturas em atraso', a: 'A — Pontual', e: 'E — Muito mau pagador' },
-                { key: 'max_contratos_recentes', label: 'Contratos recentes', a: 'A — Relacionamento recente', e: 'E — Sem relacionamento' },
-              ] as const).map((cfg) => (
-                <div key={cfg.key}>
-                  <Label className="text-xs">{cfg.label}</Label>
-                  <select
-                    className="w-full border border-input bg-background rounded px-2 py-2 text-sm"
-                    value={(draft as any)[cfg.key] || 'C'}
-                    onChange={(e) => setDraft({ ...draft, [cfg.key]: e.target.value } as any)}
-                  >
-                    {['A','B','C','D','E'].map((l) => (
-                      <option key={l} value={l}>{l}</option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-muted-foreground mt-1">{cfg.a} ← → {cfg.e}</p>
-                </div>
-              ))}
+                { key: 'max_classificacao_score', mode: 'classificacao_score', label: 'Classificação do score', a: 'A — Ótimo', e: 'E — Péssimo' },
+                { key: 'max_faturas_em_atraso', mode: 'faturas_em_atraso', label: 'Faturas em atraso', a: 'A — Pontual', e: 'E — Muito mau pagador' },
+                { key: 'max_contratos_recentes', mode: 'contratos_recentes', label: 'Contratos recentes', a: 'A — Relacionamento recente', e: 'E — Sem relacionamento' },
+              ] as const).map((cfg) => {
+                const modes = draft.letter_criteria_mode || {};
+                const mode = modes[cfg.mode] || 'pontuar';
+                return (
+                  <div key={cfg.key}>
+                    <Label className="text-xs">{cfg.label}</Label>
+                    <select
+                      className="w-full border border-input bg-background rounded px-2 py-2 text-sm"
+                      value={(draft as any)[cfg.key] || 'C'}
+                      onChange={(e) => setDraft({ ...draft, [cfg.key]: e.target.value } as any)}
+                      disabled={mode !== 'bloquear'}
+                    >
+                      {['A','B','C','D','E'].map((l) => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="w-full border border-input bg-background rounded px-2 py-1.5 text-xs mt-2"
+                      value={mode}
+                      onChange={(e) => setDraft({ ...draft, letter_criteria_mode: { ...modes, [cfg.mode]: e.target.value as any } })}
+                    >
+                      <option value="pontuar">Apenas pontuar (entra no score)</option>
+                      <option value="bloquear">Bloquear acima do corte</option>
+                    </select>
+                    <p className="text-[10px] text-muted-foreground mt-1">{cfg.a} ← → {cfg.e}</p>
+                  </div>
+                );
+              })}
+              <div className="md:col-span-3">
+                <Label className="text-xs">Sugestão de negócio do bureau</Label>
+                <select
+                  className="w-full md:max-w-xs border border-input bg-background rounded px-2 py-1.5 text-xs mt-1"
+                  value={(draft.letter_criteria_mode || {}).sugestao_negocio || 'pontuar'}
+                  onChange={(e) => setDraft({
+                    ...draft,
+                    letter_criteria_mode: { ...(draft.letter_criteria_mode || {}), sugestao_negocio: e.target.value as any },
+                  })}
+                >
+                  <option value="pontuar">Apenas alertar (não bloqueia)</option>
+                  <option value="bloquear">Bloquear conforme buckets marcados</option>
+                </select>
+              </div>
             </CardContent>
           </Card>
 

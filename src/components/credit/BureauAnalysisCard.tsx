@@ -49,18 +49,39 @@ export function BureauAnalysisCard({ analysis, compact }: Props) {
         <span className="text-[10px] text-muted-foreground">Interpretação dos campos enviados pelo provedor</span>
       </div>
 
-      {breakdown && (breakdown.score != null || breakdown.score_analise != null || breakdown.score_rating != null) && (
-        <div className="rounded border border-primary/30 bg-primary/5 p-2">
-          <div className="text-[10px] uppercase text-muted-foreground mb-1">Composição do score (média ponderada)</div>
+      {breakdown && (breakdown.score != null || breakdown.score_analise != null || breakdown.score_rating != null || (breakdown.components?.length ?? 0) > 0) && (
+        <div className="rounded border border-primary/30 bg-primary/5 p-2 space-y-2">
+          <div className="text-[10px] uppercase text-muted-foreground">Composição do score (média ponderada)</div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
             <Cell label="Score" value={breakdown.score != null ? String(breakdown.score) : '—'} />
             <Cell label="Score análise" value={breakdown.score_analise != null ? String(breakdown.score_analise) : '—'} />
             <Cell label="Score rating" value={breakdown.score_rating != null ? String(breakdown.score_rating) : '—'} />
             <div className="rounded border border-primary/40 bg-primary/10 px-2 py-1.5">
-              <div className="text-[10px] text-muted-foreground uppercase">Média (usada na régua)</div>
+              <div className="text-[10px] text-muted-foreground uppercase">Score final (usado na régua)</div>
               <div className="font-bold text-primary text-base">{breakdown.media != null ? breakdown.media : '—'}</div>
             </div>
           </div>
+
+          {(breakdown.components?.length ?? 0) > 0 && (
+            <div className="space-y-1">
+              {breakdown.components!.map((c) => (
+                <div key={c.key} className="flex items-center gap-2 text-[11px]">
+                  <div className="w-40 shrink-0 truncate" title={c.label}>{c.label}</div>
+                  <div className="w-14 shrink-0 text-muted-foreground truncate" title={c.raw || ''}>{c.raw ?? '—'}</div>
+                  <div className="flex-1 h-2 rounded bg-muted overflow-hidden">
+                    <div className="h-full bg-primary/70" style={{ width: `${Math.max(0, Math.min(100, c.normalized))}%` }} />
+                  </div>
+                  <div className="w-10 text-right">{c.normalized}</div>
+                  <div className="w-14 text-right text-muted-foreground">peso {c.effective_weight}%</div>
+                </div>
+              ))}
+              {(breakdown.missing?.length ?? 0) > 0 && (
+                <div className="text-[10px] text-muted-foreground pt-1">
+                  Sem informação (peso redistribuído): {breakdown.missing!.join(', ')}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

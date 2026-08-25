@@ -1,7 +1,15 @@
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { decode as base64Decode } from 'https://deno.land/std@0.168.0/encoding/base64.ts';
 import { timingSafeEqual } from 'https://deno.land/std@0.168.0/crypto/timing_safe_equal.ts';
+
+// @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
+// `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
+// no mesmo padrão já usado em bank-api-proxy/send-pix-whatsapp.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
 
 // Recebe eventos da Necta Multi-Pay: grava log e atualiza a cobrança correspondente.
 // Público (verify_jwt = false); a autenticidade vem da assinatura, não de JWT de usuário.
@@ -20,7 +28,9 @@ async function verifyNectaSignature(
 ): Promise<boolean> {
   if (!svixId || !svixTimestamp || !svixSignature) return false;
   const secretBytes = base64Decode(secret.replace(/^whsec_/, ''));
-  const key = await crypto.subtle.importKey('raw', secretBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  // Cast: TS aqui reclama de Uint8Array<ArrayBufferLike> vs BufferSource (questão de
+  // versão de lib, não de tipo real em runtime — secretBytes é sempre um ArrayBuffer comum).
+  const key = await crypto.subtle.importKey('raw', secretBytes as unknown as BufferSource, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const signedContent = `${svixId}.${svixTimestamp}.${rawBody}`;
   const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedContent)));
 

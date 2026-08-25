@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Check, Loader2, Plus, Wallet, Tags, Sparkles, CalendarIcon } from 'lucide-react';
+import { Check, Loader2, Plus, Wallet, Tags, Sparkles, CalendarIcon, Paperclip, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
@@ -23,6 +23,20 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useToast } from '@/hooks/use-toast';
+import { TagPicker } from './TagPicker';
+import { setEntityTags, useFinanceTags } from '@/hooks/useFinanceTags';
+import { analyzeReceiptFile, uploadReceiptFile } from '@/hooks/useStatementImport';
+import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
+
+interface DuplicateCandidate {
+  id: string;
+  date: string;
+  amount: number;
+  description: string | null;
+}
+
 
 interface QuickEntryPageProps {
   companyId: string;
@@ -34,6 +48,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const { accounts, loading: loadingAccounts } = useAccounts(companyId);
   const { categories, loading: loadingCategories } = useTransactionCategories(companyId);
   const { createTransaction } = useTransactions(companyId);
+  const { tags: financeTags } = useFinanceTags(companyId);
 
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null);
@@ -44,6 +59,14 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
   const [showMoreSubcategories, setShowMoreSubcategories] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptDetails, setReceiptDetails] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [duplicates, setDuplicates] = useState<DuplicateCandidate[]>([]);
+  const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
+
+
 
   const activeAccounts = accounts.filter(a => a.is_active);
   const filteredCategories = categories.filter(c => c.type === (isIncome ? 'income' : 'expense') || c.type === 'both');
@@ -77,6 +100,105 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
     setSelectedSubcategoryId(null);
   };
 
+  const formatAmountValue = (value: number) => {
+    return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const checkDuplicates = async (params: {
+    amount: number;
+    date: Date;
+    type: 'income' | 'expense';
+    accountId?: string | null;
+  }): Promise<DuplicateCandidate[]> => {
+    try {
+      const from = new Date(params.date); from.setDate(from.getDate() - 3);
+      const to = new Date(params.date); to.setDate(to.getDate() + 3);
+      const iso = (d: Date) => d.toISOString().split('T')[0];
+
+      let query = supabase
+        .from('transactions')
+        .select('id, date, amount, description, account_id')
+        .eq('company_id', companyId)
+        .eq('type', params.type)
+        .gte('date', iso(from))
+        .lte('date', iso(to));
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return (data || [])
+        .filter((t: any) => Math.abs(Number(t.amount) - params.amount) < 0.01)
+        .filter((t: any) => !params.accountId || t.account_id === params.accountId)
+        .map((t: any) => ({ id: t.id, date: t.date, amount: Number(t.amount), description: t.description }));
+    } catch {
+      return [];
+    }
+  };
+
+  const handleReceiptSelected = async (file: File) => {
+    setReceiptFile(file);
+    setReceiptDetails(null);
+    setDuplicates([]);
+    setDuplicateConfirmed(false);
+    setAnalyzing(true);
+
+    try {
+      const analysis = await analyzeReceiptFile(file, {
+        categories: categories.map(c => ({
+          id: c.id,
+          name: c.name,
+          type: c.type,
+          subcategories: (c.subcategories || []).map(s => ({ id: s.id, name: s.name })),
+        })),
+        tags: financeTags.map(t => ({ id: t.id, name: t.name })),
+        accounts: activeAccounts.map(a => ({ id: a.id, name: a.name })),
+      });
+
+      const filled: string[] = [];
+      if (analysis.type) { setIsIncome(analysis.type === 'income'); filled.push('tipo'); }
+      if (analysis.amount) { setAmount(formatAmountValue(analysis.amount)); filled.push('valor'); }
+      if (analysis.description) { setDescription(analysis.description); filled.push('descrição'); }
+      if (analysis.date) { setSelectedDate(new Date(`${analysis.date}T00:00:00`)); filled.push('data'); }
+      if (analysis.subcategory_id) { setSelectedSubcategoryId(analysis.subcategory_id); setShowMoreSubcategories(true); filled.push('subcategoria'); }
+      if (analysis.tag_ids.length > 0) { setSelectedTags(analysis.tag_ids); filled.push('tags'); }
+      if (analysis.account_id && activeAccounts.some(a => a.id === analysis.account_id)) {
+        setSelectedAccountId(analysis.account_id);
+        filled.push('conta');
+      }
+      if (analysis.details) setReceiptDetails(analysis.details);
+
+      toast({
+        title: filled.length > 0 ? 'Comprovante interpretado' : 'Não foi possível extrair dados',
+        description: filled.length > 0 ? `Campos preenchidos: ${filled.join(', ')}` : 'Preencha manualmente os campos.',
+        variant: filled.length > 0 ? 'default' : 'destructive',
+      });
+
+      if (analysis.amount && analysis.type) {
+        const refDate = analysis.date ? new Date(`${analysis.date}T00:00:00`) : new Date();
+        const found = await checkDuplicates({
+          amount: analysis.amount,
+          date: refDate,
+          type: analysis.type as 'income' | 'expense',
+          accountId: analysis.account_id && activeAccounts.some(a => a.id === analysis.account_id) ? analysis.account_id : null,
+        });
+        setDuplicates(found);
+        if (found.length > 0) {
+          toast({
+            title: 'Possível duplicidade',
+            description: `Encontrei ${found.length} lançamento(s) com o mesmo valor em datas próximas.`,
+            variant: 'destructive',
+          });
+        }
+      }
+
+    } catch (error: any) {
+      toast({ title: 'Erro ao analisar comprovante', description: error?.message, variant: 'destructive' });
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+
   const handleSubmit = async () => {
     if (!selectedAccountId) {
       toast({ title: 'Selecione uma conta', variant: 'destructive' });
@@ -94,13 +216,40 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       return;
     }
 
+    if (receiptFile && !duplicateConfirmed) {
+      const found = await checkDuplicates({
+        amount: numAmount,
+        date: selectedDate,
+        type: isIncome ? 'income' : 'expense',
+        accountId: selectedAccountId,
+      });
+      if (found.length > 0) {
+        setDuplicates(found);
+        setDuplicateConfirmed(true);
+        toast({
+          title: 'Possível duplicidade',
+          description: 'Já existe lançamento com o mesmo valor em data próxima. Clique novamente em salvar para confirmar.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     // Find the category_id from the subcategory
     const subcatInfo = allSubcategories.find(s => s.id === selectedSubcategoryId) || 
       recentSubcategories.find(s => s.id === selectedSubcategoryId);
 
     setSubmitting(true);
+
     try {
-      await createTransaction({
+      let receiptPath: string | null = null;
+      if (receiptFile) {
+        try { receiptPath = await uploadReceiptFile(companyId, receiptFile, 'quick-entry'); } catch {}
+      }
+      const notes = [receiptDetails, receiptPath ? `Comprovante: ${receiptPath}` : null]
+        .filter(Boolean).join('\n') || undefined;
+
+      const created = await createTransaction({
         account_id: selectedAccountId,
         category_id: subcatInfo?.category_id,
         subcategory_id: selectedSubcategoryId,
@@ -108,7 +257,12 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         type: isIncome ? 'income' : 'expense',
         description: description || (isIncome ? 'Receita rápida' : 'Despesa rápida'),
         date: selectedDate.toISOString().split('T')[0],
+        notes,
       });
+
+      if (created && selectedTags.length > 0) {
+        try { await setEntityTags('transaction', (created as any).id, selectedTags); } catch {}
+      }
 
       toast({ title: 'Lançamento registrado com sucesso!' });
       
@@ -120,6 +274,13 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       setShowMoreAccounts(false);
       setShowMoreSubcategories(false);
       setSelectedDate(new Date());
+      setSelectedTags([]);
+      setReceiptFile(null);
+      setReceiptDetails(null);
+      setDuplicates([]);
+      setDuplicateConfirmed(false);
+
+
       
       // Refetch recent selections
       refetchRecent();
@@ -157,6 +318,84 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         />
         <span className={cn("text-sm font-medium", isIncome && "text-green-600")}>Receita</span>
       </div>
+
+      {/* Receipt upload */}
+      <Card className="border-dashed">
+        <CardContent className="py-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Paperclip className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <Label className="text-sm font-medium">Comprovante (opcional)</Label>
+                <p className="text-xs text-muted-foreground">A IA lê o comprovante e preenche valor, descrição, data, categoria e tags.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="quick-entry-receipt"
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) handleReceiptSelected(file);
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={analyzing}
+                onClick={() => document.getElementById('quick-entry-receipt')?.click()}
+              >
+                {analyzing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                {analyzing ? 'Analisando...' : 'Subir comprovante'}
+              </Button>
+            </div>
+          </div>
+
+          {receiptFile && (
+            <div className="flex items-start justify-between gap-2 rounded-md bg-muted/50 p-2">
+              <div className="min-w-0 space-y-1">
+                <p className="text-xs font-medium truncate">{receiptFile.name}</p>
+                {receiptDetails && <p className="text-xs text-muted-foreground whitespace-pre-line">{receiptDetails}</p>}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 flex-shrink-0"
+                onClick={() => { setReceiptFile(null); setReceiptDetails(null); setDuplicates([]); setDuplicateConfirmed(false); }}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
+
+          {duplicates.length > 0 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Possível duplicidade</AlertTitle>
+              <AlertDescription className="space-y-1">
+                <p className="text-xs">
+                  Já existe(m) {duplicates.length} lançamento(s) com o mesmo valor em datas próximas:
+                </p>
+                <ul className="text-xs list-disc pl-4">
+                  {duplicates.slice(0, 5).map(d => (
+                    <li key={d.id}>
+                      {format(new Date(`${d.date}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR })} — R$ {formatAmountValue(d.amount)}
+                      {d.description ? ` — ${d.description}` : ''}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs">Confira antes de salvar para não duplicar o lançamento.</p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+        </CardContent>
+      </Card>
 
       {/* Amount Input */}
       <Card className="border-2 border-primary/20">
@@ -234,6 +473,12 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
             />
           </PopoverContent>
         </Popover>
+      </div>
+
+      {/* Tags */}
+      <div>
+        <Label className="text-sm font-medium mb-2 block">Tags (opcional)</Label>
+        <TagPicker companyId={companyId} value={selectedTags} onChange={setSelectedTags} placeholder="Adicionar tags..." />
       </div>
 
       {/* Recent Accounts */}
@@ -332,6 +577,8 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
               type={isIncome ? 'income' : 'expense'}
               categories={filteredCategories}
               initialDescription={description}
+              companyId={companyId}
+              onSelectTags={(ids) => setSelectedTags(prev => Array.from(new Set([...prev, ...ids])))}
               onSelectCategory={(categoryId, subcategoryId) => {
                 if (subcategoryId) {
                   setSelectedSubcategoryId(subcategoryId);

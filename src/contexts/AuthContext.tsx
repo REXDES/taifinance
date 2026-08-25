@@ -19,13 +19,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const initialized = useRef(false);
   const initialSessionResolved = useRef(false);
+  const explicitSignOut = useRef(false);
+  const sessionRecoveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
+      (event, newSession) => {
+        if (event === 'SIGNED_OUT' && !explicitSignOut.current && initialSessionResolved.current) {
+          setLoading(true);
+          if (sessionRecoveryTimer.current) clearTimeout(sessionRecoveryTimer.current);
+          sessionRecoveryTimer.current = setTimeout(async () => {
+            const { data: { session: recoveredSession } } = await supabase.auth.getSession();
+            setSession(recoveredSession);
+            setUser(recoveredSession?.user ?? null);
+            setLoading(false);
+          }, 1200);
+          return;
+        }
+
+        if (sessionRecoveryTimer.current) {
+          clearTimeout(sessionRecoveryTimer.current);
+          sessionRecoveryTimer.current = null;
+        }
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -42,7 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (sessionRecoveryTimer.current) clearTimeout(sessionRecoveryTimer.current);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -70,7 +91,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    explicitSignOut.current = true;
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      explicitSignOut.current = false;
+    }
   };
 
   return (

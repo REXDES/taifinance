@@ -29,6 +29,10 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Trash2, ArrowRight, Filter } from 'lucide-react';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
+import { TagPicker } from './TagPicker';
+import TagBadges from './TagBadges';
+import { useRecordTags } from '@/hooks/useRecordTags';
+import { setEntityTags, findRecordIdsByTags } from '@/hooks/useFinanceTags';
 
 interface TransfersPageProps {
   companyId: string;
@@ -51,7 +55,20 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
+    tags: [] as string[],
   });
+  const [tagRefresh, setTagRefresh] = useState(0);
+  const [filterTagIds, setFilterTagIdsRaw] = useState<string[]>([]);
+  const [tagFilteredIds, setTagFilteredIds] = useState<Set<string> | null>(null);
+  const setFilterTagIds = async (ids: string[]) => {
+    setFilterTagIdsRaw(ids);
+    if (ids.length === 0) { setTagFilteredIds(null); return; }
+    try {
+      const recs = await findRecordIdsByTags('transfer', ids);
+      setTagFilteredIds(new Set(recs));
+    } catch { setTagFilteredIds(new Set()); }
+  };
+  const recordTags = useRecordTags('transfer', transfers.map(t => t.id), tagRefresh);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -75,20 +92,25 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
         }
       }
       
+      if (tagFilteredIds && !tagFilteredIds.has(t.id)) return false;
       return true;
     });
-  }, [transfers, filters]);
+  }, [transfers, filters, tagFilteredIds]);
 
   const handleSave = async () => {
-    await createTransfer({
+    const created = await createTransfer({
       from_account_id: form.from_account_id,
       to_account_id: form.to_account_id,
       amount: parseFloat(form.amount),
       description: form.description,
       date: form.date,
     });
+    if (created && form.tags.length > 0) {
+      try { await setEntityTags('transfer', (created as any).id, form.tags); } catch {}
+    }
+    setTagRefresh(r => r + 1);
     setShowDialog(false);
-    setForm({ from_account_id: '', to_account_id: '', amount: '', description: '', date: new Date().toISOString().split('T')[0] });
+    setForm({ from_account_id: '', to_account_id: '', amount: '', description: '', date: new Date().toISOString().split('T')[0], tags: [] });
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
@@ -127,6 +149,10 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
                 <div><Label>Valor *</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
                 <div><Label>Data *</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
                 <div><Label>Descrição</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Opcional" /></div>
+                <div>
+                  <Label>Tags</Label>
+                  <TagPicker companyId={companyId} value={form.tags} onChange={(ids) => setForm({ ...form, tags: ids })} placeholder="Adicionar tags..." />
+                </div>
                 <Button onClick={handleSave} className="w-full" disabled={!form.from_account_id || !form.to_account_id || !form.amount}>Transferir</Button>
               </div>
             </DialogContent>
@@ -138,7 +164,7 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
       {showFilters && (
         <Card>
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label>Data Inicial</Label>
                 <Input
@@ -171,6 +197,10 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Tags</Label>
+                <TagPicker companyId={companyId} value={filterTagIds} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -183,7 +213,10 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
             <TableBody>
               {filteredTransfers.map((t) => (
                 <TableRow key={t.id}>
-                  <TableCell>{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
+                  <TableCell>
+                    <div>{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
+                    <TagBadges tags={recordTags[t.id]} className="mt-1" />
+                  </TableCell>
                   <TableCell>{t.from_account?.name}</TableCell>
                   <TableCell><ArrowRight className="w-4 h-4 text-muted-foreground" /></TableCell>
                   <TableCell>{t.to_account?.name}</TableCell>

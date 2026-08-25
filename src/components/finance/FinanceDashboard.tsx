@@ -3,11 +3,15 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useTransfers } from '@/hooks/useTransfers';
 import { usePatrimonialEvolution } from '@/hooks/usePatrimonialEvolution';
 import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
+import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft, Calendar } from 'lucide-react';
 import { 
   LineChart, 
   Line, 
+  BarChart,
+  Bar,
+  Cell,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -25,6 +29,8 @@ interface FinanceDashboardProps {
 export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
   const { accounts, groups, totalAtivo, totalPassivo, totalGeral, loading: accountsLoading } = useAccounts(companyId);
   
+  const { categories } = useTransactionCategories(companyId);
+
   // Get current month transactions
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -72,6 +78,53 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
     transfers,
     monthsBack: 6,
   });
+
+  // Top expenses by subcategory (or category when no subcategory) – current month
+  const topExpenses = (() => {
+    const map = new Map<string, { name: string; value: number; color: string; budget: number; categoryId?: string; hasSub: boolean }>();
+    transactions
+      .filter((t) => t.type === 'expense')
+      .forEach((t) => {
+        const categoryName = t.category?.name;
+        const subName = t.subcategory?.name;
+        const name = subName
+          ? (categoryName ? `${categoryName}/${subName}` : subName)
+          : (categoryName || 'Sem categoria');
+        const color = t.category?.color || '#8B5CF6';
+        const key = name;
+        const existing = map.get(key);
+        if (existing) {
+          existing.value += Number(t.amount);
+        } else {
+          map.set(key, {
+            name,
+            value: Number(t.amount),
+            color,
+            budget: 0,
+            categoryId: (t as any).category_id,
+            hasSub: !!subName,
+          });
+        }
+      });
+    // Attach category budget as reference on every bar belonging to a category with budget
+    const result = Array.from(map.values()).map((item) => {
+      if (item.categoryId) {
+        const cat = categories.find((c) => c.id === item.categoryId);
+        if (cat?.monthly_budget) item.budget = Number(cat.monthly_budget);
+      }
+      return item;
+    });
+    return result
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 7);
+  })();
+
+  const topExpensesMax = Math.max(
+    1,
+    ...topExpenses.flatMap((e) => [e.value, e.budget || 0])
+  );
+
+
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -226,6 +279,108 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
             <p className="text-muted-foreground text-center py-2 text-sm">
               Nenhuma conta pendente esta semana.
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Top Expenses Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Maiores Despesas do Mês</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {topExpenses.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              Nenhuma despesa registrada neste mês.
+            </p>
+          ) : (
+            <div style={{ height: Math.max(220, topExpenses.length * 44) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={topExpenses}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatCurrencyShort}
+                    domain={[0, topExpensesMax]}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12 }}
+                    width={140}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const p: any = payload[0].payload;
+                      const over = p.budget > 0 && p.value > p.budget;
+                      const diff = p.budget > 0 ? Math.abs(p.value - p.budget) : 0;
+                      return (
+                        <div className="rounded-md border bg-card p-2 text-xs shadow-md">
+                          <div className="font-medium mb-1">{p.name}</div>
+                          <div>Despesa: {formatCurrency(p.value)}</div>
+                          {p.budget > 0 && (
+                            <>
+                              <div>Orçamento: {formatCurrency(p.budget)}</div>
+                              <div className={over ? 'text-destructive font-medium' : 'text-primary font-medium'}>
+                                {over ? `Excedente: ${formatCurrency(diff)}` : `Disponível: ${formatCurrency(diff)}`}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar
+                    dataKey="value"
+                    name="Despesa"
+                    radius={[0, 4, 4, 0]}
+                    background={{ fill: 'transparent' }}
+                    shape={(props: any) => {
+                      const { x, y, width, height, fill, payload, background } = props;
+                      const fullW = background?.width ?? width;
+                      const baseX = background?.x ?? x;
+                      const budget = payload?.budget ?? 0;
+                      const over = budget > 0 && payload.value > budget;
+                      return (
+                        <g>
+                          <rect x={x} y={y} width={Math.max(0, width)} height={height} fill={fill} rx={4} ry={4} />
+                          {budget > 0 && (() => {
+                            const bx = baseX + (budget / topExpensesMax) * fullW;
+                            return (
+                              <g>
+                                <line
+                                  x1={bx}
+                                  x2={bx}
+                                  y1={y - 4}
+                                  y2={y + height + 4}
+                                  stroke={over ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}
+                                  strokeWidth={2}
+                                  strokeDasharray="4 3"
+                                />
+                                <circle cx={bx} cy={y - 4} r={2.5} fill={over ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'} />
+                              </g>
+                            );
+                          })()}
+                        </g>
+                      );
+                    }}
+                  >
+                    {topExpenses.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </CardContent>
       </Card>

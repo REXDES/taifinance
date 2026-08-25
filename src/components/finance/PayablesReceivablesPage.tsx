@@ -22,6 +22,10 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useAuth } from '@/contexts/AuthContext';
 import { PixQrCodeDialog } from './PixQrCodeDialog';
 import { CompanySettingsDialog } from './CompanySettingsDialog';
+import { TagPicker } from './TagPicker';
+import TagBadges from './TagBadges';
+import { useRecordTags } from '@/hooks/useRecordTags';
+import { setEntityTags, findRecordIdsByTags, fetchTagsForRecords } from '@/hooks/useFinanceTags';
 
 interface PayablesReceivablesPageProps {
   companyId: string;
@@ -125,8 +129,20 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     category_id: '',
     subcategory_id: '',
     client_supplier_id: '',
-    installments: '2'
+    installments: '2',
+    tags: [] as string[],
   });
+  const [tagRefresh, setTagRefresh] = useState(0);
+  const [filterTagIds, setFilterTagIdsRaw] = useState<string[]>([]);
+  const [tagFilteredIds, setTagFilteredIds] = useState<Set<string> | null>(null);
+  const setFilterTagIds = async (ids: string[]) => {
+    setFilterTagIdsRaw(ids);
+    if (ids.length === 0) { setTagFilteredIds(null); return; }
+    try {
+      const recs = await findRecordIdsByTags('payable_receivable', ids);
+      setTagFilteredIds(new Set(recs));
+    } catch { setTagFilteredIds(new Set()); }
+  };
 
   const [clientFormData, setClientFormData] = useState({
     name: '',
@@ -147,6 +163,13 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     const categoryType = formData.type === 'receivable' ? 'income' : 'expense';
     return categories.filter(c => c.type === categoryType);
   }, [categories, formData.type]);
+
+  const displayedRecords = useMemo(() => {
+    if (!tagFilteredIds) return payablesReceivables;
+    return payablesReceivables.filter(r => tagFilteredIds.has(r.id));
+  }, [payablesReceivables, tagFilteredIds]);
+
+  const prRecordTags = useRecordTags('payable_receivable', payablesReceivables.map(r => r.id), tagRefresh);
 
   const selectedCategory = categories.find(c => c.id === formData.category_id);
 
@@ -184,10 +207,11 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
           subcategory_id: formData.subcategory_id || null,
           client_supplier_id: formData.client_supplier_id || null
         });
+        try { await setEntityTags('payable_receivable', editingRecord.id, formData.tags); } catch {}
         toast.success('Conta atualizada com sucesso!');
       } else {
         // Create new record
-        await createPayableReceivable(
+        const createdIds = await createPayableReceivable(
           {
             company_id: companyId,
             type: formData.type,
@@ -212,9 +236,15 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
           },
           formData.payment_type === 'installment' ? parseInt(formData.installments) : undefined
         );
+        if (formData.tags.length > 0 && createdIds && createdIds.length > 0) {
+          for (const id of createdIds) {
+            try { await setEntityTags('payable_receivable', id, formData.tags); } catch {}
+          }
+        }
         toast.success('Conta criada com sucesso!');
       }
       
+      setTagRefresh(r => r + 1);
       setIsDialogOpen(false);
       setEditingRecord(null);
       resetForm();
@@ -226,8 +256,13 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     }
   };
 
-  const openEditDialog = (record: any) => {
+  const openEditDialog = async (record: any) => {
     setEditingRecord(record);
+    let existingTags: string[] = [];
+    try {
+      const map = await fetchTagsForRecords('payable_receivable', [record.id]);
+      existingTags = (map[record.id] || []).map(t => t.id);
+    } catch {}
     setFormData({
       type: record.type,
       payment_type: record.payment_type,
@@ -238,7 +273,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       category_id: record.category_id || '',
       subcategory_id: record.subcategory_id || '',
       client_supplier_id: record.client_supplier_id || '',
-      installments: '2'
+      installments: '2',
+      tags: existingTags,
     });
     setIsDialogOpen(true);
   };
@@ -361,7 +397,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       category_id: '',
       subcategory_id: '',
       client_supplier_id: '',
-      installments: '2'
+      installments: '2',
+      tags: [],
     });
     setEditingRecord(null);
   };
@@ -490,6 +527,10 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                 ))}
               </div>
             </div>
+            <div className="md:col-span-2">
+              <Label>Tags</Label>
+              <TagPicker companyId={companyId} value={filterTagIds} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
+            </div>
           </div>
         </Card>
       )}
@@ -532,14 +573,14 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
             </TableRow>
           </TableHeader>
           <TableBody>
-            {payablesReceivables.length === 0 ? (
+            {displayedRecords.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   Nenhuma conta encontrada
                 </TableCell>
               </TableRow>
             ) : (
-              payablesReceivables.map((record) => (
+              displayedRecords.map((record) => (
                 <TableRow key={record.id}>
                   <TableCell>{format(new Date(record.due_date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>
@@ -552,6 +593,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                     {record.payment_type === 'recurring' && (
                       <Badge variant="outline" className="ml-2 text-xs">Recorrente</Badge>
                     )}
+                    <TagBadges tags={prRecordTags[record.id]} className="mt-1" />
                   </TableCell>
                   <TableCell>{getTypeBadge(record.type)}</TableCell>
                   <TableCell>
@@ -768,6 +810,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                     type={formData.type === 'payable' ? 'expense' : 'income'}
                     categories={filteredCategories}
                     initialDescription={formData.description}
+                    companyId={companyId}
+                    onSelectTags={(ids) => setFormData(prev => ({ ...prev, tags: Array.from(new Set([...(prev.tags || []), ...ids])) }))}
                     onSelectCategory={(categoryId, subcategoryId) => {
                       if (subcategoryId) {
                         setFormData(prev => ({
@@ -839,6 +883,15 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div>
+              <Label>Tags</Label>
+              <TagPicker
+                companyId={companyId}
+                value={formData.tags}
+                onChange={(ids) => setFormData(prev => ({ ...prev, tags: ids }))}
+                placeholder="Adicionar tags..."
+              />
             </div>
           </div>
           <DialogFooter className="mt-4">

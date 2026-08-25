@@ -16,6 +16,7 @@ interface SuggestRequest {
   description: string;
   type: "expense" | "income";
   categories: Category[];
+  tags?: { id: string; name: string }[];
 }
 
 serve(async (req) => {
@@ -34,7 +35,7 @@ serve(async (req) => {
       );
     }
 
-    const { description, type, categories }: SuggestRequest = await req.json();
+    const { description, type, categories, tags }: SuggestRequest = await req.json();
 
     if (!description || !type || !categories) {
       return new Response(
@@ -54,12 +55,24 @@ serve(async (req) => {
       })
       .join("\n\n");
 
+    const tagsContext = (tags || []).length > 0
+      ? (tags || []).map(t => `• ${t.name} (id: ${t.id})`).join("\n")
+      : "Nenhuma tag cadastrada.";
+
     const systemPrompt = `Você é um assistente financeiro especializado em categorização de despesas e receitas no Brasil.
 
 O usuário vai descrever uma ${type === "expense" ? "despesa" : "receita"} e você deve sugerir a categoria e subcategoria mais adequadas.
 
 CATEGORIAS E SUBCATEGORIAS DISPONÍVEIS:
 ${categoriesContext || "Nenhuma categoria cadastrada."}
+
+TAGS DISPONÍVEIS (classificações complementares):
+${tagsContext}
+
+REGRAS DE TAGS:
+- Sugira de 1 a 3 tags EXISTENTES que combinem com o lançamento (retorne em tag_ids e tag_names).
+- Se nenhuma tag existente servir e uma nova classificação for claramente útil, sugira nomes curtos em suggested_tag_names (máx. 2).
+- Tags são opcionais: se não houver nada relevante, retorne listas vazias.
 
 REGRAS IMPORTANTES:
 1. PRIORIZE usar categorias existentes! Se o NOME DA CATEGORIA pai faz sentido para o lançamento, use-a mesmo que as subcategorias existentes sejam específicas de outros itens.
@@ -124,6 +137,21 @@ REGRAS IMPORTANTES:
                   suggested_subcategory_name: {
                     type: "string",
                     description: "Nome sugerido para nova subcategoria (apenas se found=false)"
+                  },
+                  tag_ids: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "IDs das tags existentes sugeridas (1 a 3, pode ser vazio)"
+                  },
+                  tag_names: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Nomes das tags existentes sugeridas, na mesma ordem de tag_ids"
+                  },
+                  suggested_tag_names: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Nomes de novas tags sugeridas para criação (máx. 2, pode ser vazio)"
                   },
                   confidence: {
                     type: "string",

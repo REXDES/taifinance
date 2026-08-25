@@ -1,94 +1,26 @@
 # TAI Finance
 
-Sistema de gestão financeira multi-empresas com lançamentos rápidos, extratos, fluxos financeiros e agente de IA para classificação contábil.
+preciso criar um app igual a monday, www.monday.com, que seja gestor de projetos, o nome será TAI Project, precisa ter controle de acesso, o app deve ser mult-empresas, e cada usuario acessa apenas os dados da empresa logada e apenas acesso a empresa atribuida a ele, será 3 tipos de usuários, Supervisor, Gerente e operador, sendo que o Supervisor poderá selecionar outras empresas para interagir com as informações daquela empresa.  O app deverá ter a possibilidade de criar projeto, apresentar de maneira tradicional (lista), Karban e Gantt, , os projetos ficam listados no menu a esquerda, dentro de projeto possibilidade de criar elementos como sub-menu, cada elemento dentro de um card,  e dentro de elementos poder criar tarefas, tarefas tambem será sub-menu de elementos podendo ser expandida, aparecendo as tarefas dentro do card daquele elemento, as tarefas terao opção da descriçao,  valor estimado, observação, status que poderá ser configurado (em configurações poder criar e editar status, com nome, cor e grau de importância ), cronograma podendo ser inserido data inicial e final,  data de criação da tarefa, responsavel e atalho para visualizar arquivos e fotos anexadas. Ao lado de cada tarefa deverá ter um atalho para o chat, que seria anotações dos usuários a respeito daquela tarefa em formato de chat, com a descrição do comentário e o usuário que realizou em letras menores abaixo do comentário, junto da data e hora do comentário.  Para cada novo projeto, elemento ou tarefa, atribua uma cor aleatória diferente, podendo ser editada pelo usuário. Na lista dos elementos, antes de expandir para tarefas, aparecem informações do elemento, como nome,  quantidade de tarefas criadas para o elemento, status (resumido com varias cores e proporção conforme  cada tarefa criada e atribuido um status) e agenda(com marcação de reuniões ou ligações apara terceiros envolvidos). Ao logar no app, o usuario ja visualiza as notificações de ações solicitadas por outro usuário a serem realizadas(ao criar uma agenda, ou atribuir responsabilidade de uma tarefa, o usuário citado deve ser notificado.  O app deve permitir emitir invite para usuário convidado, crie um link de convite onde é informado email e ja definido uma senha para aquele convidado, o link poderá ser copiado e enviado ao convidado, nao precisa estar automatizado para ser enviado por email, o usuario copia e cola no wattsapp, o convidado ao abrir o link, digita o email e a senha fornecida, que deverá consistir com o previamente cadastro pelo usuario, após isso o convidado deve alterar a senha para acessar o sistema, a aprtir disso esse convidado ja aparece como cadastrado como usuário do app, ja definido conforme o caso se é supervisor, gerente ou operador, o mesmo link de convite deverá ser o link de acesso ao app, sendo que se o convidado ja tenha realizado um check in uma vez, o app ja o direciona diretamente para a aplicação. As tarefas poderao ser arrastadas pelo mouse para mudar a sua localização na lista.  O app deverá ter a opção de configurações de usuarios, e perfis de acesso, podendo ser selecionado as telas que poderão acessar e as demais opções do sistema. Se tiver dúvida me pergunte.
 
-## Stack
+This project was built with [Lovable](https://lovable.dev).
 
-- **Frontend:** Vite + React 18 + TypeScript + Tailwind CSS
-- **UI:** shadcn/ui (Radix UI) + Lucide Icons + Sonner
-- **Estado/Dados:** TanStack Query + React Hook Form + Zod
-- **Backend:** Supabase (Auth, PostgreSQL + RLS, Edge Functions, Storage)
-- **Extras:** Recharts, jsPDF, xlsx, date-fns, dnd-kit, qrcode.react
+**Live app**: https://taifinance.lovable.app
 
-## Pré-requisitos
+## Build with Lovable
 
-- [Bun](https://bun.sh) >= 1.0 (gerenciador de pacotes padrão)
-- Node.js >= 18
-- Conta no [Supabase](https://supabase.com)
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/049eb04b-0035-496f-b7b9-9459a2a731ab).
 
-## Rodando localmente
+- **Ship faster**: describe what you want to build and Lovable handles the code.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
-```bash
-# 1. Clone o repositório
-git clone <repo-url>
-cd taifinance
+## Development
 
-# 2. Instale as dependências
-bun install
+Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
-# 3. Configure as variáveis de ambiente
-cp .env.example .env
-# Edite o .env com as chaves do seu projeto Supabase
-
-# 4. Inicie o servidor de desenvolvimento
-bun run dev
+```sh
+git clone <this-repository-url>
+cd <repository-name>
+npm i
+npm run dev
 ```
-
-O app estará disponível em `http://localhost:8080`.
-
-## Variáveis de ambiente
-
-Copie `.env.example` para `.env` e preencha:
-
-| Variável | Onde encontrar |
-|---|---|
-| `VITE_SUPABASE_URL` | Supabase → Settings → API → Project URL |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase → Settings → API → anon/public key |
-| `VITE_SUPABASE_PROJECT_ID` | Supabase → Settings → General → Reference ID |
-
-## Scripts disponíveis
-
-```bash
-bun run dev        # Servidor de desenvolvimento (porta 8080)
-bun run build      # Build de produção
-bun run preview    # Pré-visualizar o build
-bun run lint       # Verificar linting
-```
-
-## Migrações do banco de dados
-
-As migrações estão em `supabase/migrations/`. Para aplicar em um projeto Supabase:
-
-```bash
-# Instale o Supabase CLI
-npm install -g supabase
-
-# Faça login e vincule o projeto
-supabase login
-supabase link --project-ref <project-id>
-
-# Aplique as migrações
-supabase db push
-```
-
-## Roles de acesso
-
-| Role | Permissões |
-|---|---|
-| `supervisor` | Acesso total à plataforma, modo administrativo |
-| `gerente` | Gerencia empresas e usuários dentro dos seus limites |
-| `operador` | Acesso operacional — lançamentos, relatórios, transações |
-
-## Funcionalidades
-
-- **Dashboard** financeiro com gráfico de evolução patrimonial
-- **Lance Rápido** para registrar entradas/saídas em segundos
-- **Lançamentos** com categorização e subcategorias
-- **Transferências** entre contas
-- **Contas a Pagar/Receber** com calendário e fluxo
-- **Relatórios:** Balancete, Extrato, Por Categoria, Fluxo Financeiro
-- **Banco Digital** com integração Open Finance
-- **Clientes/Fornecedores**
-- **Multi-empresas** com controle de acesso granular (RLS)
-- **Audit Log** de ações críticas
-- **PWA** instalável no mobile

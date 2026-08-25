@@ -6,10 +6,43 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const EVOLUTION_API_URL =
-  "https://evolution-api-production-a169.up.railway.app";
-const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
-const EVOLUTION_INSTANCE = "taifinance";
+const WA_TOKEN = Deno.env.get("WHATSAPP_CLOUD_TOKEN") ?? "";
+const WA_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_CLOUD_PHONE_NUMBER_ID") ?? "";
+const GRAPH_VERSION = "v21.0";
+
+function normalizePhone(phone: string): string {
+  let n = phone.replace(/\D/g, "");
+  // Brazilian numbers should start with 55
+  if (n.length === 10 || n.length === 11) n = "55" + n;
+  return n;
+}
+
+async function sendTemplate(to: string, templateName: string, languageCode = "pt_BR", components?: any[]) {
+  const body: any = {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name: templateName,
+      language: { code: languageCode },
+    },
+  };
+  if (components && components.length > 0) body.template.components = components;
+
+  const res = await fetch(
+    `https://graph.facebook.com/${GRAPH_VERSION}/${WA_PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${WA_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  const data = await res.json();
+  return { ok: res.ok, status: res.status, data };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -17,8 +50,14 @@ serve(async (req) => {
   }
 
   try {
-    const { phone, companyName } = await req.json();
+    if (!WA_TOKEN || !WA_PHONE_NUMBER_ID) {
+      return new Response(
+        JSON.stringify({ error: "WhatsApp Cloud API não configurada (token/phone_number_id ausentes)." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
+    const { phone } = await req.json();
     if (!phone) {
       return new Response(
         JSON.stringify({ error: "Phone number is required" }),
@@ -26,34 +65,24 @@ serve(async (req) => {
       );
     }
 
-    const number = phone.replace(/\D/g, "");
-    const message =
-      `✅ *TAI Finance — Teste de Conexão*\n\n` +
-      `Olá! Você receberá informações da empresa *${companyName || "sua empresa"}* por aqui.\n\n` +
-      `Este é apenas um teste de envio. Se recebeu esta mensagem, o WhatsApp está configurado corretamente! 🎉`;
+    const to = normalizePhone(phone);
+    // Meta's pre-approved test template, language en_US
+    const result = await sendTemplate(to, "hello_world", "en_US");
 
-    const response = await fetch(
-      `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: EVOLUTION_API_KEY,
-        },
-        body: JSON.stringify({
-          number,
-          textMessage: { text: message },
-        }),
-      }
-    );
-
-    const data = await response.json();
+    if (!result.ok) {
+      console.error("WhatsApp test failed:", JSON.stringify(result.data));
+      return new Response(
+        JSON.stringify({ success: false, error: result.data?.error?.message || "Falha ao enviar", details: result.data }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, data: result.data }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    console.error("test-whatsapp error:", err);
     return new Response(
       JSON.stringify({ error: String(err) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

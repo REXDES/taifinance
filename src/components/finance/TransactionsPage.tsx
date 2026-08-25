@@ -36,6 +36,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
+import { TagPicker } from './TagPicker';
+import TagBadges from './TagBadges';
+import { useRecordTags } from '@/hooks/useRecordTags';
+import { setEntityTags, findRecordIdsByTags } from '@/hooks/useFinanceTags';
 
 interface TransactionsPageProps {
   companyId: string;
@@ -67,11 +71,27 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
   const [showBudget, setShowBudget] = useState(false);
   const [searchText, setSearchText] = useState('');
 
+  const [filterTagIds, setFilterTagIdsRaw] = useState<string[]>([]);
+  const [tagFilteredIds, setTagFilteredIds] = useState<Set<string> | null>(null);
+  const setFilterTagIds = async (ids: string[]) => {
+    setFilterTagIdsRaw(ids);
+    if (ids.length === 0) { setTagFilteredIds(null); return; }
+    try {
+      const recs = await findRecordIdsByTags('transaction', ids);
+      setTagFilteredIds(new Set(recs));
+    } catch { setTagFilteredIds(new Set()); }
+  };
+
   const filteredTransactions = useMemo(() => {
-    if (!searchText.trim()) return transactions;
-    const term = searchText.toLowerCase().trim();
-    return transactions.filter(t => t.description.toLowerCase().includes(term));
-  }, [transactions, searchText]);
+    let list = transactions;
+    if (searchText.trim()) {
+      const term = searchText.toLowerCase().trim();
+      list = list.filter(t => t.description.toLowerCase().includes(term));
+    }
+    if (tagFilteredIds) list = list.filter(t => tagFilteredIds.has(t.id));
+    return list;
+  }, [transactions, searchText, tagFilteredIds]);
+
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
 
@@ -84,7 +104,10 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     description: '',
     date: new Date().toISOString().split('T')[0],
     notes: '',
+    tags: [] as string[],
   });
+  const [tagRefresh, setTagRefresh] = useState(0);
+  const recordTags = useRecordTags('transaction', transactions.map(t => t.id), tagRefresh);
 
   // Calculate current month's spending per category with budget
   const budgetSummary = useMemo(() => {
@@ -127,8 +150,9 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
   };
 
   const handleSave = async () => {
+    let recordId: string | null = null;
     if (editingTransaction) {
-      await updateTransaction(editingTransaction.id, {
+      const ok = await updateTransaction(editingTransaction.id, {
         account_id: form.account_id,
         category_id: form.category_id || null,
         subcategory_id: form.subcategory_id || null,
@@ -138,8 +162,9 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
         date: form.date,
         notes: form.notes || null,
       });
+      if (ok) recordId = editingTransaction.id;
     } else {
-      await createTransaction({
+      const created = await createTransaction({
         account_id: form.account_id,
         category_id: form.category_id || undefined,
         subcategory_id: form.subcategory_id || undefined,
@@ -149,6 +174,11 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
         date: form.date,
         notes: form.notes,
       });
+      if (created) recordId = (created as any).id;
+    }
+    if (recordId) {
+      try { await setEntityTags('transaction', recordId, form.tags); } catch (e) { /* ignore */ }
+      setTagRefresh(r => r + 1);
     }
     setShowDialog(false);
     setEditingTransaction(null);
@@ -165,11 +195,18 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
       description: '',
       date: new Date().toISOString().split('T')[0],
       notes: '',
+      tags: [],
     });
   };
 
-  const handleEdit = (transaction: Transaction) => {
+  const handleEdit = async (transaction: Transaction) => {
     setEditingTransaction(transaction);
+    let existingTags: string[] = [];
+    try {
+      const { fetchTagsForRecords } = await import('@/hooks/useFinanceTags');
+      const map = await fetchTagsForRecords('transaction', [transaction.id]);
+      existingTags = (map[transaction.id] || []).map(t => t.id);
+    } catch {}
     setForm({
       type: transaction.type,
       account_id: transaction.account_id,
@@ -179,6 +216,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
       description: transaction.description,
       date: transaction.date,
       notes: transaction.notes || '',
+      tags: existingTags,
     });
     setShowDialog(true);
   };
@@ -301,6 +339,8 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                         type={form.type}
                         categories={filteredCategories}
                         initialDescription={form.description}
+                        companyId={companyId}
+                        onSelectTags={(ids) => setForm(prev => ({ ...prev, tags: Array.from(new Set([...(prev.tags || []), ...ids])) }))}
                         onSelectCategory={(categoryId, subcategoryId) => {
                           if (subcategoryId) {
                             setForm({
@@ -365,6 +405,16 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                   </div>
 
                   <div>
+                    <Label>Tags</Label>
+                    <TagPicker
+                      companyId={companyId}
+                      value={form.tags}
+                      onChange={(ids) => setForm({ ...form, tags: ids })}
+                      placeholder="Adicionar tags..."
+                    />
+                  </div>
+
+                  <div>
                     <Label>Observações</Label>
                     <Textarea
                       value={form.notes}
@@ -391,6 +441,10 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
         <Card>
           <CardContent className="pt-4">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
+                <Label>Tags</Label>
+                <TagPicker companyId={companyId} value={filterTagIds} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
+              </div>
               <div>
                 <Label>Descrição</Label>
                 <Input
@@ -566,6 +620,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                           {transaction.notes && (
                             <p className="text-xs text-muted-foreground">{transaction.notes}</p>
                           )}
+                          <TagBadges tags={recordTags[transaction.id]} className="mt-1" />
                         </div>
                       </div>
                     </TableCell>

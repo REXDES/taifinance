@@ -3,12 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export interface MachineType { id: string; company_id: string; name: string; }
+export interface MachineCategory { id: string; company_id: string; name: string; }
 export interface Machine {
   id: string; company_id: string; type_id: string | null; name: string;
   brand: string | null; model: string | null; year: number | null; destination: string | null;
   acquisition_value: number; acquisition_date: string | null; acquisition_source: 'new_purchase' | 'pre_existing';
   current_horimeter: number; preventive_maintenance_interval_hours: number | null;
-  status: 'available' | 'rented' | 'maintenance' | 'sold'; notes: string | null;
+  status: 'disponivel' | 'locada' | 'vendida' | 'reservada' | 'demonstracao' | 'indisponivel';
+  technical_status?: 'operacional' | 'em_manutencao' | 'em_teste' | 'descarte';
+  location?: string | null;
+  usage_purpose?: string[] | null;
+  notes: string | null;
 }
 export interface Operator { id: string; company_id: string; name: string; document: string | null; phone: string | null; notes: string | null; }
 export interface Mechanic { id: string; company_id: string; name: string; document: string | null; phone: string | null; specialty: string | null; notes: string | null; }
@@ -17,8 +22,11 @@ export interface MaintenanceRecord {
   start_date: string; end_date: string | null; description: string | null; horimeter_at_service: number | null;
   total_cost: number; payment_mode: 'cash' | 'installments' | 'none';
   status: 'in_progress' | 'completed' | 'cancelled'; transaction_id: string | null;
+  paid_account_id?: string | null;
+  has_travel?: boolean; travel_vehicle_id?: string | null; travel_km?: number | null; travel_notes?: string | null;
   machine?: Machine; mechanic?: Mechanic | null;
 }
+
 export interface RentalPriceTable {
   id: string; company_id: string; machine_id: string; unit: 'hour' | 'day' | 'week' | 'month';
   min_qty: number; max_qty: number | null; price: number; valid_from: string | null; valid_to: string | null;
@@ -54,6 +62,10 @@ function useTable<T>(table: string, companyId: string | null, select = '*') {
 export function useMachineTypes(companyId: string | null) {
   const r = useTable<MachineType>('machine_types', companyId);
   return { types: r.data, loading: r.loading, refetch: r.refetch };
+}
+export function useMachineCategories(companyId: string | null) {
+  const r = useTable<MachineCategory>('machine_categories', companyId);
+  return { categories: r.data, loading: r.loading, refetch: r.refetch };
 }
 export function useMachines(companyId: string | null) {
   const r = useTable<Machine>('machines', companyId);
@@ -128,11 +140,13 @@ export function useRentals(companyId: string | null) {
 export function useCompanyMachinesFlag(companyId: string | null) {
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
+  const refetch = useCallback(async () => {
     if (!companyId) { setEnabled(false); setLoading(false); return; }
     setLoading(true);
-    (supabase as any).from('companies').select('machines_module_enabled').eq('id', companyId).maybeSingle()
-      .then(({ data }: any) => { setEnabled(!!data?.machines_module_enabled); setLoading(false); });
+    const { data } = await (supabase as any).from('companies').select('machines_module_enabled').eq('id', companyId).maybeSingle();
+    setEnabled(!!data?.machines_module_enabled);
+    setLoading(false);
   }, [companyId]);
-  return { enabled, loading };
+  useEffect(() => { refetch(); }, [refetch]);
+  return { enabled, loading, refetch };
 }

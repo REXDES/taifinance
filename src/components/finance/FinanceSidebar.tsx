@@ -29,7 +29,15 @@ import {
   Zap,
   Landmark,
   Shield,
+  ShieldCheck,
   LayoutDashboard,
+  Wrench,
+  Truck,
+  HardHat,
+  ClipboardCheck,
+  Hammer,
+  Briefcase,
+  Split,
   Barcode,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +60,8 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { FinanceView } from '@/pages/Finance';
+import { usePermissions } from '@/hooks/usePermissions';
+import { FINANCE_VIEW_PERMISSION_KEY } from '@/lib/permissions';
 
 interface Company {
   id: string;
@@ -79,20 +89,26 @@ interface FinanceSidebarProps {
   onOpenUsers?: () => void;
   onOpenInvitations?: () => void;
   onOpenCompanySettings?: () => void;
+  machinesEnabled?: boolean;
+  creditEnabled?: boolean;
+  bankDigitalEnabled?: boolean;
+  paymentsEnabled?: boolean;
 }
 
 type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };
 
 const mainMenuItems: MenuItem[] = [
   { view: 'dashboard', label: 'Dashboard', icon: <Home className="w-4 h-4" /> },
-  { view: 'quick-entry', label: 'Lance Rápido', icon: <Zap className="w-4 h-4" /> },
-  { view: 'bank-digital', label: 'Banco Digital', icon: <Landmark className="w-4 h-4" /> },
+  { view: 'quick-entry', label: 'Lance Rápido (Finanças)', icon: <Zap className="w-4 h-4" /> },
 ];
+
+const bankDigitalMenuItem: MenuItem = { view: 'bank-digital', label: 'Banco Digital', icon: <Landmark className="w-4 h-4" /> };
 
 const transacoesMenuItems: MenuItem[] = [
   { view: 'transactions', label: 'Lançamentos', icon: <ArrowUpDown className="w-4 h-4" /> },
   { view: 'transfers', label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" /> },
   { view: 'payables-receivables', label: 'Contas a Pagar/Receber', icon: <CreditCard className="w-4 h-4" /> },
+  { view: 'statement-import', label: 'Importar Extrato', icon: <FileSearch className="w-4 h-4" /> },
   { view: 'boletos', label: 'Boletos', icon: <Barcode className="w-4 h-4" /> },
 ];
 
@@ -103,6 +119,7 @@ const relatoriosMainItems: MenuItem[] = [
 const movimentacoesMenuItems: MenuItem[] = [
   { view: 'statement', label: 'Extrato', icon: <FileText className="w-4 h-4" /> },
   { view: 'category-report', label: 'Por Categoria', icon: <PieChart className="w-4 h-4" /> },
+  { view: 'tag-report', label: 'Por Tag', icon: <Tags className="w-4 h-4" /> },
   { view: 'cash-flow', label: 'Fluxo Financeiro', icon: <Activity className="w-4 h-4" /> },
 ];
 
@@ -117,8 +134,52 @@ const allRelatoriosItems = [...relatoriosMainItems, ...movimentacoesMenuItems, .
 const cadastrosMenuItems: MenuItem[] = [
   { view: 'accounts', label: 'Contas', icon: <Wallet className="w-4 h-4" /> },
   { view: 'categories', label: 'Categorias', icon: <Tags className="w-4 h-4" /> },
+  { view: 'tags', label: 'Tags', icon: <Tags className="w-4 h-4" /> },
+  { view: 'clients-suppliers', label: 'Clientes/Fornecedores', icon: <Users className="w-4 h-4" /> },
+  { view: 'split-pix', label: 'Split de PIX', icon: <Split className="w-4 h-4" /> },
+];
+
+const machinesTopMenuItems: MenuItem[] = [
+  { view: 'machines-dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { view: 'machines-inventory', label: 'Inventário', icon: <Truck className="w-4 h-4" /> },
+  { view: 'machines-maintenance', label: 'Manutenções', icon: <Hammer className="w-4 h-4" /> },
+];
+const machinesGestaoMenuItems: MenuItem[] = [
+  { view: 'machines-rentals', label: 'Locações', icon: <ClipboardCheck className="w-4 h-4" /> },
+  { view: 'machines-pricing', label: 'Tabela de Preços', icon: <Tags className="w-4 h-4" /> },
+];
+const machinesCadastrosMenuItems: MenuItem[] = [
+  { view: 'machines-operators', label: 'Operadores', icon: <HardHat className="w-4 h-4" /> },
+  { view: 'machines-mechanics', label: 'Mecânicos', icon: <Wrench className="w-4 h-4" /> },
+  { view: 'machines-catalog', label: 'Categorias e Tipos', icon: <Tags className="w-4 h-4" /> },
   { view: 'clients-suppliers', label: 'Clientes/Fornecedores', icon: <Users className="w-4 h-4" /> },
 ];
+const machinesMenuItems: MenuItem[] = [
+  ...machinesTopMenuItems,
+  ...machinesGestaoMenuItems,
+  ...machinesCadastrosMenuItems,
+];
+
+const creditMenuItems: MenuItem[] = [
+  { view: 'credit-applications', label: 'Propostas', icon: <ClipboardList className="w-4 h-4" /> },
+];
+const creditAdminMenuItems: MenuItem[] = [
+  { view: 'credit-ignored', label: 'Ocorrências Ignoradas', icon: <Shield className="w-4 h-4" /> },
+];
+
+const paymentsMenuItems: MenuItem[] = [
+  { view: 'payments-dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { view: 'payments-registration', label: 'Cadastro', icon: <Building2 className="w-4 h-4" /> },
+  { view: 'payments-charges', label: 'Cobranças', icon: <Receipt className="w-4 h-4" /> },
+];
+
+const paymentsAdminMenuItems: MenuItem[] = [
+  { view: 'payments-admin-dashboard', label: 'Pagamentos — Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { view: 'payments-admin-registration', label: 'Pagamentos — Cadastros', icon: <Building2 className="w-4 h-4" /> },
+  { view: 'payments-admin-settlements', label: 'Pagamentos — Liquidações', icon: <TrendingUp className="w-4 h-4" /> },
+  { view: 'payments-admin-settings', label: 'Pagamentos — Configurações', icon: <Settings className="w-4 h-4" /> },
+];
+
 
 export function FinanceSidebar({
   companies,
@@ -140,10 +201,49 @@ export function FinanceSidebar({
   onOpenUsers,
   onOpenInvitations,
   onOpenCompanySettings,
+  machinesEnabled = false,
+  creditEnabled = false,
+  bankDigitalEnabled = false,
+  paymentsEnabled = false,
 }: FinanceSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
+  const { can } = usePermissions();
+
+  // Filter helper: hide sidebar items whose permission key is denied for this role.
+  // Supervisor and unknown views always pass (unmapped views default to allowed).
+  const filterAllowed = (items: MenuItem[]) =>
+    isAdminMode || isSupervisor
+      ? items
+      : items.filter(i => {
+           const key = FINANCE_VIEW_PERMISSION_KEY[i.view];
+           return !!key && can(key);
+        });
+
+
+  // Accordion state for top-level groups in normal mode (only one open at a time)
+  type TopGroup = 'gestao' | 'machines' | 'credit' | 'payments';
+  type SubGroup = 'transacoes' | 'relatorios' | 'cadastros';
+  const isInGestao =
+    transacoesMenuItems.some(i => currentView === i.view) ||
+    allRelatoriosItems.some(i => currentView === i.view) ||
+    cadastrosMenuItems.some(i => currentView === i.view);
+  const initialOpenGroup: TopGroup | null =
+    isInGestao ? 'gestao'
+    : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
+    : creditMenuItems.some(i => currentView === i.view) ? 'credit'
+    : paymentsMenuItems.some(i => currentView === i.view) ? 'payments'
+    : null;
+  const initialOpenSub: SubGroup | null =
+    transacoesMenuItems.some(i => currentView === i.view) ? 'transacoes'
+    : allRelatoriosItems.some(i => currentView === i.view) ? 'relatorios'
+    : cadastrosMenuItems.some(i => currentView === i.view) ? 'cadastros'
+    : null;
+  const [openGroup, setOpenGroup] = useState<TopGroup | null>(initialOpenGroup);
+  const [openSubGroup, setOpenSubGroup] = useState<SubGroup | null>(initialOpenSub);
+  const setGroup = (g: TopGroup) => (open: boolean) => setOpenGroup(open ? g : null);
+  const setSubGroup = (g: SubGroup) => (open: boolean) => setOpenSubGroup(open ? g : null);
 
   const renderMenuItem = (item: MenuItem) => (
     collapsed ? (
@@ -225,7 +325,7 @@ export function FinanceSidebar({
           </div>
         </div>
 
-        {/* Company Selector — hidden in admin mode (admin trabalha global) */}
+        {/* Company Selector — escondido em admin mode (admin trabalha global; seleção via dialog) */}
         {!isAdminMode && !collapsed && companies.length > 0 && (
           <div className="p-2 border-b border-border">
             <DropdownMenu>
@@ -283,9 +383,15 @@ export function FinanceSidebar({
               /* ============== ADMIN MODE MENU ============== */
               <>
                 {renderMenuItem({ view: 'admin-dashboard', label: 'Dashboard Admin', icon: <LayoutDashboard className="w-4 h-4" /> })}
-                {renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
+                {renderMenuItem({ view: 'admin-users', label: 'Usuários', icon: <Users className="w-4 h-4" /> })}
+                {renderMenuItem({ view: 'admin-roles', label: 'Cargos & Permissões', icon: <ShieldCheck className="w-4 h-4" /> })}
+                {bankDigitalEnabled && renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
+                {renderMenuItem({ view: 'credit-admin', label: 'Gestão de Crédito (config)', icon: <CreditCard className="w-4 h-4" /> })}
+
+                {paymentsAdminMenuItems.map(renderMenuItem)}
 
                 {!collapsed && (
+
                   <div className="pt-2 pb-1 px-2">
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
                       Gestão da Plataforma
@@ -316,28 +422,8 @@ export function FinanceSidebar({
                   )
                 )}
 
-                {/* Gerenciar Empresas (supervisor) */}
-                {isSupervisor && onManageCompanies && (
-                  collapsed ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="w-full" onClick={onManageCompanies}>
-                          <Building2 className="w-4 h-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">Gerenciar Empresas</TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
-                      onClick={onManageCompanies}
-                    >
-                      <Building2 className="w-4 h-4" />
-                      Gerenciar Empresas
-                    </Button>
-                  )
-                )}
+                {/* "Gerenciar Empresas" removido — era duplicata de "Configurações da Empresa".
+                    Use o seletor de empresa no topo do sidebar para escolher qual empresa configurar. */}
 
                 {/* Nova Empresa */}
                 {canCreateCompany && onCreateCompany && (
@@ -367,28 +453,8 @@ export function FinanceSidebar({
                   )
                 )}
 
-                {/* Usuários */}
-                {(isSupervisor || isGerente) && onOpenUsers && (
-                  collapsed ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="w-full" onClick={onOpenUsers}>
-                          <Users className="w-4 h-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">Usuários</TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
-                      onClick={onOpenUsers}
-                    >
-                      <Users className="w-4 h-4" />
-                      Usuários
-                    </Button>
-                  )
-                )}
+                {/* "Usuários" (dialog por empresa) removido — use o menu "Usuários" global acima. */}
+
 
                 {/* Convites */}
                 {canInvite && onOpenInvitations && (
@@ -424,96 +490,293 @@ export function FinanceSidebar({
             ) : (
               /* ============== NORMAL MODE MENU ============== */
               <>
-                {mainMenuItems.map(renderMenuItem)}
+                {filterAllowed(mainMenuItems).map(renderMenuItem)}
+                {bankDigitalEnabled && can('finance.bank_digital') && renderMenuItem(bankDigitalMenuItem)}
 
-                {/* Transações */}
+                {/* Gestão Financeira (engloba Transações, Relatórios, Cadastros) */}
                 {collapsed ? (
-                  transacoesMenuItems.map(renderMenuItem)
+                  <>
+                    {filterAllowed(transacoesMenuItems).map(renderMenuItem)}
+                    {filterAllowed(allRelatoriosItems).map(renderMenuItem)}
+                    {filterAllowed(cadastrosMenuItems).map(renderMenuItem)}
+                  </>
                 ) : (
-                  <Collapsible defaultOpen={transacoesMenuItems.some(item => currentView === item.view)}>
+                  <Collapsible open={openGroup === 'gestao'} onOpenChange={setGroup('gestao')}>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                         <span className="flex items-center gap-2">
-                          <Receipt className="w-4 h-4" />
-                          Transações
+                          <Briefcase className="w-4 h-4" />
+                          Gestão Financeira
                         </span>
                         <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                      {transacoesMenuItems.map(renderMenuItem)}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
-
-                {/* Relatórios */}
-                {collapsed ? (
-                  allRelatoriosItems.map(renderMenuItem)
-                ) : (
-                  <Collapsible defaultOpen={allRelatoriosItems.some(item => currentView === item.view)}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
-                        <span className="flex items-center gap-2">
-                          <ClipboardList className="w-4 h-4" />
-                          Relatórios
-                        </span>
-                        <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                      {relatoriosMainItems.map(renderMenuItem)}
-
-                      <Collapsible defaultOpen={movimentacoesMenuItems.some(item => currentView === item.view)}>
+                      {/* Transações */}
+                      <Collapsible open={openSubGroup === 'transacoes'} onOpenChange={setSubGroup('transacoes')}>
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                             <span className="flex items-center gap-2">
-                              <Activity className="w-4 h-4" />
-                              Movimentações
+                              <Receipt className="w-4 h-4" />
+                              Transações
                             </span>
                             <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                          {movimentacoesMenuItems.map(renderMenuItem)}
+                          {filterAllowed(transacoesMenuItems).map(renderMenuItem)}
                         </CollapsibleContent>
                       </Collapsible>
 
-                      <Collapsible defaultOpen={pagarReceberMenuItems.some(item => currentView === item.view)}>
+                      {/* Relatórios */}
+                      <Collapsible open={openSubGroup === 'relatorios'} onOpenChange={setSubGroup('relatorios')}>
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                             <span className="flex items-center gap-2">
-                              <CreditCard className="w-4 h-4" />
-                              Pagar/Receber
+                              <ClipboardList className="w-4 h-4" />
+                              Relatórios
                             </span>
                             <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                           </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                          {pagarReceberMenuItems.map(renderMenuItem)}
+                          {filterAllowed(relatoriosMainItems).map(renderMenuItem)}
+
+                          <Collapsible defaultOpen={movimentacoesMenuItems.some(item => currentView === item.view)}>
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                                <span className="flex items-center gap-2">
+                                  <Activity className="w-4 h-4" />
+                                  Movimentações
+                                </span>
+                                <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                              {filterAllowed(movimentacoesMenuItems).map(renderMenuItem)}
+                            </CollapsibleContent>
+                          </Collapsible>
+
+                          <Collapsible defaultOpen={pagarReceberMenuItems.some(item => currentView === item.view)}>
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                                <span className="flex items-center gap-2">
+                                  <CreditCard className="w-4 h-4" />
+                                  Pagar/Receber
+                                </span>
+                                <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                              {filterAllowed(pagarReceberMenuItems).map(renderMenuItem)}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </CollapsibleContent>
+                      </Collapsible>
+
+                      {/* Cadastros */}
+                      <Collapsible open={openSubGroup === 'cadastros'} onOpenChange={setSubGroup('cadastros')}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                            <span className="flex items-center gap-2">
+                              <FolderCog className="w-4 h-4" />
+                              Cadastros
+                            </span>
+                            <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                          {filterAllowed(cadastrosMenuItems).map(renderMenuItem)}
                         </CollapsibleContent>
                       </Collapsible>
                     </CollapsibleContent>
                   </Collapsible>
                 )}
 
-                {/* Cadastros */}
-                {collapsed ? (
-                  cadastrosMenuItems.map(renderMenuItem)
-                ) : (
-                  <Collapsible defaultOpen={cadastrosMenuItems.some(item => currentView === item.view)}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
-                        <span className="flex items-center gap-2">
-                          <FolderCog className="w-4 h-4" />
-                          Cadastros
-                        </span>
-                        <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                      {cadastrosMenuItems.map(renderMenuItem)}
-                    </CollapsibleContent>
-                  </Collapsible>
+                {/* Máquinas & Locação (módulo opcional por empresa) */}
+                {machinesEnabled && (
+                  collapsed ? (
+                    filterAllowed(machinesMenuItems).map(renderMenuItem)
+                  ) : (
+                    <Collapsible open={openGroup === 'machines'} onOpenChange={setGroup('machines')}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                          <span className="flex items-center gap-2">
+                            <Truck className="w-4 h-4" />
+                            Máquinas & Locação
+                          </span>
+                          <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                        {filterAllowed(machinesTopMenuItems).map(renderMenuItem)}
+
+                        <Collapsible defaultOpen={machinesGestaoMenuItems.some(i => currentView === i.view)}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                              <span className="flex items-center gap-2">
+                                <Briefcase className="w-4 h-4" />
+                                Gestão
+                              </span>
+                              <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                            {filterAllowed(machinesGestaoMenuItems).map(renderMenuItem)}
+                          </CollapsibleContent>
+                        </Collapsible>
+
+                        <Collapsible defaultOpen={machinesCadastrosMenuItems.some(i => currentView === i.view)}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                              <span className="flex items-center gap-2">
+                                <FolderCog className="w-4 h-4" />
+                                Cadastros
+                              </span>
+                              <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                            {filterAllowed(machinesCadastrosMenuItems).map(renderMenuItem)}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )
+                )}
+
+                {/* Gestão de Crédito (módulo opcional por empresa) */}
+                {creditEnabled && (
+                  collapsed ? (
+                    <>
+                      {filterAllowed(creditMenuItems).map(renderMenuItem)}
+                      {(isSupervisor || isGerente) && filterAllowed(creditAdminMenuItems).map(renderMenuItem)}
+                    </>
+                  ) : (
+                    <Collapsible open={openGroup === 'credit'} onOpenChange={setGroup('credit')}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                          <span className="flex items-center gap-2">
+                            <CreditCard className="w-4 h-4" />
+                            Gestão de Crédito
+                          </span>
+                          <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                        {filterAllowed(creditMenuItems).map(renderMenuItem)}
+                        {(isSupervisor || isGerente) && filterAllowed(creditAdminMenuItems).map(renderMenuItem)}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )
+                )}
+
+                {/* Pagamentos - Necta (módulo opcional por empresa) */}
+                {paymentsEnabled && (
+                  collapsed ? (
+                    filterAllowed(paymentsMenuItems).map(renderMenuItem)
+                  ) : (
+                    <Collapsible open={openGroup === 'payments'} onOpenChange={setGroup('payments')}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                          <span className="flex items-center gap-2">
+                            <CreditCard className="w-4 h-4" />
+                            Pagamentos
+                          </span>
+                          <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                        {filterAllowed(paymentsMenuItems).map(renderMenuItem)}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )
+                )}
+
+                {/* Administração da empresa — disponível também no modo normal */}
+                {!collapsed && (canCreateCompany || canInvite || (selectedCompanyId && onOpenCompanySettings && (isSupervisor || (isGerente && can('admin.companies'))))) && (
+                  <div className="pt-2 pb-1 px-2">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                      Administração
+                    </span>
+                  </div>
+                )}
+
+                {canCreateCompany && onCreateCompany && (
+                  collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="w-full" onClick={onCreateCompany}>
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Nova Empresa</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onCreateCompany}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Nova Empresa
+                      {isGerente && companyLimit !== null && (
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {companiesCreated}/{companyLimit}
+                        </Badge>
+                      )}
+                    </Button>
+                  )
+                )}
+
+                {canInvite && onOpenInvitations && selectedCompanyId && (
+                  collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="w-full" onClick={onOpenInvitations}>
+                          <UserPlus className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Convidar Usuário</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onOpenInvitations}
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Convidar Usuário
+                      {isGerente && invitationLimit !== null && (
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {invitationsCreated}/{invitationLimit}
+                        </Badge>
+                      )}
+                    </Button>
+                  )
+                )}
+
+                {/* Configurações da Empresa (supervisor e gerente) */}
+                {selectedCompanyId && onOpenCompanySettings && (isSupervisor || (isGerente && can('admin.companies'))) && (
+                  collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="w-full" onClick={onOpenCompanySettings}>
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Configurações da Empresa</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-2 text-foreground hover:bg-accent"
+                      onClick={onOpenCompanySettings}
+                    >
+                      <Settings className="w-4 h-4" />
+                      Configurações da Empresa
+                    </Button>
+                  )
                 )}
               </>
             )}

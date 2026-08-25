@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useAccountStatement, StatementEntry } from '@/hooks/useAccountStatement';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
@@ -13,6 +13,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { TagPicker } from './TagPicker';
+import TagBadges from './TagBadges';
+import { fetchTagsForRecords, findRecordIdsByTags } from '@/hooks/useFinanceTags';
 
 interface StatementPageProps { companyId: string; }
 
@@ -24,6 +27,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
 
   const { data: subcategories = [] } = useQuery({
     queryKey: ['subcategories', selectedCategoryId],
@@ -50,6 +54,37 @@ export function StatementPage({ companyId }: StatementPageProps) {
     selectedSubcategoryId || undefined,
     companyId
   );
+
+  // Resolve tag filter to a set of allowed ids (union of tx + transfer ids)
+  const [allowedIds, setAllowedIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (filterTagIds.length === 0) { setAllowedIds(null); return; }
+    Promise.all([
+      findRecordIdsByTags('transaction', filterTagIds),
+      findRecordIdsByTags('transfer', filterTagIds),
+    ]).then(([t, tr]) => { if (!cancelled) setAllowedIds(new Set([...t, ...tr])); })
+      .catch(() => { if (!cancelled) setAllowedIds(new Set()); });
+    return () => { cancelled = true; };
+  }, [filterTagIds.join(',')]);
+
+  // Load tags for visible rows
+  const [rowTags, setRowTags] = useState<Record<string, any[]>>({});
+  useEffect(() => {
+    let cancelled = false;
+    const txIds = entries.filter(e => e.type === 'income' || e.type === 'expense').map(e => e.id);
+    const trIds = entries.filter(e => e.type === 'transfer_in' || e.type === 'transfer_out').map(e => e.id);
+    Promise.all([
+      txIds.length ? fetchTagsForRecords('transaction', txIds) : Promise.resolve({}),
+      trIds.length ? fetchTagsForRecords('transfer', trIds) : Promise.resolve({}),
+    ]).then(([a, b]) => { if (!cancelled) setRowTags({ ...a, ...b }); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [entries]);
+
+  const visibleEntries = useMemo(() => {
+    if (!allowedIds) return entries;
+    return entries.filter(e => allowedIds.has(e.id));
+  }, [entries, allowedIds]);
 
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const formatCurrencyPlain = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -204,6 +239,10 @@ export function StatementPage({ companyId }: StatementPageProps) {
           </div>
           <div><Label>Data Inicial</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
           <div><Label>Data Final</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
+          <div className="md:col-span-3 lg:col-span-5">
+            <Label>Tags</Label>
+            <TagPicker companyId={companyId} value={filterTagIds} onChange={setFilterTagIds} placeholder="Filtrar por tags..." />
+          </div>
         </div>
         {!hasValidFilter && (
           <p className="text-sm text-amber-600 mt-3">Selecione ao menos uma conta ou uma categoria para visualizar o extrato.</p>
@@ -218,7 +257,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
             <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Resultado</CardTitle></CardHeader><CardContent><div className={`text-xl font-bold ${totals.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(totals.net)}</div></CardContent></Card>
           </div>
           <Card><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent>
-            {entries.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhuma movimentação encontrada.</p> : (
+            {visibleEntries.length === 0 ? <p className="text-muted-foreground text-center py-8">Nenhuma movimentação encontrada.</p> : (
               <Table><TableHeader><TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
@@ -228,10 +267,13 @@ export function StatementPage({ companyId }: StatementPageProps) {
                 {showBalanceColumn && <TableHead className="text-right">Saldo</TableHead>}
               </TableRow></TableHeader>
                 <TableBody>
-                  {entries.map((e) => (
+                  {visibleEntries.map((e) => (
                     <TableRow key={e.id}>
                       <TableCell>{new Date(e.date).toLocaleDateString('pt-BR')}</TableCell>
-                      <TableCell><div className="flex items-center gap-2">{getIcon(e.type)}<span>{e.description}</span></div></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">{getIcon(e.type)}<span>{e.description}</span></div>
+                        <TagBadges tags={rowTags[e.id]} className="mt-1 ml-6" />
+                      </TableCell>
                       {showAccountColumn && <TableCell className="text-muted-foreground">{e.accountName || '-'}</TableCell>}
                       <TableCell className="text-muted-foreground">{e.category ? `${e.category}${e.subcategory ? ` / ${e.subcategory}` : ''}` : e.relatedAccount || '-'}</TableCell>
                       <TableCell className={`text-right ${e.type === 'income' || e.type === 'transfer_in' ? 'text-green-600' : 'text-red-600'}`}>{e.type === 'income' || e.type === 'transfer_in' ? '+' : '-'}{formatCurrency(e.amount)}</TableCell>

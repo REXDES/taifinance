@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,46 +8,167 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { useMachines, useMachineTypes, Machine } from '@/hooks/useMachinesModule';
+import { Plus, Pencil, Trash2, Tag, Package, Wallet, Percent, MapPin, Tags } from 'lucide-react';
+import { useMachines, useMachineTypes, useMachineCategories, Machine } from '@/hooks/useMachinesModule';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
+import { MachineTagPicker } from './MachineTagPicker';
+import { MachineTagsManagerDialog } from './MachineTagsManagerDialog';
+import { fetchMachineTagsMap, setMachineTags, MachineTag } from '@/hooks/useMachineTags';
 
 interface Props { companyId: string; }
 
-const STATUS_LABEL: Record<string, string> = { available: 'Disponível', rented: 'Locada', maintenance: 'Em manutenção', sold: 'Vendida' };
+const STATUS_LABEL: Record<string, string> = {
+  disponivel: 'Disponível', locada: 'Locada', vendida: 'Vendida', reservada: 'Reservada', demonstracao: 'Demonstração', indisponivel: 'Indisponível',
+};
+const TECH_STATUS_LABEL: Record<string, string> = {
+  operacional: 'Operacional', em_manutencao: 'Em manutenção', em_teste: 'Em teste', descarte: 'Descarte',
+};
+const DEFAULT_LOCATIONS = ['No pátio', 'Em trânsito', 'No cliente'];
+const USAGE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'locacao', label: 'Locação' },
+  { value: 'venda', label: 'Venda' },
+  { value: 'estoque', label: 'Estoque' },
+];
+
+type MachineExt = Machine & {
+  category?: string | null;
+  technical_status?: string | null;
+  location?: string | null;
+  serial_number?: string | null;
+  sale_price?: number | null;
+  rental_price_daily?: number | null;
+  rental_price_weekly?: number | null;
+  rental_price_monthly?: number | null;
+};
+
+const DEFAULT_CATEGORY_LABEL: Record<string, string> = { maquina: 'Máquina', equipamento: 'Equipamento', ferramenta: 'Ferramenta' };
+const DEFAULT_CATEGORIES = [
+  { value: 'maquina', label: 'Máquina' },
+  { value: 'equipamento', label: 'Equipamento' },
+  { value: 'ferramenta', label: 'Ferramenta' },
+];
+
+const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function MachinesPage({ companyId }: Props) {
-  const { machines, refetch, loading } = useMachines(companyId);
+  const { machines, refetch, loading } = useMachines(companyId) as { machines: MachineExt[]; refetch: () => void; loading: boolean };
   const { types, refetch: refetchTypes } = useMachineTypes(companyId);
+  const { categories: dbCategories } = useMachineCategories(companyId);
+  const categoryOptions = useMemo(() => {
+    if (dbCategories.length > 0) return dbCategories.map(c => ({ value: c.name, label: c.name }));
+    return DEFAULT_CATEGORIES;
+  }, [dbCategories]);
+  const categoryLabel = (v?: string | null) => {
+    if (!v) return DEFAULT_CATEGORY_LABEL.equipamento;
+    const found = categoryOptions.find(o => o.value === v);
+    return found?.label || DEFAULT_CATEGORY_LABEL[v] || v;
+  };
+  const allCategoryValues = useMemo(() => {
+    const set = new Set<string>();
+    categoryOptions.forEach(o => set.add(o.value));
+    return Array.from(set);
+  }, [categoryOptions]);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Machine | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Machine | null>(null);
+  const [editing, setEditing] = useState<MachineExt | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MachineExt | null>(null);
   const [filter, setFilter] = useState<'all' | 'new_purchase' | 'pre_existing'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [techStatusFilter, setTechStatusFilter] = useState<string>('all');
+  const [locationFilter, setLocationFilter] = useState<string>('all');
+  const [priceTarget, setPriceTarget] = useState<MachineExt | null>(null);
+  const [priceForm, setPriceForm] = useState({ sale_price: '', rental_price_daily: '', rental_price_weekly: '', rental_price_monthly: '' });
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+  const [locDialogOpen, setLocDialogOpen] = useState(false);
+  const [newLocName, setNewLocName] = useState('');
+  const [tagsMap, setTagsMap] = useState<Record<string, MachineTag[]>>({});
+  const [tagsManagerOpen, setTagsManagerOpen] = useState(false);
+  const [formTagIds, setFormTagIds] = useState<string[]>([]);
+
+  const fetchLocations = useCallback(async () => {
+    if (!companyId) return;
+    const { data } = await (supabase as any).from('machine_locations').select('id, name').eq('company_id', companyId).order('name');
+    setLocations(data || []);
+  }, [companyId]);
+  useEffect(() => { fetchLocations(); }, [fetchLocations]);
+
+  const refetchTags = useCallback(async () => {
+    const ids = machines.map(m => m.id);
+    if (ids.length === 0) { setTagsMap({}); return; }
+    try { setTagsMap(await fetchMachineTagsMap(ids)); } catch { /* ignore */ }
+  }, [machines]);
+  useEffect(() => { refetchTags(); }, [refetchTags]);
+
+  const allLocationNames = useMemo(() => {
+    const set = new Set<string>(DEFAULT_LOCATIONS);
+    locations.forEach(l => set.add(l.name));
+    machines.forEach(m => { if (m.location) set.add(m.location); });
+    return Array.from(set);
+  }, [locations, machines]);
 
   const empty = {
     name: '', brand: '', model: '', year: '', destination: '', type_id: 'none',
+    category: 'equipamento' as string,
+    serial_number: '',
     acquisition_value: '', acquisition_date: '', acquisition_source: 'pre_existing' as 'new_purchase' | 'pre_existing',
     current_horimeter: '', preventive_maintenance_interval_hours: '',
-    status: 'available' as Machine['status'], notes: '',
+    status: 'disponivel' as string,
+    technical_status: 'operacional' as string,
+    location: '' as string,
+    usage_purpose: ['locacao'] as string[],
+    notes: '',
   };
   const [form, setForm] = useState(empty);
 
-  const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
-  const openEdit = (m: Machine) => {
+  const openNew = () => { setEditing(null); setForm(empty); setFormTagIds([]); setOpen(true); };
+  const openEdit = (m: MachineExt) => {
     setEditing(m);
     setForm({
       name: m.name, brand: m.brand || '', model: m.model || '', year: m.year?.toString() || '',
       destination: m.destination || '', type_id: m.type_id || 'none',
+      category: ((m as any).category || 'equipamento') as any,
+      serial_number: (m as any).serial_number || '',
       acquisition_value: m.acquisition_value?.toString() || '',
       acquisition_date: m.acquisition_date || '',
       acquisition_source: m.acquisition_source,
       current_horimeter: m.current_horimeter?.toString() || '',
       preventive_maintenance_interval_hours: m.preventive_maintenance_interval_hours?.toString() || '',
-      status: m.status, notes: m.notes || '',
+      status: m.status,
+      technical_status: (m as any).technical_status || 'operacional',
+      location: (m as any).location || '',
+      usage_purpose: ((m as any).usage_purpose && (m as any).usage_purpose.length > 0) ? (m as any).usage_purpose : ['locacao'],
+      notes: m.notes || '',
     });
+    setFormTagIds((tagsMap[m.id] || []).map(t => t.id));
     setOpen(true);
+  };
+
+  const openPrices = (m: MachineExt) => {
+    setPriceTarget(m);
+    setPriceForm({
+      sale_price: m.sale_price?.toString() || '',
+      rental_price_daily: m.rental_price_daily?.toString() || '',
+      rental_price_weekly: m.rental_price_weekly?.toString() || '',
+      rental_price_monthly: m.rental_price_monthly?.toString() || '',
+    });
+  };
+
+  const savePrices = async () => {
+    if (!priceTarget) return;
+    const payload: any = {
+      sale_price: priceForm.sale_price ? parseFloat(priceForm.sale_price) : null,
+      rental_price_daily: priceForm.rental_price_daily ? parseFloat(priceForm.rental_price_daily) : null,
+      rental_price_weekly: priceForm.rental_price_weekly ? parseFloat(priceForm.rental_price_weekly) : null,
+      rental_price_monthly: priceForm.rental_price_monthly ? parseFloat(priceForm.rental_price_monthly) : null,
+    };
+    const { error } = await (supabase as any).from('machines').update(payload).eq('id', priceTarget.id);
+    if (error) return toast.error(error.message);
+    toast.success('Preços atualizados');
+    setPriceTarget(null);
+    refetch();
   };
 
   const save = async () => {
@@ -56,23 +177,34 @@ export function MachinesPage({ companyId }: Props) {
       company_id: companyId, name: form.name, brand: form.brand || null, model: form.model || null,
       year: form.year ? parseInt(form.year) : null, destination: form.destination || null,
       type_id: form.type_id !== 'none' ? form.type_id : null,
+      category: form.category,
+      serial_number: form.serial_number || null,
       acquisition_value: parseFloat(form.acquisition_value || '0'),
       acquisition_date: form.acquisition_date || null,
       acquisition_source: form.acquisition_source,
       current_horimeter: parseFloat(form.current_horimeter || '0'),
       preventive_maintenance_interval_hours: form.preventive_maintenance_interval_hours ? parseFloat(form.preventive_maintenance_interval_hours) : null,
-      status: form.status, notes: form.notes || null,
+      status: form.status,
+      technical_status: form.technical_status,
+      location: form.location || null,
+      usage_purpose: form.usage_purpose && form.usage_purpose.length > 0 ? form.usage_purpose : ['locacao'],
+      notes: form.notes || null,
     };
+    let machineId = editing?.id || null;
     if (editing) {
       const { error } = await (supabase as any).from('machines').update(payload).eq('id', editing.id);
       if (error) return toast.error(error.message);
       toast.success('Máquina atualizada');
     } else {
-      const { error } = await (supabase as any).from('machines').insert(payload);
+      const { data, error } = await (supabase as any).from('machines').insert(payload).select('id').single();
       if (error) return toast.error(error.message);
+      machineId = data?.id;
       toast.success('Máquina cadastrada');
     }
-    setOpen(false); refetch();
+    if (machineId) {
+      try { await setMachineTags(machineId, formTagIds); } catch (e: any) { toast.error('Erro ao salvar tags: ' + e.message); }
+    }
+    setOpen(false); refetch(); refetchTags();
   };
 
   const addType = async () => {
@@ -90,50 +222,164 @@ export function MachinesPage({ companyId }: Props) {
     toast.success('Excluída'); setDeleteTarget(null); refetch();
   };
 
-  const filtered = machines.filter(m => filter === 'all' ? true : m.acquisition_source === filter);
+  const filtered = machines.filter(m => {
+    if (filter !== 'all' && m.acquisition_source !== filter) return false;
+    if (categoryFilter !== 'all' && (m.category || 'equipamento') !== categoryFilter) return false;
+    if (typeFilter !== 'all' && (m.type_id || 'none') !== typeFilter) return false;
+    if (statusFilter !== 'all' && m.status !== statusFilter) return false;
+    if (techStatusFilter !== 'all' && ((m as any).technical_status || 'operacional') !== techStatusFilter) return false;
+    if (locationFilter !== 'all' && ((m as any).location || '') !== locationFilter) return false;
+    return true;
+  });
+
+  const stats = useMemo(() => {
+    const totalValue = filtered.reduce((s, m) => s + Number(m.acquisition_value || 0), 0);
+    const total = filtered.length;
+    const rented = filtered.filter(m => m.status === 'locada').length;
+    const pct = total > 0 ? (rented / total) * 100 : 0;
+    return { totalValue, total, rented, pct };
+  }, [filtered]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Máquinas, Equipamentos e Ferramentas</h1>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-2xl font-semibold">Inventário</h1>
         <div className="flex gap-2">
-          <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="new_purchase">Adquiridas (novas)</SelectItem>
-              <SelectItem value="pre_existing">Pré-existentes</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Nova</Button>
+          <Button variant="outline" onClick={() => setTagsManagerOpen(true)}><Tags className="w-4 h-4 mr-1" /> Gerenciar tags</Button>
+          <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" /> Novo item</Button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas categorias</SelectItem>
+            {categoryOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os tipos</SelectItem>
+            <SelectItem value="none">Sem tipo</SelectItem>
+            {types.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Status comercial" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos status comerc.</SelectItem>
+            {Object.entries(STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={techStatusFilter} onValueChange={setTechStatusFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Status técnico" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos status técn.</SelectItem>
+            {Object.entries(TECH_STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={locationFilter} onValueChange={setLocationFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Local" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os locais</SelectItem>
+            {allLocationNames.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+          <SelectTrigger className="w-48"><SelectValue placeholder="Origem" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas origens</SelectItem>
+            <SelectItem value="new_purchase">Adquiridas (novas)</SelectItem>
+            <SelectItem value="pre_existing">Pré-existentes</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" onClick={() => setLocDialogOpen(true)}><MapPin className="w-4 h-4 mr-1" />Locais</Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Valor total</CardTitle>
+            <Wallet className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{fmtBRL(stats.totalValue)}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Itens cadastrados</CardTitle>
+            <Package className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats.total}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Itens locados</CardTitle>
+            <Tag className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats.rented}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">% locado</CardTitle>
+            <Percent className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats.pct.toFixed(1)}%</div></CardContent>
+        </Card>
       </div>
 
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader><TableRow>
-              <TableHead>Nome</TableHead><TableHead>Marca/Modelo</TableHead><TableHead>Ano</TableHead>
-              <TableHead>Horímetro</TableHead><TableHead>Origem</TableHead><TableHead>Status</TableHead>
-              <TableHead>Valor</TableHead><TableHead className="w-32"></TableHead>
+              <TableHead>Nome</TableHead><TableHead>Categoria</TableHead><TableHead>Marca/Modelo</TableHead>
+              <TableHead>Nº Série</TableHead>
+              <TableHead>Local</TableHead>
+              <TableHead>Status comercial</TableHead><TableHead>Status técnico</TableHead>
+              <TableHead>Horímetro</TableHead><TableHead>Origem</TableHead>
+              <TableHead>Valor</TableHead>
+              <TableHead className="min-w-[180px]">Tags / Lembretes</TableHead>
+              <TableHead className="w-40"></TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {loading ? <TableRow><TableCell colSpan={8}>Carregando...</TableCell></TableRow> :
-                filtered.length === 0 ? <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma máquina cadastrada</TableCell></TableRow> :
+              {loading ? <TableRow><TableCell colSpan={12}>Carregando...</TableCell></TableRow> :
+                filtered.length === 0 ? <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhum item encontrado</TableCell></TableRow> :
                 filtered.map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="secondary">{categoryLabel(m.category)}</Badge>
+                        {((m as any).usage_purpose || ['locacao']).map((u: string) => (
+                          <Badge key={u} variant="outline" className="text-[10px]">{USAGE_OPTIONS.find(o => o.value === u)?.label || u}</Badge>
+                        ))}
+                      </div>
+                    </TableCell>
                     <TableCell>{[m.brand, m.model].filter(Boolean).join(' ') || '-'}</TableCell>
-                    <TableCell>{m.year || '-'}</TableCell>
+                    <TableCell className="font-mono text-xs">{(m as any).serial_number || '-'}</TableCell>
+                    <TableCell>{(m as any).location || '-'}</TableCell>
+                    <TableCell><Badge variant="outline">{STATUS_LABEL[m.status] || m.status}</Badge></TableCell>
+                    <TableCell><Badge variant="outline">{TECH_STATUS_LABEL[(m as any).technical_status || 'operacional']}</Badge></TableCell>
                     <TableCell>{Number(m.current_horimeter).toFixed(1)}h</TableCell>
                     <TableCell>
                       <Badge variant={m.acquisition_source === 'pre_existing' ? 'secondary' : 'default'}>
                         {m.acquisition_source === 'pre_existing' ? 'Pré-existente' : 'Adquirida'}
                       </Badge>
                     </TableCell>
-                    <TableCell><Badge variant="outline">{STATUS_LABEL[m.status]}</Badge></TableCell>
                     <TableCell>R$ {Number(m.acquisition_value).toFixed(2)}</TableCell>
+                    <TableCell className="min-w-[180px]">
+                      <MachineTagPicker
+                        companyId={companyId}
+                        value={(tagsMap[m.id] || []).map(t => t.id)}
+                        onChange={async (ids) => {
+                          try { await setMachineTags(m.id, ids); refetchTags(); }
+                          catch (e: any) { toast.error(e.message); }
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
+                      <Button size="icon" variant="ghost" onClick={() => openPrices(m)} title="Preços de venda e locação"><Tag className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => setDeleteTarget(m)}><Trash2 className="w-4 h-4" /></Button>
                     </TableCell>
@@ -146,10 +392,19 @@ export function MachinesPage({ companyId }: Props) {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl overflow-y-auto max-h-[85vh]">
-          <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Nova'} Máquina</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? 'Editar' : 'Novo'} Item</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div><Label>Nome *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+              <div>
+                <Label>Categoria *</Label>
+                <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {categoryOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label>Tipo</Label>
                 <div className="flex gap-2">
@@ -169,7 +424,14 @@ export function MachinesPage({ companyId }: Props) {
               <div><Label>Modelo</Label><Input value={form.model} onChange={e => setForm({ ...form, model: e.target.value })} /></div>
               <div><Label>Ano</Label><Input type="number" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} /></div>
             </div>
-            <div><Label>Destinação</Label><Input value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} placeholder="Ex.: Locação, Uso interno" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Número de série</Label><Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} placeholder="Ex.: SN123456" /></div>
+              <div><Label>Destinação</Label><Input value={form.destination} onChange={e => setForm({ ...form, destination: e.target.value })} placeholder="Ex.: Locação, Uso interno" /></div>
+            </div>
+            <div>
+              <Label>Tags / Lembretes</Label>
+              <MachineTagPicker companyId={companyId} value={formTagIds} onChange={setFormTagIds} />
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -183,7 +445,32 @@ export function MachinesPage({ companyId }: Props) {
                 </Select>
               </div>
               <div>
-                <Label>Status</Label>
+                <Label>Local</Label>
+                <Select value={form.location || '__none'} onValueChange={(v) => {
+                  if (v === '__add') {
+                    const name = window.prompt('Nome do novo local:');
+                    if (!name?.trim()) return;
+                    (supabase as any).from('machine_locations').insert({ company_id: companyId, name: name.trim() }).then(({ error }: any) => {
+                      if (error) toast.error(error.message);
+                      else { fetchLocations(); setForm(f => ({ ...f, location: name.trim() })); }
+                    });
+                    return;
+                  }
+                  setForm({ ...form, location: v === '__none' ? '' : v });
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Local" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Sem local</SelectItem>
+                    {allLocationNames.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                    <SelectItem value="__add">+ Novo local…</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Status comercial</Label>
                 <Select value={form.status} onValueChange={(v: any) => setForm({ ...form, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -191,7 +478,42 @@ export function MachinesPage({ companyId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Status técnico</Label>
+                <Select value={form.technical_status} onValueChange={(v: any) => setForm({ ...form, technical_status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TECH_STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
+            <div>
+              <Label>Utilização *</Label>
+              <div className="flex flex-wrap gap-4 border rounded p-2">
+                {USAGE_OPTIONS.map(opt => {
+                  const checked = form.usage_purpose.includes(opt.value);
+                  return (
+                    <label key={opt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...form.usage_purpose, opt.value]
+                            : form.usage_purpose.filter(u => u !== opt.value);
+                          setForm({ ...form, usage_purpose: next });
+                        }}
+                      />
+                      {opt.label}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">Selecione uma ou mais finalidades: locação, venda ou estoque interno.</div>
+            </div>
+
 
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Valor de aquisição</Label><Input type="number" step="0.01" value={form.acquisition_value} onChange={e => setForm({ ...form, acquisition_value: e.target.value })} /></div>
@@ -218,6 +540,30 @@ export function MachinesPage({ companyId }: Props) {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!priceTarget} onOpenChange={(o) => !o && setPriceTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Preços sugeridos — {priceTarget?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Preço de venda</Label>
+              <Input type="number" step="0.01" value={priceForm.sale_price} onChange={e => setPriceForm({ ...priceForm, sale_price: e.target.value })} />
+            </div>
+            <div className="border-t pt-3">
+              <div className="text-sm font-medium mb-2">Locação</div>
+              <div className="grid grid-cols-3 gap-2">
+                <div><Label className="text-xs">Diária</Label><Input type="number" step="0.01" value={priceForm.rental_price_daily} onChange={e => setPriceForm({ ...priceForm, rental_price_daily: e.target.value })} /></div>
+                <div><Label className="text-xs">Semanal</Label><Input type="number" step="0.01" value={priceForm.rental_price_weekly} onChange={e => setPriceForm({ ...priceForm, rental_price_weekly: e.target.value })} /></div>
+                <div><Label className="text-xs">Mensal</Label><Input type="number" step="0.01" value={priceForm.rental_price_monthly} onChange={e => setPriceForm({ ...priceForm, rental_price_monthly: e.target.value })} /></div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPriceTarget(null)}>Cancelar</Button>
+            <Button onClick={savePrices}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <DeleteConfirmDialog
         open={!!deleteTarget}
         onOpenChange={() => setDeleteTarget(null)}
@@ -225,6 +571,38 @@ export function MachinesPage({ companyId }: Props) {
         title="Excluir máquina"
         description={`Excluir "${deleteTarget?.name}"?`}
       />
+
+      <Dialog open={locDialogOpen} onOpenChange={setLocDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Locais</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input placeholder="Novo local" value={newLocName} onChange={e => setNewLocName(e.target.value)} />
+              <Button onClick={async () => {
+                if (!newLocName.trim()) return;
+                const { error } = await (supabase as any).from('machine_locations').insert({ company_id: companyId, name: newLocName.trim() });
+                if (error) return toast.error(error.message);
+                setNewLocName(''); fetchLocations();
+              }}><Plus className="w-4 h-4" /></Button>
+            </div>
+            <div className="text-xs text-muted-foreground">Padrões: {DEFAULT_LOCATIONS.join(', ')}</div>
+            <div className="space-y-1">
+              {locations.map(l => (
+                <div key={l.id} className="flex items-center justify-between border rounded px-2 py-1">
+                  <span>{l.name}</span>
+                  <Button size="icon" variant="ghost" onClick={async () => {
+                    await (supabase as any).from('machine_locations').delete().eq('id', l.id);
+                    fetchLocations();
+                  }}><Trash2 className="w-4 h-4" /></Button>
+                </div>
+              ))}
+              {locations.length === 0 && <div className="text-sm text-muted-foreground">Nenhum local personalizado</div>}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <MachineTagsManagerDialog companyId={companyId} open={tagsManagerOpen} onOpenChange={setTagsManagerOpen} />
     </div>
   );
 }

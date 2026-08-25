@@ -1,0 +1,671 @@
+import { useState, useEffect } from 'react';
+import { useCreditRules, type ScoreBand, DEFAULT_RULES, consultCredit, type ConsultResult, CONFIANCA_OPTIONS, SUGESTAO_OPTIONS, SCORE_WEIGHT_KEYS, DEFAULT_SCORE_WEIGHTS } from '@/hooks/useCreditModule';
+import { BureauAnalysisCard } from './BureauAnalysisCard';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Save, Plus, Trash2, FlaskConical, KeyRound, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompanies } from '@/hooks/useCompanies';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Building2 } from 'lucide-react';
+
+interface Props { companyId: string }
+
+export function CreditAdminPage({ companyId }: Props) {
+  const { companies } = useCompanies();
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(companyId);
+  useEffect(() => { setSelectedCompanyId(companyId); }, [companyId]);
+
+  const { rules, loading, save } = useCreditRules(selectedCompanyId);
+  const [draft, setDraft] = useState(rules);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setDraft(rules); }, [rules]);
+
+  // Test consultation
+  const [testDoc, setTestDoc] = useState('');
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ConsultResult | null>(null);
+
+  if (loading || !draft) {
+    return <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  }
+
+  const updateBand = (idx: number, patch: Partial<ScoreBand>) => {
+    const next = [...draft.score_bands];
+    next[idx] = { ...next[idx], ...patch };
+    setDraft({ ...draft, score_bands: next });
+  };
+  const removeBand = (idx: number) => setDraft({ ...draft, score_bands: draft.score_bands.filter((_, i) => i !== idx) });
+  const addBand = () => setDraft({
+    ...draft,
+    score_bands: [...draft.score_bands, { min_score: 0, max_score: 100, classes: [], decision: 'manual', percent_teto: 0, max_parcelas: 0 }],
+  });
+
+  const handleSave = async () => {
+    if (!draft) return;
+    setSaving(true);
+    await save(draft);
+    setSaving(false);
+  };
+
+  const handleTest = async () => {
+    if (!testDoc.trim()) { toast.error('Informe um CPF ou CNPJ'); return; }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const r = await consultCredit({ documento: testDoc, company_id: selectedCompanyId, test_only: true });
+      setTestResult(r);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro na consulta');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const DecisionBadge = ({ d }: { d: string }) => {
+    if (d === 'approved') return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"><ShieldCheck className="w-3 h-3 mr-1" />Aprovado</Badge>;
+    if (d === 'manual') return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"><ShieldAlert className="w-3 h-3 mr-1" />Manual</Badge>;
+    return <Badge className="bg-destructive/15 text-destructive border-destructive/30"><ShieldX className="w-3 h-3 mr-1" />Recusado</Badge>;
+  };
+
+  return (
+    <div className="space-y-6 max-w-5xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Gestão de Crédito — Configuração</h1>
+          <p className="text-sm text-muted-foreground">Configure o provedor, motor de decisão e encargos do módulo.</p>
+        </div>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          Salvar configurações
+        </Button>
+      </div>
+
+      <GlobalConsultationsUsageCard />
+
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Building2 className="w-4 h-4 text-primary" />
+              Empresa cliente para configuração:
+            </div>
+            <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+              <SelectTrigger className="md:w-80"><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground md:ml-2">
+              As abas <strong>Motor</strong>, <strong>Encargos</strong> e <strong>IA &amp; Contrato</strong> abaixo são salvas por empresa — cada cliente possui sua própria política.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="provedor">
+        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+          <TabsTrigger value="provedor">Provedor</TabsTrigger>
+          <TabsTrigger value="motor">Motor</TabsTrigger>
+          <TabsTrigger value="encargos">Encargos</TabsTrigger>
+          <TabsTrigger value="ia">IA & Contrato</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="provedor" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><KeyRound className="w-5 h-5" /> RedeBE</CardTitle>
+              <CardDescription>
+                O token de API da RedeBE é armazenado como segredo do projeto (REDEBE_API_TOKEN).
+                Se ainda não configurou, peça ao administrador para cadastrar.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+                <p className="font-medium">Endpoint atual:</p>
+                <code className="text-xs">POST https://consultas.redebe.com.br/api/v1/credito/credito-essencial-positivo</code>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><FlaskConical className="w-5 h-5" /> Testar consulta</CardTitle>
+              <CardDescription>Executa uma consulta real (não salva no histórico) para validar o token e o motor.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  value={testDoc}
+                  onChange={(e) => setTestDoc(e.target.value)}
+                  placeholder="CPF (11 dígitos) ou CNPJ (14 dígitos)"
+                  className="flex-1"
+                />
+                <Button onClick={handleTest} disabled={testing}>
+                  {testing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FlaskConical className="w-4 h-4 mr-2" />}
+                  Testar
+                </Button>
+              </div>
+              {testResult && (
+                <div className="rounded-md border border-border p-4 space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{testResult.nome || '(sem nome)'}</span>
+                    <DecisionBadge d={testResult.engine.decision} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>Documento: <strong>{testResult.documento}</strong> ({testResult.tipo_documento})</div>
+                    <div>Score: <strong>{testResult.engine.score}</strong> (classe {testResult.engine.classification})</div>
+                    <div>Protestos: {testResult.summary.quantidade_protestos || 0}</div>
+                    <div>Pendências: {testResult.summary.quantidade_pendencias_financeiras || 0}</div>
+                    <div>CCF Bacen: {testResult.summary.quantidade_ccf_bacen || 0}</div>
+                    <div>CCF Varejo: {testResult.summary.quantidade_ccf_varejo || 0}</div>
+                    <div>Risco inadimplência: <strong>{(() => { const raw = parseInt(String((testResult.summary as any).probabilidade_inadimplencia || ''), 10); return Number.isFinite(raw) ? `${raw}% (pagam ${100 - raw}%)` : '—'; })()}</strong></div>
+                    <div>Bolsa Família (deps): <strong>{(testResult.summary as any).qtd_dependentes_bolsa_familia || 0}</strong></div>
+                    <div className="col-span-2">Texto do score: <em>{(testResult.summary as any).texto_score || '—'}</em>{testResult.texto_score_bucket ? <> — bucket: <strong>{testResult.texto_score_bucket}</strong></> : null}</div>
+                  </div>
+                  <div className="text-xs pt-2 border-t">
+                    <strong>Decisão:</strong> {testResult.engine.reason}
+                    {testResult.engine.decision !== 'rejected' && (
+                      <> — Limite sugerido: <strong>R$ {testResult.engine.approved_limit.toLocaleString('pt-BR')}</strong> em até <strong>{testResult.engine.max_parcelas}x</strong></>
+                    )}
+                  </div>
+                  {testResult.bureau_analysis && (
+                    <div className="pt-2"><BureauAnalysisCard analysis={testResult.bureau_analysis} /></div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="motor" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Knock-outs (reprovação automática)</CardTitle>
+              <CardDescription>Acima desses limites a proposta é recusada antes mesmo de avaliar o score.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <Field label="Máx. protestos" value={draft.max_protestos} onChange={(v) => setDraft({ ...draft, max_protestos: v })} />
+              <Field label="Máx. pendências financ." value={draft.max_pendencias_financeiras} onChange={(v) => setDraft({ ...draft, max_pendencias_financeiras: v })} />
+              <Field label="Máx. cheques sem fundo" value={draft.max_ccf_total} onChange={(v) => setDraft({ ...draft, max_ccf_total: v })} />
+              <Field label="Máx. alertas/restrições" value={draft.max_alertas_restricoes} onChange={(v) => setDraft({ ...draft, max_alertas_restricoes: v })} />
+              <Field label="Idade mín. (PF)" value={draft.min_idade_pf} onChange={(v) => setDraft({ ...draft, min_idade_pf: v })} />
+              <Field label="Meses CNPJ ativo (PJ)" value={draft.min_meses_cnpj} onChange={(v) => setDraft({ ...draft, min_meses_cnpj: v })} />
+              <Field label="Dias inadimpl. interna" value={draft.max_dias_inadimplencia_interna} onChange={(v) => setDraft({ ...draft, max_dias_inadimplencia_interna: v })} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Bolsa Família</CardTitle>
+              <CardDescription>Usa o nó <code>qtd_dependentes_bolsa_familia</code> da consulta para determinar se o cliente é beneficiário.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between max-w-md">
+                <Label>Reprovar beneficiários do Bolsa Família</Label>
+                <Switch checked={draft.bolsa_familia_block}
+                  onCheckedChange={(v) => setDraft({ ...draft, bolsa_familia_block: v })} />
+              </div>
+              {draft.bolsa_familia_block && (
+                <div className="max-w-xs">
+                  <Label className="text-xs">Tolerar até X dependentes (acima disso = reprova)</Label>
+                  <Input type="number" min={0} value={draft.max_dependentes_bolsa_familia}
+                    onChange={(e) => setDraft({ ...draft, max_dependentes_bolsa_familia: parseInt(e.target.value) || 0 })} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Probabilidade de inadimplência (escala 1% a 100%)</CardTitle>
+              <CardDescription>
+                O bureau devolve <code>probabilidade_inadimplencia</code> como <strong>% de risco</strong>: 1 = melhor pagador, 100 = pior.
+                Ex.: valor 9 significa 9% de risco (e o texto correspondente diz que 91% pagam os próximos 6 meses).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="max-w-md">
+                <Label className="text-xs">Máximo de risco aceito (%)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={draft.max_probabilidade_inadimplencia ?? 30}
+                  onChange={(e) => {
+                    const v = Math.min(100, Math.max(1, parseInt(e.target.value) || 1));
+                    setDraft({ ...draft, max_probabilidade_inadimplencia: v });
+                  }}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Propostas com risco <strong>acima</strong> deste valor são reprovadas. Use <strong>100</strong> para desativar esta régua.
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs">Reprovar quando a probabilidade de pagamento (texto do score) for:</Label>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Marque os níveis que devem <strong>bloquear</strong>. Lembre-se: <span className="text-destructive font-medium">"Muito Baixa" = pior pagador</span> e <span className="text-emerald-600 dark:text-emerald-400 font-medium">"Muito Alta" = melhor pagador</span>.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2">
+                  {[
+                    { value: 'muito_baixa', label: 'Muito Baixa', hint: 'pior', tone: 'bad' },
+                    { value: 'baixa', label: 'Baixa', tone: 'bad' },
+                    { value: 'media', label: 'Média', tone: 'neutral' },
+                    { value: 'alta', label: 'Alta', tone: 'good' },
+                    { value: 'muito_alta', label: 'Muito Alta', hint: 'melhor', tone: 'good' },
+                  ].map((opt) => {
+                    const checked = (draft.texto_pagamento_block_levels || []).includes(opt.value);
+                    const hintColor = opt.tone === 'bad'
+                      ? 'text-destructive'
+                      : opt.tone === 'good'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-muted-foreground';
+                    return (
+                      <label key={opt.value} className="flex items-center gap-2 text-xs border border-border rounded px-2 py-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const curr = new Set(draft.texto_pagamento_block_levels || []);
+                            if (e.target.checked) curr.add(opt.value); else curr.delete(opt.value);
+                            setDraft({ ...draft, texto_pagamento_block_levels: Array.from(curr) });
+                          }}
+                        />
+                        <span>{opt.label}{opt.hint ? <span className={hintColor}> ({opt.hint})</span> : null}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Pesos do score final</CardTitle>
+              <CardDescription>
+                Cada sinal do bureau é normalizado para 0–100 e combinado por peso. Sinais ausentes têm o peso
+                redistribuído entre os presentes. O resultado é convertido para a escala 0–1000 e usado nas faixas de score.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {SCORE_WEIGHT_KEYS.map((w) => {
+                  const weights = { ...DEFAULT_SCORE_WEIGHTS, ...(draft.score_weights || {}) };
+                  const total = Object.values(weights).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+                  const pct = Math.round(((Number(weights[w.key]) || 0) / total) * 1000) / 10;
+                  return (
+                    <div key={w.key} className="border border-border rounded px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <Label className="text-xs">{w.label}</Label>
+                          <p className="text-[10px] text-muted-foreground">{w.hint}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="w-20"
+                            value={Number(weights[w.key]) || 0}
+                            onChange={(e) => {
+                              const v = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+                              setDraft({ ...draft, score_weights: { ...weights, [w.key]: v } });
+                            }}
+                          />
+                          <span className="text-[10px] text-muted-foreground w-12 text-right">{pct}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="max-w-xs">
+                <Label className="text-xs">Escala máxima do score de análise</Label>
+                <Input type="number" min={1} value={draft.score_analise_scale_max ?? 500}
+                  onChange={(e) => setDraft({ ...draft, score_analise_scale_max: parseInt(e.target.value) || 500 })} />
+                <p className="text-[10px] text-muted-foreground mt-1">Usado para normalizar <code>score_analise</code> (ex.: 500 ou 1000).</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Cortes ordinais A–E</CardTitle>
+              <CardDescription>
+                Define a <strong>pior letra aceita</strong> para cada indicador. A é o melhor cenário, E o pior.
+                Escolha se o indicador <strong>bloqueia</strong> a proposta ou apenas <strong>pontua</strong> (entra no score ponderado).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {([
+                { key: 'max_classificacao_score', mode: 'classificacao_score', label: 'Classificação do score', a: 'A — Ótimo', e: 'E — Péssimo' },
+                { key: 'max_faturas_em_atraso', mode: 'faturas_em_atraso', label: 'Faturas em atraso', a: 'A — Pontual', e: 'E — Muito mau pagador' },
+                { key: 'max_contratos_recentes', mode: 'contratos_recentes', label: 'Contratos recentes', a: 'A — Relacionamento recente', e: 'E — Sem relacionamento' },
+              ] as const).map((cfg) => {
+                const modes = draft.letter_criteria_mode || {};
+                const mode = modes[cfg.mode] || 'pontuar';
+                return (
+                  <div key={cfg.key}>
+                    <Label className="text-xs">{cfg.label}</Label>
+                    <select
+                      className="w-full border border-input bg-background rounded px-2 py-2 text-sm"
+                      value={(draft as any)[cfg.key] || 'C'}
+                      onChange={(e) => setDraft({ ...draft, [cfg.key]: e.target.value } as any)}
+                      disabled={mode !== 'bloquear'}
+                    >
+                      {['A','B','C','D','E'].map((l) => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="w-full border border-input bg-background rounded px-2 py-1.5 text-xs mt-2"
+                      value={mode}
+                      onChange={(e) => setDraft({ ...draft, letter_criteria_mode: { ...modes, [cfg.mode]: e.target.value as any } })}
+                    >
+                      <option value="pontuar">Apenas pontuar (entra no score)</option>
+                      <option value="bloquear">Bloquear acima do corte</option>
+                    </select>
+                    <p className="text-[10px] text-muted-foreground mt-1">{cfg.a} ← → {cfg.e}</p>
+                  </div>
+                );
+              })}
+              <div className="md:col-span-3">
+                <Label className="text-xs">Sugestão de negócio do bureau</Label>
+                <select
+                  className="w-full md:max-w-xs border border-input bg-background rounded px-2 py-1.5 text-xs mt-1"
+                  value={(draft.letter_criteria_mode || {}).sugestao_negocio || 'pontuar'}
+                  onChange={(e) => setDraft({
+                    ...draft,
+                    letter_criteria_mode: { ...(draft.letter_criteria_mode || {}), sugestao_negocio: e.target.value as any },
+                  })}
+                >
+                  <option value="pontuar">Apenas alertar (não bloqueia)</option>
+                  <option value="bloquear">Bloquear conforme buckets marcados</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Análise do bureau (nó "resumo")</CardTitle>
+              <CardDescription>
+                Interpreta os campos analíticos enviados pelo provedor: <code>score_analise</code>, <code>limite_sugerido</code>,
+                <code> max_parcelas</code>, <code>parcela_maxima</code>, <code>nivel_de_confianca</code>,
+                <code> descricao_rating</code>, <code>observacao_credito</code> e <code>sugestao_de_negocio</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Score analítico mínimo (0 = desliga)</Label>
+                  <Input type="number" min={0} value={draft.min_score_analise ?? 0}
+                    onChange={(e) => setDraft({ ...draft, min_score_analise: parseInt(e.target.value) || 0 })} />
+                  <p className="text-[11px] text-muted-foreground mt-1">Propostas com <code>score_analise</code> abaixo deste valor são reprovadas.</p>
+                </div>
+                <div className="flex flex-col">
+                  <Label className="text-xs mb-2">Aplicar limites sugeridos pelo bureau como teto</Label>
+                  <div className="flex items-center gap-3 border border-border rounded px-3 py-2">
+                    <Switch checked={!!draft.use_bureau_limits}
+                      onCheckedChange={(v) => setDraft({ ...draft, use_bureau_limits: v })} />
+                    <span className="text-xs text-muted-foreground">Quando ligado, o limite e nº de parcelas aprovados nunca superam <code>limite_sugerido</code> / <code>max_parcelas</code> do bureau.</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Reprovar quando o nível de confiança for:</Label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2">
+                  {CONFIANCA_OPTIONS.map((opt) => {
+                    const checked = (draft.min_nivel_confianca_levels || []).includes(opt.value);
+                    return (
+                      <label key={opt.value} className="flex items-center gap-2 text-xs border border-border rounded px-2 py-1.5 cursor-pointer">
+                        <input type="checkbox" checked={checked} onChange={(e) => {
+                          const curr = new Set(draft.min_nivel_confianca_levels || []);
+                          if (e.target.checked) curr.add(opt.value); else curr.delete(opt.value);
+                          setDraft({ ...draft, min_nivel_confianca_levels: Array.from(curr) });
+                        }} />
+                        <span>{opt.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Reprovar quando a sugestão de negócio do bureau for:</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+                  {SUGESTAO_OPTIONS.map((opt) => {
+                    const checked = (draft.sugestao_negocio_block_levels || []).includes(opt.value);
+                    return (
+                      <label key={opt.value} className="flex items-center gap-2 text-xs border border-border rounded px-2 py-1.5 cursor-pointer">
+                        <input type="checkbox" checked={checked} onChange={(e) => {
+                          const curr = new Set(draft.sugestao_negocio_block_levels || []);
+                          if (e.target.checked) curr.add(opt.value); else curr.delete(opt.value);
+                          setDraft({ ...draft, sugestao_negocio_block_levels: Array.from(curr) });
+                        }} />
+                        <span>{opt.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">Interpretado a partir do texto livre <code>sugestao_de_negocio</code>.</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Teto e faixas de score</CardTitle>
+              <CardDescription>Defina o teto máximo de crédito e como o score determina o percentual aprovado e o nº máximo de parcelas.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
+                <div>
+                  <Label>Teto absoluto (R$)</Label>
+                  <Input type="number" value={draft.teto_credito}
+                    onChange={(e) => setDraft({ ...draft, teto_credito: parseFloat(e.target.value) || 0 })} />
+                </div>
+                <div>
+                  <Label>Preço por consulta ao bureau (R$)</Label>
+                  <Input type="number" step={0.01} min={0} value={draft.consulta_price}
+                    onChange={(e) => setDraft({ ...draft, consulta_price: parseFloat(e.target.value) || 0 })} />
+                  <p className="text-xs text-muted-foreground mt-1">Usado para calcular o custo total das consultas realizadas no período.</p>
+                </div>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Score mín.</TableHead>
+                    <TableHead>Score máx.</TableHead>
+                    <TableHead>Classes</TableHead>
+                    <TableHead>Decisão</TableHead>
+                    <TableHead>% do teto</TableHead>
+                    <TableHead>Parcelas máx.</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {draft.score_bands.map((b, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Input type="number" value={b.min_score} onChange={(e) => updateBand(i, { min_score: parseInt(e.target.value) || 0 })} className="w-20" /></TableCell>
+                      <TableCell><Input type="number" value={b.max_score} onChange={(e) => updateBand(i, { max_score: parseInt(e.target.value) || 0 })} className="w-20" /></TableCell>
+                      <TableCell><Input value={(b.classes || []).join(',')} onChange={(e) => updateBand(i, { classes: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} className="w-24" placeholder="A,B" /></TableCell>
+                      <TableCell>
+                        <select className="border border-input bg-background rounded px-2 py-1 text-sm" value={b.decision} onChange={(e) => updateBand(i, { decision: e.target.value as any })}>
+                          <option value="approved">Aprovado</option>
+                          <option value="manual">Manual</option>
+                          <option value="rejected">Recusado</option>
+                        </select>
+                      </TableCell>
+                      <TableCell><Input type="number" value={b.percent_teto} onChange={(e) => updateBand(i, { percent_teto: parseInt(e.target.value) || 0 })} className="w-20" /></TableCell>
+                      <TableCell><Input type="number" value={b.max_parcelas} onChange={(e) => updateBand(i, { max_parcelas: parseInt(e.target.value) || 0 })} className="w-20" /></TableCell>
+                      <TableCell><Button variant="ghost" size="icon" onClick={() => removeBand(i)}><Trash2 className="w-4 h-4" /></Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <Button variant="outline" size="sm" onClick={addBand}><Plus className="w-4 h-4 mr-2" /> Adicionar faixa</Button>
+              <Button variant="ghost" size="sm" onClick={() => setDraft({ ...draft, score_bands: DEFAULT_RULES.score_bands })}>
+                Restaurar padrão
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="encargos" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader><CardTitle>Encargos financeiros</CardTitle><CardDescription>Aplicados nas parcelas do contrato e em caso de atraso.</CardDescription></CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Field label="Juros mensal (%)" step={0.01} value={draft.juros_mensal_pct} onChange={(v) => setDraft({ ...draft, juros_mensal_pct: v })} />
+              <Field label="Multa atraso (%)" step={0.01} value={draft.multa_atraso_pct} onChange={(v) => setDraft({ ...draft, multa_atraso_pct: v })} />
+              <Field label="Mora diária (%)" step={0.001} value={draft.mora_diaria_pct} onChange={(v) => setDraft({ ...draft, mora_diaria_pct: v })} />
+              <Field label="Parcela mínima (R$)" step={1} value={draft.parcela_minima} onChange={(v) => setDraft({ ...draft, parcela_minima: v })} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ia" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader><CardTitle>Validação de identidade por IA</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between max-w-md">
+                <Label>Threshold similaridade facial (0–100)</Label>
+                <Input type="number" min={0} max={100} value={draft.ia_similarity_threshold}
+                  onChange={(e) => setDraft({ ...draft, ia_similarity_threshold: parseInt(e.target.value) || 0 })}
+                  className="w-24" />
+              </div>
+              <div className="flex items-center justify-between max-w-md">
+                <Label>Exigir prova de vida (liveness)</Label>
+                <Switch checked={draft.ia_require_liveness}
+                  onCheckedChange={(v) => setDraft({ ...draft, ia_require_liveness: v })} />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Cláusulas do contrato</CardTitle><CardDescription>Texto livre que será incluído no PDF do contrato gerado.</CardDescription></CardHeader>
+            <CardContent>
+              <Textarea rows={8} value={draft.contract_clauses || ''}
+                onChange={(e) => setDraft({ ...draft, contract_clauses: e.target.value })}
+                placeholder="Ex: 1. O CONTRATANTE compromete-se a quitar as parcelas nas datas acordadas..." />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, step = 1 }: { label: string; value: number; onChange: (n: number) => void; step?: number }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <Input type="number" step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value) || 0)} />
+    </div>
+  );
+}
+
+function GlobalConsultationsUsageCard() {
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const [from, setFrom] = useState<string>(toISO(firstOfMonth));
+  const [to, setTo] = useState<string>(toISO(today));
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<Array<{ company_id: string; company_name: string; count: number; price: number; total: number }>>([]);
+
+  useEffect(() => {
+    setLoading(true);
+    (async () => {
+      const fromTs = new Date(`${from}T00:00:00`).toISOString();
+      const toTs = new Date(`${to}T23:59:59.999`).toISOString();
+      const [{ data: consults }, { data: rules }, { data: companies }] = await Promise.all([
+        (supabase as any).from('credit_consultations').select('company_id').gte('created_at', fromTs).lte('created_at', toTs),
+        (supabase as any).from('credit_rules').select('company_id, consulta_price'),
+        (supabase as any).from('companies').select('id, name'),
+      ]);
+      const priceMap = new Map<string, number>((rules || []).map((r: any) => [r.company_id, Number(r.consulta_price || 0)]));
+      const nameMap = new Map<string, string>((companies || []).map((c: any) => [c.id, c.name]));
+      const countMap = new Map<string, number>();
+      (consults || []).forEach((c: any) => countMap.set(c.company_id, (countMap.get(c.company_id) || 0) + 1));
+      const list = Array.from(countMap.entries()).map(([cid, count]) => {
+        const price = priceMap.get(cid) || 0;
+        return { company_id: cid, company_name: nameMap.get(cid) || cid, count, price, total: count * price };
+      }).sort((a, b) => b.count - a.count);
+      setRows(list);
+      setLoading(false);
+    })();
+  }, [from, to]);
+
+  const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const totalCount = rows.reduce((s, r) => s + r.count, 0);
+  const totalCost = rows.reduce((s, r) => s + r.total, 0);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Consumo global de consultas ao bureau</CardTitle>
+        <CardDescription>
+          Total consolidado de consultas realizadas por todas as empresas no período. A Tai Finance possui uma única conta no bureau;
+          cada empresa cliente paga pelo seu próprio consumo, conforme o preço configurado em suas regras.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div>
+            <Label className="text-xs">De</Label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Até</Label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <div className="text-xs text-muted-foreground">Total de consultas</div>
+            <div className="text-2xl font-bold">{loading ? '…' : totalCount}</div>
+          </div>
+          <div className="rounded-lg border bg-primary/5 border-primary/30 p-3">
+            <div className="text-xs text-muted-foreground">Custo total (todas as empresas)</div>
+            <div className="text-2xl font-bold text-primary">{loading ? '…' : fmt(totalCost)}</div>
+          </div>
+        </div>
+
+        {rows.length > 0 && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Empresa</TableHead>
+                <TableHead className="text-right">Consultas</TableHead>
+                <TableHead className="text-right">Preço / consulta</TableHead>
+                <TableHead className="text-right">Subtotal</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.company_id}>
+                  <TableCell>{r.company_name}</TableCell>
+                  <TableCell className="text-right">{r.count}</TableCell>
+                  <TableCell className="text-right">{r.price > 0 ? fmt(r.price) : <span className="text-muted-foreground text-xs">não configurado</span>}</TableCell>
+                  <TableCell className="text-right font-medium">{fmt(r.total)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

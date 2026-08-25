@@ -7,10 +7,16 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const EVOLUTION_API_URL =
-  "https://evolution-api-production-a169.up.railway.app";
-const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") ?? "";
-const EVOLUTION_INSTANCE = "taifinance";
+const WA_TOKEN = Deno.env.get("WHATSAPP_CLOUD_TOKEN") ?? "";
+const WA_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_CLOUD_PHONE_NUMBER_ID") ?? "";
+const REMINDER_TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_REMINDER") ?? "lembrete_vencimento";
+const REMINDER_TEMPLATE_LANG = Deno.env.get("WHATSAPP_TEMPLATE_REMINDER_LANG") ?? "pt_BR";
+const TASK_TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_TASK") ?? "lembrete_tarefa";
+const TASK_TEMPLATE_LANG = Deno.env.get("WHATSAPP_TEMPLATE_TASK_LANG") ?? "pt_BR";
+const PIX_TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_PIX") ?? "cobranca_pix";
+const PIX_TEMPLATE_LANG = Deno.env.get("WHATSAPP_TEMPLATE_PIX_LANG") ?? "pt_BR";
+const GRAPH_VERSION = "v21.0";
+const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}/${WA_PHONE_NUMBER_ID}`;
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL") ?? "",
@@ -18,115 +24,76 @@ const supabase = createClient(
 );
 
 function pad(id: string, value: string): string {
-  const len = value.length.toString().padStart(2, '0');
+  const len = value.length.toString().padStart(2, "0");
   return `${id}${len}${value}`;
 }
-
 function buildMerchantAccountInfo(pixKey: string): string {
-  const gui = pad('00', 'br.gov.bcb.pix');
-  const key = pad('01', pixKey);
-  return pad('26', gui + key);
+  return pad("26", pad("00", "br.gov.bcb.pix") + pad("01", pixKey));
 }
-
 function calculateCRC16(payload: string): string {
   const polynomial = 0x1021;
-  let crc = 0xFFFF;
+  let crc = 0xffff;
   const bytes = new TextEncoder().encode(payload);
   for (const byte of bytes) {
     crc ^= byte << 8;
     for (let i = 0; i < 8; i++) {
-      if (crc & 0x8000) {
-        crc = (crc << 1) ^ polynomial;
-      } else {
-        crc = crc << 1;
-      }
-      crc &= 0xFFFF;
+      crc = crc & 0x8000 ? (crc << 1) ^ polynomial : crc << 1;
+      crc &= 0xffff;
     }
   }
-  return crc.toString(16).toUpperCase().padStart(4, '0');
+  return crc.toString(16).toUpperCase().padStart(4, "0");
 }
-
-function generatePixPayload(params: {
-  pixKey: string;
-  merchantName: string;
-  merchantCity: string;
-  amount?: number;
-  txId?: string;
-}): string {
-  const { pixKey, merchantName, merchantCity, amount, txId } = params;
-  let payload = '';
-  payload += pad('00', '01');
-  payload += pad('01', '12');
-  payload += buildMerchantAccountInfo(pixKey);
-  payload += pad('52', '0000');
-  payload += pad('53', '986');
-  if (amount && amount > 0) {
-    payload += pad('54', amount.toFixed(2));
-  }
-  payload += pad('58', 'BR');
-  const name = merchantName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').substring(0, 25);
-  payload += pad('59', name);
-  const city = merchantCity.normalize('NFD').replace(/[\u0300-\u036f]/g, '').substring(0, 15);
-  payload += pad('60', city);
-  const txIdValue = txId || '***';
-  payload += pad('62', pad('05', txIdValue));
-  payload += '6304';
+function generatePixPayload(p: { pixKey: string; merchantName: string; merchantCity: string; amount?: number; txId?: string }): string {
+  let payload = "";
+  payload += pad("00", "01");
+  payload += pad("01", "12");
+  payload += buildMerchantAccountInfo(p.pixKey);
+  payload += pad("52", "0000");
+  payload += pad("53", "986");
+  if (p.amount && p.amount > 0) payload += pad("54", p.amount.toFixed(2));
+  payload += pad("58", "BR");
+  const name = p.merchantName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").substring(0, 25);
+  payload += pad("59", name);
+  const city = p.merchantCity.normalize("NFD").replace(/[\u0300-\u036f]/g, "").substring(0, 15);
+  payload += pad("60", city);
+  payload += pad("62", pad("05", p.txId || "***"));
+  payload += "6304";
   return payload + calculateCRC16(payload);
 }
 
-async function generateQrCodeBase64(data: string): Promise<string> {
-  const url = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(data)}`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`QR API error: ${response.status}`);
-  const arrayBuffer = await response.arrayBuffer();
-  const uint8Array = new Uint8Array(arrayBuffer);
-  let binary = '';
-  for (const byte of uint8Array) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary);
+function normalizePhone(phone: string): string {
+  let n = phone.replace(/\D/g, "");
+  if (n.length === 10 || n.length === 11) n = "55" + n;
+  return n;
 }
 
-async function sendWhatsApp(phone: string, message: string) {
-  const number = phone.replace(/\D/g, "");
-  const response = await fetch(
-    `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: EVOLUTION_API_KEY,
-      },
-      body: JSON.stringify({ number, textMessage: { text: message } }),
-    }
-  );
-  return response.json();
+async function waPost(path: string, body: any) {
+  const res = await fetch(`${GRAPH_BASE}${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  return { ok: res.ok, status: res.status, data };
 }
 
-async function sendWhatsAppImage(phone: string, base64: string, caption: string) {
-  const number = phone.replace(/\D/g, "");
-  const response = await fetch(
-    `${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: EVOLUTION_API_KEY,
-      },
-      body: JSON.stringify({
-        number,
-        mediaMessage: {
-          mediatype: "image",
-          caption,
-          media: base64,
-          fileName: "pix-qrcode.png",
-        },
-      }),
-    }
-  );
-  const result = await response.json();
-  console.log("sendMedia response:", JSON.stringify(result));
-  return result;
+async function sendTemplate(to: string, name: string, lang: string, params: string[]) {
+  return waPost("/messages", {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name,
+      language: { code: lang },
+      components: [{ type: "body", parameters: params.map((t) => ({ type: "text", text: t })) }],
+    },
+  });
+}
+async function sendImageByUrl(to: string, url: string, caption: string) {
+  return waPost("/messages", { messaging_product: "whatsapp", to, type: "image", image: { link: url, caption } });
+}
+async function sendText(to: string, text: string) {
+  return waPost("/messages", { messaging_product: "whatsapp", to, type: "text", text: { body: text, preview_url: false } });
 }
 
 serve(async (req) => {
@@ -135,35 +102,51 @@ serve(async (req) => {
   }
 
   try {
+    if (!WA_TOKEN || !WA_PHONE_NUMBER_ID) {
+      return new Response(
+        JSON.stringify({ error: "WhatsApp Cloud API não configurada." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ===== Ação ad-hoc: enviar texto livre (ex: link de biometria) =====
+    // Observação: a Cloud API só permite texto livre dentro da janela de 24h após
+    // a última mensagem do cliente. Fora dessa janela, é necessário usar um template.
+    if (req.method === "POST") {
+      let body: any = null;
+      try { body = await req.json(); } catch { /* sem body */ }
+      if (body?.action === "send_text" && body?.to && body?.text) {
+        const r = await sendText(normalizePhone(String(body.to)), String(body.text));
+        return new Response(JSON.stringify({ ok: r.ok, status: r.status, data: r.data }), {
+          status: r.ok ? 200 : 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+
     const today = new Date();
     const currentHour = today.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false });
     const todayStr = today.toISOString().split("T")[0];
     let sent = 0;
+    const errors: any[] = [];
 
     const in3days = new Date(today);
     in3days.setDate(today.getDate() + 3);
     const in3daysStr = in3days.toISOString().split("T")[0];
 
-    const { data: completedStatuses } = await supabase
-      .from("status_configs")
-      .select("id")
-      .ilike("name", "%conclu%");
-
+    // ===== Tasks reminders =====
+    const { data: completedStatuses } = await supabase.from("status_configs").select("id").ilike("name", "%conclu%");
     const excludeStatusIds = (completedStatuses ?? []).map((s: any) => s.id);
 
-    const { data: tasks, error: tasksError } = await supabase
+    const { data: tasks } = await supabase
       .from("tasks")
       .select("id, name, end_date, responsible_id, status_id")
       .gte("end_date", todayStr)
       .lte("end_date", in3daysStr)
       .not("responsible_id", "is", null);
 
-    if (tasksError) throw tasksError;
-
-    const pendingTasks = (tasks ?? []).filter(
-      (t: any) => !excludeStatusIds.includes(t.status_id)
-    );
-
+    const pendingTasks = (tasks ?? []).filter((t: any) => !excludeStatusIds.includes(t.status_id));
     const taskUserIds = [...new Set(pendingTasks.map((t: any) => t.responsible_id))];
 
     if (taskUserIds.length > 0) {
@@ -171,43 +154,33 @@ serve(async (req) => {
         .from("profiles")
         .select("user_id, full_name, whatsapp_phone")
         .in("user_id", taskUserIds);
-
       const profileMap = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
 
       for (const task of pendingTasks) {
-        const profile = profileMap.get(task.responsible_id);
+        const profile: any = profileMap.get(task.responsible_id);
         if (!profile?.whatsapp_phone) continue;
-
         const endDate = new Date(task.end_date + "T00:00:00-03:00");
-        const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-        let urgencia = "";
-        if (diffDays <= 0) urgencia = "⚠️ *VENCE HOJE*";
-        else if (diffDays === 1) urgencia = "⏰ *Vence amanhã*";
-        else urgencia = `📅 Vence em ${diffDays} dias`;
-
-        const msg =
-          `🔔 *TAI Finance — Lembrete de Tarefa*\n\n` +
-          `${urgencia}\n\n` +
-          `📋 *Tarefa:* ${task.name}\n` +
-          `📆 *Data limite:* ${endDate.toLocaleDateString("pt-BR")}\n\n` +
-          `Acesse o TAI Finance para mais detalhes.`;
-
-        await sendWhatsApp(profile.whatsapp_phone, msg);
-        sent++;
+        const venc = endDate.toLocaleDateString("pt-BR");
+        const r = await sendTemplate(normalizePhone(profile.whatsapp_phone), TASK_TEMPLATE, TASK_TEMPLATE_LANG, [
+          profile.full_name || "Olá",
+          task.name,
+          venc,
+        ]);
+        if (r.ok) sent++;
+        else errors.push({ kind: "task", to: profile.whatsapp_phone, err: r.data });
       }
     }
 
+    // ===== Payables/Receivables =====
     const { data: companies } = await supabase
       .from("companies")
       .select("id, name, pix_key, pix_key_type, pix_holder_name, pix_city, whatsapp_notify_enabled, whatsapp_notify_days_before, whatsapp_notify_time");
 
-    for (const company of (companies ?? [])) {
+    for (const company of companies ?? []) {
       if (!(company as any).whatsapp_notify_enabled) continue;
 
       const notifyDays: number[] = (company as any).whatsapp_notify_days_before || [0];
       const notifyTime: string = (company as any).whatsapp_notify_time || "08:00";
-
       const [configH] = notifyTime.split(":").map(Number);
       const [currentH] = currentHour.split(":").map(Number);
       if (Math.abs(configH - currentH) > 0) continue;
@@ -217,7 +190,6 @@ serve(async (req) => {
         d.setDate(d.getDate() + days);
         return d.toISOString().split("T")[0];
       });
-
       if (targetDates.length === 0) continue;
 
       const { data: prItems } = await supabase
@@ -229,39 +201,28 @@ serve(async (req) => {
 
       if (!prItems || prItems.length === 0) continue;
 
-      const csIds = [...new Set(
-        (prItems ?? []).filter((item: any) => item.client_supplier_id).map((item: any) => item.client_supplier_id)
-      )];
-
-      let csPhoneMap = new Map<string, string>();
+      const csIds = [...new Set(prItems.filter((i: any) => i.client_supplier_id).map((i: any) => i.client_supplier_id))];
+      const csMap = new Map<string, { name: string; phone: string }>();
       if (csIds.length > 0) {
         const { data: csData } = await supabase
           .from("clients_suppliers")
           .select("id, name, whatsapp_phone")
           .in("id", csIds);
-
-        for (const cs of (csData ?? [])) {
-          if ((cs as any).whatsapp_phone) {
-            csPhoneMap.set(cs.id, (cs as any).whatsapp_phone);
-          }
+        for (const cs of csData ?? []) {
+          if ((cs as any).whatsapp_phone) csMap.set(cs.id, { name: (cs as any).name, phone: (cs as any).whatsapp_phone });
         }
       }
 
-      const creatorIds = [...new Set(
-        (prItems ?? []).filter((item: any) => item.created_by).map((item: any) => item.created_by)
-      )];
-
-      let creatorPhoneMap = new Map<string, string>();
+      const creatorIds = [...new Set(prItems.filter((i: any) => i.created_by).map((i: any) => i.created_by))];
+      const creatorMap = new Map<string, { name: string; phone: string }>();
       if (creatorIds.length > 0) {
-        const { data: creatorProfiles } = await supabase
+        const { data: cp } = await supabase
           .from("profiles")
-          .select("user_id, whatsapp_phone")
+          .select("user_id, full_name, whatsapp_phone")
           .in("user_id", creatorIds);
-
-        for (const p of (creatorProfiles ?? [])) {
-          if (p.whatsapp_phone) {
-            creatorPhoneMap.set(p.user_id, p.whatsapp_phone);
-          }
+        for (const p of cp ?? []) {
+          if ((p as any).whatsapp_phone)
+            creatorMap.set((p as any).user_id, { name: (p as any).full_name || "Olá", phone: (p as any).whatsapp_phone });
         }
       }
 
@@ -269,84 +230,61 @@ serve(async (req) => {
 
       for (const item of prItems) {
         const dueDate = new Date(item.due_date + "T00:00:00-03:00");
-        const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-        let urgencia = "";
-        if (diffDays <= 0) urgencia = "⚠️ *VENCE HOJE*";
-        else if (diffDays === 1) urgencia = "⏰ *Vence amanhã*";
-        else urgencia = `📅 Vence em ${diffDays} dias`;
-
-        const tipoLabel = item.type === "payable" ? "Conta a Pagar" : "Conta a Receber";
-        const tipoEmoji = item.type === "payable" ? "💸" : "💰";
+        const venc = dueDate.toLocaleDateString("pt-BR");
+        const valorNumStr = item.is_amount_pending
+          ? "a definir"
+          : Number(item.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
         const valorStr = item.is_amount_pending
           ? "A definir"
           : `R$ ${Number(item.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
-        const msg =
-          `🔔 *${company.name} — ${tipoLabel}*\n\n` +
-          `${urgencia}\n\n` +
-          `${tipoEmoji} *Descrição:* ${item.description}\n` +
-          `💵 *Valor:* ${valorStr}\n` +
-          `📆 *Vencimento:* ${dueDate.toLocaleDateString("pt-BR")}\n\n` +
-          `Acesse o TAI Finance para mais detalhes.`;
+        const sendReminder = async (recipientName: string, phone: string, includePix: boolean) => {
+          const to = normalizePhone(phone);
 
-        let pixPayload: string | null = null;
-        let qrBase64: string | null = null;
-
-        if (
-          item.type === "receivable" &&
-          hasPixConfig &&
-          !item.is_amount_pending &&
-          item.amount &&
-          Number(item.amount) > 0
-        ) {
-          try {
-            pixPayload = generatePixPayload({
+          if (includePix && item.type === "receivable" && hasPixConfig && !item.is_amount_pending && item.amount && Number(item.amount) > 0) {
+            // Cobrança PIX completa: template PIX + QR + copia-e-cola
+            const pixPayload = generatePixPayload({
               pixKey: (company as any).pix_key,
               merchantName: (company as any).pix_holder_name || company.name,
               merchantCity: (company as any).pix_city || "SAO PAULO",
               amount: Number(item.amount),
               txId: item.id.substring(0, 25).replace(/-/g, ""),
             });
-            qrBase64 = await generateQrCodeBase64(pixPayload);
-          } catch (e) {
-            console.error("Error generating PIX QR:", e);
-          }
-        }
-
-        const sendNotification = async (phone: string) => {
-          if (pixPayload && qrBase64) {
-            const caption =
-              `${tipoEmoji} *${company.name} — Cobrança PIX*\n\n` +
-              `${urgencia}\n\n` +
-              `📋 *Descrição:* ${item.description}\n` +
-              `💵 *Valor:* ${valorStr}\n` +
-              `📆 *Vencimento:* ${dueDate.toLocaleDateString("pt-BR")}\n\n` +
-              `📱 Escaneie o QR Code ou copie o código PIX na próxima mensagem.`;
-
-            await sendWhatsAppImage(phone, qrBase64, caption);
-
-            const pixText = pixPayload;
-            await sendWhatsApp(phone, pixText);
+            const tpl = await sendTemplate(to, PIX_TEMPLATE, PIX_TEMPLATE_LANG, [company.name, item.description, valorStr]);
+            if (!tpl.ok) {
+              errors.push({ kind: "pix-template", to: phone, err: tpl.data });
+              return;
+            }
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(pixPayload)}`;
+            await sendImageByUrl(to, qrUrl, `${company.name} — PIX\n${item.description}\nValor: ${valorStr}\nVenc: ${venc}`);
+            await sendText(to, pixPayload);
+            sent++;
           } else {
-            await sendWhatsApp(phone, msg);
+            // Lembrete simples
+            const r = await sendTemplate(to, REMINDER_TEMPLATE, REMINDER_TEMPLATE_LANG, [
+              recipientName,
+              item.description,
+              valorNumStr,
+              venc,
+            ]);
+            if (r.ok) sent++;
+            else errors.push({ kind: "reminder", to: phone, err: r.data });
           }
-          sent++;
         };
 
-        if (item.client_supplier_id && csPhoneMap.has(item.client_supplier_id)) {
-          await sendNotification(csPhoneMap.get(item.client_supplier_id)!);
+        if (item.client_supplier_id && csMap.has(item.client_supplier_id)) {
+          const cs = csMap.get(item.client_supplier_id)!;
+          await sendReminder(cs.name, cs.phone, true);
         }
-
-        if (item.created_by && creatorPhoneMap.has(item.created_by)) {
-          await sendWhatsApp(creatorPhoneMap.get(item.created_by)!, msg);
-          sent++;
+        if (item.created_by && creatorMap.has(item.created_by)) {
+          const c = creatorMap.get(item.created_by)!;
+          await sendReminder(c.name, c.phone, false);
         }
       }
     }
 
     return new Response(
-      JSON.stringify({ success: true, notificationsSent: sent }),
+      JSON.stringify({ success: true, notificationsSent: sent, errors: errors.length ? errors : undefined }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

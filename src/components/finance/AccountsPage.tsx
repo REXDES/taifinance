@@ -61,6 +61,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
     description: '',
     group_id: '',
     initial_balance: '',
+    reconciliation_tolerance: '0',
     color: '#10B981',
   });
 
@@ -89,6 +90,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
         color: accountForm.color,
         initial_balance: newInitialBalance,
         current_balance: editingAccount.current_balance + balanceDiff,
+        reconciliation_tolerance: parseFloat(accountForm.reconciliation_tolerance) || 0,
       });
     } else {
       await createAccount({
@@ -96,12 +98,13 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
         description: accountForm.description,
         group_id: accountForm.group_id || undefined,
         initial_balance: parseFloat(accountForm.initial_balance) || 0,
+        reconciliation_tolerance: parseFloat(accountForm.reconciliation_tolerance) || 0,
         color: accountForm.color,
       });
     }
     setShowAccountDialog(false);
     setEditingAccount(null);
-    setAccountForm({ name: '', description: '', group_id: '', initial_balance: '', color: '#10B981' });
+    setAccountForm({ name: '', description: '', group_id: '', initial_balance: '', reconciliation_tolerance: '0', color: '#10B981' });
   };
 
   const handleEditAccount = (account: Account) => {
@@ -111,6 +114,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
       description: account.description || '',
       group_id: account.group_id || '',
       initial_balance: account.initial_balance.toString(),
+      reconciliation_tolerance: (account.reconciliation_tolerance ?? 0).toString(),
       color: account.color,
     });
     setShowAccountDialog(true);
@@ -241,7 +245,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
             <DialogTrigger asChild>
               <Button onClick={() => {
                 setEditingAccount(null);
-                setAccountForm({ name: '', description: '', group_id: '', initial_balance: '', color: '#10B981' });
+                setAccountForm({ name: '', description: '', group_id: '', initial_balance: '', reconciliation_tolerance: '0', color: '#10B981' });
               }}>
                 <Plus className="w-4 h-4 mr-2" />
                 Nova Conta
@@ -296,6 +300,20 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
                     onChange={(e) => setAccountForm({ ...accountForm, initial_balance: e.target.value })}
                     placeholder="0,00"
                   />
+                </div>
+                <div>
+                  <Label>Tolerância de conciliação (R$)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={accountForm.reconciliation_tolerance}
+                    onChange={(e) => setAccountForm({ ...accountForm, reconciliation_tolerance: e.target.value })}
+                    placeholder="0,00"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Diferenças de saldo até esse valor poderão ser ajustadas automaticamente.
+                  </p>
                 </div>
                 <div>
                   <Label>Cor</Label>

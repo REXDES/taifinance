@@ -28,6 +28,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { useUsers } from '@/hooks/useUsers';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useCustomRoles } from '@/hooks/useCustomRoles';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Mail, Plus, Trash2, CalendarIcon, Copy, Check, ChevronDown, ChevronRight, Building2, Wallet, Layers } from 'lucide-react';
@@ -92,6 +93,8 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId, curren
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set());
   const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
   const [companyLimit, setCompanyLimit] = useState<number | null>(null);
+  const [customRoleId, setCustomRoleId] = useState<string | null>(null);
+  const { roles: customRoles } = useCustomRoles();
 
   // Fetch user's accessible companies for managers
   useEffect(() => {
@@ -208,7 +211,7 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId, curren
     const mainCompanyId = Array.from(selectedInviteCompanies)[0];
     
     setSaving(true);
-    const result = await createInvitation(email.trim(), role, name.trim(), expiresAt.toISOString(), mainCompanyId, role === 'gerente' ? companyLimit : null);
+    const result = await createInvitation(email.trim(), role, name.trim(), expiresAt.toISOString(), mainCompanyId, role === 'gerente' ? companyLimit : null, customRoleId);
     
     if (result) {
       // Save access selections
@@ -275,6 +278,7 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId, curren
     setSelectedAccounts(new Set());
     setExpandedGroups(new Set());
     setCompanyLimit(null);
+    setCustomRoleId(null);
   };
 
   const totalAccessSelected = selectedGroups.size + selectedAccounts.size;
@@ -425,6 +429,27 @@ export function FinanceInvitationsDialog({ open, onOpenChange, companyId, curren
                   </p>
                 )}
               </div>
+
+              {/* Custom role selector */}
+              {customRoles.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="inviteCustomRole">Cargo customizado (opcional)</Label>
+                  <Select value={customRoleId || 'none'} onValueChange={(v) => setCustomRoleId(v === 'none' ? null : v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {customRoles.map(r => (
+                        <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Se informado, as permissões do cargo customizado serão aplicadas ao usuário após aceitar o convite.
+                  </p>
+                </div>
+              )}
 
               {/* Company limit field for gerente role */}
               {role === 'gerente' && (

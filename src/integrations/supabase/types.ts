@@ -1397,6 +1397,7 @@ export type Database = {
           ia_similarity_threshold: number
           id: string
           juros_mensal_pct: number
+          letter_criteria_mode: Json
           max_alertas_restricoes: number
           max_ccf_total: number
           max_classificacao_score: string
@@ -1414,7 +1415,9 @@ export type Database = {
           mora_diaria_pct: number
           multa_atraso_pct: number
           parcela_minima: number
+          score_analise_scale_max: number
           score_bands: Json
+          score_weights: Json
           sugestao_negocio_block_buckets: Json
           sugestao_negocio_block_levels: Json
           teto_credito: number
@@ -1432,6 +1435,7 @@ export type Database = {
           ia_similarity_threshold?: number
           id?: string
           juros_mensal_pct?: number
+          letter_criteria_mode?: Json
           max_alertas_restricoes?: number
           max_ccf_total?: number
           max_classificacao_score?: string
@@ -1449,7 +1453,9 @@ export type Database = {
           mora_diaria_pct?: number
           multa_atraso_pct?: number
           parcela_minima?: number
+          score_analise_scale_max?: number
           score_bands?: Json
+          score_weights?: Json
           sugestao_negocio_block_buckets?: Json
           sugestao_negocio_block_levels?: Json
           teto_credito?: number
@@ -1467,6 +1473,7 @@ export type Database = {
           ia_similarity_threshold?: number
           id?: string
           juros_mensal_pct?: number
+          letter_criteria_mode?: Json
           max_alertas_restricoes?: number
           max_ccf_total?: number
           max_classificacao_score?: string
@@ -1484,7 +1491,9 @@ export type Database = {
           mora_diaria_pct?: number
           multa_atraso_pct?: number
           parcela_minima?: number
+          score_analise_scale_max?: number
           score_bands?: Json
+          score_weights?: Json
           sugestao_negocio_block_buckets?: Json
           sugestao_negocio_block_levels?: Json
           teto_credito?: number

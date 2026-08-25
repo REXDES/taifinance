@@ -50,7 +50,33 @@ export interface CreditRules {
   max_classificacao_score: LetraAE;
   max_faturas_em_atraso: LetraAE;
   max_contratos_recentes: LetraAE;
+  /** Pesos (0..100) de cada sinal no score final ponderado. */
+  score_weights: Record<string, number>;
+  /** Escala máxima do score_analise do provedor (default 500). */
+  score_analise_scale_max: number;
+  /** 'pontuar' (default) ou 'bloquear' por critério qualitativo. */
+  letter_criteria_mode: Record<string, 'pontuar' | 'bloquear'>;
 }
+
+export const SCORE_WEIGHT_KEYS = [
+  { key: 'score', label: 'Score do bureau', hint: 'escala 0–1000 ÷ 10' },
+  { key: 'probabilidade_pagamento', label: 'Probabilidade de pagamento', hint: '100 − % de inadimplência' },
+  { key: 'score_analise', label: 'Score de análise', hint: 'proporcional à escala do provedor' },
+  { key: 'faturas_em_atraso', label: 'Faturas em atraso', hint: 'A=100 … E=0' },
+  { key: 'contratos_recentes', label: 'Contratos recentes', hint: 'A=100 … E=0' },
+  { key: 'rating', label: 'Rating / classificação', hint: 'A=100 … E=0' },
+  { key: 'restricoes', label: 'Restrições ativas', hint: '100 sem ocorrência, −25 por ocorrência' },
+] as const;
+
+export const DEFAULT_SCORE_WEIGHTS: Record<string, number> = {
+  score: 35,
+  probabilidade_pagamento: 25,
+  score_analise: 15,
+  faturas_em_atraso: 10,
+  contratos_recentes: 5,
+  rating: 5,
+  restricoes: 5,
+};
 
 export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
   max_protestos: 0,
@@ -87,6 +113,14 @@ export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
   max_classificacao_score: 'C',
   max_faturas_em_atraso: 'C',
   max_contratos_recentes: 'E',
+  score_weights: DEFAULT_SCORE_WEIGHTS,
+  score_analise_scale_max: 500,
+  letter_criteria_mode: {
+    classificacao_score: 'pontuar',
+    faturas_em_atraso: 'pontuar',
+    contratos_recentes: 'pontuar',
+    sugestao_negocio: 'pontuar',
+  },
 };
 
 export interface CreditApplication {
@@ -111,11 +145,26 @@ export interface CreditApplication {
   bureau_analysis?: BureauAnalysis | null;
 }
 
+export interface WeightedComponent {
+  key: string;
+  label: string;
+  raw: string | null;
+  normalized: number;
+  weight: number;
+  effective_weight: number;
+  contribution: number;
+}
+
 export interface ScoreBreakdown {
   score: number | null;
   score_analise: number | null;
   score_rating: number | null;
+  /** Score final ponderado (0..1000) usado na régua. */
   media: number | null;
+  final_score?: number | null;
+  weighted_0_100?: number | null;
+  components?: WeightedComponent[];
+  missing?: string[];
 }
 
 export interface BureauAnalysis {

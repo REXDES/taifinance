@@ -4,6 +4,8 @@ import { useAccessMode } from '@/contexts/AccessModeContext';
 import { useCompanies } from '@/hooks/useCompanies';
 import { FinanceSidebar } from '@/components/finance/FinanceSidebar';
 import { FinanceHeader } from '@/components/finance/FinanceHeader';
+import { MobileBottomNav } from '@/components/finance/MobileBottomNav';
+import { MobileMenuSheet } from '@/components/finance/MobileMenuSheet';
 import { AccountsPage } from '@/components/finance/AccountsPage';
 import { TransactionsPage } from '@/components/finance/TransactionsPage';
 import { TransfersPage } from '@/components/finance/TransfersPage';
@@ -28,6 +30,7 @@ import { ClientsSuppliersPage } from '@/components/finance/ClientsSuppliersPage'
 import { TagsPage } from '@/components/finance/TagsPage';
 import { SplitPixPage } from '@/components/finance/SplitPixPage';
 import { BankDigitalPage } from '@/components/finance/BankDigitalPage';
+import { BoletosPage } from '@/components/finance/BoletosPage';
 import { CompanySettingsDialog } from '@/components/finance/CompanySettingsDialog';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
@@ -39,6 +42,7 @@ import { MachineCatalogPage } from '@/components/machines/MachineCatalogPage';
 import { RentalPricingPage } from '@/components/machines/RentalPricingPage';
 import { MaintenancePage } from '@/components/machines/MaintenancePage';
 import { RentalsPage } from '@/components/machines/RentalsPage';
+import { RentalsReportPage } from '@/components/machines/RentalsReportPage';
 import { PeoplePage } from '@/components/machines/PeoplePage';
 import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
 import { useCompanyCreditFlag } from '@/hooks/useCreditModule';
@@ -54,7 +58,6 @@ import { NectaAdminDashboardPage } from '@/components/payments/NectaAdminDashboa
 import { NectaAdminRegistrationPage } from '@/components/payments/NectaAdminRegistrationPage';
 import { NectaAdminSettlementsPage } from '@/components/payments/NectaAdminSettlementsPage';
 import { NectaAdminSettingsPage } from '@/components/payments/NectaAdminSettingsPage';
-
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -104,7 +107,8 @@ export type FinanceView =
   | 'payments-admin-dashboard'
   | 'payments-admin-registration'
   | 'payments-admin-settlements'
-  | 'payments-admin-settings';
+  | 'payments-admin-settings'
+  | 'boletos';
 
 const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'audit-logs', 'bank-digital', 'credit-admin', 'payments-admin-dashboard', 'payments-admin-registration', 'payments-admin-settlements', 'payments-admin-settings'];
 
@@ -142,7 +146,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'payments-dashboard',
   'payments-registration',
   'payments-charges',
-
+  'boletos',
 ];
 
 interface UserRoleInfo {
@@ -174,6 +178,7 @@ const Finance = () => {
   const [showInvitations, setShowInvitations] = useState(false);
   const [showCompanySettings, setShowCompanySettings] = useState(false);
   const { can, loading: permissionsLoading } = usePermissions();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isSupervisor = userRole?.role === 'supervisor';
   const isGerente = userRole?.role === 'gerente';
@@ -181,7 +186,6 @@ const Finance = () => {
   const canCreateCompany = isSupervisor || (isGerente && can('admin.companies') && userRole?.companyLimit !== null && (userRole?.companiesCreated ?? 0) < (userRole?.companyLimit ?? 0));
   const canInviteUsers = isSupervisor || (isGerente && can('admin.invitations') && userRole?.invitationLimit !== null && (userRole?.invitationsCreated ?? 0) < (userRole?.invitationLimit ?? 0));
 
-  // Force non-supervisors to "normal" mode automatically
   useEffect(() => {
     if (!userRole) return;
     if (!isSupervisor && accessMode !== 'normal') {
@@ -192,7 +196,6 @@ const Finance = () => {
   const showAccessModeDialog = !!userRole && isSupervisor && accessMode === null;
   const effectiveMode: 'admin' | 'normal' = accessMode === 'admin' && isSupervisor ? 'admin' : 'normal';
 
-  // Sync default view to mode
   useEffect(() => {
     if (showAccessModeDialog) return;
     if (effectiveMode === 'admin') {
@@ -292,6 +295,32 @@ const Finance = () => {
       return true;
     }
     return false;
+  };
+
+  const sharedSidebarProps = {
+    companies,
+    selectedCompanyId,
+    onSelectCompany: setSelectedCompanyId,
+    currentView,
+    onChangeView: setCurrentView,
+    isSupervisor,
+    isGerente,
+    accessMode: effectiveMode,
+    canCreateCompany,
+    companyLimit: userRole?.companyLimit ?? null,
+    companiesCreated: userRole?.companiesCreated ?? 0,
+    canInvite: isSupervisor || (isGerente && userRole?.invitationLimit !== null && (userRole?.invitationsCreated ?? 0) < (userRole?.invitationLimit ?? 0)),
+    invitationLimit: userRole?.invitationLimit ?? null,
+    invitationsCreated: userRole?.invitationsCreated ?? 0,
+    onCreateCompany: () => setIsCreateCompanyOpen(true),
+    onManageCompanies: () => setShowCompanySettings(true),
+    onOpenUsers: () => setShowUsers(true),
+    onOpenInvitations: () => setShowInvitations(true),
+    onOpenCompanySettings: () => setShowCompanySettings(true),
+    machinesEnabled,
+    creditEnabled,
+    bankDigitalEnabled,
+    paymentsEnabled,
   };
 
   const renderContent = () => {
@@ -404,40 +433,22 @@ const Finance = () => {
         return <NectaAdminSettlementsPage companyId={selectedCompanyId} />;
       case 'payments-admin-settings':
         return <NectaAdminSettingsPage companyId={selectedCompanyId} />;
-
+      case 'boletos':
+        return <BoletosPage companyId={selectedCompanyId} />;
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }
   };
 
   return (
-    <div className="flex h-screen bg-background">
-      <FinanceSidebar
-        companies={companies}
-        selectedCompanyId={selectedCompanyId}
-        onSelectCompany={setSelectedCompanyId}
-        currentView={currentView}
-        onChangeView={changeView}
-        isSupervisor={isSupervisor}
-        isGerente={isGerente}
-        accessMode={effectiveMode}
-        canCreateCompany={canCreateCompany}
-        companyLimit={userRole?.companyLimit ?? null}
-        companiesCreated={userRole?.companiesCreated ?? 0}
-        canInvite={canInviteUsers}
-        invitationLimit={userRole?.invitationLimit ?? null}
-        invitationsCreated={userRole?.invitationsCreated ?? 0}
-        onCreateCompany={() => setIsCreateCompanyOpen(true)}
-        onManageCompanies={() => setShowCompanySettings(true)}
-        onOpenUsers={() => setShowUsers(true)}
-        onOpenInvitations={() => setShowInvitations(true)}
-        onOpenCompanySettings={() => setShowCompanySettings(true)}
-        machinesEnabled={machinesEnabled}
-        creditEnabled={creditEnabled}
-        bankDigitalEnabled={bankDigitalEnabled}
-        paymentsEnabled={paymentsEnabled}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex h-[100dvh] bg-background overflow-hidden">
+      {/* Desktop sidebar — hidden on mobile */}
+      <div className="hidden md:block shrink-0">
+        <FinanceSidebar {...sharedSidebarProps} />
+      </div>
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <FinanceHeader
           user={user}
           onSignOut={signOut}
@@ -447,11 +458,28 @@ const Finance = () => {
           isAdminMode={effectiveMode === 'admin'}
           canSwitchMode={isSupervisor}
           onSwitchMode={resetMode}
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
-        <main className="flex-1 overflow-auto p-6">
+        {/* pb-16 on mobile to clear the bottom nav bar */}
+        <main className="flex-1 overflow-auto p-3 md:p-6 pb-20 md:pb-6">
           {renderContent()}
         </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <MobileBottomNav
+        currentView={currentView}
+        onChangeView={setCurrentView}
+        onOpenMenu={() => setMobileMenuOpen(true)}
+        isAdminMode={effectiveMode === 'admin'}
+      />
+
+      {/* Mobile full menu drawer */}
+      <MobileMenuSheet
+        open={mobileMenuOpen}
+        onOpenChange={setMobileMenuOpen}
+        {...sharedSidebarProps}
+      />
 
       <AccessModeDialog open={showAccessModeDialog} />
 

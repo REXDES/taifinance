@@ -38,6 +38,7 @@ import {
   Hammer,
   Briefcase,
   Split,
+  Barcode,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -108,6 +109,7 @@ const transacoesMenuItems: MenuItem[] = [
   { view: 'transfers', label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" /> },
   { view: 'payables-receivables', label: 'Contas a Pagar/Receber', icon: <CreditCard className="w-4 h-4" /> },
   { view: 'statement-import', label: 'Importar Extrato', icon: <FileSearch className="w-4 h-4" /> },
+  { view: 'boletos', label: 'Boletos', icon: <Barcode className="w-4 h-4" /> },
 ];
 
 const relatoriosMainItems: MenuItem[] = [
@@ -277,7 +279,7 @@ export function FinanceSidebar({
   return (
     <TooltipProvider delayDuration={0}>
       <aside className={cn(
-        "h-screen bg-card border-r border-border flex flex-col transition-all duration-300",
+        "h-full bg-card border-r border-border flex flex-col transition-all duration-300",
         collapsed ? "w-14" : "w-64",
         isAdminMode && "border-r-primary/30"
       )}>

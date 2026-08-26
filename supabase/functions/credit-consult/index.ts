@@ -619,6 +619,24 @@ function runDecisionEngine(opts: {
     }
   }
 
+  // Histórico adverso (vida pregressa pior que situação atual): reduz limite e prazo
+  if (breakdown.adverse_history) {
+    const limFactor = Number(rules.adverse_history_limit_factor);
+    const parcFactor = Number(rules.adverse_history_term_factor);
+    const limF = Number.isFinite(limFactor) && limFactor > 0 && limFactor < 1 ? limFactor : 1;
+    const parcF = Number.isFinite(parcFactor) && parcFactor > 0 && parcFactor < 1 ? parcFactor : 1;
+    if (limF < 1) {
+      const newLimit = Math.max(0, Math.round(limit * limF));
+      bureauCapApplied += ` Limite reduzido para R$ ${newLimit.toLocaleString('pt-BR')} (histórico adverso: ${Math.round((1 - limF) * 100)}%).`;
+      limit = newLimit;
+    }
+    if (parcF < 1) {
+      const newParc = Math.max(1, Math.floor(parcelas * parcF));
+      bureauCapApplied += ` Prazo reduzido para ${newParc}x (histórico adverso: ${Math.round((1 - parcF) * 100)}%).`;
+      parcelas = newParc;
+    }
+  }
+
   // Se a faixa original era de rejeição e foi liberada por alçada, força revisão manual
   const finalDecision: "approved" | "manual" = bandRejected ? "manual" : effectiveBand.decision as any;
   const alcadaNote = bandRejected ? ` (faixa liberada por alçada — score ${score} estava abaixo do mínimo)` : '';

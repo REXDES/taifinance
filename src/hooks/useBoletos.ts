@@ -55,7 +55,7 @@ export function useBoletos(companyId: string, filters?: BoletoFilters) {
 
       const { data, error } = await query;
       if (error) throw error;
-      setBoletos((data ?? []) as Boleto[]);
+      setBoletos((data ?? []) as unknown as Boleto[]);
     } catch (err) {
       console.error('Erro ao carregar boletos:', err);
       toast.error('Erro ao carregar boletos.');

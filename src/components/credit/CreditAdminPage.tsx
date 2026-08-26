@@ -490,7 +490,24 @@ export function CreditAdminPage({ companyId }: Props) {
                   <Label className="text-xs">Score analítico mínimo (0 = desliga)</Label>
                   <Input type="number" min={0} value={draft.min_score_analise ?? 0}
                     onChange={(e) => setDraft({ ...draft, min_score_analise: parseInt(e.target.value) || 0 })} />
-                  <p className="text-[11px] text-muted-foreground mt-1">Propostas com <code>score_analise</code> abaixo deste valor são reprovadas.</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">Define o piso do <code>score_analise</code>. Use o modo abaixo para definir se ele bloqueia ou apenas pontua.</p>
+                  <div className="mt-2">
+                    <Label className="text-[10px] text-muted-foreground">Modo do corte</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      {(['bloquear', 'pontuar'] as const).map((m) => (
+                        <button key={m} type="button"
+                          onClick={() => setDraft({ ...draft, score_analise_mode: m })}
+                          className={`px-2.5 py-1.5 rounded border text-[11px] transition ${draft.score_analise_mode === m ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted'}`}>
+                          {m === 'bloquear' ? 'Bloquear (knockout)' : 'Pontuar (não bloqueia)'}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {draft.score_analise_mode === 'pontuar'
+                        ? 'Abaixo do mínimo, o score analítico apenas reduz a pontuação — a proposta pode ir para análise manual em vez de recusar.'
+                        : 'Abaixo do mínimo, a proposta é recusada imediatamente (knockout). Pode ser liberada por alçada.'}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex flex-col">
                   <Label className="text-xs mb-2">Aplicar limites sugeridos pelo bureau como teto</Label>

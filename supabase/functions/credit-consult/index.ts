@@ -109,6 +109,10 @@ const WEIGHT_LABELS: Record<string, string> = {
   rating: 'Rating / classificação',
   restricoes: 'Restrições ativas',
 };
+const CURRENT_SIGNAL_KEYS = ['score', 'probabilidade_pagamento'];
+const HISTORY_SIGNAL_KEYS = ['score_analise', 'faturas_em_atraso', 'contratos_recentes', 'rating', 'restricoes'];
+const STANCE_PRESETS: Record<string, number> = { atual: 80, balanceado: 50, pregressa: 20, custom: 50 };
+
 const SOFT_CRITERIA = ['classificacao_score', 'faturas_em_atraso', 'contratos_recentes', 'sugestao_negocio'];
 function criterionMode(rules: CreditRules, criterion: string): 'pontuar' | 'bloquear' {
   const m = (rules.letter_criteria_mode || {})[criterion];

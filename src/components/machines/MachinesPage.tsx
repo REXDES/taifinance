@@ -379,10 +379,12 @@ export function MachinesPage({ companyId }: Props) {
                       />
                     </TableCell>
                     <TableCell>
+                      <Button size="icon" variant="ghost" onClick={() => setMovementTarget(m)} title="Movimentação (venda / baixa)"><ArrowLeftRight className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => openPrices(m)} title="Preços de venda e locação"><Tag className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => setDeleteTarget(m)}><Trash2 className="w-4 h-4" /></Button>
                     </TableCell>
+
                   </TableRow>
                 ))}
             </TableBody>

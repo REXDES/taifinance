@@ -223,7 +223,9 @@ export function MachinesPage({ companyId }: Props) {
   };
 
   const filtered = machines.filter(m => {
+    if (m.status === 'vendida' || (m.status as string) === 'baixada') return false;
     if (filter !== 'all' && m.acquisition_source !== filter) return false;
+
     if (categoryFilter !== 'all' && (m.category || 'equipamento') !== categoryFilter) return false;
     if (typeFilter !== 'all' && (m.type_id || 'none') !== typeFilter) return false;
     if (statusFilter !== 'all' && m.status !== statusFilter) return false;

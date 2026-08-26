@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Tag, Package, Wallet, Percent, MapPin, Tags } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, Package, Wallet, Percent, MapPin, Tags, ArrowLeftRight } from 'lucide-react';
 import { useMachines, useMachineTypes, useMachineCategories, Machine } from '@/hooks/useMachinesModule';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

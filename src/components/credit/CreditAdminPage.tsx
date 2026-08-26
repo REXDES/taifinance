@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useCreditRules, type ScoreBand, DEFAULT_RULES, consultCredit, type ConsultResult, CONFIANCA_OPTIONS, SUGESTAO_OPTIONS, SCORE_WEIGHT_KEYS, DEFAULT_SCORE_WEIGHTS } from '@/hooks/useCreditModule';
+import { useCreditRules, type ScoreBand, type AnalysisStance, DEFAULT_RULES, consultCredit, type ConsultResult, CONFIANCA_OPTIONS, SUGESTAO_OPTIONS, SCORE_WEIGHT_KEYS, DEFAULT_SCORE_WEIGHTS, CURRENT_SIGNAL_KEYS, HISTORY_SIGNAL_KEYS, STANCE_PRESETS } from '@/hooks/useCreditModule';
 import { BureauAnalysisCard } from './BureauAnalysisCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

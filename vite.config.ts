@@ -43,8 +43,6 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (!id.includes("node_modules")) return;
-            if (/[\\/]node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/.test(id))
-              return "react";
             if (id.includes("@supabase")) return "supabase";
             if (id.includes("recharts") || id.includes("d3-")) return "charts";
             if (id.includes("jspdf") || id.includes("html2canvas") || id.includes("xlsx"))

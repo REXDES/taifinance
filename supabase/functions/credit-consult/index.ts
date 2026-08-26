@@ -83,6 +83,12 @@ interface CreditRules {
   score_analise_scale_max?: number | null;
   /** 'pontuar' (default) ou 'bloquear' por critério qualitativo */
   letter_criteria_mode?: Record<string, string> | null;
+  // Postura de análise
+  analysis_stance?: string;
+  stance_current_weight?: number;
+  score_analise_mode?: string;
+  adverse_history_limit_factor?: number;
+  adverse_history_term_factor?: number;
 }
 
 const DEFAULT_SCORE_WEIGHTS: Record<string, number> = {

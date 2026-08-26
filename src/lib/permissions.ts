@@ -71,6 +71,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'machines.operators', label: 'Operadores' },
       { key: 'machines.mechanics', label: 'Mecânicos' },
       { key: 'machines.catalog', label: 'Categorias e tipos' },
+      { key: 'machines.movements', label: 'Vendidos e baixados' },
+
     ],
   },
   {

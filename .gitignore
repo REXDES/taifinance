@@ -12,8 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Environment variables
-.env
+# Environment variables (.env holds only publishable Lovable Cloud keys and must stay versioned)
 .env.local
 .env.*.local
 

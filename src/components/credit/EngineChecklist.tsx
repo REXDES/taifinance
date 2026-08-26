@@ -152,12 +152,19 @@ export function EngineChecklist({
 
   const scoreAnal = toNum(summary.score_analise);
   if ((rules.min_score_analise ?? 0) > 0) {
+    const analiseMode = rules.score_analise_mode === 'bloquear' ? 'bloquear' : 'pontuar';
+    const below = scoreAnal != null && scoreAnal < (rules.min_score_analise ?? 0);
     rows.push({
       criterion: 'score_analise',
       label: 'Score analítico (bureau)',
       actual: scoreAnal != null ? String(scoreAnal) : '—',
-      limit: `mín ${rules.min_score_analise}`,
-      status: scoreAnal == null ? 'na' : scoreAnal < rules.min_score_analise ? 'fail' : 'pass',
+      limit: `mín ${rules.min_score_analise} (${analiseMode === 'bloquear' ? 'bloqueia' : 'pontua'})`,
+      status: analiseMode === 'bloquear'
+        ? (scoreAnal == null ? 'na' : below ? 'fail' : 'pass')
+        : (scoreAnal == null ? 'na' : below ? 'na' : 'pass'),
+      note: analiseMode === 'pontuar' && below
+        ? 'Abaixo do mínimo — pontua no score, não bloqueia (pode ir a análise manual)'
+        : undefined,
     });
   }
 

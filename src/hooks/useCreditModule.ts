@@ -13,6 +13,8 @@ export interface ScoreBand {
 
 export type LetraAE = 'A' | 'B' | 'C' | 'D' | 'E';
 
+export type AnalysisStance = 'atual' | 'balanceado' | 'pregressa' | 'custom';
+
 export interface CreditRules {
   id?: string;
   company_id: string;
@@ -56,6 +58,16 @@ export interface CreditRules {
   score_analise_scale_max: number;
   /** 'pontuar' (default) ou 'bloquear' por critério qualitativo. */
   letter_criteria_mode: Record<string, 'pontuar' | 'bloquear'>;
+  /** Postura de análise: atual | balanceado | pregressa | custom. */
+  analysis_stance: AnalysisStance;
+  /** Peso (0..100) da situação atual quando stance = custom. */
+  stance_current_weight: number;
+  /** 'pontuar' (default) ou 'bloquear' para o corte de score_analise. */
+  score_analise_mode: 'pontuar' | 'bloquear';
+  /** Fator de redução do limite quando vida pregressa < situação atual (1.0 = sem redução). */
+  adverse_history_limit_factor: number;
+  /** Fator de redução do prazo quando vida pregressa < situação atual (1.0 = sem redução). */
+  adverse_history_term_factor: number;
 }
 
 export const SCORE_WEIGHT_KEYS = [
@@ -76,6 +88,18 @@ export const DEFAULT_SCORE_WEIGHTS: Record<string, number> = {
   contratos_recentes: 5,
   rating: 5,
   restricoes: 5,
+};
+
+/** Sinais que descrevem a SITUAÇÃO ATUAL (Serasa/score + probabilidade de pagamento). */
+export const CURRENT_SIGNAL_KEYS = ['score', 'probabilidade_pagamento'] as const;
+/** Sinais que descrevem a VIDA PREGRESSA (score de análise, faturas, contratos, rating, restrições). */
+export const HISTORY_SIGNAL_KEYS = ['score_analise', 'faturas_em_atraso', 'contratos_recentes', 'rating', 'restricoes'] as const;
+
+export const STANCE_PRESETS: Record<AnalysisStance, number> = {
+  atual: 80,
+  balanceado: 50,
+  pregressa: 20,
+  custom: 50,
 };
 
 export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
@@ -121,6 +145,11 @@ export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
     contratos_recentes: 'pontuar',
     sugestao_negocio: 'pontuar',
   },
+  analysis_stance: 'balanceado',
+  stance_current_weight: 50,
+  score_analise_mode: 'pontuar',
+  adverse_history_limit_factor: 1.0,
+  adverse_history_term_factor: 1.0,
 };
 
 export interface CreditApplication {
@@ -155,6 +184,18 @@ export interface WeightedComponent {
   contribution: number;
 }
 
+export interface ScoreBlock {
+  key: 'current' | 'history';
+  label: string;
+  /** Soma dos pontos (0..100) já ponderada intra-bloco. */
+  points: number;
+  /** Peso efetivo do bloco (0..100) após distribuição da postura. */
+  weight: number;
+  /** Contribuição do bloco no score final (0..100). */
+  contribution: number;
+  components: WeightedComponent[];
+}
+
 export interface ScoreBreakdown {
   score: number | null;
   score_analise: number | null;
@@ -165,6 +206,15 @@ export interface ScoreBreakdown {
   weighted_0_100?: number | null;
   components?: WeightedComponent[];
   missing?: string[];
+  /** Blocos situação atual / vida pregressa. */
+  blocks?: ScoreBlock[];
+  /** Postura aplicada nesta avaliação. */
+  analysis_stance?: string;
+  stance_current_weight?: number;
+  /** Grau de confiança do rating (0..100, do score_rating). */
+  rating_confidence?: number | null;
+  /** True quando a vida pregressa está pior que a situação atual. */
+  adverse_history?: boolean;
 }
 
 export interface BureauAnalysis {

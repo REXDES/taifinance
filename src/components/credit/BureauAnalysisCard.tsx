@@ -82,6 +82,51 @@ export function BureauAnalysisCard({ analysis, compact }: Props) {
               )}
             </div>
           )}
+
+          {(breakdown.blocks?.length ?? 0) > 0 && (
+            <div className="space-y-2 pt-1 border-t border-primary/20 mt-2">
+              <div className="text-[10px] uppercase text-muted-foreground flex items-center gap-1">
+                <Info className="w-3 h-3" /> Blocos da postura de análise
+                {breakdown.analysis_stance && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground normal-case">
+                    {breakdown.analysis_stance === 'atual' ? 'Foco atual' : breakdown.analysis_stance === 'pregressa' ? 'Foco pregressa' : breakdown.analysis_stance === 'balanceado' ? 'Balanceado' : 'Personalizado'} ({breakdown.stance_current_weight ?? 50}/{100 - (breakdown.stance_current_weight ?? 50)})
+                  </span>
+                )}
+                {breakdown.adverse_history && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 normal-case">Histórico adverso</span>
+                )}
+                {breakdown.rating_confidence != null && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground normal-case">Confiança rating: {breakdown.rating_confidence}</span>
+                )}
+              </div>
+              {breakdown.blocks!.map((blk) => {
+                const isCurrent = blk.key === 'current';
+                const tone = isCurrent ? 'bg-sky-500/70' : 'bg-violet-500/70';
+                const bg = isCurrent ? 'bg-sky-500/10 border-sky-500/30' : 'bg-violet-500/10 border-violet-500/30';
+                return (
+                  <div key={blk.key} className={`rounded border ${bg} px-2 py-1.5`}>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-medium">{blk.label}</span>
+                      <span className="text-muted-foreground">peso {blk.weight}% · contribuição {blk.contribution}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 h-2.5 rounded bg-muted overflow-hidden">
+                        <div className={`h-full ${tone}`} style={{ width: `${Math.max(0, Math.min(100, blk.points))}%` }} />
+                      </div>
+                      <div className="w-8 text-right text-[11px] font-semibold">{blk.points}</div>
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10px] text-muted-foreground">
+                      {(blk.components || []).map((c) => (
+                        <span key={c.key} title={`${c.label}: ${c.raw ?? '—'} → ${c.normalized}/100 (peso ${c.effective_weight}%)`}>
+                          {c.label.split(' ')[0]}: <span className="text-foreground/80">{c.normalized}</span> <span className="opacity-60">({c.effective_weight}%)</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

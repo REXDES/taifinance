@@ -83,6 +83,12 @@ interface CreditRules {
   score_analise_scale_max?: number | null;
   /** 'pontuar' (default) ou 'bloquear' por critério qualitativo */
   letter_criteria_mode?: Record<string, string> | null;
+  // Postura de análise
+  analysis_stance?: string;
+  stance_current_weight?: number;
+  score_analise_mode?: string;
+  adverse_history_limit_factor?: number;
+  adverse_history_term_factor?: number;
 }
 
 const DEFAULT_SCORE_WEIGHTS: Record<string, number> = {
@@ -103,6 +109,10 @@ const WEIGHT_LABELS: Record<string, string> = {
   rating: 'Rating / classificação',
   restricoes: 'Restrições ativas',
 };
+const CURRENT_SIGNAL_KEYS = ['score', 'probabilidade_pagamento'];
+const HISTORY_SIGNAL_KEYS = ['score_analise', 'faturas_em_atraso', 'contratos_recentes', 'rating', 'restricoes'];
+const STANCE_PRESETS: Record<string, number> = { atual: 80, balanceado: 50, pregressa: 20, custom: 50 };
+
 const SOFT_CRITERIA = ['classificacao_score', 'faturas_em_atraso', 'contratos_recentes', 'sugestao_negocio'];
 function criterionMode(rules: CreditRules, criterion: string): 'pontuar' | 'bloquear' {
   const m = (rules.letter_criteria_mode || {})[criterion];
@@ -232,6 +242,14 @@ interface WeightedComponent {
   effective_weight: number;
   contribution: number;
 }
+interface ScoreBlock {
+  key: 'current' | 'history';
+  label: string;
+  points: number;
+  weight: number;
+  contribution: number;
+  components: WeightedComponent[];
+}
 interface ScoreBreakdown {
   score: number | null;
   score_analise: number | null;
@@ -242,6 +260,11 @@ interface ScoreBreakdown {
   weighted_0_100: number | null;
   components: WeightedComponent[];
   missing: string[];
+  blocks: ScoreBlock[];
+  analysis_stance: string;
+  stance_current_weight: number;
+  rating_confidence: number | null;
+  adverse_history: boolean;
 }
 
 const LETTER_SCORE: Record<string, number> = { A: 100, B: 75, C: 50, D: 25, E: 0 };
@@ -250,16 +273,27 @@ function letterToScore(raw: any): number | null {
   return l ? LETTER_SCORE[l] ?? null : null;
 }
 
+/** Peso (0..100) da situação atual conforme a postura configurada. */
+function stanceCurrentWeight(rules: CreditRules): number {
+  const stance = rules.analysis_stance || 'balanceado';
+  if (stance === 'custom') {
+    const w = Number(rules.stance_current_weight);
+    return Number.isFinite(w) ? Math.max(0, Math.min(100, w)) : 50;
+  }
+  return STANCE_PRESETS[stance] ?? 50;
+}
+
 /**
- * Score final ponderado: normaliza cada sinal para 0..100, aplica pesos configuráveis
- * (redistribuindo os pesos dos sinais ausentes) e devolve na escala 0..1000.
+ * Score final ponderado: normaliza cada sinal para 0..100, agrupa em situação atual
+ * vs. vida pregressa, distribui o peso entre os blocos conforme a postura de análise,
+ * e devolve na escala 0..1000.
  */
 function computeWeightedScore(summary: RedeBESummary, rules: CreditRules): ScoreBreakdown {
   const s = toNumberLoose(summary.score);
   const sa = toNumberLoose(summary.score_analise);
   const sr = toNumberLoose(summary.score_rating);
   const scaleMax = Number(rules.score_analise_scale_max) > 0 ? Number(rules.score_analise_scale_max) : 500;
-  const weights = { ...DEFAULT_SCORE_WEIGHTS, ...(rules.score_weights || {}) };
+  const baseWeights = { ...DEFAULT_SCORE_WEIGHTS, ...(rules.score_weights || {}) };
 
   const probInad = toNumberLoose(summary.probabilidade_inadimplencia);
   const probPag = probInad != null ? Math.max(0, Math.min(100, 100 - probInad)) : null;
@@ -275,42 +309,86 @@ function computeWeightedScore(summary: RedeBESummary, rules: CreditRules): Score
     summary.possui_restricao != null || summary.quantidade_alertas_restricoes != null;
 
   const ratingRaw = summary.classificacao_score || summary.rating || null;
+  // score_rating vira grau de confiança do rating (0..100): pondera o peso do sinal rating.
+  const ratingConfidence = sr != null ? Math.max(0, Math.min(100, sr)) : null;
+  const ratingWeight = ratingConfidence != null
+    ? (baseWeights.rating ?? 0) * (ratingConfidence / 100)
+    : (baseWeights.rating ?? 0);
 
-  const signals: Array<{ key: string; raw: any; normalized: number | null }> = [
-    { key: 'score', raw: summary.score, normalized: s != null ? Math.max(0, Math.min(100, s / 10)) : null },
-    { key: 'probabilidade_pagamento', raw: summary.probabilidade_inadimplencia, normalized: probPag },
-    { key: 'score_analise', raw: summary.score_analise, normalized: sa != null ? Math.max(0, Math.min(100, (sa / scaleMax) * 100)) : null },
-    { key: 'faturas_em_atraso', raw: summary.faturas_em_atraso, normalized: letterToScore(summary.faturas_em_atraso) },
-    { key: 'contratos_recentes', raw: summary.contratos_recentes, normalized: letterToScore(summary.contratos_recentes) },
-    { key: 'rating', raw: ratingRaw, normalized: letterToScore(ratingRaw) },
+  const signals: Array<{ key: string; raw: any; normalized: number | null; weight: number }> = [
+    { key: 'score', raw: summary.score, normalized: s != null ? Math.max(0, Math.min(100, s / 10)) : null, weight: baseWeights.score ?? 0 },
+    { key: 'probabilidade_pagamento', raw: summary.probabilidade_inadimplencia, normalized: probPag, weight: baseWeights.probabilidade_pagamento ?? 0 },
+    { key: 'score_analise', raw: summary.score_analise, normalized: sa != null ? Math.max(0, Math.min(100, (sa / scaleMax) * 100)) : null, weight: baseWeights.score_analise ?? 0 },
+    { key: 'faturas_em_atraso', raw: summary.faturas_em_atraso, normalized: letterToScore(summary.faturas_em_atraso), weight: baseWeights.faturas_em_atraso ?? 0 },
+    { key: 'contratos_recentes', raw: summary.contratos_recentes, normalized: letterToScore(summary.contratos_recentes), weight: baseWeights.contratos_recentes ?? 0 },
+    { key: 'rating', raw: ratingRaw, normalized: letterToScore(ratingRaw), weight: ratingWeight },
     {
       key: 'restricoes',
       raw: hasRestricaoInfo ? `${restricoesCount} ocorrência(s)` : null,
       normalized: hasRestricaoInfo ? Math.max(0, 100 - 25 * restricoesCount) : null,
+      weight: baseWeights.restricoes ?? 0,
     },
   ];
 
-  const present = signals.filter((x) => x.normalized != null && (weights[x.key] ?? 0) > 0);
-  const totalWeight = present.reduce((acc, x) => acc + (weights[x.key] ?? 0), 0);
-  const components: WeightedComponent[] = present.map((x) => {
-    const w = weights[x.key] ?? 0;
-    const eff = totalWeight > 0 ? (w / totalWeight) * 100 : 0;
+  const curW = stanceCurrentWeight(rules);
+  const hisW = 100 - curW;
+  // Soma dos pesos finos presentes em cada bloco
+  const curPresent = signals.filter((x) => CURRENT_SIGNAL_KEYS.includes(x.key) && x.normalized != null && x.weight > 0);
+  const hisPresent = signals.filter((x) => HISTORY_SIGNAL_KEYS.includes(x.key) && x.normalized != null && x.weight > 0);
+  const curFine = curPresent.reduce((a, x) => a + x.weight, 0) || 1;
+  const hisFine = hisPresent.reduce((a, x) => a + x.weight, 0) || 1;
+
+  const buildBlock = (
+    key: 'current' | 'history',
+    label: string,
+    blockWeight: number,
+    present: typeof signals,
+    fineTotal: number,
+  ): ScoreBlock => {
+    const components: WeightedComponent[] = present.map((x) => {
+      // peso do sinal dentro do bloco (relativo), escalonado ao peso do bloco
+      const intraW = fineTotal > 0 ? (x.weight / fineTotal) * blockWeight : 0;
+      const eff = intraW; // já em 0..100 do total
+      return {
+        key: x.key,
+        label: WEIGHT_LABELS[x.key] || x.key,
+        raw: x.raw != null ? String(x.raw) : null,
+        normalized: Math.round(x.normalized!),
+        weight: Math.round(x.weight * 10) / 10,
+        effective_weight: Math.round(eff * 10) / 10,
+        contribution: Math.round(((x.normalized! * eff) / 100) * 10) / 10,
+      };
+    });
+    const points = components.length > 0 ? components.reduce((a, c) => a + (c.normalized * c.effective_weight) / 100, 0) : 0;
     return {
-      key: x.key,
-      label: WEIGHT_LABELS[x.key] || x.key,
-      raw: x.raw != null ? String(x.raw) : null,
-      normalized: Math.round(x.normalized!),
-      weight: w,
-      effective_weight: Math.round(eff * 10) / 10,
-      contribution: Math.round(((x.normalized! * eff) / 100) * 10) / 10,
+      key,
+      label,
+      points: Math.round(points * 10) / 10,
+      weight: Math.round(blockWeight * 10) / 10,
+      contribution: Math.round(points * 10) / 10,
+      components,
     };
-  });
+  };
+
+  const curBlock = buildBlock('current', 'Situação atual', curW, curPresent, curFine);
+  const hisBlock = buildBlock('history', 'Vida pregressa', hisW, hisPresent, hisFine);
+
+  const blocks: ScoreBlock[] = [];
+  if (curBlock.components.length > 0) blocks.push(curBlock);
+  if (hisBlock.components.length > 0) blocks.push(hisBlock);
+
+  const allComponents: WeightedComponent[] = [...curBlock.components, ...hisBlock.components];
   const missing = signals
-    .filter((x) => x.normalized == null && (weights[x.key] ?? 0) > 0)
+    .filter((x) => x.normalized == null && x.weight > 0)
     .map((x) => WEIGHT_LABELS[x.key] || x.key);
 
-  const weighted = components.length > 0 ? components.reduce((acc, c) => acc + c.contribution, 0) : null;
+  const weighted = allComponents.length > 0 ? allComponents.reduce((acc, c) => acc + c.contribution, 0) : null;
   const finalScore = weighted != null ? Math.round(Math.max(0, Math.min(100, weighted)) * 10) : (s != null ? Math.round(s) : null);
+
+  // Vida pregressa pior que situação atual?
+  const adverseHistory =
+    curBlock.components.length > 0 && hisBlock.components.length > 0 &&
+    curBlock.points > hisBlock.points + 5;
 
   return {
     score: s != null ? Math.round(s) : null,
@@ -319,8 +397,13 @@ function computeWeightedScore(summary: RedeBESummary, rules: CreditRules): Score
     media: finalScore,
     final_score: finalScore,
     weighted_0_100: weighted != null ? Math.round(weighted) : null,
-    components,
+    components: allComponents,
     missing,
+    blocks,
+    analysis_stance: rules.analysis_stance || 'balanceado',
+    stance_current_weight: curW,
+    rating_confidence: ratingConfidence,
+    adverse_history: adverseHistory,
   };
 }
 
@@ -408,8 +491,11 @@ function runDecisionEngine(opts: {
   // ---- Knockouts: análise do bureau (nó "resumo") ----
   const scoreAnalise = toNumberLoose(summary.score_analise);
   const minScoreAnalise = rules.min_score_analise ?? 0;
-  if (minScoreAnalise > 0 && scoreAnalise != null && scoreAnalise < minScoreAnalise) {
+  const scoreAnaliseMode = rules.score_analise_mode === 'bloquear' ? 'bloquear' : 'pontuar';
+  if (scoreAnaliseMode === 'bloquear' && minScoreAnalise > 0 && scoreAnalise != null && scoreAnalise < minScoreAnalise) {
     pushKO('score_analise', `Score analítico do bureau ${scoreAnalise} abaixo do mínimo (${minScoreAnalise})`);
+  } else if (scoreAnaliseMode === 'pontuar' && minScoreAnalise > 0 && scoreAnalise != null && scoreAnalise < minScoreAnalise) {
+    soft_penalties.push(`Score analítico ${scoreAnalise} abaixo do mínimo ${minScoreAnalise} (pontuado, não bloqueia)`);
   }
   const confiancaBucket = classifyConfianca(summary.nivel_de_confianca);
   const blockConf = rules.min_nivel_confianca_levels || [];
@@ -530,6 +616,24 @@ function runDecisionEngine(opts: {
     if (parcBureau != null && parcBureau > 0 && parcBureau < parcelas) {
       parcelas = Math.floor(parcBureau);
       bureauCapApplied += ` Parcelas reduzidas para ${parcelas}x (máximo do bureau).`;
+    }
+  }
+
+  // Histórico adverso (vida pregressa pior que situação atual): reduz limite e prazo
+  if (breakdown.adverse_history) {
+    const limFactor = Number(rules.adverse_history_limit_factor);
+    const parcFactor = Number(rules.adverse_history_term_factor);
+    const limF = Number.isFinite(limFactor) && limFactor > 0 && limFactor < 1 ? limFactor : 1;
+    const parcF = Number.isFinite(parcFactor) && parcFactor > 0 && parcFactor < 1 ? parcFactor : 1;
+    if (limF < 1) {
+      const newLimit = Math.max(0, Math.round(limit * limF));
+      bureauCapApplied += ` Limite reduzido para R$ ${newLimit.toLocaleString('pt-BR')} (histórico adverso: ${Math.round((1 - limF) * 100)}%).`;
+      limit = newLimit;
+    }
+    if (parcF < 1) {
+      const newParc = Math.max(1, Math.floor(parcelas * parcF));
+      bureauCapApplied += ` Prazo reduzido para ${newParc}x (histórico adverso: ${Math.round((1 - parcF) * 100)}%).`;
+      parcelas = newParc;
     }
   }
 

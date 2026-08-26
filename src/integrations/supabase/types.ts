@@ -1388,6 +1388,9 @@ export type Database = {
       }
       credit_rules: {
         Row: {
+          adverse_history_limit_factor: number
+          adverse_history_term_factor: number
+          analysis_stance: string
           bolsa_familia_block: boolean
           company_id: string
           consulta_price: number
@@ -1415,9 +1418,11 @@ export type Database = {
           mora_diaria_pct: number
           multa_atraso_pct: number
           parcela_minima: number
+          score_analise_mode: string
           score_analise_scale_max: number
           score_bands: Json
           score_weights: Json
+          stance_current_weight: number
           sugestao_negocio_block_buckets: Json
           sugestao_negocio_block_levels: Json
           teto_credito: number
@@ -1426,6 +1431,9 @@ export type Database = {
           use_bureau_limits: boolean
         }
         Insert: {
+          adverse_history_limit_factor?: number
+          adverse_history_term_factor?: number
+          analysis_stance?: string
           bolsa_familia_block?: boolean
           company_id: string
           consulta_price?: number
@@ -1453,9 +1461,11 @@ export type Database = {
           mora_diaria_pct?: number
           multa_atraso_pct?: number
           parcela_minima?: number
+          score_analise_mode?: string
           score_analise_scale_max?: number
           score_bands?: Json
           score_weights?: Json
+          stance_current_weight?: number
           sugestao_negocio_block_buckets?: Json
           sugestao_negocio_block_levels?: Json
           teto_credito?: number
@@ -1464,6 +1474,9 @@ export type Database = {
           use_bureau_limits?: boolean
         }
         Update: {
+          adverse_history_limit_factor?: number
+          adverse_history_term_factor?: number
+          analysis_stance?: string
           bolsa_familia_block?: boolean
           company_id?: string
           consulta_price?: number
@@ -1491,9 +1504,11 @@ export type Database = {
           mora_diaria_pct?: number
           multa_atraso_pct?: number
           parcela_minima?: number
+          score_analise_mode?: string
           score_analise_scale_max?: number
           score_bands?: Json
           score_weights?: Json
+          stance_current_weight?: number
           sugestao_negocio_block_buckets?: Json
           sugestao_negocio_block_levels?: Json
           teto_credito?: number

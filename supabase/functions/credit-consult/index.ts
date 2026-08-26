@@ -406,16 +406,6 @@ function computeWeightedScore(summary: RedeBESummary, rules: CreditRules): Score
     adverse_history: adverseHistory,
   };
 }
-    score: s != null ? Math.round(s) : null,
-    score_analise: sa != null ? Math.round(sa) : null,
-    score_rating: sr != null ? Math.round(sr) : null,
-    media: finalScore,
-    final_score: finalScore,
-    weighted_0_100: weighted != null ? Math.round(weighted) : null,
-    components,
-    missing,
-  };
-}
 
 function runDecisionEngine(opts: {
   rules: CreditRules;

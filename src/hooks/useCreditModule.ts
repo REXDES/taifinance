@@ -184,6 +184,18 @@ export interface WeightedComponent {
   contribution: number;
 }
 
+export interface ScoreBlock {
+  key: 'current' | 'history';
+  label: string;
+  /** Soma dos pontos (0..100) já ponderada intra-bloco. */
+  points: number;
+  /** Peso efetivo do bloco (0..100) após distribuição da postura. */
+  weight: number;
+  /** Contribuição do bloco no score final (0..100). */
+  contribution: number;
+  components: WeightedComponent[];
+}
+
 export interface ScoreBreakdown {
   score: number | null;
   score_analise: number | null;
@@ -194,6 +206,15 @@ export interface ScoreBreakdown {
   weighted_0_100?: number | null;
   components?: WeightedComponent[];
   missing?: string[];
+  /** Blocos situação atual / vida pregressa. */
+  blocks?: ScoreBlock[];
+  /** Postura aplicada nesta avaliação. */
+  analysis_stance?: string;
+  stance_current_weight?: number;
+  /** Grau de confiança do rating (0..100, do score_rating). */
+  rating_confidence?: number | null;
+  /** True quando a vida pregressa está pior que a situação atual. */
+  adverse_history?: boolean;
 }
 
 export interface BureauAnalysis {

@@ -39,19 +39,6 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       chunkSizeWarningLimit: 1200,
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (!id.includes("node_modules")) return;
-            if (id.includes("@supabase")) return "supabase";
-            if (id.includes("recharts") || id.includes("d3-")) return "charts";
-            if (id.includes("jspdf") || id.includes("html2canvas") || id.includes("xlsx"))
-              return "export";
-            if (id.includes("@radix-ui") || id.includes("lucide-react")) return "ui";
-            return "vendor";
-          },
-        },
-      },
     },
   };
 });

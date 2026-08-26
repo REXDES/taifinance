@@ -745,6 +745,19 @@ function ApplicationDetailDialog({
   const currentTextoBucket = consultation?.texto_score_bucket ?? app.texto_score_bucket;
   const knockouts = knockoutsFromReason(currentReason);
   const decisionOk = currentDecision === 'approved' || currentDecision === 'manual';
+  const bureauAnalysis = (consultation?.bureau_analysis || (app as any).bureau_analysis) as any;
+  const currentMaxParcelas = (() => {
+    if (!rules || currentScore == null) return null;
+    const band = rules.score_bands?.find((b: any) => currentScore >= b.min_score && currentScore <= b.max_score);
+    let n = band?.max_parcelas ?? null;
+    if (n == null) return null;
+    const bureauMax = bureauAnalysis?.max_parcelas;
+    if (rules.use_bureau_limits && bureauMax) n = Math.min(n, Number(bureauMax));
+    if (bureauAnalysis?.score_breakdown?.adverse_history && rules.adverse_history_term_factor != null) {
+      n = Math.max(1, Math.floor(n * Number(rules.adverse_history_term_factor)));
+    }
+    return n > 0 ? n : null;
+  })();
 
 
   const advanceStep = async (next: number) => {

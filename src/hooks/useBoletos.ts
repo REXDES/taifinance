@@ -67,7 +67,7 @@ export function useBoletos(companyId: string, filters?: BoletoFilters) {
 
   useEffect(() => { fetchBoletos(); }, [fetchBoletos]);
 
-  const createBoleto = useCallback(async (data: Omit<BoletoInsert, 'company_id' | 'created_by'>) => {
+  const createBoleto = useCallback(async (data: Partial<Omit<BoletoInsert, 'company_id' | 'created_by'>> & { barcode: string }) => {
     if (!user?.id) return false;
     try {
       const { error } = await boletosTable().insert({

@@ -405,6 +405,12 @@ export function MobileMenuSheet({
             </>
           )}
         </nav>
+
+        <div className="px-4 py-2 border-t border-border">
+          <span className="text-[10px] text-muted-foreground/70 select-none">
+            Tai Finance v1.0.0
+          </span>
+        </div>
       </SheetContent>
     </Sheet>
   );

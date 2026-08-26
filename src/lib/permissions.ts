@@ -141,6 +141,8 @@ export const FINANCE_VIEW_PERMISSION_KEY: Record<string, string> = {
   'machines-operators': 'machines.operators',
   'machines-mechanics': 'machines.mechanics',
   'machines-catalog': 'machines.catalog',
+  'machines-movements': 'machines.movements',
+
   'payments-dashboard': 'payments.dashboard',
   'payments-registration': 'payments.registration',
   'payments-charges': 'payments.charges',

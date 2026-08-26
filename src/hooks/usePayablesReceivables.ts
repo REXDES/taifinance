@@ -224,10 +224,8 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
       is_amount_pending: false
     };
 
-    // Se o valor era pendente, atualizar o amount original
-    if (record.is_amount_pending) {
-      updateData.amount = paidAmount;
-    }
+    // Sempre alinhar o valor previsto ao valor efetivamente pago/recebido
+    updateData.amount = paidAmount;
 
     const { error: updateError } = await supabase
       .from('payables_receivables')

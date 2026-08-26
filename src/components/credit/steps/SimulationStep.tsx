@@ -153,6 +153,8 @@ export function SimulationStep({
         <p className="text-xs text-muted-foreground">
           Juros mensal: <strong>{rules.juros_mensal_pct}%</strong> · Parcela mínima: <strong>R$ {rules.parcela_minima}</strong>
           {approvedLimit != null && <> · Limite aprovado: <strong>R$ {approvedLimit.toLocaleString('pt-BR')}</strong></>}
+          {recommendedParcelas != null && <> · Parcelas recomendadas: <strong>até {recommendedParcelas}x</strong></>}
+          {bureauMaxParcelas != null && bureauMaxParcelas > 0 && <> · Bureau sugere até <strong>{bureauMaxParcelas}x</strong></>}
         </p>
       </div>
 
@@ -164,6 +166,15 @@ export function SimulationStep({
         <div>
           <Label>Nº de parcelas</Label>
           <Input type="number" min={1} value={numParcelas} onChange={(e) => setNumParcelas(e.target.value)} />
+          {recommendedParcelas != null && (
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Recomendação do motor: até {recommendedParcelas}x (faixa de score
+              {bureauMaxParcelas ? ' e teto do bureau' : ''}).
+              {Number(numParcelas) > recommendedParcelas && (
+                <span className="text-amber-600 dark:text-amber-400 font-medium"> Acima do recomendado.</span>
+              )}
+            </p>
+          )}
         </div>
         <div>
           <Label>Data da 1ª parcela</Label>

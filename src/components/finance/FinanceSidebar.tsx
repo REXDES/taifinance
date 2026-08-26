@@ -147,7 +147,9 @@ const machinesTopMenuItems: MenuItem[] = [
 const machinesGestaoMenuItems: MenuItem[] = [
   { view: 'machines-rentals', label: 'Locações', icon: <ClipboardCheck className="w-4 h-4" /> },
   { view: 'machines-pricing', label: 'Tabela de Preços', icon: <Tags className="w-4 h-4" /> },
+  { view: 'machines-movements', label: 'Vendidos e Baixados', icon: <ArrowLeftRight className="w-4 h-4" /> },
 ];
+
 const machinesCadastrosMenuItems: MenuItem[] = [
   { view: 'machines-operators', label: 'Operadores', icon: <HardHat className="w-4 h-4" /> },
   { view: 'machines-mechanics', label: 'Mecânicos', icon: <Wrench className="w-4 h-4" /> },

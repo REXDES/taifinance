@@ -19,13 +19,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Home,
-  Wallet,
-  ArrowUpDown,
-  ArrowRightLeft,
-  BarChart3,
-  FileText,
-  Tags,
   Building2,
   Plus,
   Settings,
@@ -34,21 +27,40 @@ import {
   FolderCog,
   Receipt,
   ClipboardList,
-  PieChart,
   Activity,
   FileSearch,
   CreditCard,
-  Calendar,
-  TrendingUp,
-  Zap,
   Landmark,
   Shield,
+  ShieldCheck,
   LayoutDashboard,
   ChevronDown,
   ChevronRight,
-  Barcode,
+  Briefcase,
+  Truck,
 } from 'lucide-react';
 import { FinanceView } from '@/pages/Finance';
+import { usePermissions } from '@/hooks/usePermissions';
+import { FINANCE_VIEW_PERMISSION_KEY } from '@/lib/permissions';
+import {
+  type MenuItem,
+  mainMenuItems,
+  bankDigitalMenuItem,
+  transacoesMenuItems,
+  relatoriosMainItems,
+  movimentacoesMenuItems,
+  pagarReceberMenuItems,
+  allRelatoriosItems,
+  cadastrosMenuItems,
+  machinesTopMenuItems,
+  machinesGestaoMenuItems,
+  machinesCadastrosMenuItems,
+  machinesMenuItems,
+  creditMenuItems,
+  creditAdminMenuItems,
+  paymentsMenuItems,
+  paymentsAdminMenuItems,
+} from '@/components/finance/financeMenuItems';
 
 interface Company {
   id: string;
@@ -78,46 +90,11 @@ interface MobileMenuSheetProps {
   onOpenUsers?: () => void;
   onOpenInvitations?: () => void;
   onOpenCompanySettings?: () => void;
+  machinesEnabled?: boolean;
+  creditEnabled?: boolean;
+  bankDigitalEnabled?: boolean;
+  paymentsEnabled?: boolean;
 }
-
-type MenuItem = { view: FinanceView; label: string; icon: React.ReactNode };
-
-const mainMenuItems: MenuItem[] = [
-  { view: 'dashboard', label: 'Dashboard', icon: <Home className="w-4 h-4" /> },
-  { view: 'quick-entry', label: 'Lance Rápido', icon: <Zap className="w-4 h-4" /> },
-  { view: 'bank-digital', label: 'Banco Digital', icon: <Landmark className="w-4 h-4" /> },
-];
-
-const transacoesMenuItems: MenuItem[] = [
-  { view: 'transactions', label: 'Lançamentos', icon: <ArrowUpDown className="w-4 h-4" /> },
-  { view: 'transfers', label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" /> },
-  { view: 'payables-receivables', label: 'Contas a Pagar/Receber', icon: <CreditCard className="w-4 h-4" /> },
-  { view: 'boletos', label: 'Boletos', icon: <Barcode className="w-4 h-4" /> },
-];
-
-const relatoriosMainItems: MenuItem[] = [
-  { view: 'balance', label: 'Balancete', icon: <BarChart3 className="w-4 h-4" /> },
-];
-
-const movimentacoesMenuItems: MenuItem[] = [
-  { view: 'statement', label: 'Extrato', icon: <FileText className="w-4 h-4" /> },
-  { view: 'category-report', label: 'Por Categoria', icon: <PieChart className="w-4 h-4" /> },
-  { view: 'cash-flow', label: 'Fluxo Financeiro', icon: <Activity className="w-4 h-4" /> },
-];
-
-const pagarReceberMenuItems: MenuItem[] = [
-  { view: 'payables-receivables-report', label: 'Contas a Pagar/Receber', icon: <FileSearch className="w-4 h-4" /> },
-  { view: 'payables-receivables-calendar', label: 'Calendário Financeiro', icon: <Calendar className="w-4 h-4" /> },
-  { view: 'payables-receivables-flow', label: 'Fluxo de Contas', icon: <TrendingUp className="w-4 h-4" /> },
-];
-
-const allRelatoriosItems = [...relatoriosMainItems, ...movimentacoesMenuItems, ...pagarReceberMenuItems];
-
-const cadastrosMenuItems: MenuItem[] = [
-  { view: 'accounts', label: 'Contas', icon: <Wallet className="w-4 h-4" /> },
-  { view: 'categories', label: 'Categorias', icon: <Tags className="w-4 h-4" /> },
-  { view: 'clients-suppliers', label: 'Clientes/Fornecedores', icon: <Users className="w-4 h-4" /> },
-];
 
 export function MobileMenuSheet({
   open,
@@ -141,9 +118,23 @@ export function MobileMenuSheet({
   onOpenUsers,
   onOpenInvitations,
   onOpenCompanySettings,
+  machinesEnabled = false,
+  creditEnabled = false,
+  bankDigitalEnabled = false,
+  paymentsEnabled = false,
 }: MobileMenuSheetProps) {
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
+  const { can } = usePermissions();
+
+  // Mesma regra do sidebar desktop: esconde itens sem permissão para o cargo.
+  const filterAllowed = (items: MenuItem[]) =>
+    isAdminMode || isSupervisor
+      ? items
+      : items.filter(i => {
+          const key = FINANCE_VIEW_PERMISSION_KEY[i.view];
+          return !!key && can(key);
+        });
 
   const navigate = (view: FinanceView) => {
     onChangeView(view);
@@ -165,16 +156,61 @@ export function MobileMenuSheet({
     </Button>
   );
 
+  const section = (
+    key: string,
+    label: string,
+    icon: React.ReactNode,
+    items: MenuItem[],
+    children?: React.ReactNode,
+    small?: boolean
+  ) => {
+    if (items.length === 0 && !children) return null;
+    return (
+      <Collapsible key={key} defaultOpen={items.some(i => currentView === i.view)}>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className={cn('w-full justify-between font-normal', small ? 'h-10 text-sm' : 'h-11 text-base')}
+          >
+            <span className="flex items-center gap-3">
+              {icon}
+              {label}
+            </span>
+            <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pl-5 space-y-0.5 mt-0.5">
+          {items.map(renderMenuItem)}
+          {children}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+
+  const transacoes = filterAllowed(transacoesMenuItems);
+  const relatoriosMain = filterAllowed(relatoriosMainItems);
+  const movimentacoes = filterAllowed(movimentacoesMenuItems);
+  const pagarReceber = filterAllowed(pagarReceberMenuItems);
+  const cadastros = filterAllowed(cadastrosMenuItems);
+  const machinesTop = machinesEnabled ? filterAllowed(machinesTopMenuItems) : [];
+  const machinesGestao = machinesEnabled ? filterAllowed(machinesGestaoMenuItems) : [];
+  const machinesCadastros = machinesEnabled ? filterAllowed(machinesCadastrosMenuItems) : [];
+  const credit = creditEnabled ? filterAllowed(creditMenuItems) : [];
+  const creditAdmin = creditEnabled && (isSupervisor || isGerente) ? filterAllowed(creditAdminMenuItems) : [];
+  const payments = paymentsEnabled ? filterAllowed(paymentsMenuItems) : [];
+
+  const hasGestaoFinanceira =
+    transacoes.length > 0 || relatoriosMain.length > 0 || movimentacoes.length > 0 ||
+    pagarReceber.length > 0 || cadastros.length > 0;
+  const hasMachines = machinesTop.length + machinesGestao.length + machinesCadastros.length > 0;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-[85vw] max-w-xs p-0 flex flex-col">
         {/* Header */}
         <SheetHeader className={cn('px-4 py-3 border-b border-border', isAdminMode && 'bg-primary/5')}>
           <div className="flex items-center gap-3">
-            <div className={cn(
-              'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
-              'bg-primary'
-            )}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary">
               {isAdminMode
                 ? <Shield className="w-4 h-4 text-primary-foreground" />
                 : <span className="text-primary-foreground font-bold text-sm">TAI</span>
@@ -190,7 +226,7 @@ export function MobileMenuSheet({
         </SheetHeader>
 
         {/* Company selector */}
-        {!isAdminMode && companies.length > 0 && (
+        {companies.length > 0 && (
           <div className="px-3 py-2 border-b border-border">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -227,7 +263,12 @@ export function MobileMenuSheet({
           {isAdminMode ? (
             <>
               {renderMenuItem({ view: 'admin-dashboard', label: 'Dashboard Admin', icon: <LayoutDashboard className="w-4 h-4" /> })}
-              {renderMenuItem({ view: 'bank-digital', label: 'Banco Digital', icon: <Landmark className="w-4 h-4" /> })}
+              {renderMenuItem({ view: 'admin-users', label: 'Usuários', icon: <Users className="w-4 h-4" /> })}
+              {renderMenuItem({ view: 'admin-roles', label: 'Cargos & Permissões', icon: <ShieldCheck className="w-4 h-4" /> })}
+              {bankDigitalEnabled && renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
+              {renderMenuItem({ view: 'credit-admin', label: 'Gestão de Crédito (config)', icon: <CreditCard className="w-4 h-4" /> })}
+
+              {paymentsEnabled && section('payments-admin', 'Pagamentos', <CreditCard className="w-4 h-4" />, paymentsAdminMenuItems)}
 
               <div className="pt-3 pb-1 px-2">
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
@@ -259,13 +300,6 @@ export function MobileMenuSheet({
                   )}
                 </Button>
               )}
-              {(isSupervisor || isGerente) && onOpenUsers && (
-                <Button variant="ghost" className="w-full justify-start gap-3 h-11 text-base font-normal"
-                  onClick={() => { onOpenUsers(); onOpenChange(false); }}>
-                  <Users className="w-4 h-4" />
-                  Usuários
-                </Button>
-              )}
               {canInvite && onOpenInvitations && (
                 <Button variant="ghost" className="w-full justify-start gap-3 h-11 text-base font-normal"
                   onClick={() => { onOpenInvitations(); onOpenChange(false); }}>
@@ -280,83 +314,89 @@ export function MobileMenuSheet({
             </>
           ) : (
             <>
-              {mainMenuItems.map(renderMenuItem)}
+              {filterAllowed(mainMenuItems).map(renderMenuItem)}
+              {bankDigitalEnabled && can('finance.bank_digital') && renderMenuItem(bankDigitalMenuItem)}
 
-              {/* Transações */}
-              <Collapsible defaultOpen={transacoesMenuItems.some(i => currentView === i.view)}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
-                    <span className="flex items-center gap-3">
-                      <Receipt className="w-4 h-4" />
-                      Transações
-                    </span>
-                    <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-5 space-y-0.5 mt-0.5">
-                  {transacoesMenuItems.map(renderMenuItem)}
-                </CollapsibleContent>
-              </Collapsible>
+              {/* Gestão Financeira */}
+              {hasGestaoFinanceira && (
+                <Collapsible defaultOpen={[...transacoes, ...allRelatoriosItems, ...cadastros].some(i => currentView === i.view)}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
+                      <span className="flex items-center gap-3">
+                        <Briefcase className="w-4 h-4" />
+                        Gestão Financeira
+                      </span>
+                      <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pl-3 space-y-0.5 mt-0.5">
+                    {section('transacoes', 'Transações', <Receipt className="w-4 h-4" />, transacoes, undefined, true)}
 
-              {/* Relatórios */}
-              <Collapsible defaultOpen={allRelatoriosItems.some(i => currentView === i.view)}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
-                    <span className="flex items-center gap-3">
-                      <ClipboardList className="w-4 h-4" />
-                      Relatórios
-                    </span>
-                    <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-5 space-y-0.5 mt-0.5">
-                  {relatoriosMainItems.map(renderMenuItem)}
-                  <Collapsible defaultOpen={movimentacoesMenuItems.some(i => currentView === i.view)}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-between h-10 text-sm font-normal">
-                        <span className="flex items-center gap-3">
-                          <Activity className="w-4 h-4" />
-                          Movimentações
-                        </span>
-                        <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-5 space-y-0.5 mt-0.5">
-                      {movimentacoesMenuItems.map(renderMenuItem)}
-                    </CollapsibleContent>
-                  </Collapsible>
-                  <Collapsible defaultOpen={pagarReceberMenuItems.some(i => currentView === i.view)}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-between h-10 text-sm font-normal">
-                        <span className="flex items-center gap-3">
-                          <CreditCard className="w-4 h-4" />
-                          Pagar/Receber
-                        </span>
-                        <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-5 space-y-0.5 mt-0.5">
-                      {pagarReceberMenuItems.map(renderMenuItem)}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </CollapsibleContent>
-              </Collapsible>
+                    {(relatoriosMain.length > 0 || movimentacoes.length > 0 || pagarReceber.length > 0) && (
+                      <Collapsible defaultOpen={allRelatoriosItems.some(i => currentView === i.view)}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="w-full justify-between h-10 text-sm font-normal">
+                            <span className="flex items-center gap-3">
+                              <ClipboardList className="w-4 h-4" />
+                              Relatórios
+                            </span>
+                            <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pl-5 space-y-0.5 mt-0.5">
+                          {relatoriosMain.map(renderMenuItem)}
+                          {section('movimentacoes', 'Movimentações', <Activity className="w-4 h-4" />, movimentacoes, undefined, true)}
+                          {section('pagar-receber', 'Pagar/Receber', <CreditCard className="w-4 h-4" />, pagarReceber, undefined, true)}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
 
-              {/* Cadastros */}
-              <Collapsible defaultOpen={cadastrosMenuItems.some(i => currentView === i.view)}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
-                    <span className="flex items-center gap-3">
-                      <FolderCog className="w-4 h-4" />
-                      Cadastros
-                    </span>
-                    <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-5 space-y-0.5 mt-0.5">
-                  {cadastrosMenuItems.map(renderMenuItem)}
-                </CollapsibleContent>
-              </Collapsible>
+                    {section('cadastros', 'Cadastros', <FolderCog className="w-4 h-4" />, cadastros, undefined, true)}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Máquinas & Locação (módulo opcional por empresa) */}
+              {hasMachines && (
+                <Collapsible defaultOpen={machinesMenuItems.some(i => currentView === i.view)}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
+                      <span className="flex items-center gap-3">
+                        <Truck className="w-4 h-4" />
+                        Máquinas & Locação
+                      </span>
+                      <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pl-3 space-y-0.5 mt-0.5">
+                    {machinesTop.map(renderMenuItem)}
+                    {section('machines-gestao', 'Gestão', <Briefcase className="w-4 h-4" />, machinesGestao, undefined, true)}
+                    {section('machines-cadastros', 'Cadastros', <FolderCog className="w-4 h-4" />, machinesCadastros, undefined, true)}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Gestão de Crédito (módulo opcional por empresa) */}
+              {credit.length + creditAdmin.length > 0 && (
+                <Collapsible defaultOpen={[...credit, ...creditAdmin].some(i => currentView === i.view)}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
+                      <span className="flex items-center gap-3">
+                        <CreditCard className="w-4 h-4" />
+                        Gestão de Crédito
+                      </span>
+                      <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pl-5 space-y-0.5 mt-0.5">
+                    {credit.map(renderMenuItem)}
+                    {creditAdmin.map(renderMenuItem)}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Pagamentos (módulo opcional por empresa) */}
+              {section('payments', 'Pagamentos', <CreditCard className="w-4 h-4" />, payments)}
 
               {/* Ações de gestão */}
               {(isSupervisor || isGerente) && (
@@ -383,7 +423,7 @@ export function MobileMenuSheet({
                       )}
                     </Button>
                   )}
-                  {onOpenCompanySettings && selectedCompanyId && (
+                  {onOpenCompanySettings && selectedCompanyId && (isSupervisor || (isGerente && can('admin.companies'))) && (
                     <Button variant="ghost" className="w-full justify-start gap-3 h-11 text-base font-normal"
                       onClick={() => { onOpenCompanySettings(); onOpenChange(false); }}>
                       <Settings className="w-4 h-4" />

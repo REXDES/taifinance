@@ -491,8 +491,11 @@ function runDecisionEngine(opts: {
   // ---- Knockouts: análise do bureau (nó "resumo") ----
   const scoreAnalise = toNumberLoose(summary.score_analise);
   const minScoreAnalise = rules.min_score_analise ?? 0;
-  if (minScoreAnalise > 0 && scoreAnalise != null && scoreAnalise < minScoreAnalise) {
+  const scoreAnaliseMode = rules.score_analise_mode === 'bloquear' ? 'bloquear' : 'pontuar';
+  if (scoreAnaliseMode === 'bloquear' && minScoreAnalise > 0 && scoreAnalise != null && scoreAnalise < minScoreAnalise) {
     pushKO('score_analise', `Score analítico do bureau ${scoreAnalise} abaixo do mínimo (${minScoreAnalise})`);
+  } else if (scoreAnaliseMode === 'pontuar' && minScoreAnalise > 0 && scoreAnalise != null && scoreAnalise < minScoreAnalise) {
+    soft_penalties.push(`Score analítico ${scoreAnalise} abaixo do mínimo ${minScoreAnalise} (pontuado, não bloqueia)`);
   }
   const confiancaBucket = classifyConfianca(summary.nivel_de_confianca);
   const blockConf = rules.min_nivel_confianca_levels || [];

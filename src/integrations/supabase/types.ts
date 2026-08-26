@@ -2007,6 +2007,105 @@ export type Database = {
         }
         Relationships: []
       }
+      machine_movements: {
+        Row: {
+          account_id: string | null
+          buyer_client_id: string | null
+          buyer_name: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          down_payment: number
+          id: string
+          installments_count: number | null
+          machine_id: string
+          movement_date: string
+          movement_type: string
+          notes: string | null
+          payment_mode: string | null
+          reason: string | null
+          sale_amount: number
+          transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          buyer_client_id?: string | null
+          buyer_name?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          down_payment?: number
+          id?: string
+          installments_count?: number | null
+          machine_id: string
+          movement_date?: string
+          movement_type: string
+          notes?: string | null
+          payment_mode?: string | null
+          reason?: string | null
+          sale_amount?: number
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          buyer_client_id?: string | null
+          buyer_name?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          down_payment?: number
+          id?: string
+          installments_count?: number | null
+          machine_id?: string
+          movement_date?: string
+          movement_type?: string
+          notes?: string | null
+          payment_mode?: string | null
+          reason?: string | null
+          sale_amount?: number
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_movements_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_movements_buyer_client_id_fkey"
+            columns: ["buyer_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_movements_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_movements_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machine_tag_links: {
         Row: {
           created_at: string
@@ -3114,6 +3213,7 @@ export type Database = {
           id: string
           installment_number: number | null
           is_amount_pending: boolean
+          machine_movement_id: string | null
           maintenance_id: string | null
           paid_account_id: string | null
           paid_amount: number | null
@@ -3142,6 +3242,7 @@ export type Database = {
           id?: string
           installment_number?: number | null
           is_amount_pending?: boolean
+          machine_movement_id?: string | null
           maintenance_id?: string | null
           paid_account_id?: string | null
           paid_amount?: number | null
@@ -3170,6 +3271,7 @@ export type Database = {
           id?: string
           installment_number?: number | null
           is_amount_pending?: boolean
+          machine_movement_id?: string | null
           maintenance_id?: string | null
           paid_account_id?: string | null
           paid_amount?: number | null
@@ -3205,6 +3307,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payables_receivables_machine_movement_id_fkey"
+            columns: ["machine_movement_id"]
+            isOneToOne: false
+            referencedRelation: "machine_movements"
             referencedColumns: ["id"]
           },
           {

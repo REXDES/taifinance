@@ -8,13 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Tag, Package, Wallet, Percent, MapPin, Tags } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, Package, Wallet, Percent, MapPin, Tags, ArrowLeftRight } from 'lucide-react';
 import { useMachines, useMachineTypes, useMachineCategories, Machine } from '@/hooks/useMachinesModule';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 import { MachineTagPicker } from './MachineTagPicker';
 import { MachineTagsManagerDialog } from './MachineTagsManagerDialog';
+import { MachineMovementDialog } from './MachineMovementDialog';
+
 import { fetchMachineTagsMap, setMachineTags, MachineTag } from '@/hooks/useMachineTags';
 
 interface Props { companyId: string; }
@@ -73,6 +75,8 @@ export function MachinesPage({ companyId }: Props) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MachineExt | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MachineExt | null>(null);
+  const [movementTarget, setMovementTarget] = useState<MachineExt | null>(null);
+
   const [filter, setFilter] = useState<'all' | 'new_purchase' | 'pre_existing'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -223,7 +227,9 @@ export function MachinesPage({ companyId }: Props) {
   };
 
   const filtered = machines.filter(m => {
+    if (m.status === 'vendida' || (m.status as string) === 'baixada') return false;
     if (filter !== 'all' && m.acquisition_source !== filter) return false;
+
     if (categoryFilter !== 'all' && (m.category || 'equipamento') !== categoryFilter) return false;
     if (typeFilter !== 'all' && (m.type_id || 'none') !== typeFilter) return false;
     if (statusFilter !== 'all' && m.status !== statusFilter) return false;
@@ -379,10 +385,12 @@ export function MachinesPage({ companyId }: Props) {
                       />
                     </TableCell>
                     <TableCell>
+                      <Button size="icon" variant="ghost" onClick={() => setMovementTarget(m)} title="Movimentação (venda / baixa)"><ArrowLeftRight className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => openPrices(m)} title="Preços de venda e locação"><Tag className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => openEdit(m)}><Pencil className="w-4 h-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => setDeleteTarget(m)}><Trash2 className="w-4 h-4" /></Button>
                     </TableCell>
+
                   </TableRow>
                 ))}
             </TableBody>
@@ -603,6 +611,14 @@ export function MachinesPage({ companyId }: Props) {
       </Dialog>
 
       <MachineTagsManagerDialog companyId={companyId} open={tagsManagerOpen} onOpenChange={setTagsManagerOpen} />
+
+      <MachineMovementDialog
+        companyId={companyId}
+        machine={movementTarget}
+        onClose={() => setMovementTarget(null)}
+        onDone={refetch}
+      />
+
     </div>
   );
 }

@@ -71,6 +71,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'machines.operators', label: 'Operadores' },
       { key: 'machines.mechanics', label: 'Mecânicos' },
       { key: 'machines.catalog', label: 'Categorias e tipos' },
+      { key: 'machines.movements', label: 'Vendidos e baixados' },
+
     ],
   },
   {
@@ -139,6 +141,8 @@ export const FINANCE_VIEW_PERMISSION_KEY: Record<string, string> = {
   'machines-operators': 'machines.operators',
   'machines-mechanics': 'machines.mechanics',
   'machines-catalog': 'machines.catalog',
+  'machines-movements': 'machines.movements',
+
   'payments-dashboard': 'payments.dashboard',
   'payments-registration': 'payments.registration',
   'payments-charges': 'payments.charges',

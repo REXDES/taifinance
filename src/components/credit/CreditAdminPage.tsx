@@ -379,7 +379,8 @@ export function CreditAdminPage({ companyId }: Props) {
                   const weights = { ...DEFAULT_SCORE_WEIGHTS, ...(draft.score_weights || {}) };
                   const total = Object.values(weights).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
                   const pct = Math.round(((Number(weights[w.key]) || 0) / total) * 1000) / 10;
-                  const block = CURRENT_SIGNAL_KEYS.includes(w.key) ? 'Situação atual' : HISTORY_SIGNAL_KEYS.includes(w.key) ? 'Vida pregressa' : '—';
+                  const k = w.key as string;
+                  const block = (CURRENT_SIGNAL_KEYS as readonly string[]).includes(k) ? 'Situação atual' : (HISTORY_SIGNAL_KEYS as readonly string[]).includes(k) ? 'Vida pregressa' : '—';
                   return (
                     <div key={w.key} className="border border-border rounded px-3 py-2">
                       <div className="flex items-center justify-between gap-2">

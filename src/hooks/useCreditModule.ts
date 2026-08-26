@@ -145,6 +145,11 @@ export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
     contratos_recentes: 'pontuar',
     sugestao_negocio: 'pontuar',
   },
+  analysis_stance: 'balanceado',
+  stance_current_weight: 50,
+  score_analise_mode: 'pontuar',
+  adverse_history_limit_factor: 1.0,
+  adverse_history_term_factor: 1.0,
 };
 
 export interface CreditApplication {

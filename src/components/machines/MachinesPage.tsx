@@ -15,6 +15,8 @@ import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 import { MachineTagPicker } from './MachineTagPicker';
 import { MachineTagsManagerDialog } from './MachineTagsManagerDialog';
+import { MachineMovementDialog } from './MachineMovementDialog';
+
 import { fetchMachineTagsMap, setMachineTags, MachineTag } from '@/hooks/useMachineTags';
 
 interface Props { companyId: string; }

@@ -745,6 +745,19 @@ function ApplicationDetailDialog({
   const currentTextoBucket = consultation?.texto_score_bucket ?? app.texto_score_bucket;
   const knockouts = knockoutsFromReason(currentReason);
   const decisionOk = currentDecision === 'approved' || currentDecision === 'manual';
+  const bureauAnalysis = (consultation?.bureau_analysis || (app as any).bureau_analysis) as any;
+  const currentMaxParcelas = (() => {
+    if (!rules || currentScore == null) return null;
+    const band = rules.score_bands?.find((b: any) => currentScore >= b.min_score && currentScore <= b.max_score);
+    let n = band?.max_parcelas ?? null;
+    if (n == null) return null;
+    const bureauMax = bureauAnalysis?.max_parcelas;
+    if (rules.use_bureau_limits && bureauMax) n = Math.min(n, Number(bureauMax));
+    if (bureauAnalysis?.score_breakdown?.adverse_history && rules.adverse_history_term_factor != null) {
+      n = Math.max(1, Math.floor(n * Number(rules.adverse_history_term_factor)));
+    }
+    return n > 0 ? n : null;
+  })();
 
 
   const advanceStep = async (next: number) => {
@@ -827,7 +840,7 @@ function ApplicationDetailDialog({
                           </div>
                         )}
                       </div>
-                      <DecisionBox decision={currentDecision} approved_limit={currentApprovedLimit} reason={currentReason} knockouts={knockouts} />
+                      <DecisionBox decision={currentDecision} approved_limit={currentApprovedLimit} max_parcelas={currentMaxParcelas ?? undefined} reason={currentReason} knockouts={knockouts} />
                       <EngineChecklist
                         summary={summary}
                         bureau={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any}
@@ -882,7 +895,7 @@ function ApplicationDetailDialog({
                   )}
                 </Tabs>
               )}
-              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={currentApprovedLimit} bureauParcelaMaxima={(consultation?.bureau_analysis as any)?.parcela_maxima ?? (app as any).bureau_analysis?.parcela_maxima ?? null} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
+              {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={currentApprovedLimit} recommendedParcelas={currentMaxParcelas} bureauMaxParcelas={bureauAnalysis?.max_parcelas ?? null} bureauParcelaMaxima={bureauAnalysis?.parcela_maxima ?? null} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
               {activeStep === 3 && <QualificationStep applicationId={app.id} companyId={companyId} consultationRaw={consultation?.raw_response} consultationName={app.nome || consultation?.nome} onCompleted={() => advanceStep(4)} />}
               {activeStep === 4 && <BiometryStep applicationId={app.id} companyId={companyId} canApprove={canApprove} onCompleted={() => advanceStep(5)} />}
               {activeStep === 5 && <ContractStep applicationId={app.id} companyId={companyId} application={app} pendingSimulation={pendingSim || (app as any).simulation} canApprove={canApprove} onCompleted={() => advanceStep(6)} />}

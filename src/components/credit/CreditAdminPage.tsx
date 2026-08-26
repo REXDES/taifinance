@@ -293,10 +293,84 @@ export function CreditAdminPage({ companyId }: Props) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Pesos do score final</CardTitle>
+              <CardTitle>Postura de análise</CardTitle>
               <CardDescription>
-                Cada sinal do bureau é normalizado para 0–100 e combinado por peso. Sinais ausentes têm o peso
-                redistribuído entre os presentes. O resultado é convertido para a escala 0–1000 e usado nas faixas de score.
+                Equilibra o peso entre a <strong>situação atual</strong> (score Serasa + probabilidade de pagamento) e a
+                <strong> vida pregressa</strong> (score de análise, faturas, contratos, rating, restrições). O score final
+                ponderado decide a faixa. Quando a vida pregressa é pior que a situação atual, o limite e o prazo podem ser
+                reduzidos em vez de recusar.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {([
+                  { v: 'atual', label: 'Foco na situação atual', hint: '80% atual · 20% pregressa' },
+                  { v: 'balanceado', label: 'Balanceado', hint: '50% · 50%' },
+                  { v: 'pregressa', label: 'Foco na vida pregressa', hint: '20% atual · 80% pregressa' },
+                  { v: 'custom', label: 'Personalizado', hint: 'slider livre' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setDraft({ ...draft, analysis_stance: opt.v as AnalysisStance })}
+                    className={`px-3 py-2 rounded border text-xs text-left transition ${draft.analysis_stance === opt.v ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted'}`}
+                  >
+                    <div className="font-medium">{opt.label}</div>
+                    <div className="text-[10px] text-muted-foreground">{opt.hint}</div>
+                  </button>
+                ))}
+              </div>
+
+              {draft.analysis_stance === 'custom' && (
+                <div className="max-w-md">
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <Label>Situação atual</Label>
+                    <span className="text-muted-foreground">{draft.stance_current_weight}% atual · {100 - draft.stance_current_weight}% pregressa</span>
+                  </div>
+                  <input
+                    type="range" min={0} max={100} step={5}
+                    value={draft.stance_current_weight}
+                    onChange={(e) => setDraft({ ...draft, stance_current_weight: parseInt(e.target.value) })}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                    <span>← Vida pregressa</span>
+                    <span>Situação atual →</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <Label className="text-xs">Fator de redução do limite (histórico adverso)</Label>
+                  <Input
+                    type="number" min={0} max={1} step={0.05}
+                    value={draft.adverse_history_limit_factor ?? 1}
+                    onChange={(e) => setDraft({ ...draft, adverse_history_limit_factor: Math.max(0, Math.min(1, parseFloat(e.target.value) || 1)) })}
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">1.0 = sem redução. 0.7 = reduz o limite em 30% quando a vida pregressa for pior.</p>
+                </div>
+                <div>
+                  <Label className="text-xs">Fator de redução do prazo (histórico adverso)</Label>
+                  <Input
+                    type="number" min={0} max={1} step={0.05}
+                    value={draft.adverse_history_term_factor ?? 1}
+                    onChange={(e) => setDraft({ ...draft, adverse_history_term_factor: Math.max(0, Math.min(1, parseFloat(e.target.value) || 1)) })}
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">1.0 = sem redução. 0.5 = reduz o nº de parcelas pela metade.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Pesos do score final — ajuste avançado</CardTitle>
+              <CardDescription>
+                Pesos finos de cada sinal dentro do bloco. A postura acima define a divisão entre situação atual e vida
+                pregressa; estes sliders refinam o peso de cada sinal dentro do seu bloco. Sinais ausentes na resposta
+                têm o peso redistribuído. O <code>score_rating</code> agora atua como <strong>confiança do rating</strong>:
+                quanto menor, menor o peso do sinal de rating.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -305,12 +379,14 @@ export function CreditAdminPage({ companyId }: Props) {
                   const weights = { ...DEFAULT_SCORE_WEIGHTS, ...(draft.score_weights || {}) };
                   const total = Object.values(weights).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
                   const pct = Math.round(((Number(weights[w.key]) || 0) / total) * 1000) / 10;
+                  const block = CURRENT_SIGNAL_KEYS.includes(w.key) ? 'Situação atual' : HISTORY_SIGNAL_KEYS.includes(w.key) ? 'Vida pregressa' : '—';
                   return (
                     <div key={w.key} className="border border-border rounded px-3 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <div>
                           <Label className="text-xs">{w.label}</Label>
                           <p className="text-[10px] text-muted-foreground">{w.hint}</p>
+                          <span className="text-[10px] inline-block mt-0.5 px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{block}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Input
@@ -335,7 +411,7 @@ export function CreditAdminPage({ companyId }: Props) {
                 <Label className="text-xs">Escala máxima do score de análise</Label>
                 <Input type="number" min={1} value={draft.score_analise_scale_max ?? 500}
                   onChange={(e) => setDraft({ ...draft, score_analise_scale_max: parseInt(e.target.value) || 500 })} />
-                <p className="text-[10px] text-muted-foreground mt-1">Usado para normalizar <code>score_analise</code> (ex.: 500 ou 1000).</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Usado para normalizar <code>score_analise</code> (ex.: 500 ou 1000). {draft.score_analise_scale_max && draft.min_score_analise > draft.score_analise_scale_max && <span className="text-destructive font-medium">Aviso: o corte mínimo ({draft.min_score_analise}) está acima da escala ({draft.score_analise_scale_max}).</span>}</p>
               </div>
             </CardContent>
           </Card>

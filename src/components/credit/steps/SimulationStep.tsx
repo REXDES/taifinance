@@ -59,11 +59,15 @@ export function SimulationStep({
       if (sim) {
         if (sim.principal != null) setPrincipal(String(sim.principal));
         if (sim.num_parcelas != null) setNumParcelas(String(sim.num_parcelas));
+        else if (recommendedParcelas) setNumParcelas(String(recommendedParcelas));
         if (sim.first_due_date) setFirstDue(sim.first_due_date);
         if (sim.description) setDescription(sim.description);
+      } else if (recommendedParcelas) {
+        setNumParcelas(String(recommendedParcelas));
       }
       setLoadedDraft(true);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applicationId]);
 
   useEffect(() => {

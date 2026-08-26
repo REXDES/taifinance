@@ -609,6 +609,14 @@ export function MachinesPage({ companyId }: Props) {
       </Dialog>
 
       <MachineTagsManagerDialog companyId={companyId} open={tagsManagerOpen} onOpenChange={setTagsManagerOpen} />
+
+      <MachineMovementDialog
+        companyId={companyId}
+        machine={movementTarget}
+        onClose={() => setMovementTarget(null)}
+        onDone={refetch}
+      />
+
     </div>
   );
 }

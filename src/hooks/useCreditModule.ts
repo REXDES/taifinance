@@ -90,6 +90,18 @@ export const DEFAULT_SCORE_WEIGHTS: Record<string, number> = {
   restricoes: 5,
 };
 
+/** Sinais que descrevem a SITUAÇÃO ATUAL (Serasa/score + probabilidade de pagamento). */
+export const CURRENT_SIGNAL_KEYS = ['score', 'probabilidade_pagamento'] as const;
+/** Sinais que descrevem a VIDA PREGRESSA (score de análise, faturas, contratos, rating, restrições). */
+export const HISTORY_SIGNAL_KEYS = ['score_analise', 'faturas_em_atraso', 'contratos_recentes', 'rating', 'restricoes'] as const;
+
+export const STANCE_PRESETS: Record<AnalysisStance, number> = {
+  atual: 80,
+  balanceado: 50,
+  pregressa: 20,
+  custom: 50,
+};
+
 export const DEFAULT_RULES: Omit<CreditRules, 'company_id'> = {
   max_protestos: 0,
   max_pendencias_financeiras: 0,

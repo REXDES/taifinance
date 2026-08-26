@@ -13,6 +13,8 @@ export interface ScoreBand {
 
 export type LetraAE = 'A' | 'B' | 'C' | 'D' | 'E';
 
+export type AnalysisStance = 'atual' | 'balanceado' | 'pregressa' | 'custom';
+
 export interface CreditRules {
   id?: string;
   company_id: string;
@@ -56,6 +58,16 @@ export interface CreditRules {
   score_analise_scale_max: number;
   /** 'pontuar' (default) ou 'bloquear' por critério qualitativo. */
   letter_criteria_mode: Record<string, 'pontuar' | 'bloquear'>;
+  /** Postura de análise: atual | balanceado | pregressa | custom. */
+  analysis_stance: AnalysisStance;
+  /** Peso (0..100) da situação atual quando stance = custom. */
+  stance_current_weight: number;
+  /** 'pontuar' (default) ou 'bloquear' para o corte de score_analise. */
+  score_analise_mode: 'pontuar' | 'bloquear';
+  /** Fator de redução do limite quando vida pregressa < situação atual (1.0 = sem redução). */
+  adverse_history_limit_factor: number;
+  /** Fator de redução do prazo quando vida pregressa < situação atual (1.0 = sem redução). */
+  adverse_history_term_factor: number;
 }
 
 export const SCORE_WEIGHT_KEYS = [

@@ -348,6 +348,47 @@ export function EngineChecklist({
           )}
         </div>
       </div>
+      {(() => {
+        const blocks = bureau?.score_breakdown?.blocks || [];
+        if (blocks.length === 0) return null;
+        const bd = bureau!.score_breakdown!;
+        return (
+          <div className="px-3 py-2 border-b bg-muted/30 space-y-2">
+            <div className="text-[10px] uppercase text-muted-foreground flex items-center gap-1 flex-wrap">
+              <span className="font-semibold">Postura de análise:</span>
+              <span className="px-1.5 py-0.5 rounded bg-muted">
+                {bd.analysis_stance === 'atual' ? 'Foco situação atual' : bd.analysis_stance === 'pregressa' ? 'Foco vida pregressa' : bd.analysis_stance === 'balanceado' ? 'Balanceado' : 'Personalizado'} ({bd.stance_current_weight ?? 50}/{100 - (bd.stance_current_weight ?? 50)})
+              </span>
+              {bd.adverse_history && (
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300">Histórico adverso — vida pregressa pior que situação atual</span>
+              )}
+              {bd.rating_confidence != null && (
+                <span className="px-1.5 py-0.5 rounded bg-muted">Confiança do rating: {bd.rating_confidence}</span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {blocks.map((blk) => {
+                const isCurrent = blk.key === 'current';
+                return (
+                  <div key={blk.key} className={`rounded border px-2 py-1.5 ${isCurrent ? 'border-sky-500/30 bg-sky-500/5' : 'border-violet-500/30 bg-violet-500/5'}`}>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-medium">{blk.label}</span>
+                      <span className="text-muted-foreground">peso {blk.weight}%</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 h-2 rounded bg-muted overflow-hidden">
+                        <div className={`h-full ${isCurrent ? 'bg-sky-500/70' : 'bg-violet-500/70'}`} style={{ width: `${Math.max(0, Math.min(100, blk.points))}%` }} />
+                      </div>
+                      <div className="w-8 text-right text-[11px] font-semibold">{blk.points}</div>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">contribuição: {blk.contribution}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
       <ul className="divide-y">
         {rows.map((r) => {
           const ov = overrideByCriterion[r.criterion];

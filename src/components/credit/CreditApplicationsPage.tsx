@@ -840,7 +840,7 @@ function ApplicationDetailDialog({
                           </div>
                         )}
                       </div>
-                      <DecisionBox decision={currentDecision} approved_limit={currentApprovedLimit} reason={currentReason} knockouts={knockouts} />
+                      <DecisionBox decision={currentDecision} approved_limit={currentApprovedLimit} max_parcelas={currentMaxParcelas ?? undefined} reason={currentReason} knockouts={knockouts} />
                       <EngineChecklist
                         summary={summary}
                         bureau={(consultation?.bureau_analysis || (app as any).bureau_analysis) as any}

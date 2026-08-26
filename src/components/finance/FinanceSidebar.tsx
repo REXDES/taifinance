@@ -802,7 +802,18 @@ export function FinanceSidebar({
         )}
 
         {/* Versão do app */}
-        {!collapsed && (
+        {collapsed ? (
+          <div className="p-2 border-t border-border flex justify-center">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-[10px] text-muted-foreground/70 select-none cursor-default">
+                  v1
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="right">Tai Finance v1.0.0</TooltipContent>
+            </Tooltip>
+          </div>
+        ) : (
           <div className="px-3 py-2 border-t border-border">
             <span className="text-[10px] text-muted-foreground/70 select-none">
               Tai Finance v1.0.0

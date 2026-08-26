@@ -73,6 +73,8 @@ export function MachinesPage({ companyId }: Props) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MachineExt | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MachineExt | null>(null);
+  const [movementTarget, setMovementTarget] = useState<MachineExt | null>(null);
+
   const [filter, setFilter] = useState<'all' | 'new_purchase' | 'pre_existing'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');

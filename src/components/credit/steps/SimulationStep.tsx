@@ -23,12 +23,16 @@ export function SimulationStep({
   applicationId,
   companyId,
   approvedLimit,
+  recommendedParcelas,
+  bureauMaxParcelas,
   bureauParcelaMaxima,
   onCompleted,
 }: {
   applicationId: string;
   companyId: string;
   approvedLimit: number | null;
+  recommendedParcelas?: number | null;
+  bureauMaxParcelas?: number | null;
   bureauParcelaMaxima?: number | null;
   onCompleted: (data: SimulationData) => void;
 }) {

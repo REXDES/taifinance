@@ -39,6 +39,23 @@ const currency = (value: number | null | undefined) =>
 
 const fmtDate = (value?: string | null) => (value ? format(parseISO(`${value}T00:00:00`), 'dd/MM/yyyy') : '—');
 
+/** Grau de confiança da sugestão da IA para um campo específico da linha. */
+function ConfBadge({
+  confidence,
+  filled,
+  manual,
+}: { confidence: number | null; filled: boolean; manual?: boolean }) {
+  if (manual) return <span className="text-[10px] text-muted-foreground">ajuste manual</span>;
+  if (!filled) return <span className="text-[10px] text-muted-foreground">sem sugestão</span>;
+  if (confidence === null || confidence === undefined) return null;
+  const pct = Math.round(confidence * 100);
+  const tone = pct >= 85 ? 'text-primary' : pct >= 60 ? 'text-amber-600' : 'text-destructive';
+  const label = pct >= 85 ? 'alta' : pct >= 60 ? 'média' : 'baixa';
+  return <span className={`text-[10px] ${tone}`}>IA {pct}% · confiança {label}</span>;
+}
+
+
+
 export function StatementImportPage({ companyId }: Props) {
   const { accounts, refetch: refetchAccounts } = useAccounts(companyId);
   const { categories } = useTransactionCategories(companyId);
@@ -756,6 +773,13 @@ export function StatementImportPage({ companyId }: Props) {
                           {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      {!done && (
+                        <ConfBadge
+                          confidence={line.suggestion_confidence}
+                          filled={!!line.suggested_account_id}
+                          manual={line.suggestion_source === 'manual'}
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
                       <Select
@@ -774,7 +798,15 @@ export function StatementImportPage({ companyId }: Props) {
                             .map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      {!done && (
+                        <ConfBadge
+                          confidence={line.suggestion_confidence}
+                          filled={!!line.suggested_category_id}
+                          manual={line.suggestion_source === 'manual'}
+                        />
+                      )}
                     </TableCell>
+
                     <TableCell>
                       <Select
                         value={line.suggested_subcategory_id || 'none'}
@@ -789,7 +821,15 @@ export function StatementImportPage({ companyId }: Props) {
                           ))}
                         </SelectContent>
                       </Select>
+                      {!done && (
+                        <ConfBadge
+                          confidence={line.suggestion_confidence}
+                          filled={!!line.suggested_subcategory_id}
+                          manual={line.suggestion_source === 'manual'}
+                        />
+                      )}
                     </TableCell>
+
                     <TableCell>
                       <Input
                         className="h-8 text-xs"
@@ -802,11 +842,14 @@ export function StatementImportPage({ companyId }: Props) {
                           }
                         }}
                       />
-                      {line.suggestion_confidence !== null && !done && (
-                        <span className="text-[10px] text-muted-foreground">
-                          IA {Math.round((line.suggestion_confidence || 0) * 100)}% de confiança
-                        </span>
+                      {!done && (
+                        <ConfBadge
+                          confidence={line.suggestion_confidence}
+                          filled={!!line.suggested_description}
+                          manual={line.suggestion_source === 'manual'}
+                        />
                       )}
+
                     </TableCell>
                     <TableCell>
                       <TagPicker

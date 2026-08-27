@@ -2521,9 +2521,13 @@ export type Database = {
           homologation_sent_at: string | null
           homologation_status: string
           id: string
+          instagram: string | null
           is_active: boolean
+          is_own_profile: boolean
           legal_name: string | null
           necta_establishment_id: string | null
+          notes: string | null
+          person_type: string
           phone: string | null
           pix_key: string | null
           pix_key_type: string | null
@@ -2532,6 +2536,7 @@ export type Database = {
           term_slug: string | null
           trade_name: string | null
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           address_city?: string | null
@@ -2561,9 +2566,13 @@ export type Database = {
           homologation_sent_at?: string | null
           homologation_status?: string
           id?: string
+          instagram?: string | null
           is_active?: boolean
+          is_own_profile?: boolean
           legal_name?: string | null
           necta_establishment_id?: string | null
+          notes?: string | null
+          person_type?: string
           phone?: string | null
           pix_key?: string | null
           pix_key_type?: string | null
@@ -2572,6 +2581,7 @@ export type Database = {
           term_slug?: string | null
           trade_name?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           address_city?: string | null
@@ -2601,9 +2611,13 @@ export type Database = {
           homologation_sent_at?: string | null
           homologation_status?: string
           id?: string
+          instagram?: string | null
           is_active?: boolean
+          is_own_profile?: boolean
           legal_name?: string | null
           necta_establishment_id?: string | null
+          notes?: string | null
+          person_type?: string
           phone?: string | null
           pix_key?: string | null
           pix_key_type?: string | null
@@ -2612,6 +2626,7 @@ export type Database = {
           term_slug?: string | null
           trade_name?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: [
           {

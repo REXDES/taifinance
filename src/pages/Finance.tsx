@@ -55,6 +55,7 @@ import { CreditIgnoredOccurrencesPage } from '@/components/credit/CreditIgnoredO
 import { NectaDashboardPage } from '@/components/payments/NectaDashboardPage';
 import { NectaRegistrationPage } from '@/components/payments/NectaRegistrationPage';
 import { NectaChargesPage } from '@/components/payments/NectaChargesPage';
+import { NectaEstablishmentsPage } from '@/components/payments/NectaEstablishmentsPage';
 import { NectaAdminDashboardPage } from '@/components/payments/NectaAdminDashboardPage';
 import { NectaAdminRegistrationPage } from '@/components/payments/NectaAdminRegistrationPage';
 import { NectaAdminSettlementsPage } from '@/components/payments/NectaAdminSettlementsPage';
@@ -105,6 +106,7 @@ export type FinanceView =
   | 'credit-ignored'
   | 'payments-dashboard'
   | 'payments-registration'
+  | 'payments-establishments'
   | 'payments-charges'
   | 'payments-admin-dashboard'
   | 'payments-admin-registration'
@@ -148,6 +150,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'credit-ignored',
   'payments-dashboard',
   'payments-registration',
+  'payments-establishments',
   'payments-charges',
   'boletos',
 ];
@@ -428,6 +431,8 @@ const Finance = () => {
         return paymentsEnabled ? <NectaDashboardPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-registration':
         return paymentsEnabled ? <NectaRegistrationPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-establishments':
+        return paymentsEnabled ? <NectaEstablishmentsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-charges':
         return paymentsEnabled ? <NectaChargesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-admin-dashboard':

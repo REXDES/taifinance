@@ -79,7 +79,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     label: 'Pagamentos',
     items: [
       { key: 'payments.dashboard', label: 'Dashboard' },
-      { key: 'payments.registration', label: 'Cadastro' },
+      { key: 'payments.registration', label: 'Meu Perfil' },
+      { key: 'payments.establishments', label: 'Estabelecimentos' },
       { key: 'payments.charges', label: 'Cobranças' },
       { key: 'payments.admin_dashboard', label: 'Admin — Dashboard' },
       { key: 'payments.admin_registration', label: 'Admin — Cadastros' },
@@ -145,6 +146,7 @@ export const FINANCE_VIEW_PERMISSION_KEY: Record<string, string> = {
 
   'payments-dashboard': 'payments.dashboard',
   'payments-registration': 'payments.registration',
+  'payments-establishments': 'payments.establishments',
   'payments-charges': 'payments.charges',
   'payments-admin-dashboard': 'payments.admin_dashboard',
   'payments-admin-registration': 'payments.admin_registration',

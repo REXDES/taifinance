@@ -38,7 +38,7 @@ export function NectaRegistrationPage({ companyId }: Props) {
   const load = useCallback(async () => {
     setLoading(true);
     const { data } = await (supabase as any).from('necta_establishments').select('*')
-      .eq('company_id', companyId).order('created_at').limit(1).maybeSingle();
+      .eq('company_id', companyId).eq('is_own_profile', true).order('created_at').limit(1).maybeSingle();
     setRow(data ?? null);
     setForm(data ?? { homologation_status: 'draft', bank_account_type: 'CHECKING', address_state: '', pix_key_type: 'CNPJ' });
     setLoading(false);
@@ -47,6 +47,27 @@ export function NectaRegistrationPage({ companyId }: Props) {
   useEffect(() => { load(); }, [load]);
 
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+
+  const lookupCep = async (raw: string) => {
+    const cep = digits(raw);
+    if (cep.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await res.json();
+      if (data?.erro) { toast.error('CEP não encontrado'); return; }
+      setForm(f => ({
+        ...f,
+        address_street: data.logradouro || f.address_street,
+        address_district: data.bairro || f.address_district,
+        address_city: data.localidade || f.address_city,
+        address_state: (data.uf || f.address_state || '').toUpperCase(),
+      }));
+    } catch {
+      toast.error('Não foi possível consultar o CEP');
+    }
+  };
+
+
 
   const save = async () => {
     setSaving(true);

@@ -756,6 +756,13 @@ export function StatementImportPage({ companyId }: Props) {
                           {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      {!done && (
+                        <ConfBadge
+                          confidence={line.suggestion_confidence}
+                          filled={!!line.suggested_account_id}
+                          manual={line.suggestion_source === 'manual'}
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
                       <Select
@@ -774,7 +781,15 @@ export function StatementImportPage({ companyId }: Props) {
                             .map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      {!done && (
+                        <ConfBadge
+                          confidence={line.suggestion_confidence}
+                          filled={!!line.suggested_category_id}
+                          manual={line.suggestion_source === 'manual'}
+                        />
+                      )}
                     </TableCell>
+
                     <TableCell>
                       <Select
                         value={line.suggested_subcategory_id || 'none'}

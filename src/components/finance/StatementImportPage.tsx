@@ -789,7 +789,15 @@ export function StatementImportPage({ companyId }: Props) {
                           ))}
                         </SelectContent>
                       </Select>
+                      {!done && (
+                        <ConfBadge
+                          confidence={line.suggestion_confidence}
+                          filled={!!line.suggested_subcategory_id}
+                          manual={line.suggestion_source === 'manual'}
+                        />
+                      )}
                     </TableCell>
+
                     <TableCell>
                       <Input
                         className="h-8 text-xs"

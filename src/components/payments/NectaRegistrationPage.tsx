@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { nectaCall } from '@/hooks/useNectaApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -73,6 +72,9 @@ export function NectaRegistrationPage({ companyId }: Props) {
     setSaving(true);
     const payload: Record<string, any> = {
       company_id: companyId,
+      is_own_profile: true,
+      whatsapp: form.whatsapp ?? null,
+      instagram: form.instagram ?? null,
       legal_name: form.legal_name ?? null,
       trade_name: form.trade_name ?? null,
       document: form.document ?? null,

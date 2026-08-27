@@ -39,6 +39,23 @@ const currency = (value: number | null | undefined) =>
 
 const fmtDate = (value?: string | null) => (value ? format(parseISO(`${value}T00:00:00`), 'dd/MM/yyyy') : '—');
 
+/** Grau de confiança da sugestão da IA para um campo específico da linha. */
+function ConfBadge({
+  confidence,
+  filled,
+  manual,
+}: { confidence: number | null; filled: boolean; manual?: boolean }) {
+  if (manual) return <span className="text-[10px] text-muted-foreground">ajuste manual</span>;
+  if (!filled) return <span className="text-[10px] text-muted-foreground">sem sugestão</span>;
+  if (confidence === null || confidence === undefined) return null;
+  const pct = Math.round(confidence * 100);
+  const tone = pct >= 85 ? 'text-primary' : pct >= 60 ? 'text-amber-600' : 'text-destructive';
+  const label = pct >= 85 ? 'alta' : pct >= 60 ? 'média' : 'baixa';
+  return <span className={`text-[10px] ${tone}`}>IA {pct}% · confiança {label}</span>;
+}
+
+
+
 export function StatementImportPage({ companyId }: Props) {
   const { accounts, refetch: refetchAccounts } = useAccounts(companyId);
   const { categories } = useTransactionCategories(companyId);

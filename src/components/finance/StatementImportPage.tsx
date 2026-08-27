@@ -802,11 +802,14 @@ export function StatementImportPage({ companyId }: Props) {
                           }
                         }}
                       />
-                      {line.suggestion_confidence !== null && !done && (
-                        <span className="text-[10px] text-muted-foreground">
-                          IA {Math.round((line.suggestion_confidence || 0) * 100)}% de confiança
-                        </span>
+                      {!done && (
+                        <ConfBadge
+                          confidence={line.suggestion_confidence}
+                          filled={!!line.suggested_description}
+                          manual={line.suggestion_source === 'manual'}
+                        />
                       )}
+
                     </TableCell>
                     <TableCell>
                       <TagPicker

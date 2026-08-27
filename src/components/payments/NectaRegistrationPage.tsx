@@ -181,8 +181,8 @@ export function NectaRegistrationPage({ companyId }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Pagamentos — Cadastro</h1>
-          <p className="text-muted-foreground text-sm">Dados do estabelecimento, endereço, conta bancária e homologação</p>
+          <h1 className="text-2xl font-bold">Meu Perfil</h1>
+          <p className="text-muted-foreground text-sm">Dados da sua empresa, endereço, conta bancária e homologação</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={homologVariant(status)}>{HOMOLOG_LABEL[status] ?? status}</Badge>
@@ -192,121 +192,126 @@ export function NectaRegistrationPage({ companyId }: Props) {
         </div>
       </div>
 
-      <Tabs defaultValue="dados">
-        <TabsList>
-          <TabsTrigger value="dados">Dados</TabsTrigger>
-          <TabsTrigger value="endereco">Endereço</TabsTrigger>
-          <TabsTrigger value="banco">Bancário</TabsTrigger>
-          <TabsTrigger value="homologacao">Homologação</TabsTrigger>
-        </TabsList>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Dados cadastrais</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div><Label>Razão social *</Label><Input value={form.legal_name ?? ''} onChange={e => set('legal_name', e.target.value)} /></div>
+          <div><Label>Nome fantasia</Label><Input value={form.trade_name ?? ''} onChange={e => set('trade_name', e.target.value)} /></div>
+          <div><Label>CNPJ / CPF *</Label><Input value={form.document ?? ''} onChange={e => set('document', e.target.value)} /></div>
+          <div><Label>Data de abertura / nascimento</Label><Input type="date" value={form.opening_date ?? ''} onChange={e => set('opening_date', e.target.value)} /></div>
+          <div><Label>E-mail *</Label><Input type="email" value={form.email ?? ''} onChange={e => set('email', e.target.value)} /></div>
+          <div><Label>Telefone *</Label><Input value={form.phone ?? ''} onChange={e => set('phone', e.target.value)} /></div>
+          <div><Label>WhatsApp</Label><Input value={form.whatsapp ?? ''} onChange={e => set('whatsapp', e.target.value)} /></div>
+          <div><Label>Instagram</Label><Input value={form.instagram ?? ''} onChange={e => set('instagram', e.target.value)} placeholder="@perfil" /></div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="dados">
-          <Card><CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-6">
-            <div><Label>Razão social *</Label><Input value={form.legal_name ?? ''} onChange={e => set('legal_name', e.target.value)} /></div>
-            <div><Label>Nome fantasia</Label><Input value={form.trade_name ?? ''} onChange={e => set('trade_name', e.target.value)} /></div>
-            <div><Label>CNPJ / CPF *</Label><Input value={form.document ?? ''} onChange={e => set('document', e.target.value)} /></div>
-            <div><Label>Data de abertura / nascimento</Label><Input type="date" value={form.opening_date ?? ''} onChange={e => set('opening_date', e.target.value)} /></div>
-            <div><Label>E-mail *</Label><Input type="email" value={form.email ?? ''} onChange={e => set('email', e.target.value)} /></div>
-            <div><Label>Telefone *</Label><Input value={form.phone ?? ''} onChange={e => set('phone', e.target.value)} /></div>
-          </CardContent></Card>
-        </TabsContent>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Endereço</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <Label>CEP *</Label>
+            <Input value={form.address_zip ?? ''} onChange={e => set('address_zip', e.target.value)} onBlur={e => lookupCep(e.target.value)} />
+            <p className="text-xs text-muted-foreground mt-1">Preenche o endereço automaticamente</p>
+          </div>
+          <div><Label>Logradouro *</Label><Input value={form.address_street ?? ''} onChange={e => set('address_street', e.target.value)} /></div>
+          <div><Label>Número *</Label><Input value={form.address_number ?? ''} onChange={e => set('address_number', e.target.value)} /></div>
+          <div><Label>Complemento</Label><Input value={form.address_complement ?? ''} onChange={e => set('address_complement', e.target.value)} /></div>
+          <div><Label>Bairro *</Label><Input value={form.address_district ?? ''} onChange={e => set('address_district', e.target.value)} /></div>
+          <div><Label>Cidade *</Label><Input value={form.address_city ?? ''} onChange={e => set('address_city', e.target.value)} /></div>
+          <div><Label>UF *</Label><Input maxLength={2} value={form.address_state ?? ''} onChange={e => set('address_state', e.target.value.toUpperCase())} /></div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="endereco">
-          <Card><CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-6">
-            <div><Label>CEP *</Label><Input value={form.address_zip ?? ''} onChange={e => set('address_zip', e.target.value)} /></div>
-            <div><Label>Logradouro *</Label><Input value={form.address_street ?? ''} onChange={e => set('address_street', e.target.value)} /></div>
-            <div><Label>Número *</Label><Input value={form.address_number ?? ''} onChange={e => set('address_number', e.target.value)} /></div>
-            <div><Label>Complemento</Label><Input value={form.address_complement ?? ''} onChange={e => set('address_complement', e.target.value)} /></div>
-            <div><Label>Bairro *</Label><Input value={form.address_district ?? ''} onChange={e => set('address_district', e.target.value)} /></div>
-            <div><Label>Cidade *</Label><Input value={form.address_city ?? ''} onChange={e => set('address_city', e.target.value)} /></div>
-            <div><Label>UF *</Label><Input maxLength={2} value={form.address_state ?? ''} onChange={e => set('address_state', e.target.value.toUpperCase())} /></div>
-          </CardContent></Card>
-        </TabsContent>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Dados bancários</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div><Label>Código do banco (Compe)</Label><Input value={form.bank_code ?? ''} onChange={e => set('bank_code', e.target.value)} /></div>
+          <div><Label>Nome do banco</Label><Input value={form.bank_name ?? ''} onChange={e => set('bank_name', e.target.value)} /></div>
+          <div><Label>Agência</Label><Input value={form.bank_agency ?? ''} onChange={e => set('bank_agency', e.target.value)} /></div>
+          <div><Label>Conta (com dígito)</Label><Input value={form.bank_account ?? ''} onChange={e => set('bank_account', e.target.value)} /></div>
+          <div><Label>Tipo de conta</Label>
+            <Select value={form.bank_account_type ?? 'CHECKING'} onValueChange={v => set('bank_account_type', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CHECKING">Corrente</SelectItem>
+                <SelectItem value="SAVINGS">Poupança</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label>Titular</Label><Input value={form.bank_account_holder ?? ''} onChange={e => set('bank_account_holder', e.target.value)} /></div>
+          <div><Label>Documento do titular</Label><Input value={form.bank_account_document ?? ''} onChange={e => set('bank_account_document', e.target.value)} /></div>
+          <div><Label>Tipo de chave PIX</Label>
+            <Select value={form.pix_key_type ?? 'CNPJ'} onValueChange={v => set('pix_key_type', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CNPJ">CNPJ</SelectItem>
+                <SelectItem value="CPF">CPF</SelectItem>
+                <SelectItem value="EMAIL">E-mail</SelectItem>
+                <SelectItem value="PHONE">Telefone</SelectItem>
+                <SelectItem value="RANDOM">Aleatória</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="md:col-span-2"><Label>Chave PIX</Label><Input value={form.pix_key ?? ''} onChange={e => set('pix_key', e.target.value)} /></div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="banco">
-          <Card><CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-6">
-            <div><Label>Código do banco (Compe)</Label><Input value={form.bank_code ?? ''} onChange={e => set('bank_code', e.target.value)} /></div>
-            <div><Label>Nome do banco</Label><Input value={form.bank_name ?? ''} onChange={e => set('bank_name', e.target.value)} /></div>
-            <div><Label>Agência</Label><Input value={form.bank_agency ?? ''} onChange={e => set('bank_agency', e.target.value)} /></div>
-            <div><Label>Conta (com dígito)</Label><Input value={form.bank_account ?? ''} onChange={e => set('bank_account', e.target.value)} /></div>
-            <div><Label>Tipo de conta</Label>
-              <Select value={form.bank_account_type ?? 'CHECKING'} onValueChange={v => set('bank_account_type', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CHECKING">Corrente</SelectItem>
-                  <SelectItem value="SAVINGS">Poupança</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div><Label>Titular</Label><Input value={form.bank_account_holder ?? ''} onChange={e => set('bank_account_holder', e.target.value)} /></div>
-            <div><Label>Documento do titular</Label><Input value={form.bank_account_document ?? ''} onChange={e => set('bank_account_document', e.target.value)} /></div>
-            <div><Label>Tipo de chave PIX</Label>
-              <Select value={form.pix_key_type ?? 'CNPJ'} onValueChange={v => set('pix_key_type', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CNPJ">CNPJ</SelectItem>
-                  <SelectItem value="CPF">CPF</SelectItem>
-                  <SelectItem value="EMAIL">E-mail</SelectItem>
-                  <SelectItem value="PHONE">Telefone</SelectItem>
-                  <SelectItem value="RANDOM">Aleatória</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div><Label>Chave PIX</Label><Input value={form.pix_key ?? ''} onChange={e => set('pix_key', e.target.value)} /></div>
-          </CardContent></Card>
-        </TabsContent>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Homologação</CardTitle>
+          <CardDescription>Envie o cadastro para análise e acompanhe a situação do estabelecimento.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={homologVariant(status)}>{HOMOLOG_LABEL[status] ?? status}</Badge>
+            {row?.necta_establishment_id && <span className="text-xs text-muted-foreground">ID: {row.necta_establishment_id}</span>}
+            {row?.homologation_sent_at && <span className="text-xs text-muted-foreground">enviado em {new Date(row.homologation_sent_at).toLocaleString('pt-BR')}</span>}
+          </div>
 
-        <TabsContent value="homologacao">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Homologação</CardTitle>
-              <CardDescription>Envie o cadastro para análise e acompanhe a situação do estabelecimento.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={homologVariant(status)}>{HOMOLOG_LABEL[status] ?? status}</Badge>
-                {row?.necta_establishment_id && <span className="text-xs text-muted-foreground">ID: {row.necta_establishment_id}</span>}
-                {row?.homologation_sent_at && <span className="text-xs text-muted-foreground">enviado em {new Date(row.homologation_sent_at).toLocaleString('pt-BR')}</span>}
-              </div>
+          {row?.homologation_notes && (
+            <Alert variant={status === 'rejected' ? 'destructive' : 'default'}>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-xs break-words">{row.homologation_notes}</AlertDescription>
+            </Alert>
+          )}
 
-              {row?.homologation_notes && (
-                <Alert variant={status === 'rejected' ? 'destructive' : 'default'}>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-xs break-words">{row.homologation_notes}</AlertDescription>
-                </Alert>
-              )}
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={sendHomologation} disabled={sending || status === 'approved'}>
+              {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+              Enviar para homologação
+            </Button>
+            <Button variant="outline" onClick={checkStatus} disabled={!row?.necta_establishment_id}>
+              <RefreshCw className="w-4 h-4 mr-2" />Consultar situação
+            </Button>
+            <Button variant="outline" onClick={loadTerms}>
+              <FileSignature className="w-4 h-4 mr-2" />Termos de aceite
+            </Button>
+          </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={sendHomologation} disabled={sending || status === 'approved'}>
-                  {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
-                  Enviar para homologação
-                </Button>
-                <Button variant="outline" onClick={checkStatus} disabled={!row?.necta_establishment_id}>
-                  <RefreshCw className="w-4 h-4 mr-2" />Consultar situação
-                </Button>
-                <Button variant="outline" onClick={loadTerms}>
-                  <FileSignature className="w-4 h-4 mr-2" />Termos de aceite
-                </Button>
-              </div>
-
-              {terms.length > 0 && (
-                <div className="space-y-2">
-                  {terms.map((t: any, i: number) => (
-                    <div key={t.slug ?? i} className="flex items-center justify-between border rounded-md p-2 text-sm">
-                      <span>{t.name ?? t.title ?? t.slug}</span>
-                      <Button size="sm" variant="outline" onClick={() => signTerm(t.slug ?? t.slugTerm)}>Assinar</Button>
-                    </div>
-                  ))}
+          {terms.length > 0 && (
+            <div className="space-y-2">
+              {terms.map((t: any, i: number) => (
+                <div key={t.slug ?? i} className="flex items-center justify-between border rounded-md p-2 text-sm">
+                  <span>{t.name ?? t.title ?? t.slug}</span>
+                  <Button size="sm" variant="outline" onClick={() => signTerm(t.slug ?? t.slugTerm)}>Assinar</Button>
                 </div>
-              )}
+              ))}
+            </div>
+          )}
 
-              {row?.term_accepted_at && (
-                <p className="text-xs text-muted-foreground">Termo {row.term_slug} assinado em {new Date(row.term_accepted_at).toLocaleString('pt-BR')}</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          {row?.term_accepted_at && (
+            <p className="text-xs text-muted-foreground">Termo {row.term_slug} assinado em {new Date(row.term_accepted_at).toLocaleString('pt-BR')}</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
+

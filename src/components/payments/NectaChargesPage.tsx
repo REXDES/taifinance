@@ -197,11 +197,12 @@ export function NectaChargesPage({ companyId }: Props) {
     return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
   }, [rows, syncOpen]);
 
-  const issue = async (id: string, card?: Record<string, string>) => {
+  const issue = async (id: string, card?: Record<string, string>, linkMethod?: string) => {
     setBusyId(id);
     const { data, error } = await supabase.functions.invoke('necta-sale', {
-      body: { action: 'issue', sale_id: id, credit_card: card },
+      body: { action: 'issue', sale_id: id, credit_card: card, link_payment_method: linkMethod },
     });
+
     setBusyId(null);
     const err = error?.message ?? (data as any)?.error;
     if (err) { toast.error(`Falha na emissão: ${err}`); load(); return; }

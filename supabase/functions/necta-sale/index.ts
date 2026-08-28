@@ -78,7 +78,8 @@ function mapStatus(raw?: string | null): string | null {
   if (/(refund|revert|estorn|chargeback)/.test(s)) return 'refunded';
   if (/(cancel|void|denied|declined|recus|fail|erro)/.test(s)) return 'canceled';
   if (/(expired|vencid|overdue|atras)/.test(s)) return 'overdue';
-  if (/(pending|aguard|waiting|created|open|aberto|issued|emitid|authorized)/.test(s)) return 'issued';
+  // pending | processing | scheduled | pre_authorized são estados abertos na Necta.
+  if (/(pending|processing|scheduled|pre_authorized|aguard|waiting|created|open|aberto|issued|emitid|authorized)/.test(s)) return 'issued';
   return null;
 }
 

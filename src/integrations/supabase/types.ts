@@ -2834,12 +2834,21 @@ export type Database = {
           is_recurring: boolean
           last_sync_at: string | null
           method: string
+          necta_buyer_id: string | null
           necta_payment_link_id: string | null
           necta_sale_id: string | null
+          needs_review: boolean
           net_amount: number | null
           paid_at: string | null
           parent_sale_id: string | null
           payable_receivable_id: string | null
+          payer_address_city: string | null
+          payer_address_complement: string | null
+          payer_address_neighborhood: string | null
+          payer_address_number: string | null
+          payer_address_postal_code: string | null
+          payer_address_state: string | null
+          payer_address_street: string | null
           payer_document: string | null
           payer_email: string | null
           payer_name: string | null
@@ -2853,7 +2862,11 @@ export type Database = {
           recurrence_index: number | null
           recurrence_interval: string | null
           refunded_at: string | null
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string
+          status_reference: string | null
           subcategory_id: string | null
           sync_error: string | null
           transaction_id: string | null
@@ -2878,12 +2891,21 @@ export type Database = {
           is_recurring?: boolean
           last_sync_at?: string | null
           method?: string
+          necta_buyer_id?: string | null
           necta_payment_link_id?: string | null
           necta_sale_id?: string | null
+          needs_review?: boolean
           net_amount?: number | null
           paid_at?: string | null
           parent_sale_id?: string | null
           payable_receivable_id?: string | null
+          payer_address_city?: string | null
+          payer_address_complement?: string | null
+          payer_address_neighborhood?: string | null
+          payer_address_number?: string | null
+          payer_address_postal_code?: string | null
+          payer_address_state?: string | null
+          payer_address_street?: string | null
           payer_document?: string | null
           payer_email?: string | null
           payer_name?: string | null
@@ -2897,7 +2919,11 @@ export type Database = {
           recurrence_index?: number | null
           recurrence_interval?: string | null
           refunded_at?: string | null
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
+          status_reference?: string | null
           subcategory_id?: string | null
           sync_error?: string | null
           transaction_id?: string | null
@@ -2922,12 +2948,21 @@ export type Database = {
           is_recurring?: boolean
           last_sync_at?: string | null
           method?: string
+          necta_buyer_id?: string | null
           necta_payment_link_id?: string | null
           necta_sale_id?: string | null
+          needs_review?: boolean
           net_amount?: number | null
           paid_at?: string | null
           parent_sale_id?: string | null
           payable_receivable_id?: string | null
+          payer_address_city?: string | null
+          payer_address_complement?: string | null
+          payer_address_neighborhood?: string | null
+          payer_address_number?: string | null
+          payer_address_postal_code?: string | null
+          payer_address_state?: string | null
+          payer_address_street?: string | null
           payer_document?: string | null
           payer_email?: string | null
           payer_name?: string | null
@@ -2941,7 +2976,11 @@ export type Database = {
           recurrence_index?: number | null
           recurrence_interval?: string | null
           refunded_at?: string | null
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string
+          status_reference?: string | null
           subcategory_id?: string | null
           sync_error?: string | null
           transaction_id?: string | null

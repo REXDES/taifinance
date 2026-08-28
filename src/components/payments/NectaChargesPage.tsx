@@ -39,7 +39,12 @@ const statusVariant = (s: string): 'default' | 'secondary' | 'outline' | 'destru
   s === 'paid' ? 'default' : s === 'overdue' || s === 'refunded' ? 'destructive' : s === 'canceled' ? 'outline' : 'secondary';
 
 const OPEN_STATUSES = ['pending', 'issued', 'overdue'];
-const ADDRESS_REQUIRED_METHODS = ['bank_slip', 'pix_cappta'];
+// O contrato da Necta (BuyerCreate) exige nome, documento, e-mail, telefone e
+// endereço completo do pagador em TODOS os métodos de venda. Só o link de
+// pagamento não envia pagador (os dados são coletados no checkout).
+const PAYER_REQUIRED_METHODS = ['pix', 'bank_slip', 'pix_cappta', 'credit_card'];
+const BOLETO_METHODS = ['bank_slip', 'pix_cappta'];
+const BOLETO_MIN_AMOUNT = 10;
 
 const emptyForm = {
   method: 'pix', amount: '', description: '', installments: '1',
@@ -48,9 +53,29 @@ const emptyForm = {
   payer_address_neighborhood: '', payer_address_city: '', payer_address_state: '', payer_address_postal_code: '',
   account_id: '', is_recurring: false, recurrence_interval: 'monthly', recurrence_count: '12',
   card_holder: '', card_number: '', card_month: '', card_year: '', card_cvv: '',
+  link_payment_method: 'pix',
 };
 
 const digitsOnly = (v: string) => v.replace(/\D/g, '');
+
+const maskDocument = (v: string) => {
+  const d = digitsOnly(v).slice(0, 14);
+  if (d.length <= 11) {
+    return d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1-$2');
+  }
+  return d.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2');
+};
+
+const maskPhone = (v: string) => {
+  const d = digitsOnly(v).slice(0, 11);
+  if (d.length <= 10) return d.replace(/^(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+  return d.replace(/^(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
+};
+
+const maskCep = (v: string) => digitsOnly(v).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2');
+
 
 export function NectaChargesPage({ companyId }: Props) {
   const { user } = useAuth();
@@ -64,21 +89,85 @@ export function NectaChargesPage({ companyId }: Props) {
   const [syncingAll, setSyncingAll] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const [payers, setPayers] = useState<any[]>([]);
+  const [cepLoading, setCepLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   const [companyName, setCompanyName] = useState('');
 
   const load = useCallback(async () => {
-    const [{ data }, { data: accs }, { data: company }] = await Promise.all([
+    const [{ data }, { data: accs }, { data: company }, { data: estabs }, { data: clients }] = await Promise.all([
       (supabase as any).from('necta_sales').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(300),
       (supabase as any).from('accounts').select('id, name').eq('company_id', companyId).order('name'),
       (supabase as any).from('companies').select('name').eq('id', companyId).maybeSingle(),
+      (supabase as any).from('necta_establishments')
+        .select('id, legal_name, trade_name, document, email, phone, whatsapp, address_street, address_number, address_complement, address_district, address_city, address_state, address_zip')
+        .eq('company_id', companyId).eq('is_own_profile', false).order('legal_name'),
+      (supabase as any).from('clients_suppliers')
+        .select('id, name, document, email, phone, whatsapp_phone, type')
+        .eq('company_id', companyId).order('name'),
     ]);
     setRows(data ?? []);
     setAccounts(accs ?? []);
     setCompanyName(company?.name ?? '');
+    setPayers([
+      ...(estabs ?? []).map((e: any) => ({
+        key: `est-${e.id}`, origin: 'Estabelecimento',
+        name: e.legal_name || e.trade_name || 'Sem nome',
+        document: e.document ?? '', email: e.email ?? '', phone: e.whatsapp || e.phone || '',
+        street: e.address_street ?? '', number: e.address_number ?? '', complement: e.address_complement ?? '',
+        neighborhood: e.address_district ?? '', city: e.address_city ?? '', state: e.address_state ?? '',
+        postal_code: e.address_zip ?? '',
+      })),
+      ...(clients ?? []).map((c: any) => ({
+        key: `cli-${c.id}`, origin: c.type === 'supplier' ? 'Fornecedor' : 'Cliente',
+        name: c.name, document: c.document ?? '', email: c.email ?? '',
+        phone: c.whatsapp_phone || c.phone || '',
+        street: '', number: '', complement: '', neighborhood: '', city: '', state: '', postal_code: '',
+      })),
+    ]);
     return data ?? [];
   }, [companyId]);
+
+  /** Autopreenchimento a partir de um pagador já cadastrado. */
+  const applyPayer = (key: string) => {
+    const p = payers.find(x => x.key === key);
+    if (!p) return;
+    setForm(f => ({
+      ...f,
+      payer_name: p.name, payer_document: maskDocument(p.document), payer_email: p.email,
+      payer_phone: maskPhone(p.phone),
+      payer_address_street: p.street, payer_address_number: p.number,
+      payer_address_complement: p.complement, payer_address_neighborhood: p.neighborhood,
+      payer_address_city: p.city, payer_address_state: (p.state || '').toUpperCase().slice(0, 2),
+      payer_address_postal_code: maskCep(p.postal_code),
+    }));
+    if (!p.street && p.postal_code) lookupCep(p.postal_code);
+  };
+
+  /** Busca endereço pelo CEP (ViaCEP) e preenche rua, bairro, cidade e UF. */
+  const lookupCep = async (raw: string) => {
+    const cep = digitsOnly(raw);
+    if (cep.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const j = await r.json();
+      if (j?.erro) { toast.error('CEP não encontrado'); return; }
+      setForm(f => ({
+        ...f,
+        payer_address_street: j.logradouro || f.payer_address_street,
+        payer_address_neighborhood: j.bairro || f.payer_address_neighborhood,
+        payer_address_city: j.localidade || f.payer_address_city,
+        payer_address_state: (j.uf || f.payer_address_state || '').toUpperCase().slice(0, 2),
+      }));
+    } catch {
+      toast.error('Não foi possível consultar o CEP');
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
 
   useEffect(() => { load(); }, [load]);
 
@@ -108,11 +197,12 @@ export function NectaChargesPage({ companyId }: Props) {
     return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
   }, [rows, syncOpen]);
 
-  const issue = async (id: string, card?: Record<string, string>) => {
+  const issue = async (id: string, card?: Record<string, string>, linkMethod?: string) => {
     setBusyId(id);
     const { data, error } = await supabase.functions.invoke('necta-sale', {
-      body: { action: 'issue', sale_id: id, credit_card: card },
+      body: { action: 'issue', sale_id: id, credit_card: card, link_payment_method: linkMethod },
     });
+
     setBusyId(null);
     const err = error?.message ?? (data as any)?.error;
     if (err) { toast.error(`Falha na emissão: ${err}`); load(); return; }
@@ -125,15 +215,22 @@ export function NectaChargesPage({ companyId }: Props) {
   const submit = async () => {
     if (!form.amount || Number(form.amount) <= 0) { toast.error('Informe o valor'); return; }
     if (form.method !== 'pix' && !form.due_date) { toast.error('Informe o vencimento'); return; }
+    if (BOLETO_METHODS.includes(form.method) && Number(form.amount) < BOLETO_MIN_AMOUNT) {
+      toast.error(`Boleto exige valor mínimo de R$ ${BOLETO_MIN_AMOUNT},00`); return;
+    }
     if (form.method === 'credit_card' && (!form.card_number || !form.card_holder)) { toast.error('Informe os dados do cartão'); return; }
-    const docDigits = digitsOnly(form.payer_document);
-    if (docDigits.length !== 11 && docDigits.length !== 14) { toast.error('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido do pagador'); return; }
-    if (ADDRESS_REQUIRED_METHODS.includes(form.method)) {
+    if (PAYER_REQUIRED_METHODS.includes(form.method)) {
+      const docDigits = digitsOnly(form.payer_document);
+      if (!form.payer_name.trim()) { toast.error('Informe o nome do pagador'); return; }
+      if (docDigits.length !== 11 && docDigits.length !== 14) { toast.error('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido do pagador'); return; }
+      if (!/\S+@\S+\.\S+/.test(form.payer_email)) { toast.error('Informe um e-mail válido do pagador'); return; }
+      if (digitsOnly(form.payer_phone).length < 10) { toast.error('Informe o telefone do pagador com DDD'); return; }
       const addressOk = form.payer_address_street && form.payer_address_number
         && form.payer_address_neighborhood && form.payer_address_city
         && form.payer_address_state && digitsOnly(form.payer_address_postal_code).length === 8;
-      if (!addressOk) { toast.error('Endereço completo do pagador é obrigatório para emitir boleto'); return; }
+      if (!addressOk) { toast.error('A Necta exige o endereço completo do pagador (rua, número, bairro, cidade, UF e CEP)'); return; }
     }
+
     setSaving(true);
 
     const recurrenceCount = form.is_recurring ? Math.max(1, Number(form.recurrence_count || 1)) : 1;
@@ -180,10 +277,12 @@ export function NectaChargesPage({ companyId }: Props) {
     const card = form.method === 'credit_card'
       ? { holderName: form.card_holder, number: form.card_number, expirationMonth: form.card_month, expirationYear: form.card_year, cvv: form.card_cvv }
       : undefined;
+    const linkMethod = form.method === 'link' ? form.link_payment_method : undefined;
     setForm({ ...emptyForm });
     await load();
     // Emite a primeira imediatamente; as demais recorrências ficam para emissão sob demanda
-    if (created[0]) issue(created[0].id, card);
+    if (created[0]) issue(created[0].id, card, linkMethod);
+
   };
 
   const syncOne = async (id: string) => {
@@ -426,36 +525,80 @@ export function NectaChargesPage({ companyId }: Props) {
                 </SelectContent>
               </Select>
             </div>
+            {form.method === 'link' && (
+              <div><Label>Forma de pagamento do link</Label>
+                <Select value={form.link_payment_method} onValueChange={(v) => setForm(f => ({ ...f, link_payment_method: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="bankslip">Boleto</SelectItem>
+                    <SelectItem value="credit_card">Cartão de crédito</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
-              <div><Label>Vencimento</Label><Input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} /></div>
+              <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+                {BOLETO_METHODS.includes(form.method) && (
+                  <p className="text-xs text-muted-foreground mt-1">Mínimo de R$ {BOLETO_MIN_AMOUNT},00 para boleto.</p>
+                )}
+              </div>
+              <div><Label>Vencimento{form.method !== 'pix' ? ' *' : ''}</Label><Input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} /></div>
             </div>
             <div><Label>Descrição</Label><Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
+
+            {payers.length > 0 && (
+              <div><Label>Usar pagador cadastrado</Label>
+                <Select value="" onValueChange={applyPayer}>
+                  <SelectTrigger><SelectValue placeholder="Selecione para preencher automaticamente..." /></SelectTrigger>
+                  <SelectContent>
+                    {payers.map(p => (
+                      <SelectItem key={p.key} value={p.key}>{p.name} · {p.origin}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Nome do pagador</Label><Input value={form.payer_name} onChange={e => setForm(f => ({ ...f, payer_name: e.target.value }))} /></div>
-              <div><Label>Documento (CPF/CNPJ) *</Label><Input value={form.payer_document} onChange={e => setForm(f => ({ ...f, payer_document: e.target.value }))} /></div>
-              <div><Label>E-mail</Label><Input type="email" value={form.payer_email} onChange={e => setForm(f => ({ ...f, payer_email: e.target.value }))} /></div>
-              <div><Label>Telefone</Label><Input value={form.payer_phone} onChange={e => setForm(f => ({ ...f, payer_phone: e.target.value }))} /></div>
+              <div><Label>Nome do pagador{PAYER_REQUIRED_METHODS.includes(form.method) ? ' *' : ''}</Label><Input value={form.payer_name} onChange={e => setForm(f => ({ ...f, payer_name: e.target.value }))} /></div>
+              <div><Label>Documento (CPF/CNPJ){PAYER_REQUIRED_METHODS.includes(form.method) ? ' *' : ''}</Label><Input inputMode="numeric" value={form.payer_document} onChange={e => setForm(f => ({ ...f, payer_document: maskDocument(e.target.value) }))} /></div>
+              <div><Label>E-mail{PAYER_REQUIRED_METHODS.includes(form.method) ? ' *' : ''}</Label><Input type="email" value={form.payer_email} onChange={e => setForm(f => ({ ...f, payer_email: e.target.value }))} /></div>
+              <div><Label>Telefone{PAYER_REQUIRED_METHODS.includes(form.method) ? ' *' : ''}</Label><Input inputMode="tel" value={form.payer_phone} onChange={e => setForm(f => ({ ...f, payer_phone: maskPhone(e.target.value) }))} /></div>
             </div>
 
             <div className="border rounded-md p-3 space-y-3">
               <Label className="text-xs text-muted-foreground">
-                Endereço do pagador{ADDRESS_REQUIRED_METHODS.includes(form.method) ? ' *' : ' (opcional)'}
+                Endereço do pagador{PAYER_REQUIRED_METHODS.includes(form.method) ? ' * (exigido pela Necta)' : ' (opcional)'}
               </Label>
               <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label>CEP</Label>
+                  <Input
+                    inputMode="numeric"
+                    value={form.payer_address_postal_code}
+                    onChange={e => {
+                      const v = maskCep(e.target.value);
+                      setForm(f => ({ ...f, payer_address_postal_code: v }));
+                      if (digitsOnly(v).length === 8) lookupCep(v);
+                    }}
+                    onBlur={e => lookupCep(e.target.value)}
+                  />
+                  {cepLoading && <p className="text-xs text-muted-foreground mt-1">Buscando endereço...</p>}
+                </div>
                 <div className="col-span-2"><Label>Rua</Label><Input value={form.payer_address_street} onChange={e => setForm(f => ({ ...f, payer_address_street: e.target.value }))} /></div>
-                <div><Label>Número</Label><Input value={form.payer_address_number} onChange={e => setForm(f => ({ ...f, payer_address_number: e.target.value }))} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div><Label>Número</Label><Input value={form.payer_address_number} onChange={e => setForm(f => ({ ...f, payer_address_number: e.target.value }))} /></div>
                 <div><Label>Complemento</Label><Input value={form.payer_address_complement} onChange={e => setForm(f => ({ ...f, payer_address_complement: e.target.value }))} /></div>
                 <div><Label>Bairro</Label><Input value={form.payer_address_neighborhood} onChange={e => setForm(f => ({ ...f, payer_address_neighborhood: e.target.value }))} /></div>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div><Label>Cidade</Label><Input value={form.payer_address_city} onChange={e => setForm(f => ({ ...f, payer_address_city: e.target.value }))} /></div>
+                <div className="col-span-2"><Label>Cidade</Label><Input value={form.payer_address_city} onChange={e => setForm(f => ({ ...f, payer_address_city: e.target.value }))} /></div>
                 <div><Label>UF</Label><Input maxLength={2} value={form.payer_address_state} onChange={e => setForm(f => ({ ...f, payer_address_state: e.target.value.toUpperCase() }))} /></div>
-                <div><Label>CEP</Label><Input value={form.payer_address_postal_code} onChange={e => setForm(f => ({ ...f, payer_address_postal_code: e.target.value }))} /></div>
               </div>
             </div>
+
 
             {form.method === 'credit_card' && (
               <div className="grid grid-cols-2 gap-3 border rounded-md p-3">

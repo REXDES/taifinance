@@ -84,39 +84,44 @@ function mapStatus(raw?: string | null): string | null {
 }
 
 /**
- * Monta o buyer a partir do endereço REAL do pagador (nunca do estabelecimento —
- * enviar o endereço do lojista como se fosse do comprador quebraria a emissão do
- * boleto e falsearia o cadastro do pagador na Necta). Boleto exige endereço
- * completo: se faltar algo, lança erro em vez de inventar dado.
+ * Monta o buyer a partir do endereço REAL do pagador (nunca do estabelecimento).
+ * Contrato Necta (`BuyerCreate`): name, document, email, phoneNumber e address são
+ * TODOS obrigatórios — inclusive em PIX e cartão, não só no boleto. Address exige
+ * street, number, neighborhood, city, state, country e postalCode.
  */
-function buyerPayload(sale: any, paymentMethod: string) {
-  const hasAddress = sale.payer_address_street && sale.payer_address_number
-    && sale.payer_address_neighborhood && sale.payer_address_city
-    && sale.payer_address_state && sale.payer_address_postal_code;
-
-  if (paymentMethod === 'bank_slip' && !hasAddress) {
-    throw new Error('Endereço completo do pagador é obrigatório para emitir boleto (rua, número, bairro, cidade, UF e CEP).');
+function buyerPayload(sale: any) {
+  const missing: string[] = [];
+  if (!sale.payer_name) missing.push('nome');
+  if (!digits(sale.payer_document)) missing.push('CPF/CNPJ');
+  if (!sale.payer_email) missing.push('e-mail');
+  if (!digits(sale.payer_phone)) missing.push('telefone');
+  const map: Array<[string, string]> = [
+    ['payer_address_street', 'rua'], ['payer_address_number', 'número'],
+    ['payer_address_neighborhood', 'bairro'], ['payer_address_city', 'cidade'],
+    ['payer_address_state', 'UF'], ['payer_address_postal_code', 'CEP'],
+  ];
+  for (const [k, label] of map) if (!sale[k]) missing.push(label);
+  if (missing.length) {
+    throw new Error(`Dados do pagador incompletos para a Necta: ${missing.join(', ')}.`);
   }
 
-  const buyer: Record<string, unknown> = {
-    name: sale.payer_name || 'Consumidor',
+  return {
+    name: sale.payer_name,
     document: digits(sale.payer_document),
-    email: sale.payer_email || 'nao-informado@exemplo.com.br',
-    phoneNumber: digits(sale.payer_phone) || '11999999999',
-  };
-  if (hasAddress) {
-    buyer.address = {
+    email: sale.payer_email,
+    phoneNumber: digits(sale.payer_phone),
+    address: {
       street: sale.payer_address_street,
-      number: sale.payer_address_number,
+      number: String(sale.payer_address_number),
       neighborhood: sale.payer_address_neighborhood,
       city: sale.payer_address_city,
-      state: sale.payer_address_state,
+      state: String(sale.payer_address_state).toUpperCase().slice(0, 2),
       country: 'BR',
       postalCode: digits(sale.payer_address_postal_code),
-    };
-  }
-  return buyer;
+    },
+  };
 }
+
 
 /**
  * Extrai os campos exatamente como o contrato da Necta os devolve:
@@ -242,33 +247,50 @@ Deno.serve(async (req) => {
           const expiration = sale.due_date
             ? new Date(`${sale.due_date}T23:59:59`).toISOString()
             : new Date(Date.now() + 7 * 864e5).toISOString();
-          resp = await api('/payment-links', 'POST', {
-            title: sale.description || 'Cobrança',
+          // Enum do link é `bankslip` (sem underscore), diferente de /sales (`bank_slip`).
+          const allowed = ['pix', 'credit_card', 'bankslip'];
+          const linkMethod = allowed.includes(input?.link_payment_method) ? input.link_payment_method : 'pix';
+          const linkBody: Record<string, unknown> = {
+            title: (sale.description || 'Cobrança').slice(0, 120),
             expirationDate: expiration,
-            paymentMethod: 'pix',
+            paymentMethod: linkMethod,
             amount: toCents(sale.amount),
             expireAfterPay: true,
             description: sale.description ?? undefined,
             email: sale.payer_email ?? undefined,
-            installments: sale.installments ?? 1,
-          });
+          };
+          // `installments` só é aceito em credit_card (máx. 21) — enviar nos demais dá 400.
+          if (linkMethod === 'credit_card') {
+            linkBody.installments = Math.min(21, Math.max(1, Number(sale.installments || 1)));
+          }
+          resp = await api('/payment-links', 'POST', linkBody);
         } else {
           const paymentMethod = sale.method === 'pix_cappta' ? 'bank_slip' : sale.method;
+          const totalAmount = toCents(sale.amount);
+          if (paymentMethod === 'bank_slip' && totalAmount < 1000) {
+            return json({ error: 'Boleto exige valor mínimo de R$ 10,00 na Necta.' }, 400);
+          }
           const body: Record<string, unknown> = {
             paymentMethod,
-            totalAmount: toCents(sale.amount),
+            totalAmount,
             description: sale.description ?? undefined,
-            buyer: buyerPayload(sale, paymentMethod),
           };
-          if (paymentMethod === 'bank_slip') body.dueDate = sale.due_date ?? undefined;
+          // O comprador é deduplicado por documento na Necta: reaproveitamos o buyerId
+          // já conhecido e só enviamos o objeto inline na primeira cobrança do pagador.
+          if (sale.necta_buyer_id) body.buyerId = sale.necta_buyer_id;
+          else body.buyer = buyerPayload(sale);
+          if (paymentMethod === 'bank_slip') {
+            if (!sale.due_date) return json({ error: 'Boleto exige data de vencimento.' }, 400);
+            body.dueDate = sale.due_date;
+          }
           if (paymentMethod === 'credit_card') {
             const card = input?.credit_card;
             if (!card?.number || !card?.holderName) return json({ error: 'Dados do cartão são obrigatórios' }, 400);
-            body.installments = sale.installments ?? 1;
+            body.installments = Math.max(1, Number(sale.installments || 1));
             body.creditCard = {
               holderName: card.holderName,
               number: digits(card.number),
-              expirationMonth: String(card.expirationMonth),
+              expirationMonth: String(card.expirationMonth).padStart(2, '0'),
               expirationYear: String(card.expirationYear),
               cvv: String(card.cvv ?? ''),
             };
@@ -284,6 +306,7 @@ Deno.serve(async (req) => {
             }
           }
         }
+
       } catch (e) {
         const msg = (e as Error).message;
         await admin.from('necta_sales').update({ sync_error: msg, last_sync_at: new Date().toISOString() }).eq('id', saleId);
@@ -298,6 +321,11 @@ Deno.serve(async (req) => {
         raw: { created: resp, detail: saleDetail, billet }, sync_error: null, status,
         last_sync_at: new Date().toISOString(), provider_status: f.provider_status,
       };
+      if (f.status_reference) update.status_reference = f.status_reference;
+      // buyer deduplicado: guardamos o id para as próximas cobranças do mesmo pagador
+      const buyerId = deepFind({ ...resp, detail: saleDetail }, ['buyerId'])
+        ?? (saleDetail?.buyer?.id ?? resp?.buyer?.id);
+      if (buyerId && !sale.necta_buyer_id) update.necta_buyer_id = String(buyerId);
       if (sale.method === 'link') update.necta_payment_link_id = f.necta_sale_id;
       else update.necta_sale_id = f.necta_sale_id;
       for (const k of ['pix_copy_paste', 'pix_qr_code', 'boleto_digitable_line', 'boleto_barcode', 'boleto_url', 'payment_url'] as const) {
@@ -305,6 +333,7 @@ Deno.serve(async (req) => {
       }
       if (f.boleto_due_date && !sale.due_date) update.due_date = f.boleto_due_date.slice(0, 10);
       if (status === 'paid') update.paid_at = f.paid_at ?? new Date().toISOString();
+
 
       Object.assign(update, await mirrorFinance(admin, sale, status, update.paid_at as string | undefined));
       const { data: updated, error } = await admin.from('necta_sales').update(update).eq('id', saleId).select('*').maybeSingle();

@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
   boletoMinCents, buildBuyer, normalizeDate,
   sameDocument, todayISO, translateGatewayError, validatePayer,
-} from '../_shared/nectaFormat.ts';
+} from './nectaFormat.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,

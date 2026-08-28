@@ -44,21 +44,6 @@ async function verifyNectaSignature(
   return false;
 }
 
-function deepFind(obj: any, keys: string[], depth = 0): any {
-  if (!obj || typeof obj !== 'object' || depth > 5) return undefined;
-  for (const k of keys) {
-    const v = obj[k];
-    if (v !== undefined && v !== null && v !== '') return v;
-  }
-  for (const v of Object.values(obj)) {
-    if (v && typeof v === 'object') {
-      const found = deepFind(v, keys, depth + 1);
-      if (found !== undefined) return found;
-    }
-  }
-  return undefined;
-}
-
 function mapStatus(raw?: string | null): string | null {
   if (!raw) return null;
   const s = String(raw).toLowerCase();
@@ -93,8 +78,26 @@ Deno.serve(async (req) => {
     if (!validSignature) return json({ error: 'Invalid signature' }, 401);
 
     payload = JSON.parse(rawBody);
-    const eventType = (deepFind(payload, ['eventType', 'event', 'type']) ?? 'unknown').toString();
-    const referenceId = (deepFind(payload, ['saleId', 'id', 'paymentLinkId']) ?? null)?.toString() ?? null;
+    // Contrato oficial (WebhookEventBase): { type, id, status, occurredAt, marketplaceId, data? }
+    // `type` ∈ sale.paid | sale.refunded | sale.failed | seller.status_changed
+    // `id` = UUID público do recurso que mudou (venda OU estabelecimento).
+    const eventType = (payload?.type ?? payload?.eventType ?? payload?.event ?? 'unknown').toString();
+    const referenceId = (payload?.id ?? payload?.data?.saleId ?? payload?.saleId ?? null)?.toString() ?? null;
+    const eventStatus = (payload?.status ?? null)?.toString() ?? null;
+
+    // seller.status_changed não trata de venda: atualiza a homologação do estabelecimento.
+    if (eventType === 'seller.status_changed' && referenceId) {
+      const mappedSeller = /(aprov|approv|active|ativo|homologad)/i.test(eventStatus ?? '')
+        ? 'approved'
+        : /(recus|reject|denied|inativ|blocked|bloquead)/i.test(eventStatus ?? '')
+          ? 'rejected'
+          : 'pending';
+      await admin.from('necta_establishments').update({
+        homologation_status: mappedSeller,
+        necta_status: eventStatus,
+        homologation_notes: eventStatus,
+      }).eq('necta_establishment_id', referenceId);
+    }
 
     // Dedupe atômico por (event_type, necta_reference_id) — a Necta avisa que dois canais
     // (marketplace e estabelecimento) podem entregar o mesmo fato com svix-id diferente,
@@ -115,15 +118,22 @@ Deno.serve(async (req) => {
       const { data: sale } = await admin.from('necta_sales').select('*')
         .or(`necta_sale_id.eq.${referenceId},necta_payment_link_id.eq.${referenceId}`).maybeSingle();
       if (sale) {
-        const providerStatus = (deepFind(payload, ['status', 'statusName', 'name']) ?? eventType)?.toString();
+        const providerStatus = (eventStatus ?? eventType)?.toString();
         const mapped = mapStatus(providerStatus) ?? mapStatus(eventType);
         const update: Record<string, unknown> = {
           provider_status: providerStatus, last_sync_at: new Date().toISOString(), raw: payload,
         };
         if (mapped) update.status = mapped;
+        // Valores do evento vêm em centavos (WebhookSaleData).
+        const totalCents = Number(payload?.data?.totalAmount ?? NaN);
+        const liquidCents = Number(payload?.data?.liquidAmount ?? NaN);
+        if (Number.isFinite(liquidCents)) update.net_amount = liquidCents / 100;
+        if (Number.isFinite(totalCents) && Number.isFinite(liquidCents)) {
+          update.fee_amount = Math.max(0, (totalCents - liquidCents) / 100);
+        }
 
         if (mapped === 'paid') {
-          const paidAt = (deepFind(payload, ['paidAt', 'paymentDate']) ?? new Date().toISOString()).toString();
+          const paidAt = (payload?.occurredAt ?? payload?.data?.saleDate ?? new Date().toISOString()).toString();
           update.paid_at = paidAt;
           const description = `Cobrança ${sale.method}${sale.payer_name ? ` - ${sale.payer_name}` : ''}`;
           if (sale.payable_receivable_id) {

@@ -16,7 +16,7 @@ import { CheckCircle2, Copy, Loader2, Plus, RefreshCw, Trash2, XCircle } from 'l
 
 interface Props { companyId: string | null }
 
-const EVENT_OPTIONS = ['sale.paid', 'sale.refunded', 'sale.canceled', 'sale.created', 'payment_link.paid', 'settlement.created'];
+const EVENT_OPTIONS = ['sale.paid', 'sale.refunded', 'sale.failed', 'seller.status_changed'];
 
 export function NectaAdminSettingsPage({ companyId }: Props) {
   const { user } = useAuth();

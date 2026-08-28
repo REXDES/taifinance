@@ -78,7 +78,8 @@ function mapStatus(raw?: string | null): string | null {
   if (/(refund|revert|estorn|chargeback)/.test(s)) return 'refunded';
   if (/(cancel|void|denied|declined|recus|fail|erro)/.test(s)) return 'canceled';
   if (/(expired|vencid|overdue|atras)/.test(s)) return 'overdue';
-  if (/(pending|aguard|waiting|created|open|aberto|issued|emitid|authorized)/.test(s)) return 'issued';
+  // pending | processing | scheduled | pre_authorized são estados abertos na Necta.
+  if (/(pending|processing|scheduled|pre_authorized|aguard|waiting|created|open|aberto|issued|emitid|authorized)/.test(s)) return 'issued';
   return null;
 }
 
@@ -117,18 +118,34 @@ function buyerPayload(sale: any, paymentMethod: string) {
   return buyer;
 }
 
-function extractFields(resp: any) {
-  const providerStatus = deepFind(resp, ['name', 'status', 'situation']);
+/**
+ * Extrai os campos exatamente como o contrato da Necta os devolve:
+ * - SaleCreated (POST /sales): { id, externalId, status: { name } }
+ * - SaleDetail  (GET /sales/{uuid}): qrCode (EMV do PIX), numberCode (linha
+ *   digitável), barCode, dueDate, billetStatus, status: { name, reference }
+ * - Billet      (GET /sales/{uuid}/billet): { url, status, numberCode, barCode, dueDate }
+ * - PaymentLink (POST /payment-links): { id, url/shortUrl, status }
+ *
+ * `billet` é recebido em separado justamente porque seu `status` é string e
+ * sobrescreveria o objeto `status` da venda num spread ingênuo.
+ */
+function extractFields(resp: any, billet?: any) {
+  const str = (v: unknown) => (v === undefined || v === null || v === '' ? null : String(v));
+  const statusName = typeof resp?.status === 'string' ? resp.status : resp?.status?.name;
+  const providerStatus = str(resp?.billetStatus ?? billet?.status ?? statusName);
   return {
-    necta_sale_id: deepFind(resp, ['id', 'saleId'])?.toString() ?? null,
-    provider_status: typeof providerStatus === 'string' ? providerStatus : (deepFind(resp?.status ?? {}, ['name']) ?? null),
-    pix_copy_paste: deepFind(resp, ['emv', 'qrCodeText', 'copyPaste', 'pixCopyPaste', 'payload'])?.toString() ?? null,
-    pix_qr_code: deepFind(resp, ['qrCodeImage', 'qrCodeBase64', 'qrCode'])?.toString() ?? null,
-    boleto_digitable_line: deepFind(resp, ['digitableLine', 'typeableLine', 'linhaDigitavel'])?.toString() ?? null,
-    boleto_barcode: deepFind(resp, ['barcode', 'barCode'])?.toString() ?? null,
-    boleto_url: deepFind(resp, ['pdfUrl', 'billetUrl', 'pdf'])?.toString() ?? null,
-    payment_url: deepFind(resp, ['paymentUrl', 'checkoutUrl', 'url', 'link'])?.toString() ?? null,
-    paid_at: deepFind(resp, ['paidAt', 'paymentDate', 'settledAt']) ?? null,
+    necta_sale_id: str(resp?.id ?? resp?.saleId),
+    provider_status: providerStatus,
+    status_reference: str(resp?.status?.reference),
+    // PIX: `qrCode` é o EMV (copia e cola). A imagem do QR é gerada no app.
+    pix_copy_paste: str(resp?.qrCode ?? resp?.emv ?? resp?.qrCodeText ?? resp?.copyPaste),
+    pix_qr_code: str(resp?.qrCodeImage ?? resp?.qrCodeBase64),
+    boleto_digitable_line: str(billet?.numberCode ?? resp?.numberCode ?? resp?.digitableLine),
+    boleto_barcode: str(billet?.barCode ?? resp?.barCode),
+    boleto_url: str(billet?.url ?? resp?.billetUrl ?? resp?.pdfUrl),
+    boleto_due_date: str(billet?.dueDate ?? resp?.dueDate),
+    payment_url: str(resp?.url ?? resp?.shortUrl ?? resp?.paymentUrl ?? resp?.checkoutUrl ?? resp?.link),
+    paid_at: str(resp?.paidAt ?? resp?.paymentDate ?? resp?.saleDate),
   };
 }
 
@@ -273,18 +290,20 @@ Deno.serve(async (req) => {
         return json({ error: msg }, 502);
       }
 
-      const merged = sale.method === 'link' ? resp : { ...resp, ...saleDetail, ...billet };
-      const f = extractFields(merged);
+      // O id da venda vem do POST /sales; os dados de pagamento, do GET /sales/{id}.
+      const detail = sale.method === 'link' ? resp : { ...resp, ...saleDetail, id: resp?.id ?? saleDetail?.id };
+      const f = extractFields(detail, billet);
       const status = mapStatus(f.provider_status) ?? 'issued';
       const update: Record<string, unknown> = {
-        raw: merged, sync_error: null, status, last_sync_at: new Date().toISOString(),
-        provider_status: f.provider_status,
+        raw: { created: resp, detail: saleDetail, billet }, sync_error: null, status,
+        last_sync_at: new Date().toISOString(), provider_status: f.provider_status,
       };
       if (sale.method === 'link') update.necta_payment_link_id = f.necta_sale_id;
       else update.necta_sale_id = f.necta_sale_id;
       for (const k of ['pix_copy_paste', 'pix_qr_code', 'boleto_digitable_line', 'boleto_barcode', 'boleto_url', 'payment_url'] as const) {
         if ((f as any)[k]) update[k] = (f as any)[k];
       }
+      if (f.boleto_due_date && !sale.due_date) update.due_date = f.boleto_due_date.slice(0, 10);
       if (status === 'paid') update.paid_at = f.paid_at ?? new Date().toISOString();
 
       Object.assign(update, await mirrorFinance(admin, sale, status, update.paid_at as string | undefined));
@@ -377,19 +396,20 @@ Deno.serve(async (req) => {
     for (const sale of targets) {
       if (!sale.necta_sale_id && !sale.necta_payment_link_id) { results.push({ id: sale.id, skipped: 'não emitida' }); continue; }
       try {
-        let resp = sale.necta_sale_id
+        const resp = sale.necta_sale_id
           ? await api(`/sales/${sale.necta_sale_id}`)
           : await api(`/payment-links/${sale.necta_payment_link_id}`);
+        let billet: any = null;
         if (sale.necta_sale_id && (sale.method === 'bank_slip' || sale.method === 'pix_cappta')) {
-          const billet = await api(`/sales/${sale.necta_sale_id}/billet`).catch(() => null);
-          if (billet) resp = { ...resp, ...billet };
+          billet = await api(`/sales/${sale.necta_sale_id}/billet`).catch(() => null);
         }
-        const f = extractFields(resp);
-        const mapped = mapStatus(f.provider_status ?? deepFind(resp, ['statusName']));
+        const f = extractFields(resp, billet);
+        const mapped = mapStatus(f.provider_status);
         const update: Record<string, unknown> = {
-          raw: resp, provider_status: f.provider_status, last_sync_at: new Date().toISOString(), sync_error: null,
+          raw: billet ? { detail: resp, billet } : resp,
+          provider_status: f.provider_status, last_sync_at: new Date().toISOString(), sync_error: null,
         };
-        for (const k of ['pix_copy_paste', 'boleto_digitable_line', 'boleto_url', 'payment_url'] as const) {
+        for (const k of ['pix_copy_paste', 'boleto_digitable_line', 'boleto_barcode', 'boleto_url', 'payment_url'] as const) {
           if ((f as any)[k]) update[k] = (f as any)[k];
         }
         if (mapped) update.status = mapped;

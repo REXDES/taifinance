@@ -39,7 +39,12 @@ const statusVariant = (s: string): 'default' | 'secondary' | 'outline' | 'destru
   s === 'paid' ? 'default' : s === 'overdue' || s === 'refunded' ? 'destructive' : s === 'canceled' ? 'outline' : 'secondary';
 
 const OPEN_STATUSES = ['pending', 'issued', 'overdue'];
-const ADDRESS_REQUIRED_METHODS = ['bank_slip', 'pix_cappta'];
+// O contrato da Necta (BuyerCreate) exige nome, documento, e-mail, telefone e
+// endereço completo do pagador em TODOS os métodos de venda. Só o link de
+// pagamento não envia pagador (os dados são coletados no checkout).
+const PAYER_REQUIRED_METHODS = ['pix', 'bank_slip', 'pix_cappta', 'credit_card'];
+const BOLETO_METHODS = ['bank_slip', 'pix_cappta'];
+const BOLETO_MIN_AMOUNT = 10;
 
 const emptyForm = {
   method: 'pix', amount: '', description: '', installments: '1',
@@ -48,9 +53,29 @@ const emptyForm = {
   payer_address_neighborhood: '', payer_address_city: '', payer_address_state: '', payer_address_postal_code: '',
   account_id: '', is_recurring: false, recurrence_interval: 'monthly', recurrence_count: '12',
   card_holder: '', card_number: '', card_month: '', card_year: '', card_cvv: '',
+  link_payment_method: 'pix',
 };
 
 const digitsOnly = (v: string) => v.replace(/\D/g, '');
+
+const maskDocument = (v: string) => {
+  const d = digitsOnly(v).slice(0, 14);
+  if (d.length <= 11) {
+    return d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1-$2');
+  }
+  return d.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2');
+};
+
+const maskPhone = (v: string) => {
+  const d = digitsOnly(v).slice(0, 11);
+  if (d.length <= 10) return d.replace(/^(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+  return d.replace(/^(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
+};
+
+const maskCep = (v: string) => digitsOnly(v).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2');
+
 
 export function NectaChargesPage({ companyId }: Props) {
   const { user } = useAuth();

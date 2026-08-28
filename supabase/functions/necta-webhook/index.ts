@@ -133,15 +133,22 @@ Deno.serve(async (req) => {
       const { data: sale } = await admin.from('necta_sales').select('*')
         .or(`necta_sale_id.eq.${referenceId},necta_payment_link_id.eq.${referenceId}`).maybeSingle();
       if (sale) {
-        const providerStatus = (deepFind(payload, ['status', 'statusName', 'name']) ?? eventType)?.toString();
+        const providerStatus = (eventStatus ?? eventType)?.toString();
         const mapped = mapStatus(providerStatus) ?? mapStatus(eventType);
         const update: Record<string, unknown> = {
           provider_status: providerStatus, last_sync_at: new Date().toISOString(), raw: payload,
         };
         if (mapped) update.status = mapped;
+        // Valores do evento vêm em centavos (WebhookSaleData).
+        const totalCents = Number(payload?.data?.totalAmount ?? NaN);
+        const liquidCents = Number(payload?.data?.liquidAmount ?? NaN);
+        if (Number.isFinite(liquidCents)) update.net_amount = liquidCents / 100;
+        if (Number.isFinite(totalCents) && Number.isFinite(liquidCents)) {
+          update.fee_amount = Math.max(0, (totalCents - liquidCents) / 100);
+        }
 
         if (mapped === 'paid') {
-          const paidAt = (deepFind(payload, ['paidAt', 'paymentDate']) ?? new Date().toISOString()).toString();
+          const paidAt = (payload?.occurredAt ?? payload?.data?.saleDate ?? new Date().toISOString()).toString();
           update.paid_at = paidAt;
           const description = `Cobrança ${sale.method}${sale.payer_name ? ` - ${sale.payer_name}` : ''}`;
           if (sale.payable_receivable_id) {

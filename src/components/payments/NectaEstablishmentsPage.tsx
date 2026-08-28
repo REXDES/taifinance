@@ -18,8 +18,9 @@ import { NectaCatalogSelect } from '@/components/payments/NectaCatalogSelect';
 import { Switch } from '@/components/ui/switch';
 import {
   ACCOUNT_TYPE_LABELS, WEEK_DAYS, buildEstablishmentPayload,
-  missingEstablishmentFields, mapHomologationStatus,
+  missingEstablishmentFields, invalidEstablishmentFields, mapHomologationStatus,
 } from '@/lib/nectaEstablishment';
+import { translateGatewayError } from '@/lib/nectaFormat';
 import { toast } from 'sonner';
 import {
   Loader2, Plus, Pencil, Trash2, ShieldCheck, RefreshCw, MessageCircle,
@@ -205,6 +206,11 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
       toast.error(`Complete antes de enviar: ${missing.join(', ')}`);
       return;
     }
+    const invalid = invalidEstablishmentFields(row);
+    if (invalid.length) {
+      toast.error('Corrija antes de enviar', { description: invalid.join(' ') });
+      return;
+    }
     setSendingId(row.id);
     try {
       const resp = await nectaCall<any>('/establishments', 'POST', buildEstablishmentPayload(row));
@@ -219,7 +225,7 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
       toast.success('Enviado para homologação');
       await load();
     } catch (e) {
-      const msg = (e as Error).message;
+      const msg = translateGatewayError((e as Error).message);
       await (supabase as any).from('necta_establishments').update({ homologation_notes: msg }).eq('id', row.id);
       toast.error(msg);
       await load();

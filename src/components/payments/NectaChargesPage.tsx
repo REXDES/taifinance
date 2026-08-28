@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Copy, FileText, RefreshCw, Receipt, Ban, Loader2, MessageCircle } from 'lucide-react';
+import { normalizeDate, sameDocument, todayISO, validatePayer } from '@/lib/nectaFormat';
 
 interface Props { companyId: string }
 
@@ -44,7 +45,8 @@ const OPEN_STATUSES = ['pending', 'issued', 'overdue'];
 // pagamento não envia pagador (os dados são coletados no checkout).
 const PAYER_REQUIRED_METHODS = ['pix', 'bank_slip', 'pix_cappta', 'credit_card'];
 const BOLETO_METHODS = ['bank_slip', 'pix_cappta'];
-const BOLETO_MIN_AMOUNT = 10;
+// Contrato Necta: mínimo do boleto por adquirente (Rinne R$ 5,00; Barte/Getnet R$ 10,00).
+const BOLETO_MIN_AMOUNT = 5;
 
 const emptyForm = {
   method: 'pix', amount: '', description: '', installments: '1',
@@ -94,9 +96,12 @@ export function NectaChargesPage({ companyId }: Props) {
   const timerRef = useRef<number | null>(null);
 
   const [companyName, setCompanyName] = useState('');
+  // Recebedor da cobrança (perfil próprio na Necta): usado para bloquear autocobrança.
+  const [receiver, setReceiver] = useState<{ name: string; document: string } | null>(null);
+  const receiverDocument = receiver?.document ?? null;
 
   const load = useCallback(async () => {
-    const [{ data }, { data: accs }, { data: company }, { data: estabs }, { data: clients }] = await Promise.all([
+    const [{ data }, { data: accs }, { data: company }, { data: estabs }, { data: clients }, { data: own }] = await Promise.all([
       (supabase as any).from('necta_sales').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(300),
       (supabase as any).from('accounts').select('id, name').eq('company_id', companyId).order('name'),
       (supabase as any).from('companies').select('name').eq('id', companyId).maybeSingle(),
@@ -106,7 +111,11 @@ export function NectaChargesPage({ companyId }: Props) {
       (supabase as any).from('clients_suppliers')
         .select('id, name, document, email, phone, whatsapp_phone, type')
         .eq('company_id', companyId).order('name'),
+      (supabase as any).from('necta_establishments')
+        .select('legal_name, trade_name, document')
+        .eq('company_id', companyId).eq('is_own_profile', true).maybeSingle(),
     ]);
+    setReceiver(own?.document ? { name: own.trade_name || own.legal_name || '', document: own.document } : null);
     setRows(data ?? []);
     setAccounts(accs ?? []);
     setCompanyName(company?.name ?? '');
@@ -215,20 +224,26 @@ export function NectaChargesPage({ companyId }: Props) {
   const submit = async () => {
     if (!form.amount || Number(form.amount) <= 0) { toast.error('Informe o valor'); return; }
     if (form.method !== 'pix' && !form.due_date) { toast.error('Informe o vencimento'); return; }
+    if (form.due_date) {
+      const due = normalizeDate(form.due_date);
+      if (!due) { toast.error('Data de vencimento inválida'); return; }
+      if (BOLETO_METHODS.includes(form.method) && due < todayISO()) {
+        toast.error('O vencimento do boleto não pode ser no passado'); return;
+      }
+    }
     if (BOLETO_METHODS.includes(form.method) && Number(form.amount) < BOLETO_MIN_AMOUNT) {
       toast.error(`Boleto exige valor mínimo de R$ ${BOLETO_MIN_AMOUNT},00`); return;
     }
     if (form.method === 'credit_card' && (!form.card_number || !form.card_holder)) { toast.error('Informe os dados do cartão'); return; }
     if (PAYER_REQUIRED_METHODS.includes(form.method)) {
-      const docDigits = digitsOnly(form.payer_document);
-      if (!form.payer_name.trim()) { toast.error('Informe o nome do pagador'); return; }
-      if (docDigits.length !== 11 && docDigits.length !== 14) { toast.error('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido do pagador'); return; }
-      if (!/\S+@\S+\.\S+/.test(form.payer_email)) { toast.error('Informe um e-mail válido do pagador'); return; }
-      if (digitsOnly(form.payer_phone).length < 10) { toast.error('Informe o telefone do pagador com DDD'); return; }
-      const addressOk = form.payer_address_street && form.payer_address_number
-        && form.payer_address_neighborhood && form.payer_address_city
-        && form.payer_address_state && digitsOnly(form.payer_address_postal_code).length === 8;
-      if (!addressOk) { toast.error('A Necta exige o endereço completo do pagador (rua, número, bairro, cidade, UF e CEP)'); return; }
+      const errors = validatePayer(form);
+      if (errors.length) { toast.error(errors[0], { description: errors.slice(1).join(' ') || undefined }); return; }
+      if (receiverDocument && sameDocument(form.payer_document, receiverDocument)) {
+        toast.error('O pagador não pode ter o mesmo CPF/CNPJ do recebedor', {
+          description: 'Selecione outro pagador ou emita a cobrança por outro estabelecimento.',
+        });
+        return;
+      }
     }
 
     setSaving(true);
@@ -511,7 +526,14 @@ export function NectaChargesPage({ companyId }: Props) {
       {/* Nova cobrança */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Nova cobrança</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Nova cobrança</DialogTitle>
+            {receiver && (
+              <DialogDescription>
+                Recebedor: {receiver.name || 'estabelecimento'} — {maskDocument(receiver.document)}
+              </DialogDescription>
+            )}
+          </DialogHeader>
           <div className="space-y-3">
             <div><Label>Método</Label>
               <Select value={form.method} onValueChange={(v) => setForm(f => ({ ...f, method: v }))}>

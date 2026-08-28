@@ -15,8 +15,9 @@ import { NectaCatalogSelect } from '@/components/payments/NectaCatalogSelect';
 import { Switch } from '@/components/ui/switch';
 import {
   ACCOUNT_TYPE_LABELS, WEEK_DAYS, buildEstablishmentPayload,
-  missingEstablishmentFields, mapHomologationStatus, legalPersonOf,
+  missingEstablishmentFields, invalidEstablishmentFields, mapHomologationStatus, legalPersonOf,
 } from '@/lib/nectaEstablishment';
+import { translateGatewayError } from '@/lib/nectaFormat';
 import { Loader2, Save, ShieldCheck, RefreshCw, FileSignature, AlertTriangle } from 'lucide-react';
 
 interface Props { companyId: string }
@@ -147,6 +148,8 @@ export function NectaRegistrationPage({ companyId }: Props) {
     if (!row?.id) { toast.error('Salve o cadastro antes de enviar'); return; }
     const missing = missingEstablishmentFields(form);
     if (missing.length) { toast.error(`Complete antes de enviar: ${missing.join(', ')}`); return; }
+    const invalid = invalidEstablishmentFields(form);
+    if (invalid.length) { toast.error('Corrija antes de enviar', { description: invalid.join(' ') }); return; }
     setSending(true);
     try {
       const resp = await nectaCall<any>('/establishments', 'POST', buildEstablishmentPayload(form));
@@ -161,7 +164,7 @@ export function NectaRegistrationPage({ companyId }: Props) {
       toast.success('Cadastro enviado para homologação');
       load();
     } catch (e) {
-      const msg = (e as Error).message;
+      const msg = translateGatewayError((e as Error).message);
       await (supabase as any).from('necta_establishments').update({ homologation_notes: msg }).eq('id', row.id);
       toast.error(msg);
     }

@@ -1,4 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import {
+  boletoMinCents, buildBuyer, normalizeDate,
+  sameDocument, todayISO, translateGatewayError, validatePayer,
+} from '../_shared/nectaFormat.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
@@ -89,37 +93,13 @@ function mapStatus(raw?: string | null): string | null {
  * TODOS obrigatórios — inclusive em PIX e cartão, não só no boleto. Address exige
  * street, number, neighborhood, city, state, country e postalCode.
  */
-function buyerPayload(sale: any) {
-  const missing: string[] = [];
-  if (!sale.payer_name) missing.push('nome');
-  if (!digits(sale.payer_document)) missing.push('CPF/CNPJ');
-  if (!sale.payer_email) missing.push('e-mail');
-  if (!digits(sale.payer_phone)) missing.push('telefone');
-  const map: Array<[string, string]> = [
-    ['payer_address_street', 'rua'], ['payer_address_number', 'número'],
-    ['payer_address_neighborhood', 'bairro'], ['payer_address_city', 'cidade'],
-    ['payer_address_state', 'UF'], ['payer_address_postal_code', 'CEP'],
-  ];
-  for (const [k, label] of map) if (!sale[k]) missing.push(label);
-  if (missing.length) {
-    throw new Error(`Dados do pagador incompletos para a Necta: ${missing.join(', ')}.`);
+function buyerPayload(sale: any, receiverDocument?: string | null) {
+  const errors = validatePayer(sale);
+  if (sameDocument(sale.payer_document, receiverDocument)) {
+    errors.push('O pagador não pode ter o mesmo CPF/CNPJ do recebedor (estabelecimento). Selecione outro pagador ou emita por outro estabelecimento.');
   }
-
-  return {
-    name: sale.payer_name,
-    document: digits(sale.payer_document),
-    email: sale.payer_email,
-    phoneNumber: digits(sale.payer_phone),
-    address: {
-      street: sale.payer_address_street,
-      number: String(sale.payer_address_number),
-      neighborhood: sale.payer_address_neighborhood,
-      city: sale.payer_address_city,
-      state: String(sale.payer_address_state).toUpperCase().slice(0, 2),
-      country: 'BR',
-      postalCode: digits(sale.payer_address_postal_code),
-    },
-  };
+  if (errors.length) throw new Error(errors.join(' '));
+  return buildBuyer(sale);
 }
 
 
@@ -235,6 +215,24 @@ Deno.serve(async (req) => {
       if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
       if (sale.necta_sale_id || sale.necta_payment_link_id) return json({ error: 'Cobrança já emitida' }, 400);
 
+      // Documento do recebedor (perfil do estabelecimento da empresa) — o adquirente
+      // recusa autocobrança (pagador == recebedor), principalmente em bolepix.
+      const { data: ownProfile } = await admin.from('necta_establishments')
+        .select('document')
+        .eq('company_id', sale.company_id).eq('is_own_profile', true).maybeSingle();
+      const receiverDocument = (ownProfile as any)?.document ?? null;
+      const gatewayName = Deno.env.get('NECTA_GATEWAY') ?? 'rinne';
+
+      if (!(Number(sale.amount) > 0)) return json({ error: 'Valor da cobrança deve ser maior que zero.' }, 400);
+      if (sale.due_date) {
+        const due = normalizeDate(sale.due_date);
+        if (!due) return json({ error: 'Data de vencimento inválida.' }, 400);
+        if (['bank_slip', 'pix_cappta'].includes(sale.method) && due < todayISO()) {
+          return json({ error: 'A data de vencimento do boleto não pode ser no passado.' }, 400);
+        }
+      }
+
+
       // As rotas /sales/pix, /sales/bank-slip, /sales/credit-card e /sales/pix-cappta foram
       // descontinuadas pela Necta (respondem 404). O endpoint único e atual é POST /sales
       // com `paymentMethod` no corpo — pix-cappta (bolepix) virou bank_slip nos gateways
@@ -267,21 +265,27 @@ Deno.serve(async (req) => {
         } else {
           const paymentMethod = sale.method === 'pix_cappta' ? 'bank_slip' : sale.method;
           const totalAmount = toCents(sale.amount);
-          if (paymentMethod === 'bank_slip' && totalAmount < 1000) {
-            return json({ error: 'Boleto exige valor mínimo de R$ 10,00 na Necta.' }, 400);
+          const minCents = boletoMinCents(gatewayName);
+          if (paymentMethod === 'bank_slip' && totalAmount < minCents) {
+            return json({ error: `Boleto exige valor mínimo de R$ ${(minCents / 100).toFixed(2).replace('.', ',')} neste adquirente.` }, 400);
           }
           const body: Record<string, unknown> = {
             paymentMethod,
             totalAmount,
-            description: sale.description ?? undefined,
+            description: sale.description ? String(sale.description).trim().slice(0, 255) : undefined,
           };
           // O comprador é deduplicado por documento na Necta: reaproveitamos o buyerId
           // já conhecido e só enviamos o objeto inline na primeira cobrança do pagador.
+          // A checagem pagador ≠ recebedor vale nos dois casos.
+          if (sameDocument(sale.payer_document, receiverDocument)) {
+            return json({ error: 'O pagador não pode ter o mesmo CPF/CNPJ do recebedor (estabelecimento). Selecione outro pagador ou emita por outro estabelecimento.' }, 400);
+          }
           if (sale.necta_buyer_id) body.buyerId = sale.necta_buyer_id;
-          else body.buyer = buyerPayload(sale);
+          else body.buyer = buyerPayload(sale, receiverDocument);
           if (paymentMethod === 'bank_slip') {
-            if (!sale.due_date) return json({ error: 'Boleto exige data de vencimento.' }, 400);
-            body.dueDate = sale.due_date;
+            const due = normalizeDate(sale.due_date);
+            if (!due) return json({ error: 'Boleto exige data de vencimento válida.' }, 400);
+            body.dueDate = due;
           }
           if (paymentMethod === 'credit_card') {
             const card = input?.credit_card;
@@ -308,8 +312,11 @@ Deno.serve(async (req) => {
         }
 
       } catch (e) {
-        const msg = (e as Error).message;
-        await admin.from('necta_sales').update({ sync_error: msg, last_sync_at: new Date().toISOString() }).eq('id', saleId);
+        const raw = (e as Error).message;
+        const msg = translateGatewayError(raw);
+        await admin.from('necta_sales')
+          .update({ sync_error: msg, last_sync_at: new Date().toISOString(), raw: { error: raw } })
+          .eq('id', saleId);
         return json({ error: msg }, 502);
       }
 

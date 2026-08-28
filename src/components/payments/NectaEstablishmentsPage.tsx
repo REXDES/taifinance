@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
+import { BankSelect } from '@/components/payments/BankSelect';
 import { toast } from 'sonner';
 import {
   Loader2, Plus, Pencil, Trash2, ShieldCheck, RefreshCw, MessageCircle,
@@ -470,8 +471,15 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
             <section className="space-y-3">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase">Dados bancários</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div><Label>Código do banco (Compe)</Label><Input value={form.bank_code ?? ''} onChange={e => set('bank_code', e.target.value)} /></div>
-                <div><Label>Nome do banco</Label><Input value={form.bank_name ?? ''} onChange={e => set('bank_name', e.target.value)} /></div>
+                <div className="md:col-span-2">
+                  <Label>Banco</Label>
+                  <BankSelect
+                    code={form.bank_code ?? ''}
+                    name={form.bank_name ?? ''}
+                    onChange={(c, n) => setForm(prev => ({ ...prev, bank_code: c, bank_name: n }))}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Busque pelo nome ou código — preenche código (Compe) e nome automaticamente</p>
+                </div>
                 <div><Label>Agência</Label><Input value={form.bank_agency ?? ''} onChange={e => set('bank_agency', e.target.value)} /></div>
                 <div><Label>Conta (com dígito)</Label><Input value={form.bank_account ?? ''} onChange={e => set('bank_account', e.target.value)} /></div>
                 <div>

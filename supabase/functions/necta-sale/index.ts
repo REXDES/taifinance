@@ -117,18 +117,34 @@ function buyerPayload(sale: any, paymentMethod: string) {
   return buyer;
 }
 
-function extractFields(resp: any) {
-  const providerStatus = deepFind(resp, ['name', 'status', 'situation']);
+/**
+ * Extrai os campos exatamente como o contrato da Necta os devolve:
+ * - SaleCreated (POST /sales): { id, externalId, status: { name } }
+ * - SaleDetail  (GET /sales/{uuid}): qrCode (EMV do PIX), numberCode (linha
+ *   digitável), barCode, dueDate, billetStatus, status: { name, reference }
+ * - Billet      (GET /sales/{uuid}/billet): { url, status, numberCode, barCode, dueDate }
+ * - PaymentLink (POST /payment-links): { id, url/shortUrl, status }
+ *
+ * `billet` é recebido em separado justamente porque seu `status` é string e
+ * sobrescreveria o objeto `status` da venda num spread ingênuo.
+ */
+function extractFields(resp: any, billet?: any) {
+  const str = (v: unknown) => (v === undefined || v === null || v === '' ? null : String(v));
+  const statusName = typeof resp?.status === 'string' ? resp.status : resp?.status?.name;
+  const providerStatus = str(resp?.billetStatus ?? billet?.status ?? statusName);
   return {
-    necta_sale_id: deepFind(resp, ['id', 'saleId'])?.toString() ?? null,
-    provider_status: typeof providerStatus === 'string' ? providerStatus : (deepFind(resp?.status ?? {}, ['name']) ?? null),
-    pix_copy_paste: deepFind(resp, ['emv', 'qrCodeText', 'copyPaste', 'pixCopyPaste', 'payload'])?.toString() ?? null,
-    pix_qr_code: deepFind(resp, ['qrCodeImage', 'qrCodeBase64', 'qrCode'])?.toString() ?? null,
-    boleto_digitable_line: deepFind(resp, ['digitableLine', 'typeableLine', 'linhaDigitavel'])?.toString() ?? null,
-    boleto_barcode: deepFind(resp, ['barcode', 'barCode'])?.toString() ?? null,
-    boleto_url: deepFind(resp, ['pdfUrl', 'billetUrl', 'pdf'])?.toString() ?? null,
-    payment_url: deepFind(resp, ['paymentUrl', 'checkoutUrl', 'url', 'link'])?.toString() ?? null,
-    paid_at: deepFind(resp, ['paidAt', 'paymentDate', 'settledAt']) ?? null,
+    necta_sale_id: str(resp?.id ?? resp?.saleId),
+    provider_status: providerStatus,
+    status_reference: str(resp?.status?.reference),
+    // PIX: `qrCode` é o EMV (copia e cola). A imagem do QR é gerada no app.
+    pix_copy_paste: str(resp?.qrCode ?? resp?.emv ?? resp?.qrCodeText ?? resp?.copyPaste),
+    pix_qr_code: str(resp?.qrCodeImage ?? resp?.qrCodeBase64),
+    boleto_digitable_line: str(billet?.numberCode ?? resp?.numberCode ?? resp?.digitableLine),
+    boleto_barcode: str(billet?.barCode ?? resp?.barCode),
+    boleto_url: str(billet?.url ?? resp?.billetUrl ?? resp?.pdfUrl),
+    boleto_due_date: str(billet?.dueDate ?? resp?.dueDate),
+    payment_url: str(resp?.url ?? resp?.shortUrl ?? resp?.paymentUrl ?? resp?.checkoutUrl ?? resp?.link),
+    paid_at: str(resp?.paidAt ?? resp?.paymentDate ?? resp?.saleDate),
   };
 }
 

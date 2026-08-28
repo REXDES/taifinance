@@ -522,36 +522,80 @@ export function NectaChargesPage({ companyId }: Props) {
                 </SelectContent>
               </Select>
             </div>
+            {form.method === 'link' && (
+              <div><Label>Forma de pagamento do link</Label>
+                <Select value={form.link_payment_method} onValueChange={(v) => setForm(f => ({ ...f, link_payment_method: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pix">PIX</SelectItem>
+                    <SelectItem value="bankslip">Boleto</SelectItem>
+                    <SelectItem value="credit_card">Cartão de crédito</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
-              <div><Label>Vencimento</Label><Input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} /></div>
+              <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+                {BOLETO_METHODS.includes(form.method) && (
+                  <p className="text-xs text-muted-foreground mt-1">Mínimo de R$ {BOLETO_MIN_AMOUNT},00 para boleto.</p>
+                )}
+              </div>
+              <div><Label>Vencimento{form.method !== 'pix' ? ' *' : ''}</Label><Input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} /></div>
             </div>
             <div><Label>Descrição</Label><Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
+
+            {payers.length > 0 && (
+              <div><Label>Usar pagador cadastrado</Label>
+                <Select value="" onValueChange={applyPayer}>
+                  <SelectTrigger><SelectValue placeholder="Selecione para preencher automaticamente..." /></SelectTrigger>
+                  <SelectContent>
+                    {payers.map(p => (
+                      <SelectItem key={p.key} value={p.key}>{p.name} · {p.origin}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Nome do pagador</Label><Input value={form.payer_name} onChange={e => setForm(f => ({ ...f, payer_name: e.target.value }))} /></div>
-              <div><Label>Documento (CPF/CNPJ) *</Label><Input value={form.payer_document} onChange={e => setForm(f => ({ ...f, payer_document: e.target.value }))} /></div>
-              <div><Label>E-mail</Label><Input type="email" value={form.payer_email} onChange={e => setForm(f => ({ ...f, payer_email: e.target.value }))} /></div>
-              <div><Label>Telefone</Label><Input value={form.payer_phone} onChange={e => setForm(f => ({ ...f, payer_phone: e.target.value }))} /></div>
+              <div><Label>Nome do pagador{PAYER_REQUIRED_METHODS.includes(form.method) ? ' *' : ''}</Label><Input value={form.payer_name} onChange={e => setForm(f => ({ ...f, payer_name: e.target.value }))} /></div>
+              <div><Label>Documento (CPF/CNPJ){PAYER_REQUIRED_METHODS.includes(form.method) ? ' *' : ''}</Label><Input inputMode="numeric" value={form.payer_document} onChange={e => setForm(f => ({ ...f, payer_document: maskDocument(e.target.value) }))} /></div>
+              <div><Label>E-mail{PAYER_REQUIRED_METHODS.includes(form.method) ? ' *' : ''}</Label><Input type="email" value={form.payer_email} onChange={e => setForm(f => ({ ...f, payer_email: e.target.value }))} /></div>
+              <div><Label>Telefone{PAYER_REQUIRED_METHODS.includes(form.method) ? ' *' : ''}</Label><Input inputMode="tel" value={form.payer_phone} onChange={e => setForm(f => ({ ...f, payer_phone: maskPhone(e.target.value) }))} /></div>
             </div>
 
             <div className="border rounded-md p-3 space-y-3">
               <Label className="text-xs text-muted-foreground">
-                Endereço do pagador{ADDRESS_REQUIRED_METHODS.includes(form.method) ? ' *' : ' (opcional)'}
+                Endereço do pagador{PAYER_REQUIRED_METHODS.includes(form.method) ? ' * (exigido pela Necta)' : ' (opcional)'}
               </Label>
               <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label>CEP</Label>
+                  <Input
+                    inputMode="numeric"
+                    value={form.payer_address_postal_code}
+                    onChange={e => {
+                      const v = maskCep(e.target.value);
+                      setForm(f => ({ ...f, payer_address_postal_code: v }));
+                      if (digitsOnly(v).length === 8) lookupCep(v);
+                    }}
+                    onBlur={e => lookupCep(e.target.value)}
+                  />
+                  {cepLoading && <p className="text-xs text-muted-foreground mt-1">Buscando endereço...</p>}
+                </div>
                 <div className="col-span-2"><Label>Rua</Label><Input value={form.payer_address_street} onChange={e => setForm(f => ({ ...f, payer_address_street: e.target.value }))} /></div>
-                <div><Label>Número</Label><Input value={form.payer_address_number} onChange={e => setForm(f => ({ ...f, payer_address_number: e.target.value }))} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div><Label>Número</Label><Input value={form.payer_address_number} onChange={e => setForm(f => ({ ...f, payer_address_number: e.target.value }))} /></div>
                 <div><Label>Complemento</Label><Input value={form.payer_address_complement} onChange={e => setForm(f => ({ ...f, payer_address_complement: e.target.value }))} /></div>
                 <div><Label>Bairro</Label><Input value={form.payer_address_neighborhood} onChange={e => setForm(f => ({ ...f, payer_address_neighborhood: e.target.value }))} /></div>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div><Label>Cidade</Label><Input value={form.payer_address_city} onChange={e => setForm(f => ({ ...f, payer_address_city: e.target.value }))} /></div>
+                <div className="col-span-2"><Label>Cidade</Label><Input value={form.payer_address_city} onChange={e => setForm(f => ({ ...f, payer_address_city: e.target.value }))} /></div>
                 <div><Label>UF</Label><Input maxLength={2} value={form.payer_address_state} onChange={e => setForm(f => ({ ...f, payer_address_state: e.target.value.toUpperCase() }))} /></div>
-                <div><Label>CEP</Label><Input value={form.payer_address_postal_code} onChange={e => setForm(f => ({ ...f, payer_address_postal_code: e.target.value }))} /></div>
               </div>
             </div>
+
 
             {form.method === 'credit_card' && (
               <div className="grid grid-cols-2 gap-3 border rounded-md p-3">

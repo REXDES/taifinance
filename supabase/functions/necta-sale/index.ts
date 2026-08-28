@@ -247,33 +247,50 @@ Deno.serve(async (req) => {
           const expiration = sale.due_date
             ? new Date(`${sale.due_date}T23:59:59`).toISOString()
             : new Date(Date.now() + 7 * 864e5).toISOString();
-          resp = await api('/payment-links', 'POST', {
-            title: sale.description || 'Cobrança',
+          // Enum do link é `bankslip` (sem underscore), diferente de /sales (`bank_slip`).
+          const allowed = ['pix', 'credit_card', 'bankslip'];
+          const linkMethod = allowed.includes(input?.link_payment_method) ? input.link_payment_method : 'pix';
+          const linkBody: Record<string, unknown> = {
+            title: (sale.description || 'Cobrança').slice(0, 120),
             expirationDate: expiration,
-            paymentMethod: 'pix',
+            paymentMethod: linkMethod,
             amount: toCents(sale.amount),
             expireAfterPay: true,
             description: sale.description ?? undefined,
             email: sale.payer_email ?? undefined,
-            installments: sale.installments ?? 1,
-          });
+          };
+          // `installments` só é aceito em credit_card (máx. 21) — enviar nos demais dá 400.
+          if (linkMethod === 'credit_card') {
+            linkBody.installments = Math.min(21, Math.max(1, Number(sale.installments || 1)));
+          }
+          resp = await api('/payment-links', 'POST', linkBody);
         } else {
           const paymentMethod = sale.method === 'pix_cappta' ? 'bank_slip' : sale.method;
+          const totalAmount = toCents(sale.amount);
+          if (paymentMethod === 'bank_slip' && totalAmount < 1000) {
+            return json({ error: 'Boleto exige valor mínimo de R$ 10,00 na Necta.' }, 400);
+          }
           const body: Record<string, unknown> = {
             paymentMethod,
-            totalAmount: toCents(sale.amount),
+            totalAmount,
             description: sale.description ?? undefined,
-            buyer: buyerPayload(sale, paymentMethod),
           };
-          if (paymentMethod === 'bank_slip') body.dueDate = sale.due_date ?? undefined;
+          // O comprador é deduplicado por documento na Necta: reaproveitamos o buyerId
+          // já conhecido e só enviamos o objeto inline na primeira cobrança do pagador.
+          if (sale.necta_buyer_id) body.buyerId = sale.necta_buyer_id;
+          else body.buyer = buyerPayload(sale);
+          if (paymentMethod === 'bank_slip') {
+            if (!sale.due_date) return json({ error: 'Boleto exige data de vencimento.' }, 400);
+            body.dueDate = sale.due_date;
+          }
           if (paymentMethod === 'credit_card') {
             const card = input?.credit_card;
             if (!card?.number || !card?.holderName) return json({ error: 'Dados do cartão são obrigatórios' }, 400);
-            body.installments = sale.installments ?? 1;
+            body.installments = Math.max(1, Number(sale.installments || 1));
             body.creditCard = {
               holderName: card.holderName,
               number: digits(card.number),
-              expirationMonth: String(card.expirationMonth),
+              expirationMonth: String(card.expirationMonth).padStart(2, '0'),
               expirationYear: String(card.expirationYear),
               cvv: String(card.cvv ?? ''),
             };
@@ -289,6 +306,7 @@ Deno.serve(async (req) => {
             }
           }
         }
+
       } catch (e) {
         const msg = (e as Error).message;
         await admin.from('necta_sales').update({ sync_error: msg, last_sync_at: new Date().toISOString() }).eq('id', saleId);

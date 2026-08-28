@@ -290,18 +290,20 @@ Deno.serve(async (req) => {
         return json({ error: msg }, 502);
       }
 
-      const merged = sale.method === 'link' ? resp : { ...resp, ...saleDetail, ...billet };
-      const f = extractFields(merged);
+      // O id da venda vem do POST /sales; os dados de pagamento, do GET /sales/{id}.
+      const detail = sale.method === 'link' ? resp : { ...resp, ...saleDetail, id: resp?.id ?? saleDetail?.id };
+      const f = extractFields(detail, billet);
       const status = mapStatus(f.provider_status) ?? 'issued';
       const update: Record<string, unknown> = {
-        raw: merged, sync_error: null, status, last_sync_at: new Date().toISOString(),
-        provider_status: f.provider_status,
+        raw: { created: resp, detail: saleDetail, billet }, sync_error: null, status,
+        last_sync_at: new Date().toISOString(), provider_status: f.provider_status,
       };
       if (sale.method === 'link') update.necta_payment_link_id = f.necta_sale_id;
       else update.necta_sale_id = f.necta_sale_id;
       for (const k of ['pix_copy_paste', 'pix_qr_code', 'boleto_digitable_line', 'boleto_barcode', 'boleto_url', 'payment_url'] as const) {
         if ((f as any)[k]) update[k] = (f as any)[k];
       }
+      if (f.boleto_due_date && !sale.due_date) update.due_date = f.boleto_due_date.slice(0, 10);
       if (status === 'paid') update.paid_at = f.paid_at ?? new Date().toISOString();
 
       Object.assign(update, await mirrorFinance(admin, sale, status, update.paid_at as string | undefined));
@@ -394,19 +396,20 @@ Deno.serve(async (req) => {
     for (const sale of targets) {
       if (!sale.necta_sale_id && !sale.necta_payment_link_id) { results.push({ id: sale.id, skipped: 'não emitida' }); continue; }
       try {
-        let resp = sale.necta_sale_id
+        const resp = sale.necta_sale_id
           ? await api(`/sales/${sale.necta_sale_id}`)
           : await api(`/payment-links/${sale.necta_payment_link_id}`);
+        let billet: any = null;
         if (sale.necta_sale_id && (sale.method === 'bank_slip' || sale.method === 'pix_cappta')) {
-          const billet = await api(`/sales/${sale.necta_sale_id}/billet`).catch(() => null);
-          if (billet) resp = { ...resp, ...billet };
+          billet = await api(`/sales/${sale.necta_sale_id}/billet`).catch(() => null);
         }
-        const f = extractFields(resp);
-        const mapped = mapStatus(f.provider_status ?? deepFind(resp, ['statusName']));
+        const f = extractFields(resp, billet);
+        const mapped = mapStatus(f.provider_status);
         const update: Record<string, unknown> = {
-          raw: resp, provider_status: f.provider_status, last_sync_at: new Date().toISOString(), sync_error: null,
+          raw: billet ? { detail: resp, billet } : resp,
+          provider_status: f.provider_status, last_sync_at: new Date().toISOString(), sync_error: null,
         };
-        for (const k of ['pix_copy_paste', 'boleto_digitable_line', 'boleto_url', 'payment_url'] as const) {
+        for (const k of ['pix_copy_paste', 'boleto_digitable_line', 'boleto_barcode', 'boleto_url', 'payment_url'] as const) {
           if ((f as any)[k]) update[k] = (f as any)[k];
         }
         if (mapped) update.status = mapped;

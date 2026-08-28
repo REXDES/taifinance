@@ -321,6 +321,11 @@ Deno.serve(async (req) => {
         raw: { created: resp, detail: saleDetail, billet }, sync_error: null, status,
         last_sync_at: new Date().toISOString(), provider_status: f.provider_status,
       };
+      if (f.status_reference) update.status_reference = f.status_reference;
+      // buyer deduplicado: guardamos o id para as próximas cobranças do mesmo pagador
+      const buyerId = deepFind({ ...resp, detail: saleDetail }, ['buyerId'])
+        ?? (saleDetail?.buyer?.id ?? resp?.buyer?.id);
+      if (buyerId && !sale.necta_buyer_id) update.necta_buyer_id = String(buyerId);
       if (sale.method === 'link') update.necta_payment_link_id = f.necta_sale_id;
       else update.necta_sale_id = f.necta_sale_id;
       for (const k of ['pix_copy_paste', 'pix_qr_code', 'boleto_digitable_line', 'boleto_barcode', 'boleto_url', 'payment_url'] as const) {
@@ -328,6 +333,7 @@ Deno.serve(async (req) => {
       }
       if (f.boleto_due_date && !sale.due_date) update.due_date = f.boleto_due_date.slice(0, 10);
       if (status === 'paid') update.paid_at = f.paid_at ?? new Date().toISOString();
+
 
       Object.assign(update, await mirrorFinance(admin, sale, status, update.paid_at as string | undefined));
       const { data: updated, error } = await admin.from('necta_sales').update(update).eq('id', saleId).select('*').maybeSingle();

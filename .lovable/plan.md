@@ -1,50 +1,79 @@
-# Cobrança recusada: pagador igual ao recebedor
+# Integridade dos dados enviados à Necta (cobranças e homologação)
 
-## O que aconteceu
+Baixei o contrato oficial (OpenAPI 3.1 da Necta Multi-Pay) e comparei campo por
+campo com o que o app envia hoje em `POST /sales`, `POST /payment-links` e
+`POST /establishments`. Sim: há pontos de formatação que hoje passam do app e
+só quebram no gateway (400), tanto na cobrança quanto no cadastro/homologação.
 
-O erro gravado na última cobrança (Bolepix, R$ pagador CPF 004.755.412-60) foi:
+## O que o contrato exige e o app ainda não garante
 
-```text
-Rinne recusou a requisição (400): consumer.document_number —
-Payer document cannot be the same as the receiver (merchant)
-document for BOLEPIX transactions.
-```
+### Cobranças (`POST /sales`, `/payment-links`)
+- **CPF/CNPJ do pagador**: só removemos a máscara; não validamos 11/14 dígitos
+  nem os dígitos verificadores. Documento inválido → 400 do gateway.
+- **Telefone**: hoje qualquer coisa com dígitos passa. Precisa ser DDD + número
+  (10 ou 11 dígitos).
+- **E-mail**: o contrato pede `format: email`; não validamos.
+- **Endereço**: `postalCode` precisa ter 8 dígitos, `state` precisa ser uma UF
+  válida, `number` não pode ser vazio (usar "S/N" quando não houver), e os
+  textos devem ir sem espaços sobrando.
+- **Vencimento do boleto**: não validamos data válida nem vencimento no passado.
+- **Valor mínimo do boleto**: fixamos R$ 10,00 no código, mas o contrato diz que
+  é por gateway — Rinne aceita R$ 5,00. Hoje bloqueamos cobrança válida.
+- **Valor**: falta garantir valor > 0 antes de converter para centavos.
+- **Pagador igual ao recebedor**: o gateway recusa autocobrança em bolepix.
+  Bloquear com mensagem clara antes de chamar a API.
+- **Erros do gateway**: hoje o JSON cru vai para `sync_error`; traduzir as
+  mensagens 400 mais comuns para português na tela.
 
-Sua leitura está correta na prática: a credencial em uso hoje aponta para um
-estabelecimento (merchant) cujo documento é o **seu CPF**, e o pagador
-informado na cobrança era o mesmo documento. O adquirente bloqueia
-autocobrança em Bolepix. Não é problema de token inválido nem de cadastro
-incompleto — é apenas pagador == recebedor.
+### Cadastro / homologação (`POST /establishments`)
+- Mesmas normalizações de documento, telefone, e-mail, CEP e UF.
+- `openingHours` / `closingHours` precisam sair como `HH:mm` (hoje vão como
+  digitados).
+- `birthDate` / `openingDate`: validar data real e coerente (nascimento não
+  pode ser no futuro).
+- `revenue`: enviar como string numérica limpa.
+- `mccId` deve ser UUID e `legalNature` só dígitos.
+- Conta bancária: `accountNumber` deve incluir o dígito verificador (e nunca
+  junto de `accountDigit`) — validar tamanho mínimo antes de enviar.
 
-Trocando para a credencial/estabelecimento da Pagando (documento diferente do
-seu CPF), essa mesma cobrança passa a ser aceita. Alternativa imediata sem
-trocar nada: emitir para um pagador com documento diferente do merchant.
+### Lacuna funcional na homologação
+O contrato tem `POST /establishments/{uuid}/documents` (multipart,
+`merchantDocumentList[n]`, apenas JPG/JPEG/PDF) para envio dos documentos do
+lojista, e a assinatura de termo (`term-acceptance` / `term-sign`), que hoje só
+existe em "Meu Perfil" — a tela de Estabelecimentos não oferece nenhum dos dois.
 
 ## O que proponho implementar
 
-1. **Bloqueio amigável antes de chamar a API** — na tela de Cobranças e na
-   função `necta-sale`, comparar o documento do pagador com o documento do
-   estabelecimento/perfil ativo. Se forem iguais, exibir:
-   "O pagador não pode ter o mesmo CPF/CNPJ do recebedor. Selecione outro
-   pagador ou emita por outro estabelecimento."
-2. **Tradução dos erros do adquirente** — mapear as mensagens 400 da Rinne /
-   Barte / Getnet para textos em português na tela, em vez do JSON cru que hoje
-   fica em `sync_error`.
-3. **Recebedor visível na cobrança** — mostrar no formulário qual
-   estabelecimento está emitindo (nome + documento), para deixar explícito quem
-   é o recebedor daquela cobrança.
+1. **Camada única de validação/normalização** (`src/lib/nectaFormat.ts` e uma
+   cópia em `supabase/functions/_shared/nectaFormat.ts`, para o backend não
+   depender do front): documento com dígito verificador, telefone BR, e-mail,
+   CEP, UF, data, hora `HH:mm`, valor em centavos e trim de textos.
+2. **Aplicar no envio da cobrança**: validação no submit da tela de Cobranças
+   (mensagens campo a campo, em português) e a mesma checagem no
+   `necta-sale` antes do `POST /sales` — inclusive pagador ≠ recebedor,
+   vencimento futuro e mínimo do boleto por gateway (parâmetro configurável,
+   default R$ 5,00 para Rinne / R$ 10,00 nos demais).
+3. **Aplicar no cadastro/homologação**: `buildEstablishmentPayload` passa a usar
+   a mesma camada, e a lista de "campos faltando" ganha também os campos
+   inválidos (não só vazios), com o motivo.
+4. **Tradutor de erros do gateway**: mapear as respostas 400 da Rinne/Barte/
+   Getnet para texto legível na tela e em `sync_error`.
+5. **Complementar a homologação em Estabelecimentos**: botão de upload de
+   documentos (JPG/JPEG/PDF, tipos `SELFIE`, `IDENTIFICATION_DOCUMENT`, etc.)
+   via `POST /establishments/{uuid}/documents` e o aceite de termo, iguais aos
+   de Meu Perfil.
 
 ## Detalhes técnicos
 
-- Front: `src/components/payments/NectaChargesPage.tsx` — validação no submit
-  usando o documento do estabelecimento carregado de `necta_establishments`.
-- Backend: `supabase/functions/necta-sale/index.ts` — checagem em
-  `buyerPayload` (comparação por dígitos) e um tradutor de erro aplicado antes
-  de gravar `sync_error`.
-- Sem mudança de schema.
+- Sem mudança de schema. O upload multipart passa por uma ação nova no proxy
+  `necta-api` (o proxy atual só faz JSON).
+- Arquivos tocados: `src/lib/nectaFormat.ts` (novo), `src/lib/nectaEstablishment.ts`,
+  `src/components/payments/NectaChargesPage.tsx`,
+  `src/components/payments/NectaEstablishmentsPage.tsx`,
+  `src/components/payments/NectaRegistrationPage.tsx`,
+  `supabase/functions/necta-sale/index.ts`, `supabase/functions/necta-api/index.ts`.
 
 ## Fora deste plano
 
-A troca da credencial em si (chave da Pagando) é configuração: assim que você
-quiser, cadastramos/apontamos o estabelecimento correto nas Configurações do
-módulo de Pagamentos.
+A troca da credencial para a chave da Pagando (configuração), que você já
+indicou que fará depois.

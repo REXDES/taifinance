@@ -93,8 +93,26 @@ Deno.serve(async (req) => {
     if (!validSignature) return json({ error: 'Invalid signature' }, 401);
 
     payload = JSON.parse(rawBody);
-    const eventType = (deepFind(payload, ['eventType', 'event', 'type']) ?? 'unknown').toString();
-    const referenceId = (deepFind(payload, ['saleId', 'id', 'paymentLinkId']) ?? null)?.toString() ?? null;
+    // Contrato oficial (WebhookEventBase): { type, id, status, occurredAt, marketplaceId, data? }
+    // `type` ∈ sale.paid | sale.refunded | sale.failed | seller.status_changed
+    // `id` = UUID público do recurso que mudou (venda OU estabelecimento).
+    const eventType = (payload?.type ?? payload?.eventType ?? payload?.event ?? 'unknown').toString();
+    const referenceId = (payload?.id ?? payload?.data?.saleId ?? payload?.saleId ?? null)?.toString() ?? null;
+    const eventStatus = (payload?.status ?? null)?.toString() ?? null;
+
+    // seller.status_changed não trata de venda: atualiza a homologação do estabelecimento.
+    if (eventType === 'seller.status_changed' && referenceId) {
+      const mappedSeller = /(aprov|approv|active|ativo|homologad)/i.test(eventStatus ?? '')
+        ? 'approved'
+        : /(recus|reject|denied|inativ|blocked|bloquead)/i.test(eventStatus ?? '')
+          ? 'rejected'
+          : 'pending';
+      await admin.from('necta_establishments').update({
+        homologation_status: mappedSeller,
+        necta_status: eventStatus,
+        homologation_notes: eventStatus,
+      }).eq('necta_establishment_id', referenceId);
+    }
 
     // Dedupe atômico por (event_type, necta_reference_id) — a Necta avisa que dois canais
     // (marketplace e estabelecimento) podem entregar o mesmo fato com svix-id diferente,

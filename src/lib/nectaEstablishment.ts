@@ -8,7 +8,12 @@
 // - bankAccount.type: enum CHECKING | SAVINGS | PAYMENTS | DEPOSIT
 // - valores de endereço com country BR e postalCode apenas dígitos
 
-export const digitsOnly = (v?: string | null) => (v ?? '').replace(/\D/g, '');
+import {
+  digitsOnly as fmtDigits, isValidDocument, isValidEmail, normalizeCep,
+  normalizeDate, normalizePhone, normalizeTime, normalizeUF, trimText,
+} from './nectaFormat';
+
+export const digitsOnly = fmtDigits;
 
 export type LegalPerson = 'PHYSICAL' | 'JURIDICAL';
 
@@ -76,6 +81,30 @@ export function missingEstablishmentFields(row: Record<string, any>): string[] {
   }).map((k) => FIELD_LABELS[k] ?? k);
 }
 
+/**
+ * Campos preenchidos mas em formato que a Necta recusa (400 no gateway).
+ * Complementa `missingEstablishmentFields`, que só checa ausência.
+ */
+export function invalidEstablishmentFields(row: Record<string, any>): string[] {
+  const errors: string[] = [];
+  if (row.document && !isValidDocument(row.document)) errors.push('CPF/CNPJ inválido (dígito verificador não confere).');
+  if (row.email && !isValidEmail(row.email)) errors.push('E-mail inválido.');
+  if (row.phone && !normalizePhone(row.phone)) errors.push('Telefone inválido: use DDD + número (10 ou 11 dígitos).');
+  if (row.address_zip && !normalizeCep(row.address_zip)) errors.push('CEP inválido: deve ter 8 dígitos.');
+  if (row.address_state && !normalizeUF(row.address_state)) errors.push('UF inválida.');
+  const dateField = legalPersonOf(row.document, row.person_type) === 'JURIDICAL' ? 'opening_date' : 'birth_date';
+  if (row[dateField] && !normalizeDate(row[dateField])) errors.push(`${FIELD_LABELS[dateField]} inválida (use AAAA-MM-DD).`);
+  if (row.bank_account_document && !isValidDocument(row.bank_account_document)) {
+    errors.push('CPF/CNPJ do titular da conta inválido.');
+  }
+  if (row.bank_agency && digitsOnly(row.bank_agency).length > 5) errors.push('Agência deve ter até 5 dígitos.');
+  if (row.bank_account && digitsOnly(row.bank_account).length < 2) errors.push('Número da conta inválido.');
+  for (const k of ['opening_hours', 'closing_hours']) {
+    if (row[k] && !normalizeTime(row[k])) errors.push('Horário de funcionamento inválido (use HH:MM).');
+  }
+  return errors;
+}
+
 /** Payload EstablishmentCreate pronto para POST /establishments. */
 export function buildEstablishmentPayload(row: Record<string, any>): Record<string, unknown> {
   const legalPerson = legalPersonOf(row.document, row.person_type);
@@ -88,25 +117,26 @@ export function buildEstablishmentPayload(row: Record<string, any>): Record<stri
     : 'CHECKING';
 
   const payload: Record<string, unknown> = {
-    name: row.legal_name,
+    name: trimText(row.legal_name),
     document,
-    email: row.email,
-    phone: digitsOnly(row.phone),
+    email: trimText(row.email).toLowerCase(),
+    phone: normalizePhone(row.phone) ?? digitsOnly(row.phone),
     legalPerson,
-    birthDate: String(birthDate).slice(0, 10),
+    birthDate: normalizeDate(birthDate) ?? String(birthDate).slice(0, 10),
     mccId: row.mcc_id,
     address: {
-      street: row.address_street,
-      number: String(row.address_number),
-      neighborhood: row.address_district,
-      city: row.address_city,
-      state: String(row.address_state).toUpperCase().slice(0, 2),
+      street: trimText(row.address_street),
+      number: trimText(String(row.address_number)),
+      neighborhood: trimText(row.address_district),
+      city: trimText(row.address_city),
+      state: normalizeUF(row.address_state) ?? String(row.address_state).toUpperCase().slice(0, 2),
       country: 'BR',
-      postalCode: digitsOnly(row.address_zip),
+      postalCode: normalizeCep(row.address_zip) ?? digitsOnly(row.address_zip),
+      complement: row.address_complement ? trimText(row.address_complement) : undefined,
     },
     bankAccount: {
       document: digitsOnly(row.bank_account_document || row.document),
-      corporateName: row.bank_account_holder || row.legal_name,
+      corporateName: trimText(row.bank_account_holder || row.legal_name),
       legalPerson: legalPersonOf(row.bank_account_document || row.document, row.person_type),
       bankCode: row.bank_code ? String(row.bank_code).padStart(3, '0') : undefined,
       compeCode: row.bank_code ? String(row.bank_code).padStart(3, '0') : undefined,
@@ -122,13 +152,13 @@ export function buildEstablishmentPayload(row: Record<string, any>): Record<stri
   if (row.marketplace_id) payload.marketplaceId = row.marketplace_id;
   if (row.legal_nature) payload.legalNature = String(row.legal_nature);
   if (row.cnae_id) payload.cnae = row.cnae_id;
-  if (row.opening_date) payload.openingDate = String(row.opening_date).slice(0, 10);
+  if (row.opening_date) payload.openingDate = normalizeDate(row.opening_date) ?? String(row.opening_date).slice(0, 10);
   if (row.revenue !== null && row.revenue !== undefined && String(row.revenue) !== '') {
     payload.revenue = String(row.revenue);
   }
   if (Array.isArray(row.opening_days) && row.opening_days.length) payload.openingDays = row.opening_days;
-  if (row.opening_hours) payload.openingHours = row.opening_hours;
-  if (row.closing_hours) payload.closingHours = row.closing_hours;
+  if (row.opening_hours) payload.openingHours = normalizeTime(row.opening_hours) ?? row.opening_hours;
+  if (row.closing_hours) payload.closingHours = normalizeTime(row.closing_hours) ?? row.closing_hours;
   if (row.establishment_format) payload.establishmentFormat = row.establishment_format;
   if (typeof row.digital_account === 'boolean') payload.digitalAccount = row.digital_account;
 

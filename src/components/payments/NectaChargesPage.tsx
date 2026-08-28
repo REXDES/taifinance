@@ -89,21 +89,85 @@ export function NectaChargesPage({ companyId }: Props) {
   const [syncingAll, setSyncingAll] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const [payers, setPayers] = useState<any[]>([]);
+  const [cepLoading, setCepLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   const [companyName, setCompanyName] = useState('');
 
   const load = useCallback(async () => {
-    const [{ data }, { data: accs }, { data: company }] = await Promise.all([
+    const [{ data }, { data: accs }, { data: company }, { data: estabs }, { data: clients }] = await Promise.all([
       (supabase as any).from('necta_sales').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(300),
       (supabase as any).from('accounts').select('id, name').eq('company_id', companyId).order('name'),
       (supabase as any).from('companies').select('name').eq('id', companyId).maybeSingle(),
+      (supabase as any).from('necta_establishments')
+        .select('id, legal_name, trade_name, document, email, phone, whatsapp, address_street, address_number, address_complement, address_district, address_city, address_state, address_zip')
+        .eq('company_id', companyId).eq('is_own_profile', false).order('legal_name'),
+      (supabase as any).from('clients_suppliers')
+        .select('id, name, document, email, phone, whatsapp_phone, type')
+        .eq('company_id', companyId).order('name'),
     ]);
     setRows(data ?? []);
     setAccounts(accs ?? []);
     setCompanyName(company?.name ?? '');
+    setPayers([
+      ...(estabs ?? []).map((e: any) => ({
+        key: `est-${e.id}`, origin: 'Estabelecimento',
+        name: e.legal_name || e.trade_name || 'Sem nome',
+        document: e.document ?? '', email: e.email ?? '', phone: e.whatsapp || e.phone || '',
+        street: e.address_street ?? '', number: e.address_number ?? '', complement: e.address_complement ?? '',
+        neighborhood: e.address_district ?? '', city: e.address_city ?? '', state: e.address_state ?? '',
+        postal_code: e.address_zip ?? '',
+      })),
+      ...(clients ?? []).map((c: any) => ({
+        key: `cli-${c.id}`, origin: c.type === 'supplier' ? 'Fornecedor' : 'Cliente',
+        name: c.name, document: c.document ?? '', email: c.email ?? '',
+        phone: c.whatsapp_phone || c.phone || '',
+        street: '', number: '', complement: '', neighborhood: '', city: '', state: '', postal_code: '',
+      })),
+    ]);
     return data ?? [];
   }, [companyId]);
+
+  /** Autopreenchimento a partir de um pagador já cadastrado. */
+  const applyPayer = (key: string) => {
+    const p = payers.find(x => x.key === key);
+    if (!p) return;
+    setForm(f => ({
+      ...f,
+      payer_name: p.name, payer_document: maskDocument(p.document), payer_email: p.email,
+      payer_phone: maskPhone(p.phone),
+      payer_address_street: p.street, payer_address_number: p.number,
+      payer_address_complement: p.complement, payer_address_neighborhood: p.neighborhood,
+      payer_address_city: p.city, payer_address_state: (p.state || '').toUpperCase().slice(0, 2),
+      payer_address_postal_code: maskCep(p.postal_code),
+    }));
+    if (!p.street && p.postal_code) lookupCep(p.postal_code);
+  };
+
+  /** Busca endereço pelo CEP (ViaCEP) e preenche rua, bairro, cidade e UF. */
+  const lookupCep = async (raw: string) => {
+    const cep = digitsOnly(raw);
+    if (cep.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const j = await r.json();
+      if (j?.erro) { toast.error('CEP não encontrado'); return; }
+      setForm(f => ({
+        ...f,
+        payer_address_street: j.logradouro || f.payer_address_street,
+        payer_address_neighborhood: j.bairro || f.payer_address_neighborhood,
+        payer_address_city: j.localidade || f.payer_address_city,
+        payer_address_state: (j.uf || f.payer_address_state || '').toUpperCase().slice(0, 2),
+      }));
+    } catch {
+      toast.error('Não foi possível consultar o CEP');
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
 
   useEffect(() => { load(); }, [load]);
 

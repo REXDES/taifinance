@@ -214,15 +214,22 @@ export function NectaChargesPage({ companyId }: Props) {
   const submit = async () => {
     if (!form.amount || Number(form.amount) <= 0) { toast.error('Informe o valor'); return; }
     if (form.method !== 'pix' && !form.due_date) { toast.error('Informe o vencimento'); return; }
+    if (BOLETO_METHODS.includes(form.method) && Number(form.amount) < BOLETO_MIN_AMOUNT) {
+      toast.error(`Boleto exige valor mínimo de R$ ${BOLETO_MIN_AMOUNT},00`); return;
+    }
     if (form.method === 'credit_card' && (!form.card_number || !form.card_holder)) { toast.error('Informe os dados do cartão'); return; }
-    const docDigits = digitsOnly(form.payer_document);
-    if (docDigits.length !== 11 && docDigits.length !== 14) { toast.error('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido do pagador'); return; }
-    if (ADDRESS_REQUIRED_METHODS.includes(form.method)) {
+    if (PAYER_REQUIRED_METHODS.includes(form.method)) {
+      const docDigits = digitsOnly(form.payer_document);
+      if (!form.payer_name.trim()) { toast.error('Informe o nome do pagador'); return; }
+      if (docDigits.length !== 11 && docDigits.length !== 14) { toast.error('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido do pagador'); return; }
+      if (!/\S+@\S+\.\S+/.test(form.payer_email)) { toast.error('Informe um e-mail válido do pagador'); return; }
+      if (digitsOnly(form.payer_phone).length < 10) { toast.error('Informe o telefone do pagador com DDD'); return; }
       const addressOk = form.payer_address_street && form.payer_address_number
         && form.payer_address_neighborhood && form.payer_address_city
         && form.payer_address_state && digitsOnly(form.payer_address_postal_code).length === 8;
-      if (!addressOk) { toast.error('Endereço completo do pagador é obrigatório para emitir boleto'); return; }
+      if (!addressOk) { toast.error('A Necta exige o endereço completo do pagador (rua, número, bairro, cidade, UF e CEP)'); return; }
     }
+
     setSaving(true);
 
     const recurrenceCount = form.is_recurring ? Math.max(1, Number(form.recurrence_count || 1)) : 1;

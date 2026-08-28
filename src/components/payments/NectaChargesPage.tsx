@@ -277,10 +277,12 @@ export function NectaChargesPage({ companyId }: Props) {
     const card = form.method === 'credit_card'
       ? { holderName: form.card_holder, number: form.card_number, expirationMonth: form.card_month, expirationYear: form.card_year, cvv: form.card_cvv }
       : undefined;
+    const linkMethod = form.method === 'link' ? form.link_payment_method : undefined;
     setForm({ ...emptyForm });
     await load();
     // Emite a primeira imediatamente; as demais recorrências ficam para emissão sob demanda
-    if (created[0]) issue(created[0].id, card);
+    if (created[0]) issue(created[0].id, card, linkMethod);
+
   };
 
   const syncOne = async (id: string) => {

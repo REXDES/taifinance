@@ -11,6 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { BankSelect } from '@/components/payments/BankSelect';
+import { NectaCatalogSelect } from '@/components/payments/NectaCatalogSelect';
+import { Switch } from '@/components/ui/switch';
+import {
+  ACCOUNT_TYPE_LABELS, WEEK_DAYS, buildEstablishmentPayload,
+  missingEstablishmentFields, mapHomologationStatus, legalPersonOf,
+} from '@/lib/nectaEstablishment';
 import { Loader2, Save, ShieldCheck, RefreshCw, FileSignature, AlertTriangle } from 'lucide-react';
 
 interface Props { companyId: string }
@@ -97,6 +103,17 @@ export function NectaRegistrationPage({ companyId }: Props) {
       bank_account_document: form.bank_account_document ?? null,
       pix_key: form.pix_key ?? null,
       pix_key_type: form.pix_key_type ?? null,
+      mcc_id: form.mcc_id || null,
+      mcc_name: form.mcc_name || null,
+      legal_nature: form.legal_nature || null,
+      legal_nature_name: form.legal_nature_name || null,
+      birth_date: form.birth_date || null,
+      opening_date: form.opening_date || null,
+      revenue: form.revenue === '' || form.revenue === null || form.revenue === undefined ? null : Number(form.revenue),
+      opening_days: Array.isArray(form.opening_days) && form.opening_days.length ? form.opening_days : null,
+      opening_hours: form.opening_hours || null,
+      closing_hours: form.closing_hours || null,
+      digital_account: form.digital_account !== false,
     };
     let error;
     if (row?.id) ({ error } = await (supabase as any).from('necta_establishments').update(payload).eq('id', row.id));
@@ -128,46 +145,15 @@ export function NectaRegistrationPage({ companyId }: Props) {
 
   const sendHomologation = async () => {
     if (!row?.id) { toast.error('Salve o cadastro antes de enviar'); return; }
-    const missing = ['legal_name', 'document', 'email', 'phone', 'address_zip', 'address_street', 'address_number', 'address_district', 'address_city', 'address_state']
-      .filter(k => !form[k]);
-    if (missing.length) { toast.error('Complete os dados cadastrais e o endereço antes de enviar'); return; }
+    const missing = missingEstablishmentFields(form);
+    if (missing.length) { toast.error(`Complete antes de enviar: ${missing.join(', ')}`); return; }
     setSending(true);
     try {
-      const doc = digits(form.document);
-      const payload: Record<string, any> = {
-        name: form.legal_name,
-        document: doc,
-        email: form.email,
-        phone: digits(form.phone),
-        legalPerson: doc.length > 11 ? 'JURIDICAL' : 'NATURAL',
-        birthDate: form.opening_date ?? '1990-01-01',
-        address: {
-          street: form.address_street,
-          number: form.address_number,
-          neighborhood: form.address_district,
-          city: form.address_city,
-          state: form.address_state,
-          country: 'BR',
-          postalCode: digits(form.address_zip),
-        },
-        bankAccount: {
-          document: digits(form.bank_account_document || form.document),
-          corporateName: form.bank_account_holder || form.legal_name,
-          legalPerson: doc.length > 11 ? 'JURIDICAL' : 'NATURAL',
-          bankCode: form.bank_code ?? undefined,
-          bankName: form.bank_name ?? undefined,
-          accountNumber: digits(form.bank_account),
-          accountType: form.bank_account_type ?? 'CHECKING',
-          type: form.bank_account_type ?? 'CHECKING',
-          agencyNumber: digits(form.bank_agency),
-          compeCode: form.bank_code ?? undefined,
-          active: true,
-        },
-      };
-      const resp = await nectaCall<any>('/establishments', 'POST', payload);
+      const resp = await nectaCall<any>('/establishments', 'POST', buildEstablishmentPayload(form));
       await (supabase as any).from('necta_establishments').update({
         necta_establishment_id: resp?.id ?? null,
-        homologation_status: 'pending',
+        homologation_status: mapHomologationStatus(resp?.status?.name) === 'approved' ? 'approved' : 'pending',
+        necta_status: resp?.status?.name ?? null,
         homologation_sent_at: new Date().toISOString(),
         homologation_notes: null,
         raw: resp,
@@ -186,11 +172,12 @@ export function NectaRegistrationPage({ companyId }: Props) {
     if (!row?.necta_establishment_id) { toast.error('Envie o cadastro para homologação primeiro'); return; }
     try {
       const resp = await nectaCall<any>(`/establishments/${row.necta_establishment_id}`);
-      const name = String(resp?.status?.name ?? '').toLowerCase();
-      const mapped = /aprov|approv|active|ativo/.test(name) ? 'approved'
-        : /recus|reject|denied|inativ/.test(name) ? 'rejected' : 'pending';
+      const mapped = mapHomologationStatus(resp?.status?.name);
       await (supabase as any).from('necta_establishments').update({
-        homologation_status: mapped, homologation_notes: resp?.status?.name ?? null, raw: resp,
+        homologation_status: mapped,
+        necta_status: resp?.status?.name ?? null,
+        homologation_notes: resp?.status?.reference ?? resp?.status?.name ?? null,
+        raw: resp,
       }).eq('id', row.id);
       toast.success(`Situação na Necta: ${resp?.status?.name ?? mapped}`);
       load();
@@ -224,11 +211,86 @@ export function NectaRegistrationPage({ companyId }: Props) {
           <div><Label>Razão social *</Label><Input value={form.legal_name ?? ''} onChange={e => set('legal_name', e.target.value)} /></div>
           <div><Label>Nome fantasia</Label><Input value={form.trade_name ?? ''} onChange={e => set('trade_name', e.target.value)} /></div>
           <div><Label>CNPJ / CPF *</Label><Input value={form.document ?? ''} onChange={e => set('document', e.target.value)} /></div>
-          <div><Label>Data de abertura / nascimento</Label><Input type="date" value={form.opening_date ?? ''} onChange={e => set('opening_date', e.target.value)} /></div>
+          <div>
+            <Label>{legalPersonOf(form.document, form.person_type) === 'JURIDICAL' ? 'Data de abertura *' : 'Data de nascimento *'}</Label>
+            {legalPersonOf(form.document, form.person_type) === 'JURIDICAL' ? (
+              <Input type="date" value={(form.opening_date ?? '').slice(0, 10)} onChange={e => set('opening_date', e.target.value)} />
+            ) : (
+              <Input type="date" value={(form.birth_date ?? '').slice(0, 10)} onChange={e => set('birth_date', e.target.value)} />
+            )}
+          </div>
           <div><Label>E-mail *</Label><Input type="email" value={form.email ?? ''} onChange={e => set('email', e.target.value)} /></div>
           <div><Label>Telefone *</Label><Input value={form.phone ?? ''} onChange={e => set('phone', e.target.value)} /></div>
           <div><Label>WhatsApp</Label><Input value={form.whatsapp ?? ''} onChange={e => set('whatsapp', e.target.value)} /></div>
           <div><Label>Instagram</Label><Input value={form.instagram ?? ''} onChange={e => set('instagram', e.target.value)} placeholder="@perfil" /></div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Dados exigidos pela Necta</CardTitle>
+          <CardDescription>Obrigatórios para a homologação do estabelecimento na plataforma.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="md:col-span-2">
+            <Label>Ramo de atividade (MCC) *</Label>
+            <NectaCatalogSelect
+              kind="mcc"
+              value={form.mcc_id ?? ''}
+              label={form.mcc_name}
+              onChange={(v, item) => setForm(prev => ({ ...prev, mcc_id: v ?? '', mcc_name: item?.name ?? '' }))}
+            />
+          </div>
+          {legalPersonOf(form.document, form.person_type) === 'JURIDICAL' && (
+            <div className="md:col-span-2">
+              <Label>Natureza jurídica *</Label>
+              <NectaCatalogSelect
+                kind="legal-nature"
+                value={form.legal_nature ?? ''}
+                label={form.legal_nature_name}
+                onChange={(v, item) => setForm(prev => ({ ...prev, legal_nature: v ?? '', legal_nature_name: item?.name ?? '' }))}
+              />
+            </div>
+          )}
+          <div>
+            <Label>Faturamento mensal estimado (R$)</Label>
+            <Input type="number" min={0} step="0.01" value={form.revenue ?? ''} onChange={e => set('revenue', e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Abre às</Label><Input type="time" value={form.opening_hours ?? ''} onChange={e => set('opening_hours', e.target.value)} /></div>
+            <div><Label>Fecha às</Label><Input type="time" value={form.closing_hours ?? ''} onChange={e => set('closing_hours', e.target.value)} /></div>
+          </div>
+          <div className="md:col-span-2">
+            <Label>Dias de funcionamento</Label>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {WEEK_DAYS.map(d => {
+                const active = (form.opening_days ?? []).includes(d.value);
+                return (
+                  <Button
+                    key={d.value}
+                    type="button"
+                    size="sm"
+                    variant={active ? 'default' : 'outline'}
+                    onClick={() => setForm(prev => {
+                      const cur: string[] = prev.opening_days ?? [];
+                      return { ...prev, opening_days: active ? cur.filter(x => x !== d.value) : [...cur, d.value] };
+                    })}
+                  >
+                    {d.label}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="md:col-span-2 flex items-center justify-between rounded-md border p-3">
+            <div>
+              <Label>Usar conta digital como domicílio</Label>
+              <p className="text-xs text-muted-foreground">
+                Desligado, os recebimentos vão para a conta bancária informada abaixo
+              </p>
+            </div>
+            <Switch checked={form.digital_account !== false} onCheckedChange={v => set('digital_account', v)} />
+          </div>
         </CardContent>
       </Card>
 
@@ -271,8 +333,9 @@ export function NectaRegistrationPage({ companyId }: Props) {
             <Select value={form.bank_account_type ?? 'CHECKING'} onValueChange={v => set('bank_account_type', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="CHECKING">Corrente</SelectItem>
-                <SelectItem value="SAVINGS">Poupança</SelectItem>
+                {Object.entries(ACCOUNT_TYPE_LABELS).map(([v, l]) => (
+                  <SelectItem key={v} value={v}>{l}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

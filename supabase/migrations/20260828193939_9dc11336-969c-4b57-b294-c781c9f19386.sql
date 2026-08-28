@@ -1,0 +1,16 @@
+ALTER TABLE public.necta_establishments
+  ADD COLUMN IF NOT EXISTS mcc_id text,
+  ADD COLUMN IF NOT EXISTS mcc_name text,
+  ADD COLUMN IF NOT EXISTS legal_nature text,
+  ADD COLUMN IF NOT EXISTS legal_nature_name text,
+  ADD COLUMN IF NOT EXISTS cnae_id text,
+  ADD COLUMN IF NOT EXISTS birth_date date,
+  ADD COLUMN IF NOT EXISTS opening_date date,
+  ADD COLUMN IF NOT EXISTS revenue numeric,
+  ADD COLUMN IF NOT EXISTS opening_days text[],
+  ADD COLUMN IF NOT EXISTS opening_hours text,
+  ADD COLUMN IF NOT EXISTS closing_hours text,
+  ADD COLUMN IF NOT EXISTS establishment_format text,
+  ADD COLUMN IF NOT EXISTS digital_account boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS marketplace_id text,
+  ADD COLUMN IF NOT EXISTS necta_status text;

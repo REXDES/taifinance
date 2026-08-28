@@ -2509,12 +2509,17 @@ export type Database = {
           bank_code: string | null
           bank_name: string | null
           billet_config: Json | null
+          birth_date: string | null
+          closing_hours: string | null
+          cnae_id: string | null
           company_id: string | null
           created_at: string
           created_by: string | null
+          digital_account: boolean
           document: string | null
           documents: Json | null
           email: string | null
+          establishment_format: string | null
           fee_plan_id: string | null
           fee_plan_name: string | null
           homologation_notes: string | null
@@ -2525,13 +2530,23 @@ export type Database = {
           is_active: boolean
           is_own_profile: boolean
           legal_name: string | null
+          legal_nature: string | null
+          legal_nature_name: string | null
+          marketplace_id: string | null
+          mcc_id: string | null
+          mcc_name: string | null
           necta_establishment_id: string | null
+          necta_status: string | null
           notes: string | null
+          opening_date: string | null
+          opening_days: string[] | null
+          opening_hours: string | null
           person_type: string
           phone: string | null
           pix_key: string | null
           pix_key_type: string | null
           raw: Json | null
+          revenue: number | null
           term_accepted_at: string | null
           term_slug: string | null
           trade_name: string | null
@@ -2554,12 +2569,17 @@ export type Database = {
           bank_code?: string | null
           bank_name?: string | null
           billet_config?: Json | null
+          birth_date?: string | null
+          closing_hours?: string | null
+          cnae_id?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          digital_account?: boolean
           document?: string | null
           documents?: Json | null
           email?: string | null
+          establishment_format?: string | null
           fee_plan_id?: string | null
           fee_plan_name?: string | null
           homologation_notes?: string | null
@@ -2570,13 +2590,23 @@ export type Database = {
           is_active?: boolean
           is_own_profile?: boolean
           legal_name?: string | null
+          legal_nature?: string | null
+          legal_nature_name?: string | null
+          marketplace_id?: string | null
+          mcc_id?: string | null
+          mcc_name?: string | null
           necta_establishment_id?: string | null
+          necta_status?: string | null
           notes?: string | null
+          opening_date?: string | null
+          opening_days?: string[] | null
+          opening_hours?: string | null
           person_type?: string
           phone?: string | null
           pix_key?: string | null
           pix_key_type?: string | null
           raw?: Json | null
+          revenue?: number | null
           term_accepted_at?: string | null
           term_slug?: string | null
           trade_name?: string | null
@@ -2599,12 +2629,17 @@ export type Database = {
           bank_code?: string | null
           bank_name?: string | null
           billet_config?: Json | null
+          birth_date?: string | null
+          closing_hours?: string | null
+          cnae_id?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
+          digital_account?: boolean
           document?: string | null
           documents?: Json | null
           email?: string | null
+          establishment_format?: string | null
           fee_plan_id?: string | null
           fee_plan_name?: string | null
           homologation_notes?: string | null
@@ -2615,13 +2650,23 @@ export type Database = {
           is_active?: boolean
           is_own_profile?: boolean
           legal_name?: string | null
+          legal_nature?: string | null
+          legal_nature_name?: string | null
+          marketplace_id?: string | null
+          mcc_id?: string | null
+          mcc_name?: string | null
           necta_establishment_id?: string | null
+          necta_status?: string | null
           notes?: string | null
+          opening_date?: string | null
+          opening_days?: string[] | null
+          opening_hours?: string | null
           person_type?: string
           phone?: string | null
           pix_key?: string | null
           pix_key_type?: string | null
           raw?: Json | null
+          revenue?: number | null
           term_accepted_at?: string | null
           term_slug?: string | null
           trade_name?: string | null

@@ -44,21 +44,6 @@ async function verifyNectaSignature(
   return false;
 }
 
-function deepFind(obj: any, keys: string[], depth = 0): any {
-  if (!obj || typeof obj !== 'object' || depth > 5) return undefined;
-  for (const k of keys) {
-    const v = obj[k];
-    if (v !== undefined && v !== null && v !== '') return v;
-  }
-  for (const v of Object.values(obj)) {
-    if (v && typeof v === 'object') {
-      const found = deepFind(v, keys, depth + 1);
-      if (found !== undefined) return found;
-    }
-  }
-  return undefined;
-}
-
 function mapStatus(raw?: string | null): string | null {
   if (!raw) return null;
   const s = String(raw).toLowerCase();

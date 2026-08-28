@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { BankSelect } from '@/components/payments/BankSelect';
 import { Loader2, Save, ShieldCheck, RefreshCw, FileSignature, AlertTriangle } from 'lucide-react';
 
 interface Props { companyId: string }
@@ -255,8 +256,15 @@ export function NectaRegistrationPage({ companyId }: Props) {
           <CardTitle className="text-base">Dados bancários</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div><Label>Código do banco (Compe)</Label><Input value={form.bank_code ?? ''} onChange={e => set('bank_code', e.target.value)} /></div>
-          <div><Label>Nome do banco</Label><Input value={form.bank_name ?? ''} onChange={e => set('bank_name', e.target.value)} /></div>
+          <div className="md:col-span-2">
+            <Label>Banco</Label>
+            <BankSelect
+              code={form.bank_code ?? ''}
+              name={form.bank_name ?? ''}
+              onChange={(c, n) => setForm(prev => ({ ...prev, bank_code: c, bank_name: n }))}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Busque pelo nome ou código — preenche código (Compe) e nome automaticamente</p>
+          </div>
           <div><Label>Agência</Label><Input value={form.bank_agency ?? ''} onChange={e => set('bank_agency', e.target.value)} /></div>
           <div><Label>Conta (com dígito)</Label><Input value={form.bank_account ?? ''} onChange={e => set('bank_account', e.target.value)} /></div>
           <div><Label>Tipo de conta</Label>

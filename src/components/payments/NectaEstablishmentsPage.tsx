@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { nectaCall } from '@/hooks/useNectaApi';
+import { nectaAction, nectaCall } from '@/hooks/useNectaApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -24,7 +24,7 @@ import { translateGatewayError } from '@/lib/nectaFormat';
 import { toast } from 'sonner';
 import {
   Loader2, Plus, Pencil, Trash2, ShieldCheck, RefreshCw, MessageCircle,
-  Building2, Search, AlertTriangle,
+  Building2, Search, AlertTriangle, KeyRound, DownloadCloud,
 } from 'lucide-react';
 
 interface Props { companyId: string }
@@ -91,6 +91,8 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
   const [saving, setSaving] = useState(false);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [credId, setCredId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const load = useCallback(async () => {
@@ -259,6 +261,38 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
     await load();
   };
 
+  /** Importa os sellers já cadastrados na plataforma Necta para este cadastro. */
+  const importSellers = async () => {
+    setImporting(true);
+    try {
+      const r = await nectaAction<any>('import_sellers', { company_id: companyId });
+      toast.success(`${r?.imported ?? 0} novo(s) e ${r?.updated ?? 0} atualizado(s) da Necta`);
+      await load();
+    } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
+    finally { setImporting(false); }
+  };
+
+  /**
+   * Gera o token de API vinculado ao seller. Sem ele a Necta recusa a emissão
+   * ("Authenticated seller context is required"), porque a chave do TAI Finance
+   * é de marketplace e só tem escopo de leitura.
+   */
+  const provisionCredentials = async (row: any) => {
+    if (!row.necta_establishment_id) {
+      toast.error('Estabelecimento sem vínculo na Necta', {
+        description: 'Importe da Necta ou envie o cadastro para homologação antes de gerar a credencial.',
+      });
+      return;
+    }
+    setCredId(row.id);
+    try {
+      await nectaAction('provision_seller_token', { establishment_id: row.id });
+      toast.success('Credencial de cobrança gerada — já é possível emitir para este estabelecimento');
+      await load();
+    } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
+    finally { setCredId(null); }
+  };
+
   const openWhatsapp = (row: any) => {
     const phone = digits(row.whatsapp || row.phone);
     if (!phone) { toast.error('Nenhum telefone/WhatsApp cadastrado'); return; }
@@ -284,7 +318,13 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
             Cadastre pessoas e empresas para emitir cobranças e acompanhe a homologação de cada uma
           </p>
         </div>
-        <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo estabelecimento</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={importSellers} disabled={importing}>
+            {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <DownloadCloud className="w-4 h-4 mr-2" />}
+            Importar da Necta
+          </Button>
+          <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo estabelecimento</Button>
+        </div>
       </div>
 
       <Card>
@@ -315,13 +355,14 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
                     <TableHead>Documento</TableHead>
                     <TableHead>Contato</TableHead>
                     <TableHead>Homologação</TableHead>
-                    <TableHead className="text-right w-56">Ações</TableHead>
+                    <TableHead>Cobrança</TableHead>
+                    <TableHead className="text-right w-64">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                         Nenhum estabelecimento cadastrado ainda
                       </TableCell>
                     </TableRow>
@@ -353,8 +394,31 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
                             </p>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {row.has_charge_credentials ? (
+                            <Badge variant="default">Credencial ativa</Badge>
+                          ) : (
+                            <Badge variant="outline">Sem credencial</Badge>
+                          )}
+                          {row.necta_establishment_id && (
+                            <p className="text-[10px] text-muted-foreground mt-1 break-all">
+                              seller {String(row.necta_establishment_id).slice(0, 8)}…
+                            </p>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              title="Gerar credencial de cobrança (token do seller na Necta)"
+                              disabled={credId === row.id}
+                              onClick={() => provisionCredentials(row)}
+                            >
+                              {credId === row.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <KeyRound className={`w-4 h-4 ${row.has_charge_credentials ? 'text-primary' : ''}`} />}
+                            </Button>
                             <Button size="sm" variant="ghost" title="Abrir WhatsApp" onClick={() => openWhatsapp(row)}>
                               <MessageCircle className="w-4 h-4" />
                             </Button>

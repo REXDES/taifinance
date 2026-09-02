@@ -3,6 +3,7 @@ import {
   boletoMinCents, buildBuyer, normalizeDate,
   sameDocument, todayISO, translateGatewayError, validatePayer,
 } from './nectaFormat.ts';
+import { type NectaCreds, nectaRequest, sellerCredentials } from '../_shared/nectaSeller.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
@@ -16,45 +17,16 @@ const corsHeaders = {
 // Cobranças (vendas) na Necta Multi-Pay.
 // actions: issue | sync | sync_open | void | settlements_sync
 
-let tokenCache: { token: string; expiresAt: number } | null = null;
+// Marketplace: escrita (emitir/estornar) exige token vinculado ao seller.
+// `creds` = credencial do estabelecimento recebedor; ausente → marketplace.
+const api = (
+  path: string,
+  method = 'GET',
+  payload?: unknown,
+  query?: Record<string, unknown>,
+  creds?: NectaCreds | null,
+) => nectaRequest(path, method, payload, query, creds);
 
-async function getToken(force = false): Promise<string> {
-  if (!force && tokenCache && tokenCache.expiresAt > Date.now()) return tokenCache.token;
-  const baseUrl = (Deno.env.get('NECTA_API_BASE_URL') ?? 'https://api-gateway.nectaco.com.br').replace(/\/$/, '');
-  const r = await fetch(`${baseUrl}/auth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({
-      clientSecret: Deno.env.get('NECTA_CLIENT_SECRET'),
-      secretKey: Deno.env.get('NECTA_SECRET_KEY'),
-    }),
-  });
-  const text = await r.text();
-  if (!r.ok) throw new Error(`Necta auth [${r.status}]: ${text}`);
-  const token = JSON.parse(text).token;
-  if (!token) throw new Error('Necta auth: token ausente');
-  tokenCache = { token, expiresAt: Date.now() + 50 * 60 * 1000 };
-  return token;
-}
-
-async function api(path: string, method = 'GET', payload?: unknown, query?: Record<string, unknown>): Promise<any> {
-  const baseUrl = (Deno.env.get('NECTA_API_BASE_URL') ?? 'https://api-gateway.nectaco.com.br').replace(/\/$/, '');
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
-  const url = `${baseUrl}${path}${qs.toString() ? `?${qs}` : ''}`;
-  const run = async (token: string) => fetch(url, {
-    method,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: payload !== undefined && method !== 'GET' ? JSON.stringify(payload) : undefined,
-  });
-  let r = await run(await getToken());
-  if (r.status === 401) r = await run(await getToken(true));
-  const text = await r.text();
-  let parsed: any = text;
-  try { parsed = text ? JSON.parse(text) : null; } catch { /* text */ }
-  if (!r.ok) throw new Error(`Necta ${method} ${path} [${r.status}]: ${typeof parsed === 'string' ? parsed : JSON.stringify(parsed)}`);
-  return parsed;
-}
 
 const digits = (v?: string | null) => (v ?? '').replace(/\D/g, '');
 const toCents = (v: number) => Math.round(Number(v) * 100);
@@ -215,13 +187,24 @@ Deno.serve(async (req) => {
       if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
       if (sale.necta_sale_id || sale.necta_payment_link_id) return json({ error: 'Cobrança já emitida' }, 400);
 
-      // Documento do recebedor (perfil do estabelecimento da empresa) — o adquirente
-      // recusa autocobrança (pagador == recebedor), principalmente em bolepix.
-      const { data: ownProfile } = await admin.from('necta_establishments')
-        .select('document')
-        .eq('company_id', sale.company_id).eq('is_own_profile', true).maybeSingle();
-      const receiverDocument = (ownProfile as any)?.document ?? null;
+      // Recebedor: o estabelecimento escolhido na cobrança; se não houver, o
+      // perfil próprio da empresa. O adquirente recusa autocobrança (pagador == recebedor).
+      const { data: receiver } = sale.establishment_id
+        ? await admin.from('necta_establishments').select('id, document, necta_establishment_id')
+            .eq('id', sale.establishment_id).maybeSingle()
+        : await admin.from('necta_establishments').select('id, document, necta_establishment_id')
+            .eq('company_id', sale.company_id).eq('is_own_profile', true).maybeSingle();
+      const receiverDocument = (receiver as any)?.document ?? null;
       const gatewayName = Deno.env.get('NECTA_GATEWAY') ?? 'rinne';
+
+      // Token do seller (obrigatório para escrita quando a chave é de marketplace).
+      let creds: NectaCreds | null = null;
+      try {
+        creds = await sellerCredentials(admin, (receiver as any)?.id ?? null);
+      } catch (e) {
+        return json({ error: `Não foi possível obter a credencial de cobrança do estabelecimento: ${(e as Error).message}` }, 400);
+      }
+
 
       if (!(Number(sale.amount) > 0)) return json({ error: 'Valor da cobrança deve ser maior que zero.' }, 400);
       if (sale.due_date) {
@@ -261,7 +244,7 @@ Deno.serve(async (req) => {
           if (linkMethod === 'credit_card') {
             linkBody.installments = Math.min(21, Math.max(1, Number(sale.installments || 1)));
           }
-          resp = await api('/payment-links', 'POST', linkBody);
+          resp = await api('/payment-links', 'POST', linkBody, undefined, creds);
         } else {
           const paymentMethod = sale.method === 'pix_cappta' ? 'bank_slip' : sale.method;
           const totalAmount = toCents(sale.amount);
@@ -301,12 +284,12 @@ Deno.serve(async (req) => {
           }
           // POST /sales só devolve { id, externalId, status } — QR/linha digitável/boleto
           // só vêm em seguida, via GET /sales/{id} (+ GET /sales/{id}/billet para boleto).
-          resp = await api('/sales', 'POST', body);
+          resp = await api('/sales', 'POST', body, undefined, creds);
           const saleUuid = resp?.id;
           if (saleUuid) {
-            saleDetail = await api(`/sales/${saleUuid}`).catch(() => null);
+            saleDetail = await api(`/sales/${saleUuid}`, 'GET', undefined, undefined, creds).catch(() => null);
             if (paymentMethod === 'bank_slip') {
-              billet = await api(`/sales/${saleUuid}/billet`).catch(() => null);
+              billet = await api(`/sales/${saleUuid}/billet`, 'GET', undefined, undefined, creds).catch(() => null);
             }
           }
         }
@@ -353,11 +336,12 @@ Deno.serve(async (req) => {
       const saleId = input?.sale_id;
       const { data: sale } = await admin.from('necta_sales').select('*').eq('id', saleId).maybeSingle();
       if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
+      const voidCreds = await sellerCredentials(admin, sale.establishment_id).catch(() => null);
       try {
         if (sale.necta_sale_id) {
-          await api(`/sales/${sale.necta_sale_id}/void`, 'POST', input?.amount ? { amount: toCents(input.amount) } : {});
+          await api(`/sales/${sale.necta_sale_id}/void`, 'POST', input?.amount ? { amount: toCents(input.amount) } : {}, undefined, voidCreds);
         } else if (sale.necta_payment_link_id) {
-          await api(`/payment-links/${sale.necta_payment_link_id}`, 'DELETE');
+          await api(`/payment-links/${sale.necta_payment_link_id}`, 'DELETE', undefined, undefined, voidCreds);
         }
       } catch (e) {
         return json({ error: (e as Error).message }, 502);

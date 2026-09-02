@@ -1,4 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import {
+  marketplaceCreds, nectaRequest, provisionSellerCredentials, sellerCredentials,
+} from '../_shared/nectaSeller.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,63 +9,12 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Generic authenticated proxy for the Necta Multi-Pay API.
-// body: { path: '/sales', method?: 'GET', query?: Record<string, unknown>, body?: unknown }
-
-let tokenCache: { token: string; expiresAt: number } | null = null;
-
-export async function getNectaToken(force = false): Promise<string> {
-  if (!force && tokenCache && tokenCache.expiresAt > Date.now()) return tokenCache.token;
-  const baseUrl = (Deno.env.get('NECTA_API_BASE_URL') ?? 'https://api-gateway.nectaco.com.br').replace(/\/$/, '');
-  const r = await fetch(`${baseUrl}/auth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({
-      clientSecret: Deno.env.get('NECTA_CLIENT_SECRET'),
-      secretKey: Deno.env.get('NECTA_SECRET_KEY'),
-    }),
-  });
-  const text = await r.text();
-  if (!r.ok) throw new Error(`Necta auth [${r.status}]: ${text}`);
-  const j = JSON.parse(text);
-  const token = j.token ?? j.accessToken ?? j.access_token;
-  if (!token) throw new Error('Necta auth: token ausente na resposta');
-  tokenCache = { token, expiresAt: Date.now() + 50 * 60 * 1000 };
-  return token;
-}
-
-export async function nectaFetch(
-  path: string,
-  method = 'GET',
-  payload?: unknown,
-  query?: Record<string, unknown>,
-): Promise<any> {
-  const baseUrl = (Deno.env.get('NECTA_API_BASE_URL') ?? 'https://api-gateway.nectaco.com.br').replace(/\/$/, '');
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(query ?? {})) {
-    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
-  }
-  const url = `${baseUrl}${path}${qs.toString() ? `?${qs}` : ''}`;
-
-  const run = async (token: string) =>
-    fetch(url, {
-      method,
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: payload !== undefined && method !== 'GET' ? JSON.stringify(payload) : undefined,
-    });
-
-  let r = await run(await getNectaToken());
-  if (r.status === 401) r = await run(await getNectaToken(true));
-
-  const text = await r.text();
-  let parsed: any = text;
-  try { parsed = text ? JSON.parse(text) : null; } catch { /* text */ }
-  if (!r.ok) {
-    const msg = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
-    throw new Error(`Necta ${method} ${path} [${r.status}]: ${msg}`);
-  }
-  return parsed;
-}
+// Proxy autenticado da API Necta Multi-Pay.
+// body genérico: { path: '/sales', method?: 'GET', query?, body?, establishment_id? }
+//   `establishment_id` autentica em nome daquele seller (necessário para escrita
+//   quando a credencial do projeto é de marketplace).
+// ações: { action: 'provision_seller_token', establishment_id }
+//        { action: 'import_sellers', company_id }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -78,11 +30,70 @@ Deno.serve(async (req) => {
     const { data: claims, error: cErr } = await supabase.auth.getClaims(authHeader.replace('Bearer ', ''));
     if (cErr || !claims?.claims) return json({ error: 'Unauthorized' }, 401);
 
-    const { path, method = 'GET', body, query } = await req.json();
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const input = await req.json();
+
+    // ------------------------------------------- credencial de cobrança do seller
+    if (input?.action === 'provision_seller_token') {
+      const { data: est } = await admin.from('necta_establishments')
+        .select('id, company_id, necta_establishment_id, legal_name, trade_name')
+        .eq('id', input?.establishment_id).maybeSingle();
+      if (!est) return json({ error: 'Estabelecimento não encontrado' }, 404);
+      const creds = await provisionSellerCredentials(admin, est as any);
+      return json({ ok: true, client_secret_preview: `${creds.clientSecret.slice(0, 12)}…` });
+    }
+
+    // ---------------------------------- importa sellers já cadastrados na Necta
+    if (input?.action === 'import_sellers') {
+      const companyId = input?.company_id;
+      if (!companyId) return json({ error: 'company_id é obrigatório' }, 400);
+      const list = await nectaRequest('/establishments', 'GET', undefined, { limit: 200 }, marketplaceCreds());
+      const items: any[] = Array.isArray(list) ? list : (list?.items ?? list?.data ?? []);
+      let imported = 0, updated = 0;
+      for (const it of items) {
+        const sellerId = it?.id;
+        if (!sellerId) continue;
+        const doc = String(it?.document ?? '').replace(/\D/g, '');
+        const row = {
+          company_id: companyId,
+          necta_establishment_id: String(sellerId),
+          legal_name: it?.name ?? null,
+          trade_name: it?.name ?? null,
+          document: doc || null,
+          email: it?.email ?? null,
+          phone: it?.phone ?? null,
+          person_type: it?.legalPerson === 'PHYSICAL' ? 'PF' : 'PJ',
+          status: it?.status?.name ?? null,
+          address_street: it?.address?.street ?? null,
+          address_number: it?.address?.number ?? null,
+          address_district: it?.address?.neighborhood ?? null,
+          address_city: it?.address?.city ?? null,
+          address_state: it?.address?.state ?? null,
+          address_zip: it?.address?.postalCode ?? null,
+          imported_from_necta: true,
+          is_own_profile: false,
+          raw: it,
+        };
+        const { data: existing } = await admin.from('necta_establishments')
+          .select('id').eq('company_id', companyId).eq('necta_establishment_id', String(sellerId)).maybeSingle();
+        if (existing?.id) {
+          await admin.from('necta_establishments').update(row).eq('id', existing.id);
+          updated++;
+        } else {
+          const { error } = await admin.from('necta_establishments').insert(row);
+          if (!error) imported++;
+        }
+      }
+      return json({ ok: true, imported, updated, total: items.length });
+    }
+
+    // ------------------------------------------------------------ proxy genérico
+    const { path, method = 'GET', body, query, establishment_id } = input ?? {};
     if (typeof path !== 'string' || !path.startsWith('/')) return json({ error: 'path deve iniciar com /' }, 400);
     if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return json({ error: 'método inválido' }, 400);
 
-    const data = await nectaFetch(path, method, body, query);
+    const creds = establishment_id ? await sellerCredentials(admin, establishment_id) : null;
+    const data = await nectaRequest(path, method, body, query, creds);
     return json({ ok: true, data });
   } catch (e) {
     console.error('necta-api error:', e);

@@ -49,6 +49,7 @@ const BOLETO_METHODS = ['bank_slip', 'pix_cappta'];
 const BOLETO_MIN_AMOUNT = 5;
 
 const emptyForm = {
+  establishment_id: '',
   method: 'pix', amount: '', description: '', installments: '1',
   payer_name: '', payer_document: '', payer_email: '', payer_phone: '', due_date: '',
   payer_address_street: '', payer_address_number: '', payer_address_complement: '',
@@ -92,13 +93,16 @@ export function NectaChargesPage({ companyId }: Props) {
   const [detail, setDetail] = useState<any | null>(null);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [payers, setPayers] = useState<any[]>([]);
+  const [receivers, setReceivers] = useState<any[]>([]);
   const [cepLoading, setCepLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   const [companyName, setCompanyName] = useState('');
   // Recebedor da cobrança (perfil próprio na Necta): usado para bloquear autocobrança.
   const [receiver, setReceiver] = useState<{ name: string; document: string } | null>(null);
-  const receiverDocument = receiver?.document ?? null;
+  // Estabelecimento recebedor selecionado (marketplace: define o seller que emite).
+  const selectedReceiver = receivers.find(r => r.id === form.establishment_id) ?? null;
+  const receiverDocument = selectedReceiver?.document ?? receiver?.document ?? null;
 
   const load = useCallback(async () => {
     const [{ data }, { data: accs }, { data: company }, { data: estabs }, { data: clients }, { data: own }] = await Promise.all([
@@ -112,10 +116,18 @@ export function NectaChargesPage({ companyId }: Props) {
         .select('id, name, document, email, phone, whatsapp_phone, type')
         .eq('company_id', companyId).order('name'),
       (supabase as any).from('necta_establishments')
-        .select('legal_name, trade_name, document')
-        .eq('company_id', companyId).eq('is_own_profile', true).maybeSingle(),
+        .select('id, legal_name, trade_name, document, necta_establishment_id, has_charge_credentials, is_own_profile')
+        .eq('company_id', companyId).order('is_own_profile', { ascending: false }),
     ]);
-    setReceiver(own?.document ? { name: own.trade_name || own.legal_name || '', document: own.document } : null);
+    // Recebedores possíveis: estabelecimentos com vínculo (seller) na Necta.
+    const receiverList = (own ?? []).filter((e: any) => e.necta_establishment_id);
+    setReceivers(receiverList);
+    const ownProfile = (own ?? []).find((e: any) => e.is_own_profile) ?? null;
+    setReceiver(ownProfile?.document ? { name: ownProfile.trade_name || ownProfile.legal_name || '', document: ownProfile.document } : null);
+    setForm(f => (f.establishment_id ? f : {
+      ...f,
+      establishment_id: (receiverList.find((e: any) => e.is_own_profile) ?? receiverList[0])?.id ?? '',
+    }));
     setRows(data ?? []);
     setAccounts(accs ?? []);
     setCompanyName(company?.name ?? '');
@@ -235,6 +247,12 @@ export function NectaChargesPage({ companyId }: Props) {
       toast.error(`Boleto exige valor mínimo de R$ ${BOLETO_MIN_AMOUNT},00`); return;
     }
     if (form.method === 'credit_card' && (!form.card_number || !form.card_holder)) { toast.error('Informe os dados do cartão'); return; }
+    if (!form.establishment_id) {
+      toast.error('Selecione o estabelecimento recebedor', {
+        description: 'A Necta exige um seller vinculado para emitir a cobrança.',
+      });
+      return;
+    }
     if (PAYER_REQUIRED_METHODS.includes(form.method)) {
       const errors = validatePayer(form);
       if (errors.length) { toast.error(errors[0], { description: errors.slice(1).join(' ') || undefined }); return; }
@@ -263,6 +281,7 @@ export function NectaChargesPage({ companyId }: Props) {
       }
       const { data, error } = await (supabase as any).from('necta_sales').insert({
         company_id: companyId, created_by: user?.id,
+        establishment_id: form.establishment_id || null,
         method: form.method, amount: Number(form.amount),
         installments: Number(form.installments || 1),
         description: form.description || null,
@@ -528,13 +547,35 @@ export function NectaChargesPage({ companyId }: Props) {
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nova cobrança</DialogTitle>
-            {receiver && (
-              <DialogDescription>
-                Recebedor: {receiver.name || 'estabelecimento'} — {maskDocument(receiver.document)}
-              </DialogDescription>
-            )}
+            <DialogDescription>
+              A cobrança é emitida em nome do estabelecimento recebedor (seller) selecionado na Necta
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            <div><Label>Estabelecimento recebedor</Label>
+              <Select value={form.establishment_id} onValueChange={(v) => setForm(f => ({ ...f, establishment_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione o recebedor" /></SelectTrigger>
+                <SelectContent>
+                  {receivers.map(r => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {(r.trade_name || r.legal_name || 'Estabelecimento')}
+                      {r.document ? ` — ${maskDocument(r.document)}` : ''}
+                      {r.is_own_profile ? ' (meu perfil)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {receivers.length === 0 && (
+                <p className="text-xs text-destructive mt-1">
+                  Nenhum estabelecimento vinculado à Necta. Vá em Estabelecimentos e use "Importar da Necta".
+                </p>
+              )}
+              {selectedReceiver && !selectedReceiver.has_charge_credentials && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  A credencial de cobrança deste estabelecimento será gerada automaticamente na primeira emissão.
+                </p>
+              )}
+            </div>
             <div><Label>Método</Label>
               <Select value={form.method} onValueChange={(v) => setForm(f => ({ ...f, method: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

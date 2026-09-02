@@ -211,12 +211,16 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
 
         {/* ---------------- Estabelecimentos ---------------- */}
         <TabsContent value="establishments" className="space-y-3">
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" size="sm" onClick={loadEstablishments} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}Atualizar
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)}>
+              <Link2 className="w-4 h-4 mr-2" />Vincular sellers às empresas
+            </Button>
             <Button size="sm" onClick={() => setEstOpen(true)}><Plus className="w-4 h-4 mr-2" />Novo estabelecimento</Button>
           </div>
+
           <Card><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>

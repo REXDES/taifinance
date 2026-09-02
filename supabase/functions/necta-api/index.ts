@@ -43,49 +43,101 @@ Deno.serve(async (req) => {
       return json({ ok: true, client_secret_preview: `${creds.clientSecret.slice(0, 12)}…` });
     }
 
-    // ---------------------------------- importa sellers já cadastrados na Necta
+    // ------------------- lista os sellers da Necta (tolerante à paginação)
+    const listSellers = async (): Promise<any[]> => {
+      const attempts: (Record<string, unknown> | undefined)[] = [
+        { page: 1, limit: 200 }, { limit: 200 }, undefined,
+      ];
+      let lastErr: unknown = null;
+      for (const q of attempts) {
+        try {
+          const list = await nectaRequest('/establishments', 'GET', undefined, q, marketplaceCreds());
+          return Array.isArray(list) ? list : (list?.items ?? list?.data ?? []);
+        } catch (e) { lastErr = e; }
+      }
+      throw lastErr ?? new Error('Não foi possível listar os estabelecimentos na Necta');
+    };
+
+    const mapSeller = (it: any, companyId: string) => ({
+      company_id: companyId,
+      necta_establishment_id: String(it?.id),
+      legal_name: it?.name ?? null,
+      trade_name: it?.tradeName ?? it?.name ?? null,
+      document: String(it?.document ?? '').replace(/\D/g, '') || null,
+      email: it?.email ?? null,
+      phone: it?.phone ?? null,
+      person_type: it?.legalPerson === 'PHYSICAL' ? 'PF' : 'PJ',
+      status: it?.status?.name ?? null,
+      address_street: it?.address?.street ?? null,
+      address_number: it?.address?.number ?? null,
+      address_district: it?.address?.neighborhood ?? null,
+      address_city: it?.address?.city ?? null,
+      address_state: it?.address?.state ?? null,
+      address_zip: it?.address?.postalCode ?? null,
+      imported_from_necta: true,
+      is_own_profile: false,
+      raw: it,
+    });
+
+    const upsertSeller = async (it: any, companyId: string) => {
+      const row = mapSeller(it, companyId);
+      const { data: existing } = await admin.from('necta_establishments')
+        .select('id').eq('necta_establishment_id', row.necta_establishment_id)
+        .eq('company_id', companyId).maybeSingle();
+      if (existing?.id) {
+        await admin.from('necta_establishments').update(row).eq('id', existing.id);
+        return 'updated' as const;
+      }
+      const { error } = await admin.from('necta_establishments').insert(row);
+      if (error) throw new Error(error.message);
+      return 'imported' as const;
+    };
+
+    // sellers da Necta + em quais empresas do TAI Finance já estão vinculados
+    if (input?.action === 'list_sellers') {
+      const items = await listSellers();
+      const ids = items.map((i: any) => String(i?.id)).filter(Boolean);
+      const { data: links } = await admin.from('necta_establishments')
+        .select('id, company_id, necta_establishment_id')
+        .in('necta_establishment_id', ids.length ? ids : ['-']);
+      return json({ ok: true, sellers: items, links: links ?? [] });
+    }
+
+    // vincula sellers escolhidos às empresas escolhidas
+    if (input?.action === 'link_sellers') {
+      const selections: { necta_establishment_id: string; company_id: string }[] = input?.items ?? [];
+      if (!selections.length) return json({ error: 'Nenhum seller selecionado' }, 400);
+      const items = await listSellers();
+      const byId = new Map(items.map((i: any) => [String(i?.id), i]));
+      let imported = 0, updated = 0;
+      const errors: string[] = [];
+      for (const sel of selections) {
+        const seller = byId.get(String(sel.necta_establishment_id));
+        if (!seller || !sel.company_id) continue;
+        try {
+          const r = await upsertSeller(seller, sel.company_id);
+          r === 'imported' ? imported++ : updated++;
+        } catch (e) { errors.push((e as Error).message); }
+      }
+      return json({ ok: true, imported, updated, errors });
+    }
+
+    // ---------------------------------- importa TODOS os sellers para uma empresa
     if (input?.action === 'import_sellers') {
       const companyId = input?.company_id;
       if (!companyId) return json({ error: 'company_id é obrigatório' }, 400);
-      const list = await nectaRequest('/establishments', 'GET', undefined, { limit: 200 }, marketplaceCreds());
-      const items: any[] = Array.isArray(list) ? list : (list?.items ?? list?.data ?? []);
+      const items = await listSellers();
       let imported = 0, updated = 0;
       for (const it of items) {
-        const sellerId = it?.id;
-        if (!sellerId) continue;
-        const doc = String(it?.document ?? '').replace(/\D/g, '');
-        const row = {
-          company_id: companyId,
-          necta_establishment_id: String(sellerId),
-          legal_name: it?.name ?? null,
-          trade_name: it?.name ?? null,
-          document: doc || null,
-          email: it?.email ?? null,
-          phone: it?.phone ?? null,
-          person_type: it?.legalPerson === 'PHYSICAL' ? 'PF' : 'PJ',
-          status: it?.status?.name ?? null,
-          address_street: it?.address?.street ?? null,
-          address_number: it?.address?.number ?? null,
-          address_district: it?.address?.neighborhood ?? null,
-          address_city: it?.address?.city ?? null,
-          address_state: it?.address?.state ?? null,
-          address_zip: it?.address?.postalCode ?? null,
-          imported_from_necta: true,
-          is_own_profile: false,
-          raw: it,
-        };
-        const { data: existing } = await admin.from('necta_establishments')
-          .select('id').eq('company_id', companyId).eq('necta_establishment_id', String(sellerId)).maybeSingle();
-        if (existing?.id) {
-          await admin.from('necta_establishments').update(row).eq('id', existing.id);
-          updated++;
-        } else {
-          const { error } = await admin.from('necta_establishments').insert(row);
-          if (!error) imported++;
-        }
+        if (!it?.id) continue;
+        try {
+          const r = await upsertSeller(it, companyId);
+          r === 'imported' ? imported++ : updated++;
+        } catch { /* ignora item inválido */ }
       }
       return json({ ok: true, imported, updated, total: items.length });
     }
+
 
     // ------------------------------------------------------------ proxy genérico
     const { path, method = 'GET', body, query, establishment_id } = input ?? {};

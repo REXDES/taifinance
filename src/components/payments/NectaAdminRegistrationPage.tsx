@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2, Plus, RefreshCw, Link2, Unlink, Trash2 } from 'lucide-react';
+import { NectaSellerLinkDialog } from '@/components/payments/NectaSellerLinkDialog';
 
 interface Props { companyId: string | null }
 
@@ -25,8 +26,10 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   // Estabelecimentos
   const [establishments, setEstablishments] = useState<any[]>([]);
   const [estOpen, setEstOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
   const [estForm, setEstForm] = useState<Record<string, string>>({ legalPerson: 'JURIDICAL' });
   const [savingEst, setSavingEst] = useState(false);
+
 
   // POS
   const [posList, setPosList] = useState<any[]>([]);
@@ -211,12 +214,16 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
 
         {/* ---------------- Estabelecimentos ---------------- */}
         <TabsContent value="establishments" className="space-y-3">
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" size="sm" onClick={loadEstablishments} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}Atualizar
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)}>
+              <Link2 className="w-4 h-4 mr-2" />Vincular sellers às empresas
+            </Button>
             <Button size="sm" onClick={() => setEstOpen(true)}><Plus className="w-4 h-4 mr-2" />Novo estabelecimento</Button>
           </div>
+
           <Card><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
@@ -312,6 +319,8 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
           </CardContent></Card>
         </TabsContent>
       </Tabs>
+
+      <NectaSellerLinkDialog open={linkOpen} onOpenChange={setLinkOpen} onLinked={loadEstablishments} />
 
       {/* Novo estabelecimento */}
       <Dialog open={estOpen} onOpenChange={setEstOpen}>

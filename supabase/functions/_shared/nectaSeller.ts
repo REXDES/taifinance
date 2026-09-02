@@ -40,6 +40,16 @@ export async function nectaToken(creds?: NectaCreds | null, force = false): Prom
   return token;
 }
 
+/** Extrai o marketplaceId do JWT da Necta (claim do próprio token). */
+export function marketplaceIdFromToken(token: string): string | null {
+  try {
+    const part = token.split('.')[1];
+    const json = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/')));
+    const id = json.marketplaceId ?? json.marketplace_id ?? json.marketplace?.id;
+    return id ? String(id) : null;
+  } catch { return null; }
+}
+
 export async function nectaRequest(
   path: string,
   method = 'GET',
@@ -47,6 +57,7 @@ export async function nectaRequest(
   query?: Record<string, unknown>,
   creds?: NectaCreds | null,
   retryWithoutQuery = true,
+  retryWithMarketplace = true,
 ): Promise<any> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(query ?? {})) {
@@ -58,22 +69,34 @@ export async function nectaRequest(
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
     body: payload !== undefined && method !== 'GET' ? JSON.stringify(payload) : undefined,
   });
-  let r = await run(await nectaToken(creds));
-  if (r.status === 401) r = await run(await nectaToken(creds, true));
+  let token = await nectaToken(creds);
+  let r = await run(token);
+  if (r.status === 401) { token = await nectaToken(creds, true); r = await run(token); }
   const text = await r.text();
   let parsed: any = text;
   try { parsed = text ? JSON.parse(text) : null; } catch { /* texto puro */ }
   if (!r.ok) {
+    const msg = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+    // Algumas rotas (ex.: /pos/models) exigem marketplaceId explícito —
+    // reenvia com o id do próprio token / do segredo do projeto.
+    if (r.status === 400 && retryWithMarketplace && /marketplaceid is required/i.test(msg) && !qs.get('marketplaceId')) {
+      const mkt = Deno.env.get('NECTA_MARKETPLACE_ID') || marketplaceIdFromToken(token);
+      if (mkt) {
+        return await nectaRequest(
+          path, method, payload, { ...(query ?? {}), marketplaceId: mkt }, creds, retryWithoutQuery, false,
+        );
+      }
+    }
     // A Necta devolve 500 ("column \"nan\" does not exist") quando recebe
     // parâmetros de paginação/ordenação que ela não reconhece — refaz sem query.
     if (r.status >= 500 && retryWithoutQuery && qs.toString()) {
-      return await nectaRequest(path, method, payload, undefined, creds, false);
+      return await nectaRequest(path, method, payload, undefined, creds, false, retryWithMarketplace);
     }
-    const msg = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
     throw new Error(`Necta ${method} ${path} [${r.status}]: ${msg}`);
   }
   return parsed;
 }
+
 
 
 /** Cria (via credencial do marketplace) e persiste o token de API do seller. */

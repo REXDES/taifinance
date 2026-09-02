@@ -247,6 +247,12 @@ export function NectaChargesPage({ companyId }: Props) {
       toast.error(`Boleto exige valor mínimo de R$ ${BOLETO_MIN_AMOUNT},00`); return;
     }
     if (form.method === 'credit_card' && (!form.card_number || !form.card_holder)) { toast.error('Informe os dados do cartão'); return; }
+    if (!form.establishment_id) {
+      toast.error('Selecione o estabelecimento recebedor', {
+        description: 'A Necta exige um seller vinculado para emitir a cobrança.',
+      });
+      return;
+    }
     if (PAYER_REQUIRED_METHODS.includes(form.method)) {
       const errors = validatePayer(form);
       if (errors.length) { toast.error(errors[0], { description: errors.slice(1).join(' ') || undefined }); return; }

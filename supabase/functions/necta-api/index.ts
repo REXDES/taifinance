@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       email: it?.email ?? null,
       phone: it?.phone ?? null,
       person_type: it?.legalPerson === 'PHYSICAL' ? 'PF' : 'PJ',
-      status: it?.status?.name ?? null,
+      necta_status: (typeof it?.status === 'string' ? it.status : it?.status?.name) ?? null,
       address_street: it?.address?.street ?? null,
       address_number: it?.address?.number ?? null,
       address_district: it?.address?.neighborhood ?? null,

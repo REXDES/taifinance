@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       email: it?.email ?? null,
       phone: it?.phone ?? null,
       person_type: it?.legalPerson === 'PHYSICAL' ? 'PF' : 'PJ',
-      status: it?.status?.name ?? null,
+      necta_status: (typeof it?.status === 'string' ? it.status : it?.status?.name) ?? null,
       address_street: it?.address?.street ?? null,
       address_number: it?.address?.number ?? null,
       address_district: it?.address?.neighborhood ?? null,
@@ -129,14 +129,18 @@ Deno.serve(async (req) => {
 
     // vincula sellers escolhidos às empresas escolhidas
     if (input?.action === 'link_sellers') {
-      const selections: { necta_establishment_id: string; company_id: string }[] = input?.items ?? [];
+      const selections: { necta_establishment_id: string; company_id: string; seller?: any }[] = input?.items ?? [];
       if (!selections.length) return json({ error: 'Nenhum seller selecionado' }, 400);
-      const items = await listSellers();
-      const byId = new Map(items.map((i: any) => [String(i?.id), i]));
+      // Usa o snapshot enviado pela tela; só consulta a Necta se faltar algum.
+      const needsFetch = selections.some((s) => !s?.seller?.id);
+      const byId = new Map<string, any>();
+      if (needsFetch) {
+        for (const i of await listSellers()) byId.set(String(i?.id), i);
+      }
       let imported = 0, updated = 0;
       const errors: string[] = [];
       for (const sel of selections) {
-        const seller = byId.get(String(sel.necta_establishment_id));
+        const seller = sel.seller?.id ? sel.seller : byId.get(String(sel.necta_establishment_id));
         if (!seller || !sel.company_id) continue;
         try {
           const r = await upsertSeller(seller, sel.company_id);

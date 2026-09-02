@@ -94,7 +94,11 @@ export function NectaSellerLinkDialog({ open, onOpenChange, onLinked }: Props) {
     setSaving(true);
     try {
       const r = await nectaAction<any>('link_sellers', {
-        items: entries.map(([necta_establishment_id, company_id]) => ({ necta_establishment_id, company_id })),
+        items: entries.map(([necta_establishment_id, company_id]) => ({
+          necta_establishment_id,
+          company_id,
+          seller: sellers.find(s => String(s?.id) === necta_establishment_id) ?? null,
+        })),
       });
       toast.success(`${r?.imported ?? 0} vinculado(s) e ${r?.updated ?? 0} atualizado(s)`);
       if (r?.errors?.length) toast.error(r.errors[0]);

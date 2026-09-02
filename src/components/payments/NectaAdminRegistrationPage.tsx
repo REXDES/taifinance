@@ -25,8 +25,10 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   // Estabelecimentos
   const [establishments, setEstablishments] = useState<any[]>([]);
   const [estOpen, setEstOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
   const [estForm, setEstForm] = useState<Record<string, string>>({ legalPerson: 'JURIDICAL' });
   const [savingEst, setSavingEst] = useState(false);
+
 
   // POS
   const [posList, setPosList] = useState<any[]>([]);

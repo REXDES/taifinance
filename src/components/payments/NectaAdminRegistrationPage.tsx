@@ -47,7 +47,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   const loadEstablishments = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await nectaCall<any>('/establishments', 'GET', undefined, { limit: 100 });
+      const list = await nectaCall<any>('/establishments');
       setEstablishments(Array.isArray(list) ? list : (list?.data ?? []));
     } catch (e) { toast.error((e as Error).message); }
     setLoading(false);
@@ -56,7 +56,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   const loadPos = useCallback(async () => {
     try {
       const [list, models] = await Promise.all([
-        nectaCall<any>('/pos', 'GET', undefined, { limit: 100 }),
+        nectaCall<any>('/pos'),
         nectaCall<any>('/pos/models').catch(() => ({ data: [] })),
       ]);
       setPosList(Array.isArray(list) ? list : (list?.data ?? []));

@@ -187,13 +187,24 @@ Deno.serve(async (req) => {
       if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
       if (sale.necta_sale_id || sale.necta_payment_link_id) return json({ error: 'Cobrança já emitida' }, 400);
 
-      // Documento do recebedor (perfil do estabelecimento da empresa) — o adquirente
-      // recusa autocobrança (pagador == recebedor), principalmente em bolepix.
-      const { data: ownProfile } = await admin.from('necta_establishments')
-        .select('document')
-        .eq('company_id', sale.company_id).eq('is_own_profile', true).maybeSingle();
-      const receiverDocument = (ownProfile as any)?.document ?? null;
+      // Recebedor: o estabelecimento escolhido na cobrança; se não houver, o
+      // perfil próprio da empresa. O adquirente recusa autocobrança (pagador == recebedor).
+      const { data: receiver } = sale.establishment_id
+        ? await admin.from('necta_establishments').select('id, document, necta_establishment_id')
+            .eq('id', sale.establishment_id).maybeSingle()
+        : await admin.from('necta_establishments').select('id, document, necta_establishment_id')
+            .eq('company_id', sale.company_id).eq('is_own_profile', true).maybeSingle();
+      const receiverDocument = (receiver as any)?.document ?? null;
       const gatewayName = Deno.env.get('NECTA_GATEWAY') ?? 'rinne';
+
+      // Token do seller (obrigatório para escrita quando a chave é de marketplace).
+      let creds: NectaCreds | null = null;
+      try {
+        creds = await sellerCredentials(admin, (receiver as any)?.id ?? null);
+      } catch (e) {
+        return json({ error: `Não foi possível obter a credencial de cobrança do estabelecimento: ${(e as Error).message}` }, 400);
+      }
+
 
       if (!(Number(sale.amount) > 0)) return json({ error: 'Valor da cobrança deve ser maior que zero.' }, 400);
       if (sale.due_date) {

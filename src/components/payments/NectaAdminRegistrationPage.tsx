@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2, Plus, RefreshCw, Link2, Unlink, Trash2 } from 'lucide-react';
+import { NectaSellerLinkDialog } from '@/components/payments/NectaSellerLinkDialog';
 
 interface Props { companyId: string | null }
 
@@ -318,6 +319,8 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
           </CardContent></Card>
         </TabsContent>
       </Tabs>
+
+      <NectaSellerLinkDialog open={linkOpen} onOpenChange={setLinkOpen} onLinked={loadEstablishments} />
 
       {/* Novo estabelecimento */}
       <Dialog open={estOpen} onOpenChange={setEstOpen}>

@@ -2510,6 +2510,7 @@ export type Database = {
           bank_name: string | null
           billet_config: Json | null
           birth_date: string | null
+          charge_credentials_at: string | null
           closing_hours: string | null
           cnae_id: string | null
           company_id: string | null
@@ -2522,10 +2523,12 @@ export type Database = {
           establishment_format: string | null
           fee_plan_id: string | null
           fee_plan_name: string | null
+          has_charge_credentials: boolean
           homologation_notes: string | null
           homologation_sent_at: string | null
           homologation_status: string
           id: string
+          imported_from_necta: boolean
           instagram: string | null
           is_active: boolean
           is_own_profile: boolean
@@ -2570,6 +2573,7 @@ export type Database = {
           bank_name?: string | null
           billet_config?: Json | null
           birth_date?: string | null
+          charge_credentials_at?: string | null
           closing_hours?: string | null
           cnae_id?: string | null
           company_id?: string | null
@@ -2582,10 +2586,12 @@ export type Database = {
           establishment_format?: string | null
           fee_plan_id?: string | null
           fee_plan_name?: string | null
+          has_charge_credentials?: boolean
           homologation_notes?: string | null
           homologation_sent_at?: string | null
           homologation_status?: string
           id?: string
+          imported_from_necta?: boolean
           instagram?: string | null
           is_active?: boolean
           is_own_profile?: boolean
@@ -2630,6 +2636,7 @@ export type Database = {
           bank_name?: string | null
           billet_config?: Json | null
           birth_date?: string | null
+          charge_credentials_at?: string | null
           closing_hours?: string | null
           cnae_id?: string | null
           company_id?: string | null
@@ -2642,10 +2649,12 @@ export type Database = {
           establishment_format?: string | null
           fee_plan_id?: string | null
           fee_plan_name?: string | null
+          has_charge_credentials?: boolean
           homologation_notes?: string | null
           homologation_sent_at?: string | null
           homologation_status?: string
           id?: string
+          imported_from_necta?: boolean
           instagram?: string | null
           is_active?: boolean
           is_own_profile?: boolean
@@ -3041,6 +3050,53 @@ export type Database = {
             columns: ["transaction_id"]
             isOneToOne: false
             referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_seller_credentials: {
+        Row: {
+          client_secret: string
+          company_id: string | null
+          created_at: string
+          establishment_id: string
+          id: string
+          necta_seller_id: string
+          secret_key: string
+          token_id: string | null
+          token_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_secret: string
+          company_id?: string | null
+          created_at?: string
+          establishment_id: string
+          id?: string
+          necta_seller_id: string
+          secret_key: string
+          token_id?: string | null
+          token_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_secret?: string
+          company_id?: string | null
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          necta_seller_id?: string
+          secret_key?: string
+          token_id?: string | null
+          token_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_seller_credentials_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: true
+            referencedRelation: "necta_establishments"
             referencedColumns: ["id"]
           },
         ]

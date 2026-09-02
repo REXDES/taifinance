@@ -46,6 +46,7 @@ export async function nectaRequest(
   payload?: unknown,
   query?: Record<string, unknown>,
   creds?: NectaCreds | null,
+  retryWithoutQuery = true,
 ): Promise<any> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(query ?? {})) {
@@ -63,11 +64,17 @@ export async function nectaRequest(
   let parsed: any = text;
   try { parsed = text ? JSON.parse(text) : null; } catch { /* texto puro */ }
   if (!r.ok) {
+    // A Necta devolve 500 ("column \"nan\" does not exist") quando recebe
+    // parâmetros de paginação/ordenação que ela não reconhece — refaz sem query.
+    if (r.status >= 500 && retryWithoutQuery && qs.toString()) {
+      return await nectaRequest(path, method, payload, undefined, creds, false);
+    }
     const msg = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
     throw new Error(`Necta ${method} ${path} [${r.status}]: ${msg}`);
   }
   return parsed;
 }
+
 
 /** Cria (via credencial do marketplace) e persiste o token de API do seller. */
 export async function provisionSellerCredentials(

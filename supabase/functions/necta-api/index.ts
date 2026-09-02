@@ -43,19 +43,43 @@ Deno.serve(async (req) => {
       return json({ ok: true, client_secret_preview: `${creds.clientSecret.slice(0, 12)}…` });
     }
 
-    // ------------------- lista os sellers da Necta (tolerante à paginação)
+    // ------------------- lista os sellers da Necta (tolerante à falha da rota)
     const listSellers = async (): Promise<any[]> => {
-      const attempts: (Record<string, unknown> | undefined)[] = [
-        { page: 1, limit: 200 }, { limit: 200 }, undefined,
-      ];
-      let lastErr: unknown = null;
-      for (const q of attempts) {
-        try {
-          const list = await nectaRequest('/establishments', 'GET', undefined, q, marketplaceCreds());
-          return Array.isArray(list) ? list : (list?.items ?? list?.data ?? []);
-        } catch (e) { lastErr = e; }
+      try {
+        const list = await nectaRequest(
+          '/establishments', 'GET', undefined, { page: 1, limit: 200 }, marketplaceCreds(), false,
+        );
+        return Array.isArray(list) ? list : (list?.items ?? list?.data ?? []);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/column\s+\\?"?nan\\?"?\s+does not exist/i.test(message)) throw error;
+
+        // A versão atual da Necta tem um defeito interno em GET /establishments:
+        // ela gera `LIMIT NaN` mesmo quando page/limit são inteiros válidos.
+        // /users não sofre do problema e contém os IDs dos sellers acessíveis;
+        // detalhamos cada ID pela rota estável GET /establishments/{id}.
+        const usersResponse = await nectaRequest(
+          '/users', 'GET', undefined, { page: 1, limit: 200 }, marketplaceCreds(), false,
+        );
+        const users = Array.isArray(usersResponse)
+          ? usersResponse
+          : (usersResponse?.items ?? usersResponse?.data ?? []);
+        const ids = [...new Set(
+          users.map((user: any) => user?.establishment?.id).filter((id: unknown) => typeof id === 'string' && id),
+        )] as string[];
+        const sellers: any[] = [];
+        for (let index = 0; index < ids.length; index += 10) {
+          const batch = await Promise.all(ids.slice(index, index + 10).map(async (id) => {
+            try {
+              return await nectaRequest(`/establishments/${encodeURIComponent(id)}`, 'GET', undefined, undefined, marketplaceCreds(), false);
+            } catch {
+              return null;
+            }
+          }));
+          sellers.push(...batch.filter(Boolean));
+        }
+        return sellers;
       }
-      throw lastErr ?? new Error('Não foi possível listar os estabelecimentos na Necta');
     };
 
     const mapSeller = (it: any, companyId: string) => ({
@@ -145,7 +169,9 @@ Deno.serve(async (req) => {
     if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return json({ error: 'método inválido' }, 400);
 
     const creds = establishment_id ? await sellerCredentials(admin, establishment_id) : null;
-    const data = await nectaRequest(path, method, body, query, creds);
+    const data = path === '/establishments' && method === 'GET'
+      ? await listSellers()
+      : await nectaRequest(path, method, body, query, creds);
     return json({ ok: true, data });
   } catch (e) {
     console.error('necta-api error:', e);

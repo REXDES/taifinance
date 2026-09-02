@@ -100,7 +100,9 @@ export function NectaChargesPage({ companyId }: Props) {
   const [companyName, setCompanyName] = useState('');
   // Recebedor da cobrança (perfil próprio na Necta): usado para bloquear autocobrança.
   const [receiver, setReceiver] = useState<{ name: string; document: string } | null>(null);
-  const receiverDocument = receiver?.document ?? null;
+  // Estabelecimento recebedor selecionado (marketplace: define o seller que emite).
+  const selectedReceiver = receivers.find(r => r.id === form.establishment_id) ?? null;
+  const receiverDocument = selectedReceiver?.document ?? receiver?.document ?? null;
 
   const load = useCallback(async () => {
     const [{ data }, { data: accs }, { data: company }, { data: estabs }, { data: clients }, { data: own }] = await Promise.all([
@@ -539,13 +541,35 @@ export function NectaChargesPage({ companyId }: Props) {
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nova cobrança</DialogTitle>
-            {receiver && (
-              <DialogDescription>
-                Recebedor: {receiver.name || 'estabelecimento'} — {maskDocument(receiver.document)}
-              </DialogDescription>
-            )}
+            <DialogDescription>
+              A cobrança é emitida em nome do estabelecimento recebedor (seller) selecionado na Necta
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            <div><Label>Estabelecimento recebedor</Label>
+              <Select value={form.establishment_id} onValueChange={(v) => setForm(f => ({ ...f, establishment_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione o recebedor" /></SelectTrigger>
+                <SelectContent>
+                  {receivers.map(r => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {(r.trade_name || r.legal_name || 'Estabelecimento')}
+                      {r.document ? ` — ${maskDocument(r.document)}` : ''}
+                      {r.is_own_profile ? ' (meu perfil)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {receivers.length === 0 && (
+                <p className="text-xs text-destructive mt-1">
+                  Nenhum estabelecimento vinculado à Necta. Vá em Estabelecimentos e use "Importar da Necta".
+                </p>
+              )}
+              {selectedReceiver && !selectedReceiver.has_charge_credentials && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  A credencial de cobrança deste estabelecimento será gerada automaticamente na primeira emissão.
+                </p>
+              )}
+            </div>
             <div><Label>Método</Label>
               <Select value={form.method} onValueChange={(v) => setForm(f => ({ ...f, method: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

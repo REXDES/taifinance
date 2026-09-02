@@ -3,6 +3,7 @@ import {
   boletoMinCents, buildBuyer, normalizeDate,
   sameDocument, todayISO, translateGatewayError, validatePayer,
 } from './nectaFormat.ts';
+import { type NectaCreds, nectaRequest, sellerCredentials } from '../_shared/nectaSeller.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,

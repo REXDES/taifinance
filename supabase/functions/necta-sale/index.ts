@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
           if (linkMethod === 'credit_card') {
             linkBody.installments = Math.min(21, Math.max(1, Number(sale.installments || 1)));
           }
-          resp = await api('/payment-links', 'POST', linkBody);
+          resp = await api('/payment-links', 'POST', linkBody, undefined, creds);
         } else {
           const paymentMethod = sale.method === 'pix_cappta' ? 'bank_slip' : sale.method;
           const totalAmount = toCents(sale.amount);
@@ -284,12 +284,12 @@ Deno.serve(async (req) => {
           }
           // POST /sales só devolve { id, externalId, status } — QR/linha digitável/boleto
           // só vêm em seguida, via GET /sales/{id} (+ GET /sales/{id}/billet para boleto).
-          resp = await api('/sales', 'POST', body);
+          resp = await api('/sales', 'POST', body, undefined, creds);
           const saleUuid = resp?.id;
           if (saleUuid) {
-            saleDetail = await api(`/sales/${saleUuid}`).catch(() => null);
+            saleDetail = await api(`/sales/${saleUuid}`, 'GET', undefined, undefined, creds).catch(() => null);
             if (paymentMethod === 'bank_slip') {
-              billet = await api(`/sales/${saleUuid}/billet`).catch(() => null);
+              billet = await api(`/sales/${saleUuid}/billet`, 'GET', undefined, undefined, creds).catch(() => null);
             }
           }
         }
@@ -336,11 +336,12 @@ Deno.serve(async (req) => {
       const saleId = input?.sale_id;
       const { data: sale } = await admin.from('necta_sales').select('*').eq('id', saleId).maybeSingle();
       if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
+      const voidCreds = await sellerCredentials(admin, sale.establishment_id).catch(() => null);
       try {
         if (sale.necta_sale_id) {
-          await api(`/sales/${sale.necta_sale_id}/void`, 'POST', input?.amount ? { amount: toCents(input.amount) } : {});
+          await api(`/sales/${sale.necta_sale_id}/void`, 'POST', input?.amount ? { amount: toCents(input.amount) } : {}, undefined, voidCreds);
         } else if (sale.necta_payment_link_id) {
-          await api(`/payment-links/${sale.necta_payment_link_id}`, 'DELETE');
+          await api(`/payment-links/${sale.necta_payment_link_id}`, 'DELETE', undefined, undefined, voidCreds);
         }
       } catch (e) {
         return json({ error: (e as Error).message }, 502);

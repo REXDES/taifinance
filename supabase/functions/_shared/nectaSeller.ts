@@ -87,12 +87,22 @@ export async function nectaRequest(
         );
       }
     }
-    // A Necta devolve 500 ("column \"nan\" does not exist") quando recebe
-    // parâmetros de paginação/ordenação que ela não reconhece — refaz sem query.
+    // A Necta devolve 500 ("column \"nan\" does not exist") quando a rota espera
+    // paginação numérica e nada é enviado (ela converte undefined -> NaN).
+    if (r.status >= 500 && retryWithoutQuery && /\bnan\b/i.test(msg) && !qs.get('limit')) {
+      const mkt = Deno.env.get('NECTA_MARKETPLACE_ID') || marketplaceIdFromToken(token);
+      return await nectaRequest(
+        path, method, payload,
+        { ...(query ?? {}), page: 1, limit: 100, ...(mkt && !qs.get('marketplaceId') ? { marketplaceId: mkt } : {}) },
+        creds, false, retryWithMarketplace,
+      );
+    }
+    // Outros 500 podem vir de parâmetros que ela não reconhece — refaz sem query.
     if (r.status >= 500 && retryWithoutQuery && qs.toString()) {
       return await nectaRequest(path, method, payload, undefined, creds, false, retryWithMarketplace);
     }
     throw new Error(`Necta ${method} ${path} [${r.status}]: ${msg}`);
+
   }
   return parsed;
 }

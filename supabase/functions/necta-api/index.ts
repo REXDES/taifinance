@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
         return Array.isArray(list) ? list : (list?.items ?? list?.data ?? []);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        if (!/column\s+\\?"?nan\\?"?\s+does not exist/i.test(message)) throw error;
+        if (!/column[^\n]*nan[^\n]*does not exist/i.test(message)) throw error;
 
         // A versão atual da Necta tem um defeito interno em GET /establishments:
         // ela gera `LIMIT NaN` mesmo quando page/limit são inteiros válidos.

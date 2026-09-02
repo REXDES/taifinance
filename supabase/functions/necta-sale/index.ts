@@ -16,45 +16,16 @@ const corsHeaders = {
 // Cobranças (vendas) na Necta Multi-Pay.
 // actions: issue | sync | sync_open | void | settlements_sync
 
-let tokenCache: { token: string; expiresAt: number } | null = null;
+// Marketplace: escrita (emitir/estornar) exige token vinculado ao seller.
+// `creds` = credencial do estabelecimento recebedor; ausente → marketplace.
+const api = (
+  path: string,
+  method = 'GET',
+  payload?: unknown,
+  query?: Record<string, unknown>,
+  creds?: NectaCreds | null,
+) => nectaRequest(path, method, payload, query, creds);
 
-async function getToken(force = false): Promise<string> {
-  if (!force && tokenCache && tokenCache.expiresAt > Date.now()) return tokenCache.token;
-  const baseUrl = (Deno.env.get('NECTA_API_BASE_URL') ?? 'https://api-gateway.nectaco.com.br').replace(/\/$/, '');
-  const r = await fetch(`${baseUrl}/auth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({
-      clientSecret: Deno.env.get('NECTA_CLIENT_SECRET'),
-      secretKey: Deno.env.get('NECTA_SECRET_KEY'),
-    }),
-  });
-  const text = await r.text();
-  if (!r.ok) throw new Error(`Necta auth [${r.status}]: ${text}`);
-  const token = JSON.parse(text).token;
-  if (!token) throw new Error('Necta auth: token ausente');
-  tokenCache = { token, expiresAt: Date.now() + 50 * 60 * 1000 };
-  return token;
-}
-
-async function api(path: string, method = 'GET', payload?: unknown, query?: Record<string, unknown>): Promise<any> {
-  const baseUrl = (Deno.env.get('NECTA_API_BASE_URL') ?? 'https://api-gateway.nectaco.com.br').replace(/\/$/, '');
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
-  const url = `${baseUrl}${path}${qs.toString() ? `?${qs}` : ''}`;
-  const run = async (token: string) => fetch(url, {
-    method,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: payload !== undefined && method !== 'GET' ? JSON.stringify(payload) : undefined,
-  });
-  let r = await run(await getToken());
-  if (r.status === 401) r = await run(await getToken(true));
-  const text = await r.text();
-  let parsed: any = text;
-  try { parsed = text ? JSON.parse(text) : null; } catch { /* text */ }
-  if (!r.ok) throw new Error(`Necta ${method} ${path} [${r.status}]: ${typeof parsed === 'string' ? parsed : JSON.stringify(parsed)}`);
-  return parsed;
-}
 
 const digits = (v?: string | null) => (v ?? '').replace(/\D/g, '');
 const toCents = (v: number) => Math.round(Number(v) * 100);

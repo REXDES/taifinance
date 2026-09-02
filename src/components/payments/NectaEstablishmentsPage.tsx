@@ -91,6 +91,8 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
   const [saving, setSaving] = useState(false);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [credId, setCredId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const load = useCallback(async () => {

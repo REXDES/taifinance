@@ -93,6 +93,9 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
   const [cepLoading, setCepLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [credId, setCredId] = useState<string | null>(null);
+  // Credencial do usuário de API do Portal Necta (aba "Tokens de API").
+  const [credRow, setCredRow] = useState<any | null>(null);
+  const [credForm, setCredForm] = useState({ client_secret: '', secret_key: '' });
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const load = useCallback(async () => {
@@ -273,21 +276,22 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
   };
 
   /**
-   * Gera o token de API vinculado ao seller. Sem ele a Necta recusa a emissão
-   * ("Authenticated seller context is required"), porque a chave do TAI Finance
-   * é de marketplace e só tem escopo de leitura.
+   * A Necta não libera criar token por seller (POST /api-tokens devolve 403).
+   * O caminho oficial é o usuário pegar as credenciais no Portal Necta, aba
+   * "Tokens de API", e informá-las aqui — validamos em /auth antes de salvar.
    */
-  const provisionCredentials = async (row: any) => {
-    if (!row.necta_establishment_id) {
-      toast.error('Estabelecimento sem vínculo na Necta', {
-        description: 'Importe da Necta ou envie o cadastro para homologação antes de gerar a credencial.',
-      });
-      return;
-    }
-    setCredId(row.id);
+  const saveCredentials = async () => {
+    if (!credRow) return;
+    setCredId(credRow.id);
     try {
-      await nectaAction('provision_seller_token', { establishment_id: row.id });
-      toast.success('Credencial de cobrança gerada — já é possível emitir para este estabelecimento');
+      await nectaAction('set_seller_credentials', {
+        establishment_id: credRow.id,
+        client_secret: credForm.client_secret.trim(),
+        secret_key: credForm.secret_key.trim(),
+      });
+      toast.success('Credencial validada e salva — já é possível emitir cobranças');
+      setCredRow(null);
+      setCredForm({ client_secret: '', secret_key: '' });
       await load();
     } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
     finally { setCredId(null); }
@@ -411,9 +415,9 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              title="Gerar credencial de cobrança (token do seller na Necta)"
+                              title="Informar credencial de cobrança (Portal Necta → Tokens de API)"
                               disabled={credId === row.id}
-                              onClick={() => provisionCredentials(row)}
+                              onClick={() => { setCredRow(row); setCredForm({ client_secret: '', secret_key: '' }); }}
                             >
                               {credId === row.id
                                 ? <Loader2 className="w-4 h-4 animate-spin" />

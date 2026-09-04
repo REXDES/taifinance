@@ -570,11 +570,6 @@ export function NectaChargesPage({ companyId }: Props) {
                   Nenhum estabelecimento vinculado à Necta. Vá em Estabelecimentos e use "Importar da Necta".
                 </p>
               )}
-              {selectedReceiver && !selectedReceiver.has_charge_credentials && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  A credencial de cobrança deste estabelecimento será gerada automaticamente na primeira emissão.
-                </p>
-              )}
             </div>
             <div><Label>Método</Label>
               <Select value={form.method} onValueChange={(v) => setForm(f => ({ ...f, method: v }))}>

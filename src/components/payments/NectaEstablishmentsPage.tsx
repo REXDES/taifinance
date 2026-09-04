@@ -706,6 +706,51 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!credRow} onOpenChange={(v) => !v && setCredRow(null)}>
+        <DialogContent className="max-w-lg overflow-y-auto max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle>Credencial de cobrança</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Alert>
+              <AlertDescription className="text-xs">
+                No Portal Necta, abra a aba <strong>Tokens de API</strong> e copie as credenciais do
+                usuário de API deste estabelecimento. Elas são validadas antes de salvar e ficam
+                guardadas com segurança, usadas somente na emissão das cobranças.
+              </AlertDescription>
+            </Alert>
+            <div>
+              <Label>clientSecret</Label>
+              <Input
+                autoComplete="off"
+                value={credForm.client_secret}
+                onChange={(e) => setCredForm(f => ({ ...f, client_secret: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label>secretKey</Label>
+              <Input
+                type="password"
+                autoComplete="off"
+                value={credForm.secret_key}
+                onChange={(e) => setCredForm(f => ({ ...f, secret_key: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCredRow(null)}>Cancelar</Button>
+            <Button
+              onClick={saveCredentials}
+              disabled={!credForm.client_secret.trim() || !credForm.secret_key.trim() || credId === credRow?.id}
+            >
+              {credId === credRow?.id && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Validar e salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <DeleteConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(v) => !v && setDeleteTarget(null)}

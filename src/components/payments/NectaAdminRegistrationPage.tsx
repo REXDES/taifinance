@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { nectaCall } from '@/hooks/useNectaApi';
+import { nectaAction, nectaCall } from '@/hooks/useNectaApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,7 +12,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Plus, RefreshCw, Link2, Unlink, Trash2 } from 'lucide-react';
+import { Loader2, Plus, RefreshCw, Link2, Unlink, Trash2, KeyRound } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { translateGatewayError } from '@/lib/nectaFormat';
 import { NectaSellerLinkDialog } from '@/components/payments/NectaSellerLinkDialog';
 
 interface Props { companyId: string | null }
@@ -38,6 +40,12 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   const [posForm, setPosForm] = useState({ serialKey: '', modelId: '', marketplaceId: '' });
   const [bindTarget, setBindTarget] = useState<any | null>(null);
   const [bindEstablishment, setBindEstablishment] = useState('');
+
+  // Credenciais de cobrança (locais)
+  const [credRows, setCredRows] = useState<any[]>([]);
+  const [credRow, setCredRow] = useState<any | null>(null);
+  const [credForm, setCredForm] = useState({ client_secret: '', secret_key: '' });
+  const [credSaving, setCredSaving] = useState(false);
 
   // Taxas
   const [plans, setPlans] = useState<any[]>([]);
@@ -69,7 +77,33 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
     setPlans(data ?? []);
   }, []);
 
-  useEffect(() => { loadEstablishments(); loadPos(); loadPlans(); }, [loadEstablishments, loadPos, loadPlans]);
+  const loadCredRows = useCallback(async () => {
+    const { data, error } = await (supabase as any)
+      .from('necta_establishments')
+      .select('id, company_id, legal_name, trade_name, document, necta_establishment_id, has_charge_credentials, charge_credentials_at, companies(name)')
+      .order('created_at', { ascending: false });
+    if (error) { toast.error(error.message); return; }
+    setCredRows(data ?? []);
+  }, []);
+
+  const saveCredentials = async () => {
+    if (!credRow) return;
+    setCredSaving(true);
+    try {
+      await nectaAction('set_seller_credentials', {
+        establishment_id: credRow.id,
+        client_secret: credForm.client_secret.trim(),
+        secret_key: credForm.secret_key.trim(),
+      });
+      toast.success('Credencial validada e salva — o estabelecimento já pode emitir cobranças');
+      setCredRow(null);
+      setCredForm({ client_secret: '', secret_key: '' });
+      await loadCredRows();
+    } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
+    finally { setCredSaving(false); }
+  };
+
+  useEffect(() => { loadEstablishments(); loadPos(); loadPlans(); loadCredRows(); }, [loadEstablishments, loadPos, loadPlans, loadCredRows]);
 
   const createEstablishment = async () => {
     const required = ['name', 'document', 'email', 'phone', 'street', 'number', 'neighborhood', 'city', 'state', 'postalCode'];
@@ -210,6 +244,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
           <TabsTrigger value="establishments">Estabelecimentos</TabsTrigger>
           <TabsTrigger value="pos">POS</TabsTrigger>
           <TabsTrigger value="fees">Taxas</TabsTrigger>
+          <TabsTrigger value="credentials">Credenciais de cobrança</TabsTrigger>
         </TabsList>
 
         {/* ---------------- Estabelecimentos ---------------- */}
@@ -318,7 +353,97 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
             </Table>
           </CardContent></Card>
         </TabsContent>
+
+        {/* ---------------- Credenciais de cobrança ---------------- */}
+        <TabsContent value="credentials" className="space-y-3">
+          <Alert>
+            <AlertDescription className="text-xs">
+              As credenciais do usuário de API ficam no Portal Necta, aba <strong>Tokens de API</strong>.
+              Elas são validadas na Necta antes de serem salvas e usadas somente na emissão das cobranças.
+              O usuário final não precisa conhecê-las.
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={loadCredRows}>
+              <RefreshCw className="w-4 h-4 mr-2" />Atualizar
+            </Button>
+          </div>
+
+          <Card><CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Empresa</TableHead><TableHead>Estabelecimento</TableHead><TableHead>Documento</TableHead>
+                <TableHead>Situação</TableHead><TableHead className="text-right">Ações</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {credRows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum estabelecimento cadastrado</TableCell></TableRow>}
+                {credRows.map((r: any) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-sm">{r.companies?.name ?? '—'}</TableCell>
+                    <TableCell className="text-sm">{r.trade_name || r.legal_name || '—'}</TableCell>
+                    <TableCell className="text-sm">{r.document ?? '—'}</TableCell>
+                    <TableCell>
+                      {r.has_charge_credentials
+                        ? <Badge variant="default">Pronto para cobrar</Badge>
+                        : <Badge variant="outline">Aguardando liberação</Badge>}
+                      {r.charge_credentials_at && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          desde {new Date(r.charge_credentials_at).toLocaleDateString('pt-BR')}
+                        </p>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => { setCredRow(r); setCredForm({ client_secret: '', secret_key: '' }); }}
+                      >
+                        <KeyRound className="w-4 h-4 mr-2" />
+                        {r.has_charge_credentials ? 'Atualizar' : 'Informar'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent></Card>
+        </TabsContent>
       </Tabs>
+
+
+      <Dialog open={!!credRow} onOpenChange={(v) => !v && setCredRow(null)}>
+        <DialogContent className="max-w-lg overflow-y-auto max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle>Credencial de cobrança — {credRow?.trade_name || credRow?.legal_name || ''}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Alert>
+              <AlertDescription className="text-xs">
+                No Portal Necta, abra a aba <strong>Tokens de API</strong> e copie as credenciais do
+                usuário de API deste estabelecimento.
+              </AlertDescription>
+            </Alert>
+            <div>
+              <Label>clientSecret</Label>
+              <Input autoComplete="off" value={credForm.client_secret}
+                onChange={(e) => setCredForm(f => ({ ...f, client_secret: e.target.value }))} />
+            </div>
+            <div>
+              <Label>secretKey</Label>
+              <Input type="password" autoComplete="off" value={credForm.secret_key}
+                onChange={(e) => setCredForm(f => ({ ...f, secret_key: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCredRow(null)}>Cancelar</Button>
+            <Button onClick={saveCredentials}
+              disabled={!credForm.client_secret.trim() || !credForm.secret_key.trim() || credSaving}>
+              {credSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Validar e salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <NectaSellerLinkDialog open={linkOpen} onOpenChange={setLinkOpen} onLinked={loadEstablishments} />
 

@@ -163,3 +163,45 @@ export async function sellerCredentials(
   if (!est?.necta_establishment_id) return null;
   return await provisionSellerCredentials(admin, est);
 }
+
+/** Lê a credencial de API já cadastrada para o estabelecimento (sem provisionar). */
+export async function savedSellerCredentials(
+  admin: any,
+  establishmentId?: string | null,
+): Promise<NectaCreds | null> {
+  if (!establishmentId) return null;
+  const { data } = await admin.from('necta_seller_credentials')
+    .select('client_secret, secret_key').eq('establishment_id', establishmentId).maybeSingle();
+  if (data?.client_secret && data?.secret_key) {
+    return { clientSecret: data.client_secret, secretKey: data.secret_key };
+  }
+  return null;
+}
+
+/**
+ * Salva a credencial do usuário de API obtida no Portal Necta (aba "Tokens de API").
+ * Valida em POST /auth antes de gravar — assim nunca guardamos um par inválido.
+ */
+export async function saveSellerCredentials(
+  admin: any,
+  establishment: { id: string; company_id?: string | null; necta_establishment_id?: string | null },
+  creds: NectaCreds,
+  tokenName?: string | null,
+): Promise<void> {
+  if (!creds.clientSecret || !creds.secretKey) throw new Error('Informe clientSecret e secretKey.');
+  await nectaToken(creds, true); // lança se a Necta recusar o par
+
+  await admin.from('necta_seller_credentials').upsert({
+    company_id: establishment.company_id ?? null,
+    establishment_id: establishment.id,
+    necta_seller_id: establishment.necta_establishment_id ?? establishment.id,
+    token_name: tokenName ?? 'Portal Necta — Tokens de API',
+    client_secret: creds.clientSecret,
+    secret_key: creds.secretKey,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'establishment_id' });
+
+  await admin.from('necta_establishments')
+    .update({ has_charge_credentials: true, charge_credentials_at: new Date().toISOString() })
+    .eq('id', establishment.id);
+}

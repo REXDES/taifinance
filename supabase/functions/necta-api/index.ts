@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
-  marketplaceCreds, nectaRequest, provisionSellerCredentials, sellerCredentials,
+  marketplaceCreds, nectaRequest, provisionSellerCredentials, saveSellerCredentials, sellerCredentials,
 } from '../_shared/nectaSeller.ts';
 
 const corsHeaders = {
@@ -41,6 +41,24 @@ Deno.serve(async (req) => {
       if (!est) return json({ error: 'Estabelecimento não encontrado' }, 404);
       const creds = await provisionSellerCredentials(admin, est as any);
       return json({ ok: true, client_secret_preview: `${creds.clientSecret.slice(0, 12)}…` });
+    }
+
+    // Credencial do usuário de API do Portal Necta (aba "Tokens de API"),
+    // informada manualmente — é o que a Necta exige para emitir (POST /sales).
+    if (input?.action === 'set_seller_credentials') {
+      const { data: est } = await admin.from('necta_establishments')
+        .select('id, company_id, necta_establishment_id')
+        .eq('id', input?.establishment_id).maybeSingle();
+      if (!est) return json({ error: 'Estabelecimento não encontrado' }, 404);
+      const clientSecret = String(input?.client_secret ?? '').trim();
+      const secretKey = String(input?.secret_key ?? '').trim();
+      if (!clientSecret || !secretKey) return json({ error: 'Informe clientSecret e secretKey.' }, 400);
+      try {
+        await saveSellerCredentials(admin, est as any, { clientSecret, secretKey }, input?.token_name ?? null);
+      } catch (e) {
+        return json({ error: `Credencial recusada pela Necta: ${(e as Error).message}` }, 400);
+      }
+      return json({ ok: true });
     }
 
     // ------------------- lista os sellers da Necta (tolerante à falha da rota)

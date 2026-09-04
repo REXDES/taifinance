@@ -197,13 +197,11 @@ Deno.serve(async (req) => {
       const receiverDocument = (receiver as any)?.document ?? null;
       const gatewayName = Deno.env.get('NECTA_GATEWAY') ?? 'rinne';
 
-      // Token do seller (obrigatório para escrita quando a chave é de marketplace).
-      let creds: NectaCreds | null = null;
-      try {
-        creds = await sellerCredentials(admin, (receiver as any)?.id ?? null);
-      } catch (e) {
-        return json({ error: `Não foi possível obter a credencial de cobrança do estabelecimento: ${(e as Error).message}` }, 400);
-      }
+      // Fluxo confirmado pelo suporte Necta: POST /auth com as credenciais do
+      // usuário de API (Portal Necta → Tokens de API) e em seguida POST /sales.
+      // Não há provisionamento de token por seller (/api-tokens responde 403).
+      const creds: NectaCreds | null = null;
+
 
 
       if (!(Number(sale.amount) > 0)) return json({ error: 'Valor da cobrança deve ser maior que zero.' }, 400);

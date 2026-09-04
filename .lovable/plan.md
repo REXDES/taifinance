@@ -1,35 +1,27 @@
-# Credencial de cobrança Necta: entender o 403 e destravar a emissão
+# Boleto Necta: usar só autenticação + venda (fluxo confirmado pelo suporte)
 
-## O que o erro significa
-
-`POST /api-tokens [403] Forbidden - Group not allowed.` não é erro do TAI Finance nem do estabelecimento: é a Necta recusando **a chave do marketplace** para criar tokens de API. O grupo/perfil da credencial `Integration-TAI` configurada no projeto não tem permissão na rota `/api-tokens`. Ou seja: o app pediu certo, o provisionamento automático simplesmente não está liberado do lado da Necta.
-
-Confirmado: a tabela de credenciais de seller está vazia (0 registros), então toda cobrança hoje cai no caminho de provisionar na hora — e falha.
-
-## Como está arquitetada a árvore de informação hoje
+O suporte confirmou que não existe etapa de criar estabelecimento nem de gerar token por seller. O fluxo é:
 
 ```text
-Empresa (TAI Finance)
-  └── necta_establishments  (perfil próprio + estabelecimentos/sellers)
-        ├── necta_establishment_id  ── vínculo com o seller na Necta
-        └── necta_seller_credentials (clientSecret/secretKey do seller)
-              └── usado para POST /sales, /payment-links, /void
-Cobrança (necta_sales) → recebedor = establishment_id (ou perfil próprio da empresa)
+Credenciais do Portal Necta (Tokens de API) → POST /auth → Token → POST /sales (bank_slip) → Boleto
 ```
 
-Regra da Necta: leitura funciona com o token do marketplace; **escrita (emitir/estornar) exige token vinculado ao seller**. O app resolve a credencial por estabelecimento; se não existe, tenta criar via `/api-tokens` — passo que agora retorna 403.
+Hoje o app tenta criar uma credencial de cobrança por estabelecimento antes de emitir (`POST /api-tokens`), e a Necta responde 403 "Group not allowed" — é exatamente a etapa que o suporte disse não ser necessária. Isso bloqueia toda emissão.
 
-## O que fazer
+## O que muda
 
-1. **Cadastro manual da credencial do seller** (destrava sem depender da Necta liberar a rota): na tela Estabelecimentos, ao lado de "Gerar credencial", um diálogo "Informar credencial" para colar `clientSecret` e `secretKey` que você já possui na plataforma legado da Necta. Salvo em `necta_seller_credentials` (só service_role lê) e marca `has_charge_credentials`.
-2. **Validar antes de salvar**: a função testa a credencial com `POST /auth` e recusa se não autenticar, evitando gravar par inválido.
-3. **Mensagem de erro útil na emissão**: quando o provisionamento retorna 403 "Group not allowed", a cobrança passa a informar claramente "A Necta não autoriza este marketplace a criar tokens de API. Cadastre manualmente a credencial do estabelecimento ou solicite liberação da rota /api-tokens à Necta" — em vez do texto cru da API.
-4. **Sem fallback silencioso para o marketplace**: não emitir com a chave do marketplace quando a do seller falta, pois a Necta rejeitaria com 400/403 depois e a cobrança ficaria em estado inconsistente.
+1. **Emitir com a credencial do Portal, direto.** A emissão passa a autenticar com as credenciais já configuradas no projeto e chamar `POST /sales`. Nada de criar token por estabelecimento no meio do caminho.
+2. **Nenhum bloqueio por "credencial de cobrança".** Sai o erro 400 atual e sai o aviso na tela de cobranças sobre credencial gerada na primeira emissão. O estabelecimento continua sendo usado apenas como recebedor/validação de pagador ≠ recebedor.
+3. **Foco em boleto.** Para `bank_slip`: valida valor mínimo do adquirente e vencimento (hoje ou futuro), envia `paymentMethod: bank_slip`, `totalAmount` em centavos, `dueDate` e o comprador completo (nome, documento, e-mail, telefone e endereço), depois busca `GET /sales/{id}` e `GET /sales/{id}/billet` para linha digitável, código de barras, URL do PDF e vencimento — que já é o comportamento atual, mantido.
+4. **Sincronização e estorno** passam a usar a mesma credencial única, sem tentar resolver token de seller.
+5. **Teste real de ponta a ponta**: emitir um boleto de teste pela função publicada e conferir o retorno (id da venda, linha digitável, PDF). Se a Necta recusar algum campo, ajusto o corpo conforme a resposta e repito até gerar.
+
+O provisionamento por seller fica desativado no caminho de cobrança (o botão "Gerar credencial" em Estabelecimentos deixa de ser exigido); nada é apagado, para o caso de a Necta liberar marketplace no futuro.
 
 ## Detalhes técnicos
 
-- `supabase/functions/_shared/nectaSeller.ts`: nova `saveSellerCredentials()` (valida via `/auth`, faz upsert por `establishment_id`, atualiza flags no estabelecimento); `provisionSellerCredentials()` passa a lançar erro traduzido no caso 403.
-- `supabase/functions/necta-api/index.ts`: nova ação `set_seller_credentials { establishment_id, client_secret, secret_key }`.
-- `src/components/payments/NectaEstablishmentsPage.tsx`: botão/diálogo "Informar credencial" ao lado do atual, com feedback de sucesso/erro.
-- `supabase/functions/necta-sale/index.ts`: apenas a mensagem exibida ao usuário no bloco de obtenção da credencial.
-- Sem mudança de schema; a tabela já tem todas as colunas necessárias.
+- `supabase/functions/necta-sale/index.ts`: remover a resolução de `sellerCredentials`/`provisionSellerCredentials` no `issue`, `void` e `sync`, passando `creds = null` (a camada compartilhada já cai nas credenciais do projeto: `NECTA_CLIENT_SECRET` + `NECTA_SECRET_KEY` via `POST /auth`).
+- `supabase/functions/_shared/nectaSeller.ts`: mantém `nectaToken`/`nectaRequest`; `provisionSellerCredentials` deixa de ser chamada na emissão e passa a lançar mensagem clara caso alguém a acione manualmente.
+- `src/components/payments/NectaChargesPage.tsx`: remover o aviso sobre credencial de cobrança; nenhuma outra mudança de layout.
+- Redeploy de `necta-sale` (e `necta-api` se o import mudar) e teste autenticado com um boleto real.
+- Sem mudança de banco. Se as credenciais atuais em `NECTA_CLIENT_SECRET`/`NECTA_SECRET_KEY` não forem as do usuário de API do Portal, o `/auth` falha e eu peço a atualização delas.

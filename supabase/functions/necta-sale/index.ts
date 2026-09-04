@@ -3,7 +3,7 @@ import {
   boletoMinCents, buildBuyer, normalizeDate,
   sameDocument, todayISO, translateGatewayError, validatePayer,
 } from './nectaFormat.ts';
-import { type NectaCreds, nectaRequest, sellerCredentials } from '../_shared/nectaSeller.ts';
+import { type NectaCreds, nectaRequest } from '../_shared/nectaSeller.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
@@ -334,7 +334,7 @@ Deno.serve(async (req) => {
       const saleId = input?.sale_id;
       const { data: sale } = await admin.from('necta_sales').select('*').eq('id', saleId).maybeSingle();
       if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
-      const voidCreds = await sellerCredentials(admin, sale.establishment_id).catch(() => null);
+      const voidCreds: NectaCreds | null = null;
       try {
         if (sale.necta_sale_id) {
           await api(`/sales/${sale.necta_sale_id}/void`, 'POST', input?.amount ? { amount: toCents(input.amount) } : {}, undefined, voidCreds);

@@ -200,10 +200,17 @@ Deno.serve(async (req) => {
       // Fluxo confirmado pelo suporte Necta: POST /auth com as credenciais do
       // usuário de API (Portal Necta → Tokens de API) e em seguida POST /sales.
       // Não há provisionamento de token por seller (/api-tokens responde 403).
-      // Se o estabelecimento tem credencial de usuário de API cadastrada
-      // (Portal Necta → Tokens de API), emitimos com ela; senão, cai na
-      // credencial padrão do projeto.
+      // A credencial do usuário de API é cadastrada no Modo Administrativo
+      // (Pagamentos → Cadastro → Credenciais de cobrança). Sem ela a Necta
+      // recusa a venda ("Authenticated seller context is required").
       const creds: NectaCreds | null = await savedSellerCredentials(admin, (receiver as any)?.id ?? null);
+      if (!creds) {
+        return json({
+          error: 'Credencial de cobrança pendente para este recebedor — solicite ao administrador o cadastro em Pagamentos → Cadastro → Credenciais de cobrança.',
+        }, 400);
+      }
+
+
 
 
 

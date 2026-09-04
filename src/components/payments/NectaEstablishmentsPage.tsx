@@ -24,7 +24,7 @@ import { translateGatewayError } from '@/lib/nectaFormat';
 import { toast } from 'sonner';
 import {
   Loader2, Plus, Pencil, Trash2, ShieldCheck, RefreshCw, MessageCircle,
-  Building2, Search, AlertTriangle, KeyRound, DownloadCloud,
+  Building2, Search, AlertTriangle, DownloadCloud,
 } from 'lucide-react';
 
 interface Props { companyId: string }
@@ -92,10 +92,6 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [credId, setCredId] = useState<string | null>(null);
-  // Credencial do usuário de API do Portal Necta (aba "Tokens de API").
-  const [credRow, setCredRow] = useState<any | null>(null);
-  const [credForm, setCredForm] = useState({ client_secret: '', secret_key: '' });
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const load = useCallback(async () => {
@@ -275,28 +271,6 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
     finally { setImporting(false); }
   };
 
-  /**
-   * A Necta não libera criar token por seller (POST /api-tokens devolve 403).
-   * O caminho oficial é o usuário pegar as credenciais no Portal Necta, aba
-   * "Tokens de API", e informá-las aqui — validamos em /auth antes de salvar.
-   */
-  const saveCredentials = async () => {
-    if (!credRow) return;
-    setCredId(credRow.id);
-    try {
-      await nectaAction('set_seller_credentials', {
-        establishment_id: credRow.id,
-        client_secret: credForm.client_secret.trim(),
-        secret_key: credForm.secret_key.trim(),
-      });
-      toast.success('Credencial validada e salva — já é possível emitir cobranças');
-      setCredRow(null);
-      setCredForm({ client_secret: '', secret_key: '' });
-      await load();
-    } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
-    finally { setCredId(null); }
-  };
-
   const openWhatsapp = (row: any) => {
     const phone = digits(row.whatsapp || row.phone);
     if (!phone) { toast.error('Nenhum telefone/WhatsApp cadastrado'); return; }
@@ -400,9 +374,9 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
                         </TableCell>
                         <TableCell>
                           {row.has_charge_credentials ? (
-                            <Badge variant="default">Credencial ativa</Badge>
+                            <Badge variant="default">Pronto para cobrar</Badge>
                           ) : (
-                            <Badge variant="outline">Sem credencial</Badge>
+                            <Badge variant="outline">Aguardando liberação</Badge>
                           )}
                           {row.necta_establishment_id && (
                             <p className="text-[10px] text-muted-foreground mt-1 break-all">
@@ -412,17 +386,6 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              title="Informar credencial de cobrança (Portal Necta → Tokens de API)"
-                              disabled={credId === row.id}
-                              onClick={() => { setCredRow(row); setCredForm({ client_secret: '', secret_key: '' }); }}
-                            >
-                              {credId === row.id
-                                ? <Loader2 className="w-4 h-4 animate-spin" />
-                                : <KeyRound className={`w-4 h-4 ${row.has_charge_credentials ? 'text-primary' : ''}`} />}
-                            </Button>
                             <Button size="sm" variant="ghost" title="Abrir WhatsApp" onClick={() => openWhatsapp(row)}>
                               <MessageCircle className="w-4 h-4" />
                             </Button>
@@ -705,51 +668,6 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Dialog open={!!credRow} onOpenChange={(v) => !v && setCredRow(null)}>
-        <DialogContent className="max-w-lg overflow-y-auto max-h-[85vh]">
-          <DialogHeader>
-            <DialogTitle>Credencial de cobrança</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Alert>
-              <AlertDescription className="text-xs">
-                No Portal Necta, abra a aba <strong>Tokens de API</strong> e copie as credenciais do
-                usuário de API deste estabelecimento. Elas são validadas antes de salvar e ficam
-                guardadas com segurança, usadas somente na emissão das cobranças.
-              </AlertDescription>
-            </Alert>
-            <div>
-              <Label>clientSecret</Label>
-              <Input
-                autoComplete="off"
-                value={credForm.client_secret}
-                onChange={(e) => setCredForm(f => ({ ...f, client_secret: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>secretKey</Label>
-              <Input
-                type="password"
-                autoComplete="off"
-                value={credForm.secret_key}
-                onChange={(e) => setCredForm(f => ({ ...f, secret_key: e.target.value }))}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCredRow(null)}>Cancelar</Button>
-            <Button
-              onClick={saveCredentials}
-              disabled={!credForm.client_secret.trim() || !credForm.secret_key.trim() || credId === credRow?.id}
-            >
-              {credId === credRow?.id && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Validar e salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
 
       <DeleteConfirmDialog
         open={!!deleteTarget}

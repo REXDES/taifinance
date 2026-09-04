@@ -3,7 +3,7 @@ import {
   boletoMinCents, buildBuyer, normalizeDate,
   sameDocument, todayISO, translateGatewayError, validatePayer,
 } from './nectaFormat.ts';
-import { type NectaCreds, nectaRequest } from '../_shared/nectaSeller.ts';
+import { type NectaCreds, nectaRequest, savedSellerCredentials } from '../_shared/nectaSeller.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
@@ -200,7 +200,10 @@ Deno.serve(async (req) => {
       // Fluxo confirmado pelo suporte Necta: POST /auth com as credenciais do
       // usuário de API (Portal Necta → Tokens de API) e em seguida POST /sales.
       // Não há provisionamento de token por seller (/api-tokens responde 403).
-      const creds: NectaCreds | null = null;
+      // Se o estabelecimento tem credencial de usuário de API cadastrada
+      // (Portal Necta → Tokens de API), emitimos com ela; senão, cai na
+      // credencial padrão do projeto.
+      const creds: NectaCreds | null = await savedSellerCredentials(admin, (receiver as any)?.id ?? null);
 
 
 
@@ -334,7 +337,7 @@ Deno.serve(async (req) => {
       const saleId = input?.sale_id;
       const { data: sale } = await admin.from('necta_sales').select('*').eq('id', saleId).maybeSingle();
       if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
-      const voidCreds: NectaCreds | null = null;
+      const voidCreds: NectaCreds | null = await savedSellerCredentials(admin, sale.establishment_id);
       try {
         if (sale.necta_sale_id) {
           await api(`/sales/${sale.necta_sale_id}/void`, 'POST', input?.amount ? { amount: toCents(input.amount) } : {}, undefined, voidCreds);

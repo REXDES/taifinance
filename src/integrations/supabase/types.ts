@@ -812,6 +812,7 @@ export type Database = {
           id: string
           machines_module_enabled: boolean
           name: string
+          necta_credentials_at: string | null
           payments_module_enabled: boolean
           phone: string | null
           pix_city: string | null
@@ -839,6 +840,7 @@ export type Database = {
           id?: string
           machines_module_enabled?: boolean
           name: string
+          necta_credentials_at?: string | null
           payments_module_enabled?: boolean
           phone?: string | null
           pix_city?: string | null
@@ -866,6 +868,7 @@ export type Database = {
           id?: string
           machines_module_enabled?: boolean
           name?: string
+          necta_credentials_at?: string | null
           payments_module_enabled?: boolean
           phone?: string | null
           pix_city?: string | null
@@ -2488,6 +2491,50 @@ export type Database = {
             columns: ["element_id"]
             isOneToOne: false
             referencedRelation: "elements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_company_credentials: {
+        Row: {
+          client_secret: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          secret_key: string
+          token_name: string | null
+          updated_at: string
+          validated_at: string | null
+        }
+        Insert: {
+          client_secret: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          secret_key: string
+          token_name?: string | null
+          updated_at?: string
+          validated_at?: string | null
+        }
+        Update: {
+          client_secret?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          secret_key?: string
+          token_name?: string | null
+          updated_at?: string
+          validated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_company_credentials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]

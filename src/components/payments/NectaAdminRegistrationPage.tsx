@@ -423,9 +423,9 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
         <TabsContent value="credentials" className="space-y-3">
           <Alert>
             <AlertDescription className="text-xs">
-              As credenciais do usuário de API ficam no Portal Necta, aba <strong>Tokens de API</strong>.
-              Elas são validadas na Necta antes de serem salvas e usadas somente na emissão das cobranças.
-              O usuário final não precisa conhecê-las.
+              Cada <strong>empresa</strong> homologada na Necta tem seu próprio usuário de API (Portal Necta, aba <strong>Tokens de API</strong>).
+              A credencial é validada na Necta antes de ser salva e usada em todas as cobranças da empresa.
+              O usuário final não precisa conhecê-la.
             </AlertDescription>
           </Alert>
 
@@ -438,23 +438,22 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
           <Card><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Empresa</TableHead><TableHead>Estabelecimento</TableHead><TableHead>Documento</TableHead>
+                <TableHead>Empresa</TableHead><TableHead>CNPJ</TableHead>
                 <TableHead>Situação</TableHead><TableHead className="text-right">Ações</TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {credRows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum estabelecimento cadastrado</TableCell></TableRow>}
+                {credRows.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhuma empresa com o módulo Pagamentos ativo</TableCell></TableRow>}
                 {credRows.map((r: any) => (
                   <TableRow key={r.id}>
-                    <TableCell className="text-sm">{r.companies?.name ?? '—'}</TableCell>
-                    <TableCell className="text-sm">{r.trade_name || r.legal_name || '—'}</TableCell>
-                    <TableCell className="text-sm">{r.document ?? '—'}</TableCell>
+                    <TableCell className="text-sm">{r.name}</TableCell>
+                    <TableCell className="text-sm">{r.cnpj ?? '—'}</TableCell>
                     <TableCell>
-                      {r.has_charge_credentials
-                        ? <Badge variant="default">Pronto para cobrar</Badge>
+                      {r.necta_credentials_at
+                        ? <Badge variant="default">Pronta para cobrar</Badge>
                         : <Badge variant="outline">Aguardando liberação</Badge>}
-                      {r.charge_credentials_at && (
+                      {r.necta_credentials_at && (
                         <p className="text-[10px] text-muted-foreground mt-1">
-                          desde {new Date(r.charge_credentials_at).toLocaleDateString('pt-BR')}
+                          desde {new Date(r.necta_credentials_at).toLocaleDateString('pt-BR')}
                         </p>
                       )}
                     </TableCell>
@@ -465,7 +464,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
                         onClick={() => { setCredRow(r); setCredForm({ client_secret: '', secret_key: '' }); }}
                       >
                         <KeyRound className="w-4 h-4 mr-2" />
-                        {r.has_charge_credentials ? 'Atualizar' : 'Informar'}
+                        {r.necta_credentials_at ? 'Atualizar' : 'Informar'}
                       </Button>
                     </TableCell>
                   </TableRow>

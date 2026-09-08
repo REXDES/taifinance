@@ -116,7 +116,7 @@ export function NectaChargesPage({ companyId }: Props) {
         .select('id, name, document, email, phone, whatsapp_phone, type')
         .eq('company_id', companyId).order('name'),
       (supabase as any).from('necta_establishments')
-        .select('id, legal_name, trade_name, document, necta_establishment_id, has_charge_credentials, is_own_profile')
+        .select('id, legal_name, trade_name, document, necta_establishment_id, is_own_profile')
         .eq('company_id', companyId).order('is_own_profile', { ascending: false }),
     ]);
     // Recebedores possíveis: estabelecimentos com vínculo (seller) na Necta.

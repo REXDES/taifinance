@@ -117,8 +117,8 @@ export const paymentsMenuItems: MenuItem[] = [
 ];
 
 export const paymentsAdminMenuItems: MenuItem[] = [
-  { view: 'payments-admin-dashboard', label: 'Pagamentos — Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
-  { view: 'payments-admin-registration', label: 'Pagamentos — Cadastros', icon: <Building2 className="w-4 h-4" /> },
-  { view: 'payments-admin-settlements', label: 'Pagamentos — Liquidações', icon: <TrendingUp className="w-4 h-4" /> },
-  { view: 'payments-admin-settings', label: 'Pagamentos — Configurações', icon: <Settings className="w-4 h-4" /> },
+  { view: 'payments-admin-dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { view: 'payments-admin-registration', label: 'Cadastros', icon: <Building2 className="w-4 h-4" /> },
+  { view: 'payments-admin-settlements', label: 'Liquidações', icon: <TrendingUp className="w-4 h-4" /> },
+  { view: 'payments-admin-settings', label: 'Configurações', icon: <Settings className="w-4 h-4" /> },
 ];

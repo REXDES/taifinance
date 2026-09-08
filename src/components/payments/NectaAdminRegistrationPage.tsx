@@ -283,26 +283,67 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
             <Button size="sm" onClick={() => setEstOpen(true)}><Plus className="w-4 h-4 mr-2" />Novo estabelecimento</Button>
           </div>
 
-          <Card><CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Nome</TableHead><TableHead>Documento</TableHead><TableHead>E-mail</TableHead>
-                <TableHead>Cidade/UF</TableHead><TableHead>Situação</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {establishments.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum estabelecimento</TableCell></TableRow>}
-                {establishments.map((e: any) => (
-                  <TableRow key={e.id}>
-                    <TableCell>{e.name}</TableCell>
-                    <TableCell>{e.document}</TableCell>
-                    <TableCell>{e.email}</TableCell>
-                    <TableCell>{e.address ? `${e.address.city}/${e.address.state}` : '—'}</TableCell>
-                    <TableCell><Badge variant="secondary">{e.status?.name ?? '—'}</Badge></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
+          <div>
+            <h2 className="text-sm font-semibold mb-2">Sellers no marketplace Pagando (Necta)</h2>
+            <Card><CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Nome</TableHead><TableHead>Documento</TableHead><TableHead>E-mail</TableHead>
+                  <TableHead>Cidade/UF</TableHead><TableHead>Situação Necta</TableHead><TableHead>Empresa TAI vinculada</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {establishments.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum seller</TableCell></TableRow>}
+                  {establishments.map((e: any) => {
+                    const linked = linkedCompanies(e.id);
+                    return (
+                      <TableRow key={e.id}>
+                        <TableCell>{e.name}</TableCell>
+                        <TableCell>{e.document}</TableCell>
+                        <TableCell>{e.email}</TableCell>
+                        <TableCell>{e.address ? `${e.address.city}/${e.address.state}` : '—'}</TableCell>
+                        <TableCell><Badge variant="secondary">{e.status?.name ?? e.status ?? '—'}</Badge></TableCell>
+                        <TableCell className="text-sm">
+                          {linked.length ? linked.join(', ') : <span className="text-muted-foreground">Não vinculado</span>}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent></Card>
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold mb-2">Estabelecimentos cadastrados no TAI Finance</h2>
+            <Card><CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Empresa</TableHead><TableHead>Estabelecimento</TableHead><TableHead>Documento</TableHead>
+                  <TableHead>Cadastrado por</TableHead><TableHead>Homologação</TableHead><TableHead>Necta</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {localRows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum estabelecimento cadastrado</TableCell></TableRow>}
+                  {localRows.map((r: any) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="text-sm">{r.companies?.name ?? '—'}</TableCell>
+                      <TableCell className="text-sm">
+                        {r.trade_name || r.legal_name || '—'}
+                        {r.is_own_profile && <Badge variant="outline" className="ml-2 text-[10px]">Perfil próprio</Badge>}
+                      </TableCell>
+                      <TableCell className="text-sm">{r.document ?? '—'}</TableCell>
+                      <TableCell className="text-sm">{r.creator_name}</TableCell>
+                      <TableCell><Badge variant="secondary">{r.homologation_status ?? '—'}</Badge></TableCell>
+                      <TableCell className="text-sm">
+                        {r.necta_establishment_id
+                          ? <span title={r.necta_establishment_id}>Vinculado{r.necta_status ? ` · ${r.necta_status}` : ''}</span>
+                          : <span className="text-muted-foreground">Sem vínculo</span>}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent></Card>
+          </div>
         </TabsContent>
 
         {/* ---------------- POS ---------------- */}

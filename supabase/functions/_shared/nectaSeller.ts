@@ -164,14 +164,17 @@ export async function sellerCredentials(
   return await provisionSellerCredentials(admin, est);
 }
 
-/** Lê a credencial de API já cadastrada para o estabelecimento (sem provisionar). */
-export async function savedSellerCredentials(
+/**
+ * Credencial de cobrança da EMPRESA do TAI Finance (usuário de API do Portal
+ * Necta). É a empresa que é homologada como seller — não cada estabelecimento.
+ */
+export async function companyCredentials(
   admin: any,
-  establishmentId?: string | null,
+  companyId?: string | null,
 ): Promise<NectaCreds | null> {
-  if (!establishmentId) return null;
-  const { data } = await admin.from('necta_seller_credentials')
-    .select('client_secret, secret_key').eq('establishment_id', establishmentId).maybeSingle();
+  if (!companyId) return null;
+  const { data } = await admin.from('necta_company_credentials')
+    .select('client_secret, secret_key').eq('company_id', companyId).maybeSingle();
   if (data?.client_secret && data?.secret_key) {
     return { clientSecret: data.client_secret, secretKey: data.secret_key };
   }
@@ -179,29 +182,29 @@ export async function savedSellerCredentials(
 }
 
 /**
- * Salva a credencial do usuário de API obtida no Portal Necta (aba "Tokens de API").
+ * Salva a credencial da empresa obtida no Portal Necta (aba "Tokens de API").
  * Valida em POST /auth antes de gravar — assim nunca guardamos um par inválido.
  */
-export async function saveSellerCredentials(
+export async function saveCompanyCredentials(
   admin: any,
-  establishment: { id: string; company_id?: string | null; necta_establishment_id?: string | null },
+  companyId: string,
   creds: NectaCreds,
-  tokenName?: string | null,
+  opts: { tokenName?: string | null; createdBy?: string | null } = {},
 ): Promise<void> {
   if (!creds.clientSecret || !creds.secretKey) throw new Error('Informe clientSecret e secretKey.');
   await nectaToken(creds, true); // lança se a Necta recusar o par
+  const now = new Date().toISOString();
 
-  await admin.from('necta_seller_credentials').upsert({
-    company_id: establishment.company_id ?? null,
-    establishment_id: establishment.id,
-    necta_seller_id: establishment.necta_establishment_id ?? establishment.id,
-    token_name: tokenName ?? 'Portal Necta — Tokens de API',
+  const { error } = await admin.from('necta_company_credentials').upsert({
+    company_id: companyId,
+    token_name: opts.tokenName ?? 'Portal Necta — Tokens de API',
     client_secret: creds.clientSecret,
     secret_key: creds.secretKey,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'establishment_id' });
+    validated_at: now,
+    created_by: opts.createdBy ?? null,
+    updated_at: now,
+  }, { onConflict: 'company_id' });
+  if (error) throw new Error(error.message);
 
-  await admin.from('necta_establishments')
-    .update({ has_charge_credentials: true, charge_credentials_at: new Date().toISOString() })
-    .eq('id', establishment.id);
+  await admin.from('companies').update({ necta_credentials_at: now }).eq('id', companyId);
 }

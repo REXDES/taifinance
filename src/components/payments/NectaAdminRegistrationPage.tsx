@@ -479,13 +479,13 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
       <Dialog open={!!credRow} onOpenChange={(v) => !v && setCredRow(null)}>
         <DialogContent className="max-w-lg overflow-y-auto max-h-[85vh]">
           <DialogHeader>
-            <DialogTitle>Credencial de cobrança — {credRow?.trade_name || credRow?.legal_name || ''}</DialogTitle>
+            <DialogTitle>Credencial de cobrança — {credRow?.name ?? ''}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <Alert>
               <AlertDescription className="text-xs">
                 No Portal Necta, abra a aba <strong>Tokens de API</strong> e copie as credenciais do
-                usuário de API deste estabelecimento.
+                usuário de API desta empresa.
               </AlertDescription>
             </Alert>
             <div>

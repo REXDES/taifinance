@@ -41,7 +41,11 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   const [bindTarget, setBindTarget] = useState<any | null>(null);
   const [bindEstablishment, setBindEstablishment] = useState('');
 
-  // Credenciais de cobrança (locais)
+  // Estabelecimentos cadastrados no TAI Finance (todas as empresas)
+  const [localRows, setLocalRows] = useState<any[]>([]);
+  const [sellerLinks, setSellerLinks] = useState<any[]>([]);
+
+  // Credenciais de cobrança (por empresa)
   const [credRows, setCredRows] = useState<any[]>([]);
   const [credRow, setCredRow] = useState<any | null>(null);
   const [credForm, setCredForm] = useState({ client_secret: '', secret_key: '' });
@@ -55,8 +59,24 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   const loadEstablishments = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await nectaCall<any>('/establishments');
-      setEstablishments(Array.isArray(list) ? list : (list?.data ?? []));
+      const resp = await nectaAction<any>('list_sellers');
+      setEstablishments(resp?.sellers ?? []);
+      setSellerLinks(resp?.links ?? []);
+    } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
+    try {
+      const { data, error } = await (supabase as any)
+        .from('necta_establishments')
+        .select('id, company_id, legal_name, trade_name, document, necta_establishment_id, necta_status, homologation_status, is_own_profile, is_active, created_by, created_at, companies(name)')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const rows = data ?? [];
+      const creatorIds = Array.from(new Set(rows.map((r: any) => r.created_by).filter(Boolean)));
+      let profiles: Record<string, string> = {};
+      if (creatorIds.length) {
+        const { data: profs } = await (supabase as any).from('profiles').select('user_id, full_name, email').in('user_id', creatorIds);
+        profiles = Object.fromEntries((profs ?? []).map((p: any) => [p.user_id, p.full_name || p.email]));
+      }
+      setLocalRows(rows.map((r: any) => ({ ...r, creator_name: r.created_by ? profiles[r.created_by] ?? '—' : '—' })));
     } catch (e) { toast.error((e as Error).message); }
     setLoading(false);
   }, []);
@@ -79,9 +99,10 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
 
   const loadCredRows = useCallback(async () => {
     const { data, error } = await (supabase as any)
-      .from('necta_establishments')
-      .select('id, company_id, legal_name, trade_name, document, necta_establishment_id, has_charge_credentials, charge_credentials_at, companies(name)')
-      .order('created_at', { ascending: false });
+      .from('companies')
+      .select('id, name, cnpj, payments_module_enabled, necta_credentials_at')
+      .eq('payments_module_enabled', true)
+      .order('name');
     if (error) { toast.error(error.message); return; }
     setCredRows(data ?? []);
   }, []);
@@ -90,18 +111,21 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
     if (!credRow) return;
     setCredSaving(true);
     try {
-      await nectaAction('set_seller_credentials', {
-        establishment_id: credRow.id,
+      await nectaAction('set_company_credentials', {
+        company_id: credRow.id,
         client_secret: credForm.client_secret.trim(),
         secret_key: credForm.secret_key.trim(),
       });
-      toast.success('Credencial validada e salva — o estabelecimento já pode emitir cobranças');
+      toast.success('Credencial validada e salva — a empresa já pode emitir cobranças');
       setCredRow(null);
       setCredForm({ client_secret: '', secret_key: '' });
       await loadCredRows();
     } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
     finally { setCredSaving(false); }
   };
+
+  const linkedCompanies = (sellerId: string) =>
+    sellerLinks.filter((l: any) => String(l.necta_establishment_id) === String(sellerId)).map((l: any) => l.company_name ?? '—');
 
   useEffect(() => { loadEstablishments(); loadPos(); loadPlans(); loadCredRows(); }, [loadEstablishments, loadPos, loadPlans, loadCredRows]);
 

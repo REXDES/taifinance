@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
-  marketplaceCreds, nectaRequest, provisionSellerCredentials, saveSellerCredentials, sellerCredentials,
+  marketplaceCreds, nectaRequest, provisionSellerCredentials, saveCompanyCredentials, sellerCredentials,
 } from '../_shared/nectaSeller.ts';
 
 const corsHeaders = {
@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
     });
     const { data: claims, error: cErr } = await supabase.auth.getClaims(authHeader.replace('Bearer ', ''));
     if (cErr || !claims?.claims) return json({ error: 'Unauthorized' }, 401);
+    const userId = (claims.claims as any)?.sub as string | undefined;
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const input = await req.json();

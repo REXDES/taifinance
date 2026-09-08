@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
-  marketplaceCreds, nectaRequest, provisionSellerCredentials, saveSellerCredentials, sellerCredentials,
+  marketplaceCreds, nectaRequest, provisionSellerCredentials, saveCompanyCredentials, sellerCredentials,
 } from '../_shared/nectaSeller.ts';
 
 const corsHeaders = {
@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
     });
     const { data: claims, error: cErr } = await supabase.auth.getClaims(authHeader.replace('Bearer ', ''));
     if (cErr || !claims?.claims) return json({ error: 'Unauthorized' }, 401);
+    const userId = (claims.claims as any)?.sub as string | undefined;
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const input = await req.json();
@@ -43,18 +44,19 @@ Deno.serve(async (req) => {
       return json({ ok: true, client_secret_preview: `${creds.clientSecret.slice(0, 12)}…` });
     }
 
-    // Credencial do usuário de API do Portal Necta (aba "Tokens de API"),
-    // informada manualmente — é o que a Necta exige para emitir (POST /sales).
-    if (input?.action === 'set_seller_credentials') {
-      const { data: est } = await admin.from('necta_establishments')
-        .select('id, company_id, necta_establishment_id')
-        .eq('id', input?.establishment_id).maybeSingle();
-      if (!est) return json({ error: 'Estabelecimento não encontrado' }, 404);
+    // Credencial do usuário de API do Portal Necta (aba "Tokens de API") da
+    // EMPRESA — é o que a Necta exige para emitir (POST /sales).
+    if (input?.action === 'set_company_credentials') {
+      const companyId = String(input?.company_id ?? '');
+      const { data: company } = await admin.from('companies').select('id').eq('id', companyId).maybeSingle();
+      if (!company) return json({ error: 'Empresa não encontrada' }, 404);
       const clientSecret = String(input?.client_secret ?? '').trim();
       const secretKey = String(input?.secret_key ?? '').trim();
       if (!clientSecret || !secretKey) return json({ error: 'Informe clientSecret e secretKey.' }, 400);
       try {
-        await saveSellerCredentials(admin, est as any, { clientSecret, secretKey }, input?.token_name ?? null);
+        await saveCompanyCredentials(admin, companyId, { clientSecret, secretKey }, {
+          tokenName: input?.token_name ?? null, createdBy: userId ?? null,
+        });
       } catch (e) {
         return json({ error: `Credencial recusada pela Necta: ${(e as Error).message}` }, 400);
       }
@@ -140,9 +142,13 @@ Deno.serve(async (req) => {
       const items = await listSellers();
       const ids = items.map((i: any) => String(i?.id)).filter(Boolean);
       const { data: links } = await admin.from('necta_establishments')
-        .select('id, company_id, necta_establishment_id')
+        .select('id, company_id, necta_establishment_id, companies(name)')
         .in('necta_establishment_id', ids.length ? ids : ['-']);
-      return json({ ok: true, sellers: items, links: links ?? [] });
+      const linksOut = (links ?? []).map((l: any) => ({
+        id: l.id, company_id: l.company_id, necta_establishment_id: l.necta_establishment_id,
+        company_name: l.companies?.name ?? null,
+      }));
+      return json({ ok: true, sellers: items, links: linksOut });
     }
 
     // vincula sellers escolhidos às empresas escolhidas

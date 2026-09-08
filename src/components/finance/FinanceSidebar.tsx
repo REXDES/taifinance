@@ -171,7 +171,7 @@ export function FinanceSidebar({
     isInGestao ? 'gestao'
     : machinesMenuItems.some(i => currentView === i.view) ? 'machines'
     : creditMenuItems.some(i => currentView === i.view) ? 'credit'
-    : paymentsMenuItems.some(i => currentView === i.view) ? 'payments'
+    : [...paymentsMenuItems, ...paymentsAdminMenuItems].some(i => currentView === i.view) ? 'payments'
     : null;
   const initialOpenSub: SubGroup | null =
     transacoesMenuItems.some(i => currentView === i.view) ? 'transacoes'
@@ -326,7 +326,24 @@ export function FinanceSidebar({
                 {bankDigitalEnabled && renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
                 {renderMenuItem({ view: 'credit-admin', label: 'Gestão de Crédito (config)', icon: <CreditCard className="w-4 h-4" /> })}
 
-                {paymentsAdminMenuItems.map(renderMenuItem)}
+                {collapsed ? (
+                  paymentsAdminMenuItems.map(renderMenuItem)
+                ) : (
+                  <Collapsible open={openGroup === 'payments'} onOpenChange={setGroup('payments')}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
+                        <span className="flex items-center gap-2">
+                          <CreditCard className="w-4 h-4" />
+                          Pagamentos
+                        </span>
+                        <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                      {paymentsAdminMenuItems.map(renderMenuItem)}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
 
                 {!collapsed && (
 

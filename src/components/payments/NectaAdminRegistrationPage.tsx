@@ -41,7 +41,11 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   const [bindTarget, setBindTarget] = useState<any | null>(null);
   const [bindEstablishment, setBindEstablishment] = useState('');
 
-  // Credenciais de cobrança (locais)
+  // Estabelecimentos cadastrados no TAI Finance (todas as empresas)
+  const [localRows, setLocalRows] = useState<any[]>([]);
+  const [sellerLinks, setSellerLinks] = useState<any[]>([]);
+
+  // Credenciais de cobrança (por empresa)
   const [credRows, setCredRows] = useState<any[]>([]);
   const [credRow, setCredRow] = useState<any | null>(null);
   const [credForm, setCredForm] = useState({ client_secret: '', secret_key: '' });
@@ -55,8 +59,24 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   const loadEstablishments = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await nectaCall<any>('/establishments');
-      setEstablishments(Array.isArray(list) ? list : (list?.data ?? []));
+      const resp = await nectaAction<any>('list_sellers');
+      setEstablishments(resp?.sellers ?? []);
+      setSellerLinks(resp?.links ?? []);
+    } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
+    try {
+      const { data, error } = await (supabase as any)
+        .from('necta_establishments')
+        .select('id, company_id, legal_name, trade_name, document, necta_establishment_id, necta_status, homologation_status, is_own_profile, is_active, created_by, created_at, companies(name)')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const rows = data ?? [];
+      const creatorIds = Array.from(new Set(rows.map((r: any) => r.created_by).filter(Boolean)));
+      let profiles: Record<string, string> = {};
+      if (creatorIds.length) {
+        const { data: profs } = await (supabase as any).from('profiles').select('user_id, full_name, email').in('user_id', creatorIds);
+        profiles = Object.fromEntries((profs ?? []).map((p: any) => [p.user_id, p.full_name || p.email]));
+      }
+      setLocalRows(rows.map((r: any) => ({ ...r, creator_name: r.created_by ? profiles[r.created_by] ?? '—' : '—' })));
     } catch (e) { toast.error((e as Error).message); }
     setLoading(false);
   }, []);
@@ -79,9 +99,10 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
 
   const loadCredRows = useCallback(async () => {
     const { data, error } = await (supabase as any)
-      .from('necta_establishments')
-      .select('id, company_id, legal_name, trade_name, document, necta_establishment_id, has_charge_credentials, charge_credentials_at, companies(name)')
-      .order('created_at', { ascending: false });
+      .from('companies')
+      .select('id, name, cnpj, payments_module_enabled, necta_credentials_at')
+      .eq('payments_module_enabled', true)
+      .order('name');
     if (error) { toast.error(error.message); return; }
     setCredRows(data ?? []);
   }, []);
@@ -90,18 +111,21 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
     if (!credRow) return;
     setCredSaving(true);
     try {
-      await nectaAction('set_seller_credentials', {
-        establishment_id: credRow.id,
+      await nectaAction('set_company_credentials', {
+        company_id: credRow.id,
         client_secret: credForm.client_secret.trim(),
         secret_key: credForm.secret_key.trim(),
       });
-      toast.success('Credencial validada e salva — o estabelecimento já pode emitir cobranças');
+      toast.success('Credencial validada e salva — a empresa já pode emitir cobranças');
       setCredRow(null);
       setCredForm({ client_secret: '', secret_key: '' });
       await loadCredRows();
     } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
     finally { setCredSaving(false); }
   };
+
+  const linkedCompanies = (sellerId: string) =>
+    sellerLinks.filter((l: any) => String(l.necta_establishment_id) === String(sellerId)).map((l: any) => l.company_name ?? '—');
 
   useEffect(() => { loadEstablishments(); loadPos(); loadPlans(); loadCredRows(); }, [loadEstablishments, loadPos, loadPlans, loadCredRows]);
 
@@ -259,26 +283,67 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
             <Button size="sm" onClick={() => setEstOpen(true)}><Plus className="w-4 h-4 mr-2" />Novo estabelecimento</Button>
           </div>
 
-          <Card><CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Nome</TableHead><TableHead>Documento</TableHead><TableHead>E-mail</TableHead>
-                <TableHead>Cidade/UF</TableHead><TableHead>Situação</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {establishments.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum estabelecimento</TableCell></TableRow>}
-                {establishments.map((e: any) => (
-                  <TableRow key={e.id}>
-                    <TableCell>{e.name}</TableCell>
-                    <TableCell>{e.document}</TableCell>
-                    <TableCell>{e.email}</TableCell>
-                    <TableCell>{e.address ? `${e.address.city}/${e.address.state}` : '—'}</TableCell>
-                    <TableCell><Badge variant="secondary">{e.status?.name ?? '—'}</Badge></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
+          <div>
+            <h2 className="text-sm font-semibold mb-2">Sellers no marketplace Pagando (Necta)</h2>
+            <Card><CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Nome</TableHead><TableHead>Documento</TableHead><TableHead>E-mail</TableHead>
+                  <TableHead>Cidade/UF</TableHead><TableHead>Situação Necta</TableHead><TableHead>Empresa TAI vinculada</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {establishments.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum seller</TableCell></TableRow>}
+                  {establishments.map((e: any) => {
+                    const linked = linkedCompanies(e.id);
+                    return (
+                      <TableRow key={e.id}>
+                        <TableCell>{e.name}</TableCell>
+                        <TableCell>{e.document}</TableCell>
+                        <TableCell>{e.email}</TableCell>
+                        <TableCell>{e.address ? `${e.address.city}/${e.address.state}` : '—'}</TableCell>
+                        <TableCell><Badge variant="secondary">{e.status?.name ?? e.status ?? '—'}</Badge></TableCell>
+                        <TableCell className="text-sm">
+                          {linked.length ? linked.join(', ') : <span className="text-muted-foreground">Não vinculado</span>}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent></Card>
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold mb-2">Estabelecimentos cadastrados no TAI Finance</h2>
+            <Card><CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Empresa</TableHead><TableHead>Estabelecimento</TableHead><TableHead>Documento</TableHead>
+                  <TableHead>Cadastrado por</TableHead><TableHead>Homologação</TableHead><TableHead>Necta</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {localRows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum estabelecimento cadastrado</TableCell></TableRow>}
+                  {localRows.map((r: any) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="text-sm">{r.companies?.name ?? '—'}</TableCell>
+                      <TableCell className="text-sm">
+                        {r.trade_name || r.legal_name || '—'}
+                        {r.is_own_profile && <Badge variant="outline" className="ml-2 text-[10px]">Perfil próprio</Badge>}
+                      </TableCell>
+                      <TableCell className="text-sm">{r.document ?? '—'}</TableCell>
+                      <TableCell className="text-sm">{r.creator_name}</TableCell>
+                      <TableCell><Badge variant="secondary">{r.homologation_status ?? '—'}</Badge></TableCell>
+                      <TableCell className="text-sm">
+                        {r.necta_establishment_id
+                          ? <span title={r.necta_establishment_id}>Vinculado{r.necta_status ? ` · ${r.necta_status}` : ''}</span>
+                          : <span className="text-muted-foreground">Sem vínculo</span>}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent></Card>
+          </div>
         </TabsContent>
 
         {/* ---------------- POS ---------------- */}
@@ -358,9 +423,9 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
         <TabsContent value="credentials" className="space-y-3">
           <Alert>
             <AlertDescription className="text-xs">
-              As credenciais do usuário de API ficam no Portal Necta, aba <strong>Tokens de API</strong>.
-              Elas são validadas na Necta antes de serem salvas e usadas somente na emissão das cobranças.
-              O usuário final não precisa conhecê-las.
+              Cada <strong>empresa</strong> homologada na Necta tem seu próprio usuário de API (Portal Necta, aba <strong>Tokens de API</strong>).
+              A credencial é validada na Necta antes de ser salva e usada em todas as cobranças da empresa.
+              O usuário final não precisa conhecê-la.
             </AlertDescription>
           </Alert>
 
@@ -373,23 +438,22 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
           <Card><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Empresa</TableHead><TableHead>Estabelecimento</TableHead><TableHead>Documento</TableHead>
+                <TableHead>Empresa</TableHead><TableHead>CNPJ</TableHead>
                 <TableHead>Situação</TableHead><TableHead className="text-right">Ações</TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {credRows.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum estabelecimento cadastrado</TableCell></TableRow>}
+                {credRows.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhuma empresa com o módulo Pagamentos ativo</TableCell></TableRow>}
                 {credRows.map((r: any) => (
                   <TableRow key={r.id}>
-                    <TableCell className="text-sm">{r.companies?.name ?? '—'}</TableCell>
-                    <TableCell className="text-sm">{r.trade_name || r.legal_name || '—'}</TableCell>
-                    <TableCell className="text-sm">{r.document ?? '—'}</TableCell>
+                    <TableCell className="text-sm">{r.name}</TableCell>
+                    <TableCell className="text-sm">{r.cnpj ?? '—'}</TableCell>
                     <TableCell>
-                      {r.has_charge_credentials
-                        ? <Badge variant="default">Pronto para cobrar</Badge>
+                      {r.necta_credentials_at
+                        ? <Badge variant="default">Pronta para cobrar</Badge>
                         : <Badge variant="outline">Aguardando liberação</Badge>}
-                      {r.charge_credentials_at && (
+                      {r.necta_credentials_at && (
                         <p className="text-[10px] text-muted-foreground mt-1">
-                          desde {new Date(r.charge_credentials_at).toLocaleDateString('pt-BR')}
+                          desde {new Date(r.necta_credentials_at).toLocaleDateString('pt-BR')}
                         </p>
                       )}
                     </TableCell>
@@ -400,7 +464,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
                         onClick={() => { setCredRow(r); setCredForm({ client_secret: '', secret_key: '' }); }}
                       >
                         <KeyRound className="w-4 h-4 mr-2" />
-                        {r.has_charge_credentials ? 'Atualizar' : 'Informar'}
+                        {r.necta_credentials_at ? 'Atualizar' : 'Informar'}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -415,13 +479,13 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
       <Dialog open={!!credRow} onOpenChange={(v) => !v && setCredRow(null)}>
         <DialogContent className="max-w-lg overflow-y-auto max-h-[85vh]">
           <DialogHeader>
-            <DialogTitle>Credencial de cobrança — {credRow?.trade_name || credRow?.legal_name || ''}</DialogTitle>
+            <DialogTitle>Credencial de cobrança — {credRow?.name ?? ''}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <Alert>
               <AlertDescription className="text-xs">
                 No Portal Necta, abra a aba <strong>Tokens de API</strong> e copie as credenciais do
-                usuário de API deste estabelecimento.
+                usuário de API desta empresa.
               </AlertDescription>
             </Alert>
             <div>

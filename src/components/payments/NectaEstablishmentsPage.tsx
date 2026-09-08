@@ -94,16 +94,23 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
   const [importing, setImporting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
+  // Liberação de cobrança é por EMPRESA (credencial cadastrada no Modo Administrativo)
+  const [companyReady, setCompanyReady] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from('necta_establishments')
-      .select('*')
-      .eq('company_id', companyId)
-      .eq('is_own_profile', false)
-      .order('created_at', { ascending: false });
+    const [{ data, error }, { data: company }] = await Promise.all([
+      (supabase as any)
+        .from('necta_establishments')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('is_own_profile', false)
+        .order('created_at', { ascending: false }),
+      (supabase as any).from('companies').select('necta_credentials_at').eq('id', companyId).maybeSingle(),
+    ]);
     if (error) toast.error(error.message);
     setRows(data ?? []);
+    setCompanyReady(!!company?.necta_credentials_at);
     setLoading(false);
   }, [companyId]);
 
@@ -373,7 +380,7 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
                           )}
                         </TableCell>
                         <TableCell>
-                          {row.has_charge_credentials ? (
+                          {companyReady && row.necta_establishment_id ? (
                             <Badge variant="default">Pronto para cobrar</Badge>
                           ) : (
                             <Badge variant="outline">Aguardando liberação</Badge>

@@ -1,12 +1,17 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
-  marketplaceCreds, nectaRequest, provisionSellerCredentials, saveCompanyCredentials, sellerCredentials,
+  marketplaceCreds, nectaBaseUrl, nectaRequest, nectaToken, provisionSellerCredentials, saveCompanyCredentials, sellerCredentials,
 } from '../_shared/nectaSeller.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
+
+const hashPublicToken = async (token: string) => {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(bytes)).map((value) => value.toString(16).padStart(2, '0')).join('');
 };
 
 // Proxy autenticado da API Necta Multi-Pay.
@@ -33,6 +38,107 @@ Deno.serve(async (req) => {
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const input = await req.json();
+
+    if (input?.action === 'create_homologation_link') {
+      const establishmentId = String(input?.establishment_id ?? '');
+      const { data: establishment } = await admin.from('necta_establishments')
+        .select('id, company_id').eq('id', establishmentId).maybeSingle();
+      if (!establishment?.company_id) return json({ error: 'Estabelecimento não encontrado.' }, 404);
+      const { data: hasAccess } = await supabase.rpc('has_company_access', {
+        _user_id: userId,
+        _company_id: establishment.company_id,
+      });
+      if (!hasAccess) return json({ error: 'Sem acesso a esta empresa.' }, 403);
+      const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll('-', '');
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: request, error } = await admin.from('necta_homologation_requests').insert({
+        company_id: establishment.company_id,
+        establishment_id: establishment.id,
+        public_token_hash: await hashPublicToken(token),
+        expires_at: expiresAt,
+        status: 'waiting_client',
+        created_by: userId ?? null,
+      }).select('id').single();
+      if (error) throw error;
+      return json({ ok: true, request_id: request.id, token, expires_at: expiresAt });
+    }
+
+    if (input?.action === 'submit_homologation') {
+      const requestId = String(input?.request_id ?? '');
+      const { data: request } = await admin.from('necta_homologation_requests')
+        .select('*, necta_establishments(*)').eq('id', requestId).maybeSingle();
+      if (!request?.company_id || !request?.necta_establishments) return json({ error: 'Solicitação não encontrada.' }, 404);
+      const { data: hasAccess } = await supabase.rpc('has_company_access', { _user_id: userId, _company_id: request.company_id });
+      if (!hasAccess) return json({ error: 'Sem acesso a esta empresa.' }, 403);
+      if (request.status !== 'ready') return json({ error: 'O cliente ainda não concluiu o cadastro.' }, 400);
+
+      const row = request.necta_establishments as any;
+      const legalPerson = row.person_type === 'PF' ? 'PHYSICAL' : 'JURIDICAL';
+      const establishmentPayload: Record<string, unknown> = {
+        name: String(row.legal_name ?? '').trim(), document: String(row.document ?? '').replace(/\D/g, ''),
+        email: String(row.email ?? '').trim().toLowerCase(), phone: String(row.phone ?? '').replace(/\D/g, ''),
+        legalPerson, birthDate: legalPerson === 'PHYSICAL' ? row.birth_date : row.opening_date,
+        mccId: row.mcc_id,
+        address: {
+          street: row.address_street, number: row.address_number || 'S/N', neighborhood: row.address_district,
+          city: row.address_city, state: String(row.address_state ?? '').toUpperCase(), country: 'BR',
+          postalCode: String(row.address_zip ?? '').replace(/\D/g, ''), complement: row.address_complement || undefined,
+        },
+        bankAccount: {
+          document: String(row.bank_account_document || row.document || '').replace(/\D/g, ''),
+          corporateName: row.bank_account_holder || row.legal_name, legalPerson,
+          bankCode: row.bank_code, compeCode: row.bank_code, bankName: row.bank_name || undefined,
+          agencyNumber: String(row.bank_agency ?? '').replace(/\D/g, ''),
+          accountNumber: String(row.bank_account ?? '').replace(/\s/g, ''),
+          accountType: row.bank_account_type || 'CHECKING', type: row.bank_account_type || 'CHECKING', active: true,
+        },
+      };
+      if (row.legal_nature) establishmentPayload.legalNature = String(row.legal_nature).replace(/\D/g, '');
+      if (row.opening_date) establishmentPayload.openingDate = row.opening_date;
+      if (row.revenue !== null) establishmentPayload.revenue = String(row.revenue);
+
+      let nectaId = row.necta_establishment_id;
+      if (!nectaId) {
+        const created = await nectaRequest('/establishments', 'POST', establishmentPayload, undefined, marketplaceCreds());
+        nectaId = created?.id;
+        if (!nectaId) return json({ error: 'A Necta não devolveu o identificador do estabelecimento.' }, 502);
+        await admin.from('necta_establishments').update({
+          necta_establishment_id: String(nectaId), homologation_status: 'pending', necta_status: created?.status?.name ?? null,
+          homologation_sent_at: new Date().toISOString(), raw: created,
+        }).eq('id', row.id);
+      }
+
+      const { data: documents } = await admin.from('necta_homologation_documents').select('*').eq('request_id', request.id);
+      if (!documents?.length) return json({ error: 'Nenhum documento foi anexado.' }, 400);
+      const uploadFiles: Array<{ blob: Blob; name: string }> = [];
+      for (let index = 0; index < documents.length; index++) {
+        const document = documents[index];
+        const { data: blob, error: downloadError } = await admin.storage.from('necta-homologation-documents').download(document.storage_path);
+        if (downloadError || !blob) throw downloadError ?? new Error('Arquivo não encontrado.');
+        uploadFiles.push({ blob, name: document.file_name });
+      }
+      const createMultipart = () => {
+        const multipart = new FormData();
+        uploadFiles.forEach((file, index) => multipart.append(`merchantDocumentList[${index}]`, file.blob, file.name));
+        return multipart;
+      };
+      let token = await nectaToken(marketplaceCreds());
+      let uploadResponse = await fetch(`${nectaBaseUrl()}/establishments/${encodeURIComponent(String(nectaId))}/documents`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, body: createMultipart(),
+      });
+      if (uploadResponse.status === 401) {
+        token = await nectaToken(marketplaceCreds(), true);
+        uploadResponse = await fetch(`${nectaBaseUrl()}/establishments/${encodeURIComponent(String(nectaId))}/documents`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, body: createMultipart(),
+        });
+      }
+      const uploadText = await uploadResponse.text();
+      if (!uploadResponse.ok) return json({ error: `Necta documentos [${uploadResponse.status}]: ${uploadText}` }, 400);
+      const now = new Date().toISOString();
+      await admin.from('necta_homologation_documents').update({ status: 'sent', sent_at: now }).eq('request_id', request.id);
+      await admin.from('necta_homologation_requests').update({ status: 'submitted', submitted_at: now }).eq('id', request.id);
+      return json({ ok: true, establishment_id: nectaId });
+    }
 
     // ------------------------------------------- credencial de cobrança do seller
     if (input?.action === 'provision_seller_token') {

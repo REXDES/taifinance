@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Plus, RefreshCw, Link2, Unlink, Trash2, KeyRound } from 'lucide-react';
+import { Loader2, Plus, RefreshCw, Link2, Unlink, Trash2, KeyRound, ClipboardCopy, Send } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { translateGatewayError } from '@/lib/nectaFormat';
 import { NectaSellerLinkDialog } from '@/components/payments/NectaSellerLinkDialog';
@@ -44,6 +44,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   // Estabelecimentos cadastrados no TAI Finance (todas as empresas)
   const [localRows, setLocalRows] = useState<any[]>([]);
   const [sellerLinks, setSellerLinks] = useState<any[]>([]);
+  const [homologationRequests, setHomologationRequests] = useState<any[]>([]);
 
   // Credenciais de cobrança (por empresa)
   const [credRows, setCredRows] = useState<any[]>([]);
@@ -107,6 +108,36 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
     setCredRows(data ?? []);
   }, []);
 
+  const loadHomologationRequests = useCallback(async () => {
+    const { data, error } = await (supabase as any).from('necta_homologation_requests')
+      .select('id, establishment_id, status, expires_at, client_completed_at, rejection_reason, created_at')
+      .order('created_at', { ascending: false });
+    if (error) { toast.error(error.message); return; }
+    setHomologationRequests(data ?? []);
+  }, []);
+
+  const latestRequest = (establishmentId: string) => homologationRequests.find((request: any) => request.establishment_id === establishmentId);
+
+  const createHomologationLink = async (establishmentId: string) => {
+    try {
+      const response = await nectaAction<any>('create_homologation_link', { establishment_id: establishmentId });
+      const url = `${window.location.origin}/pagamentos/homologacao/${response.token}`;
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copiado', { description: 'Envie-o ao cliente. Ele é válido por 7 dias.' });
+      await loadHomologationRequests();
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  const submitHomologation = async (requestId: string) => {
+    setLoading(true);
+    try {
+      await nectaAction('submit_homologation', { request_id: requestId });
+      toast.success('Cadastro e documentos enviados à Necta');
+      await Promise.all([loadEstablishments(), loadHomologationRequests()]);
+    } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
+    finally { setLoading(false); }
+  };
+
   const saveCredentials = async () => {
     if (!credRow) return;
     setCredSaving(true);
@@ -127,7 +158,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
   const linkedCompanies = (sellerId: string) =>
     sellerLinks.filter((l: any) => String(l.necta_establishment_id) === String(sellerId)).map((l: any) => l.company_name ?? '—');
 
-  useEffect(() => { loadEstablishments(); loadPos(); loadPlans(); loadCredRows(); }, [loadEstablishments, loadPos, loadPlans, loadCredRows]);
+  useEffect(() => { loadEstablishments(); loadPos(); loadPlans(); loadCredRows(); loadHomologationRequests(); }, [loadEstablishments, loadPos, loadPlans, loadCredRows, loadHomologationRequests]);
 
   const createEstablishment = async () => {
     const required = ['name', 'document', 'email', 'phone', 'street', 'number', 'neighborhood', 'city', 'state', 'postalCode'];
@@ -319,11 +350,13 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Empresa</TableHead><TableHead>Estabelecimento</TableHead><TableHead>Documento</TableHead>
-                  <TableHead>Cadastrado por</TableHead><TableHead>Homologação</TableHead><TableHead>Necta</TableHead>
+                  <TableHead>Cadastrado por</TableHead><TableHead>Homologação</TableHead><TableHead>Necta</TableHead><TableHead className="text-right">Cadastro do cliente</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {localRows.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum estabelecimento cadastrado</TableCell></TableRow>}
-                  {localRows.map((r: any) => (
+                  {localRows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum estabelecimento cadastrado</TableCell></TableRow>}
+                  {localRows.map((r: any) => {
+                    const request = latestRequest(r.id);
+                    return (
                     <TableRow key={r.id}>
                       <TableCell className="text-sm">{r.companies?.name ?? '—'}</TableCell>
                       <TableCell className="text-sm">
@@ -338,8 +371,17 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
                           ? <span title={r.necta_establishment_id}>Vinculado{r.necta_status ? ` · ${r.necta_status}` : ''}</span>
                           : <span className="text-muted-foreground">Sem vínculo</span>}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {request && <Badge variant={request.status === 'ready' ? 'default' : 'outline'}>{request.status === 'ready' ? 'Pronto para revisar' : request.status === 'waiting_client' ? 'Aguardando cliente' : request.status}</Badge>}
+                          <Button size="sm" variant="outline" onClick={() => createHomologationLink(r.id)}>
+                            {request ? <ClipboardCopy className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />}{request ? 'Novo link' : 'Gerar link'}
+                          </Button>
+                          {request?.status === 'ready' && <Button size="sm" onClick={() => submitHomologation(request.id)} disabled={loading}>Enviar à Necta</Button>}
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
             </CardContent></Card>

@@ -2807,6 +2807,194 @@ export type Database = {
           },
         ]
       }
+      necta_homologation_documents: {
+        Row: {
+          company_id: string
+          document_type: string
+          establishment_id: string
+          file_name: string
+          file_size: number
+          id: string
+          mime_type: string
+          necta_response: Json | null
+          rejection_reason: string | null
+          request_id: string
+          sent_at: string | null
+          status: string
+          storage_path: string
+          uploaded_at: string
+        }
+        Insert: {
+          company_id: string
+          document_type: string
+          establishment_id: string
+          file_name: string
+          file_size: number
+          id?: string
+          mime_type: string
+          necta_response?: Json | null
+          rejection_reason?: string | null
+          request_id: string
+          sent_at?: string | null
+          status?: string
+          storage_path: string
+          uploaded_at?: string
+        }
+        Update: {
+          company_id?: string
+          document_type?: string
+          establishment_id?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          necta_response?: Json | null
+          rejection_reason?: string | null
+          request_id?: string
+          sent_at?: string | null
+          status?: string
+          storage_path?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_homologation_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_homologation_documents_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "necta_establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_homologation_documents_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "necta_homologation_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_homologation_requests: {
+        Row: {
+          client_completed_at: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          establishment_id: string
+          expires_at: string
+          id: string
+          last_opened_at: string | null
+          public_token_hash: string
+          rejection_reason: string | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_completed_at?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          establishment_id: string
+          expires_at?: string
+          id?: string
+          last_opened_at?: string | null
+          public_token_hash: string
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_completed_at?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          establishment_id?: string
+          expires_at?: string
+          id?: string
+          last_opened_at?: string | null
+          public_token_hash?: string
+          rejection_reason?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_homologation_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_homologation_requests_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "necta_establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_homologation_terms: {
+        Row: {
+          accepted_at: string
+          company_id: string
+          establishment_id: string
+          id: string
+          request_id: string
+          term_slug: string
+          term_version: string | null
+        }
+        Insert: {
+          accepted_at?: string
+          company_id: string
+          establishment_id: string
+          id?: string
+          request_id: string
+          term_slug: string
+          term_version?: string | null
+        }
+        Update: {
+          accepted_at?: string
+          company_id?: string
+          establishment_id?: string
+          id?: string
+          request_id?: string
+          term_slug?: string
+          term_version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_homologation_terms_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_homologation_terms_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "necta_establishments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_homologation_terms_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "necta_homologation_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       necta_pos: {
         Row: {
           bound_at: string | null

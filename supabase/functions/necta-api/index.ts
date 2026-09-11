@@ -9,6 +9,11 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const hashPublicToken = async (token: string) => {
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(bytes)).map((value) => value.toString(16).padStart(2, '0')).join('');
+};
+
 // Proxy autenticado da API Necta Multi-Pay.
 // body genérico: { path: '/sales', method?: 'GET', query?, body?, establishment_id? }
 //   `establishment_id` autentica em nome daquele seller (necessário para escrita
@@ -33,6 +38,25 @@ Deno.serve(async (req) => {
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const input = await req.json();
+
+    if (input?.action === 'create_homologation_link') {
+      const establishmentId = String(input?.establishment_id ?? '');
+      const { data: establishment } = await admin.from('necta_establishments')
+        .select('id, company_id').eq('id', establishmentId).maybeSingle();
+      if (!establishment?.company_id) return json({ error: 'Estabelecimento não encontrado.' }, 404);
+      const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll('-', '');
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: request, error } = await admin.from('necta_homologation_requests').insert({
+        company_id: establishment.company_id,
+        establishment_id: establishment.id,
+        public_token_hash: await hashPublicToken(token),
+        expires_at: expiresAt,
+        status: 'waiting_client',
+        created_by: userId ?? null,
+      }).select('id').single();
+      if (error) throw error;
+      return json({ ok: true, request_id: request.id, token, expires_at: expiresAt });
+    }
 
     // ------------------------------------------- credencial de cobrança do seller
     if (input?.action === 'provision_seller_token') {

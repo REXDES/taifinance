@@ -128,6 +128,16 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
     } catch (e) { toast.error((e as Error).message); }
   };
 
+  const submitHomologation = async (requestId: string) => {
+    setLoading(true);
+    try {
+      await nectaAction('submit_homologation', { request_id: requestId });
+      toast.success('Cadastro e documentos enviados à Necta');
+      await Promise.all([loadEstablishments(), loadHomologationRequests()]);
+    } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
+    finally { setLoading(false); }
+  };
+
   const saveCredentials = async () => {
     if (!credRow) return;
     setCredSaving(true);
@@ -367,6 +377,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
                           <Button size="sm" variant="outline" onClick={() => createHomologationLink(r.id)}>
                             {request ? <ClipboardCopy className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />}{request ? 'Novo link' : 'Gerar link'}
                           </Button>
+                          {request?.status === 'ready' && <Button size="sm" onClick={() => submitHomologation(request.id)} disabled={loading}>Enviar à Necta</Button>}
                         </div>
                       </TableCell>
                     </TableRow>

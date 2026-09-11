@@ -11,7 +11,7 @@
 
 export interface NectaCreds { clientSecret: string; secretKey: string }
 
-const baseUrl = () =>
+export const nectaBaseUrl = () =>
   (Deno.env.get('NECTA_API_BASE_URL') ?? 'https://api-gateway.nectaco.com.br').replace(/\/$/, '');
 
 export const marketplaceCreds = (): NectaCreds => ({
@@ -26,7 +26,7 @@ export async function nectaToken(creds?: NectaCreds | null, force = false): Prom
   const key = c.clientSecret;
   const cached = tokens.get(key);
   if (!force && cached && cached.expiresAt > Date.now()) return cached.token;
-  const r = await fetch(`${baseUrl()}/auth`, {
+  const r = await fetch(`${nectaBaseUrl()}/auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ clientSecret: c.clientSecret, secretKey: c.secretKey }),
@@ -63,7 +63,7 @@ export async function nectaRequest(
   for (const [k, v] of Object.entries(query ?? {})) {
     if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
   }
-  const url = `${baseUrl()}${path}${qs.toString() ? `?${qs}` : ''}`;
+  const url = `${nectaBaseUrl()}${path}${qs.toString() ? `?${qs}` : ''}`;
   const run = async (token: string) => fetch(url, {
     method,
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },

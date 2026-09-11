@@ -43,7 +43,10 @@ export default function NectaHomologationPublic() {
     try {
       const response = await call(token, { action: 'get' }) as Payload;
       setData(response); setForm(response.establishment ?? {});
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível abrir o formulário.'); }
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : '';
+      setError(message.includes('non-2xx') ? 'Este link é inválido ou expirou. Solicite um novo link à empresa.' : message || 'Não foi possível abrir o formulário.');
+    }
     finally { setLoading(false); }
   }, [token]);
   useEffect(() => { load(); }, [load]);

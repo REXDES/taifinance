@@ -44,6 +44,11 @@ Deno.serve(async (req) => {
       const { data: establishment } = await admin.from('necta_establishments')
         .select('id, company_id').eq('id', establishmentId).maybeSingle();
       if (!establishment?.company_id) return json({ error: 'Estabelecimento não encontrado.' }, 404);
+      const { data: hasAccess } = await supabase.rpc('has_company_access', {
+        _user_id: userId,
+        _company_id: establishment.company_id,
+      });
+      if (!hasAccess) return json({ error: 'Sem acesso a esta empresa.' }, 403);
       const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll('-', '');
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       const { data: request, error } = await admin.from('necta_homologation_requests').insert({

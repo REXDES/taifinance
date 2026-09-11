@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 const Finance = lazy(() => import("./pages/Finance"));
 const PixCopy = lazy(() => import("./pages/PixCopy"));
 const CreditBiometryPublic = lazy(() => import("./pages/CreditBiometryPublic"));
+const NectaHomologationPublic = lazy(() => import("./pages/NectaHomologationPublic"));
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/pix/copiar" element={<PixCopy />} />
                 <Route path="/credit/biometry/:token" element={<CreditBiometryPublic />} />
+                <Route path="/pagamentos/homologacao/:token" element={<NectaHomologationPublic />} />
                 <Route
                   path="/"
                   element={

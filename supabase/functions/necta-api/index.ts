@@ -110,21 +110,26 @@ Deno.serve(async (req) => {
 
       const { data: documents } = await admin.from('necta_homologation_documents').select('*').eq('request_id', request.id);
       if (!documents?.length) return json({ error: 'Nenhum documento foi anexado.' }, 400);
-      const multipart = new FormData();
+      const uploadFiles: Array<{ blob: Blob; name: string }> = [];
       for (let index = 0; index < documents.length; index++) {
         const document = documents[index];
         const { data: blob, error: downloadError } = await admin.storage.from('necta-homologation-documents').download(document.storage_path);
         if (downloadError || !blob) throw downloadError ?? new Error('Arquivo não encontrado.');
-        multipart.append(`merchantDocumentList[${index}]`, blob, document.file_name);
+        uploadFiles.push({ blob, name: document.file_name });
       }
+      const createMultipart = () => {
+        const multipart = new FormData();
+        uploadFiles.forEach((file, index) => multipart.append(`merchantDocumentList[${index}]`, file.blob, file.name));
+        return multipart;
+      };
       let token = await nectaToken(marketplaceCreds());
       let uploadResponse = await fetch(`${nectaBaseUrl()}/establishments/${encodeURIComponent(String(nectaId))}/documents`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, body: multipart,
+        method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, body: createMultipart(),
       });
       if (uploadResponse.status === 401) {
         token = await nectaToken(marketplaceCreds(), true);
         uploadResponse = await fetch(`${nectaBaseUrl()}/establishments/${encodeURIComponent(String(nectaId))}/documents`, {
-          method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, body: multipart,
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, body: createMultipart(),
         });
       }
       const uploadText = await uploadResponse.text();

@@ -95,7 +95,7 @@ function extractFields(resp: any, billet?: any) {
     provider_status: providerStatus,
     status_reference: str(resp?.status?.reference),
     // PIX: `qrCode` é o EMV (copia e cola). A imagem do QR é gerada no app.
-    pix_copy_paste: str(resp?.qrCode ?? resp?.emv ?? resp?.qrCodeText ?? resp?.copyPaste),
+    pix_copy_paste: str(resp?.qrCode ?? resp?.emv ?? resp?.qrCodeText ?? resp?.copyPaste ?? billet?.pixQrCode),
     pix_qr_code: str(resp?.qrCodeImage ?? resp?.qrCodeBase64),
     boleto_digitable_line: str(billet?.numberCode ?? resp?.numberCode ?? resp?.digitableLine),
     boleto_barcode: str(billet?.barCode ?? resp?.barCode),
@@ -233,6 +233,7 @@ Deno.serve(async (req) => {
       // com `paymentMethod` no corpo — pix-cappta (bolepix) virou bank_slip nos gateways
       // que o suportam, que já devolve o QR PIX embutido junto do boleto.
       let resp: any;
+      let sentBody: Record<string, unknown> | null = null;
       let saleDetail: any = null;
       let billet: any = null;
       try {
@@ -296,7 +297,17 @@ Deno.serve(async (req) => {
           }
           // POST /sales só devolve { id, externalId, status } — QR/linha digitável/boleto
           // só vêm em seguida, via GET /sales/{id} (+ GET /sales/{id}/billet para boleto).
-          resp = await api('/sales', 'POST', body, undefined, creds);
+          sentBody = body;
+          try {
+            resp = await api('/sales', 'POST', body, undefined, creds);
+          } catch (err) {
+            // A Necta às vezes devolve 502 "upstream error" (falha transitória do
+            // adquirente). Uma segunda tentativa costuma resolver.
+            if (/\[50\d\]/.test((err as Error).message)) {
+              await new Promise(r => setTimeout(r, 1500));
+              resp = await api('/sales', 'POST', body, undefined, creds);
+            } else throw err;
+          }
           const saleUuid = resp?.id;
           if (saleUuid) {
             saleDetail = await api(`/sales/${saleUuid}`, 'GET', undefined, undefined, creds).catch(() => null);
@@ -310,7 +321,7 @@ Deno.serve(async (req) => {
         const raw = (e as Error).message;
         const msg = translateGatewayError(raw);
         await admin.from('necta_sales')
-          .update({ sync_error: msg, last_sync_at: new Date().toISOString(), raw: { error: raw } })
+          .update({ sync_error: msg, last_sync_at: new Date().toISOString(), raw: { error: raw, request: sentBody } })
           .eq('id', saleId);
         return json({ error: msg }, 502);
       }

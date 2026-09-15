@@ -346,7 +346,17 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
           </div>
 
           <div>
-            <h2 className="text-sm font-semibold mb-2">Estabelecimentos cadastrados no TAI Finance</h2>
+            <div className="flex items-center justify-between mb-2 gap-2">
+              <h2 className="text-sm font-semibold">Estabelecimentos cadastrados no TAI Finance</h2>
+              <Select value={originFilter} onValueChange={setOriginFilter}>
+                <SelectTrigger className="w-[220px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="local">Cadastros das empresas</SelectItem>
+                  <SelectItem value="marketplace">Importados do marketplace</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Card><CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader><TableRow>
@@ -354,8 +364,8 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
                   <TableHead>Cadastrado por</TableHead><TableHead>Homologação</TableHead><TableHead>Necta</TableHead><TableHead className="text-right">Cadastro do cliente</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {localRows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum estabelecimento cadastrado</TableCell></TableRow>}
-                  {localRows.map((r: any) => {
+                  {localRows.filter((r: any) => originFilter === 'all' || (r.origin ?? 'local') === originFilter).length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum estabelecimento cadastrado</TableCell></TableRow>}
+                  {localRows.filter((r: any) => originFilter === 'all' || (r.origin ?? 'local') === originFilter).map((r: any) => {
                     const request = latestRequest(r.id);
                     return (
                     <TableRow key={r.id}>
@@ -363,6 +373,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
                       <TableCell className="text-sm">
                         {r.trade_name || r.legal_name || '—'}
                         {r.is_own_profile && <Badge variant="outline" className="ml-2 text-[10px]">Perfil próprio</Badge>}
+                        {(r.origin ?? 'local') === 'marketplace' && <Badge variant="secondary" className="ml-2 text-[10px]">Marketplace</Badge>}
                       </TableCell>
                       <TableCell className="text-sm">{r.document ?? '—'}</TableCell>
                       <TableCell className="text-sm">{r.creator_name}</TableCell>

@@ -543,26 +543,24 @@ export function NectaChargesPage({ companyId }: Props) {
           <DialogHeader>
             <DialogTitle>Nova cobrança</DialogTitle>
             <DialogDescription>
-              A cobrança é emitida em nome do estabelecimento recebedor (seller) selecionado na Necta
+              A cobrança é emitida sempre em nome da sua empresa
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label>Estabelecimento recebedor</Label>
-              <Select value={form.establishment_id} onValueChange={(v) => setForm(f => ({ ...f, establishment_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione o recebedor" /></SelectTrigger>
-                <SelectContent>
-                  {receivers.map(r => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {(r.trade_name || r.legal_name || 'Estabelecimento')}
-                      {r.document ? ` — ${maskDocument(r.document)}` : ''}
-                      {r.is_own_profile ? ' (meu perfil)' : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {receivers.length === 0 && (
+            <div><Label>Recebedor</Label>
+              <div className="rounded-md border px-3 py-2 text-sm bg-muted/40">
+                {receiver
+                  ? <>{receiver.name || companyName}{receiver.document ? ` — ${maskDocument(receiver.document)}` : ''}</>
+                  : <span className="text-muted-foreground">Nenhum recebedor liberado</span>}
+              </div>
+              {!receiver && (
                 <p className="text-xs text-destructive mt-1">
-                  Nenhum estabelecimento vinculado à Necta. Vá em Estabelecimentos e use "Importar da Necta".
+                  Sua empresa ainda não está liberada para receber cobranças. Conclua a homologação ou fale com o administrador.
+                </p>
+              )}
+              {receiver && !credentialsReady && (
+                <p className="text-xs text-destructive mt-1">
+                  Aguardando a liberação da chave de cobrança da sua empresa pelo administrador.
                 </p>
               )}
             </div>

@@ -2,15 +2,20 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type NectaMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-/** Chama a API Necta Multi-Pay através da edge function proxy (credenciais ficam no backend). */
+/**
+ * Chama a API Necta Multi-Pay através da edge function proxy (credenciais ficam no backend).
+ * Informe `companyId` para consultar no escopo da empresa (usa a credencial de
+ * cobrança dela); sem ele, a chamada usa a credencial do marketplace.
+ */
 export async function nectaCall<T = any>(
   path: string,
   method: NectaMethod = 'GET',
   body?: unknown,
   query?: Record<string, unknown>,
+  companyId?: string | null,
 ): Promise<T> {
   const { data, error } = await supabase.functions.invoke('necta-api', {
-    body: { path, method, body, query },
+    body: { path, method, body, query, company_id: companyId ?? undefined },
   });
   if (error) throw new Error(error.message);
   if ((data as any)?.error) throw new Error((data as any).error);

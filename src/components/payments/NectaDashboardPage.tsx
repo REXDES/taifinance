@@ -98,7 +98,7 @@ export function NectaDashboardPage({ companyId }: Props) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Pagamentos — Dashboard</h1>
-          <p className="text-muted-foreground text-sm">Performance da operação de pagamentos</p>
+          <p className="text-muted-foreground text-sm">Performance das cobranças desta empresa</p>
         </div>
         <div className="flex items-end gap-2">
           <div><Label className="text-xs">De</Label><Input type="date" value={start} onChange={e => setStart(e.target.value)} className="w-[150px]" /></div>

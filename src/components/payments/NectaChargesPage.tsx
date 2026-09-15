@@ -375,7 +375,10 @@ export function NectaChargesPage({ companyId }: Props) {
     });
     setSendingWhatsapp(false);
     const err = error?.message ?? (data as any)?.error;
-    if (err) { toast.error(`Falha ao enviar: ${err}`); return; }
+    if (err) {
+      toast.error(`Falha ao enviar: ${err}`, { description: (data as any)?.hint, duration: 12000 });
+      return;
+    }
     toast.success('Enviado por WhatsApp');
   };
 

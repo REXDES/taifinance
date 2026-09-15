@@ -96,7 +96,7 @@ serve(async (req) => {
         JSON.stringify({
           success: false,
           error: tpl.data?.error?.message || "Falha ao enviar template",
-          hint: `Verifique se o template '${TEMPLATE}' (${TEMPLATE_LANG}) está aprovado na Meta com 4 variáveis posicionais no body: {{1}} empresa, {{2}} descrição, {{3}} valor, {{4}} texto fixo de instrução.`,
+          hint: `Cadastre e aprove na Meta o template '${TEMPLATE}' (${TEMPLATE_LANG}), categoria Utilidade, sem cabeçalho e sem botões, com 4 variáveis no corpo: {{1}} empresa, {{2}} descrição, {{3}} valor, {{4}} instrução. O texto pronto está em docs/whatsapp-template-cobranca.md.`,
           details: tpl.data,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },

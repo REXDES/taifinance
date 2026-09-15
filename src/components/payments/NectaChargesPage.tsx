@@ -93,41 +93,36 @@ export function NectaChargesPage({ companyId }: Props) {
   const [detail, setDetail] = useState<any | null>(null);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [payers, setPayers] = useState<any[]>([]);
-  const [receivers, setReceivers] = useState<any[]>([]);
   const [cepLoading, setCepLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   const [companyName, setCompanyName] = useState('');
-  // Recebedor da cobrança (perfil próprio na Necta): usado para bloquear autocobrança.
-  const [receiver, setReceiver] = useState<{ name: string; document: string } | null>(null);
-  // Estabelecimento recebedor selecionado (marketplace: define o seller que emite).
-  const selectedReceiver = receivers.find(r => r.id === form.establishment_id) ?? null;
-  const receiverDocument = selectedReceiver?.document ?? receiver?.document ?? null;
+  const [credentialsReady, setCredentialsReady] = useState(false);
+  // Recebedor da cobrança: SEMPRE o perfil próprio da empresa na Necta.
+  const [receiver, setReceiver] = useState<{ id: string; name: string; document: string } | null>(null);
+  const receiverDocument = receiver?.document ?? null;
 
   const load = useCallback(async () => {
     const [{ data }, { data: accs }, { data: company }, { data: estabs }, { data: clients }, { data: own }] = await Promise.all([
       (supabase as any).from('necta_sales').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(300),
       (supabase as any).from('accounts').select('id, name').eq('company_id', companyId).order('name'),
-      (supabase as any).from('companies').select('name').eq('id', companyId).maybeSingle(),
+      (supabase as any).from('companies').select('name, necta_credentials_at').eq('id', companyId).maybeSingle(),
       (supabase as any).from('necta_establishments')
         .select('id, legal_name, trade_name, document, email, phone, whatsapp, address_street, address_number, address_complement, address_district, address_city, address_state, address_zip')
-        .eq('company_id', companyId).eq('is_own_profile', false).order('legal_name'),
+        .eq('company_id', companyId).eq('is_own_profile', false).eq('origin', 'local').order('legal_name'),
       (supabase as any).from('clients_suppliers')
         .select('id, name, document, email, phone, whatsapp_phone, type')
         .eq('company_id', companyId).order('name'),
       (supabase as any).from('necta_establishments')
-        .select('id, legal_name, trade_name, document, necta_establishment_id, is_own_profile')
-        .eq('company_id', companyId).order('is_own_profile', { ascending: false }),
+        .select('id, legal_name, trade_name, document, necta_establishment_id')
+        .eq('company_id', companyId).eq('is_own_profile', true).maybeSingle(),
     ]);
-    // Recebedores possíveis: estabelecimentos com vínculo (seller) na Necta.
-    const receiverList = (own ?? []).filter((e: any) => e.necta_establishment_id);
-    setReceivers(receiverList);
-    const ownProfile = (own ?? []).find((e: any) => e.is_own_profile) ?? null;
-    setReceiver(ownProfile?.document ? { name: ownProfile.trade_name || ownProfile.legal_name || '', document: ownProfile.document } : null);
-    setForm(f => (f.establishment_id ? f : {
-      ...f,
-      establishment_id: (receiverList.find((e: any) => e.is_own_profile) ?? receiverList[0])?.id ?? '',
-    }));
+    const ownProfile = (own as any)?.necta_establishment_id ? own : null;
+    setReceiver(ownProfile
+      ? { id: ownProfile.id, name: ownProfile.trade_name || ownProfile.legal_name || '', document: ownProfile.document ?? '' }
+      : null);
+    setForm(f => ({ ...f, establishment_id: ownProfile?.id ?? '' }));
+    setCredentialsReady(!!company?.necta_credentials_at);
     setRows(data ?? []);
     setAccounts(accs ?? []);
     setCompanyName(company?.name ?? '');

@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import {
-  marketplaceCreds, nectaBaseUrl, nectaRequest, nectaToken, provisionSellerCredentials, saveCompanyCredentials, sellerCredentials,
+  companyCredentials, marketplaceCreds, nectaBaseUrl, nectaRequest, nectaToken, provisionSellerCredentials,
+  saveCompanyCredentials, sellerCredentials,
 } from '../_shared/nectaSeller.ts';
 
 const corsHeaders = {
@@ -308,11 +309,28 @@ Deno.serve(async (req) => {
 
 
     // ------------------------------------------------------------ proxy genérico
-    const { path, method = 'GET', body, query, establishment_id } = input ?? {};
+    const { path, method = 'GET', body, query, establishment_id, company_id } = input ?? {};
     if (typeof path !== 'string' || !path.startsWith('/')) return json({ error: 'path deve iniciar com /' }, 400);
     if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return json({ error: 'método inválido' }, 400);
 
-    const creds = establishment_id ? await sellerCredentials(admin, establishment_id) : null;
+    // Escopo por empresa: quando company_id vem na chamada, a consulta é feita
+    // com a credencial de cobrança daquela empresa — nunca com a do marketplace,
+    // para não expor a operação de outras empresas.
+    let creds = establishment_id ? await sellerCredentials(admin, establishment_id) : null;
+    if (!creds && company_id) {
+      const { data: hasAccess } = await supabase.rpc('has_company_access', {
+        _user_id: userId,
+        _company_id: company_id,
+      });
+      if (!hasAccess) return json({ error: 'Sem acesso a esta empresa.' }, 403);
+      creds = await companyCredentials(admin, company_id);
+      if (!creds) {
+        return json({
+          error: 'Esta empresa ainda não tem credencial de cobrança cadastrada.',
+          code: 'missing_company_credentials',
+        }, 400);
+      }
+    }
     const data = path === '/establishments' && method === 'GET'
       ? await listSellers()
       : await nectaRequest(path, method, body, query, creds);

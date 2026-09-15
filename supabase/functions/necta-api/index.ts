@@ -283,7 +283,7 @@ Deno.serve(async (req) => {
         const seller = sel.seller?.id ? sel.seller : byId.get(String(sel.necta_establishment_id));
         if (!seller || !sel.company_id) continue;
         try {
-          const r = await upsertSeller(seller, sel.company_id);
+          const r = await upsertSeller(seller, sel.company_id, true);
           r === 'imported' ? imported++ : updated++;
         } catch (e) { errors.push((e as Error).message); }
       }

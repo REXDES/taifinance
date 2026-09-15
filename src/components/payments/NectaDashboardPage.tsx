@@ -45,23 +45,33 @@ export function NectaDashboardPage({ companyId }: Props) {
   const loadApi = useCallback(async () => {
     setLoading(true);
     setApiError(null);
-    try {
-      const [s, c, m, mm] = await Promise.all([
-        nectaCall('/sales/summary', 'GET', undefined, { startDate: start, endDate: end }).catch(() => null),
-        nectaCall('/sales/count-and-compare', 'GET', undefined, { startDate: start, endDate: end }).catch(() => null),
-        nectaCall('/sales/count-payment-methods', 'GET', undefined, { startDate: start, endDate: end }).catch(() => null),
-        nectaCall('/sales/sale-per-month-and-progress').catch(() => null),
-      ]);
-      setSummary(s);
-      setCompare(c);
-      setMethods((m as any)?.methods ?? []);
-      setMonths((mm as any)?.months ?? []);
-      if (!s && !c && !m && !mm) setApiError('Não foi possível consultar a API de Pagamentos agora. Verifique as credenciais em Configurações (Modo Administrativo).');
-    } catch (e) {
-      setApiError((e as Error).message);
+    setSummary(null); setCompare(null); setMethods([]); setMonths([]);
+    let lastError: string | null = null;
+    const call = (path: string, query?: Record<string, unknown>) =>
+      // companyId garante que os números são só desta empresa (credencial dela).
+      nectaCall(path, 'GET', undefined, query, companyId).catch((e) => {
+        lastError = (e as Error).message;
+        return null;
+      });
+    const [s, c, m, mm] = await Promise.all([
+      call('/sales/summary', { startDate: start, endDate: end }),
+      call('/sales/count-and-compare', { startDate: start, endDate: end }),
+      call('/sales/count-payment-methods', { startDate: start, endDate: end }),
+      call('/sales/sale-per-month-and-progress'),
+    ]);
+    setSummary(s);
+    setCompare(c);
+    setMethods((m as any)?.methods ?? []);
+    setMonths((mm as any)?.months ?? []);
+    if (!s && !c && !m && !mm) {
+      setApiError(
+        /credencial de cobran/i.test(lastError ?? '')
+          ? 'Esta empresa ainda não tem credencial de cobrança cadastrada. Abaixo aparecem apenas as cobranças registradas aqui no sistema. Peça ao administrador para cadastrar a chave de API em Pagamentos → Credenciais de Cobrança.'
+          : `Não foi possível consultar a API de Pagamentos agora.${lastError ? ` (${lastError})` : ''}`,
+      );
     }
     setLoading(false);
-  }, [start, end]);
+  }, [start, end, companyId]);
 
   useEffect(() => { loadLocal(); loadApi(); }, [loadLocal, loadApi]);
 

@@ -105,6 +105,8 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
         .select('*')
         .eq('company_id', companyId)
         .eq('is_own_profile', false)
+        // Sellers do marketplace (importados) ficam apenas no modo administrativo.
+        .eq('origin', 'local')
         .order('created_at', { ascending: false }),
       (supabase as any).from('companies').select('necta_credentials_at').eq('id', companyId).maybeSingle(),
     ]);

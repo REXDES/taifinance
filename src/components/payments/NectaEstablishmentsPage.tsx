@@ -24,7 +24,7 @@ import { translateGatewayError } from '@/lib/nectaFormat';
 import { toast } from 'sonner';
 import {
   Loader2, Plus, Pencil, Trash2, ShieldCheck, RefreshCw, MessageCircle,
-  Building2, Search, AlertTriangle, DownloadCloud,
+  Building2, Search, AlertTriangle,
 } from 'lucide-react';
 
 interface Props { companyId: string }
@@ -91,7 +91,6 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
   const [saving, setSaving] = useState(false);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   // Liberação de cobrança é por EMPRESA (credencial cadastrada no Modo Administrativo)

@@ -296,7 +296,17 @@ Deno.serve(async (req) => {
           }
           // POST /sales só devolve { id, externalId, status } — QR/linha digitável/boleto
           // só vêm em seguida, via GET /sales/{id} (+ GET /sales/{id}/billet para boleto).
-          resp = await api('/sales', 'POST', body, undefined, creds);
+          sentBody = body;
+          try {
+            resp = await api('/sales', 'POST', body, undefined, creds);
+          } catch (err) {
+            // A Necta às vezes devolve 502 "upstream error" (falha transitória do
+            // adquirente). Uma segunda tentativa costuma resolver.
+            if (/\[50\d\]/.test((err as Error).message)) {
+              await new Promise(r => setTimeout(r, 1500));
+              resp = await api('/sales', 'POST', body, undefined, creds);
+            } else throw err;
+          }
           const saleUuid = resp?.id;
           if (saleUuid) {
             saleDetail = await api(`/sales/${saleUuid}`, 'GET', undefined, undefined, creds).catch(() => null);

@@ -321,7 +321,7 @@ Deno.serve(async (req) => {
         const raw = (e as Error).message;
         const msg = translateGatewayError(raw);
         await admin.from('necta_sales')
-          .update({ sync_error: msg, last_sync_at: new Date().toISOString(), raw: { error: raw } })
+          .update({ sync_error: msg, last_sync_at: new Date().toISOString(), raw: { error: raw, request: sentBody } })
           .eq('id', saleId);
         return json({ error: msg }, 502);
       }

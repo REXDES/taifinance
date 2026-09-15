@@ -43,6 +43,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
 
   // Estabelecimentos cadastrados no TAI Finance (todas as empresas)
   const [localRows, setLocalRows] = useState<any[]>([]);
+  const [originFilter, setOriginFilter] = useState('local');
   const [sellerLinks, setSellerLinks] = useState<any[]>([]);
   const [homologationRequests, setHomologationRequests] = useState<any[]>([]);
 
@@ -67,7 +68,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
     try {
       const { data, error } = await (supabase as any)
         .from('necta_establishments')
-        .select('id, company_id, legal_name, trade_name, document, necta_establishment_id, necta_status, homologation_status, is_own_profile, is_active, created_by, created_at, companies(name)')
+        .select('id, company_id, legal_name, trade_name, document, necta_establishment_id, necta_status, homologation_status, is_own_profile, is_active, origin, created_by, created_at, companies(name)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       const rows = data ?? [];

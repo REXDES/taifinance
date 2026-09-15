@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
       }
     };
 
-    const mapSeller = (it: any, companyId: string) => ({
+    const mapSeller = (it: any, companyId: string, own = false) => ({
       company_id: companyId,
       necta_establishment_id: String(it?.id),
       legal_name: it?.name ?? null,
@@ -225,15 +225,25 @@ Deno.serve(async (req) => {
       address_state: it?.address?.state ?? null,
       address_zip: it?.address?.postalCode ?? null,
       imported_from_necta: true,
-      is_own_profile: false,
+      // Sellers do marketplace ficam visíveis só no modo administrativo.
+      // Vincular um seller a uma empresa define o perfil próprio dela (recebedor).
+      is_own_profile: own,
+      origin: own ? 'local' : 'marketplace',
       raw: it,
     });
 
-    const upsertSeller = async (it: any, companyId: string) => {
-      const row = mapSeller(it, companyId);
+    const upsertSeller = async (it: any, companyId: string, own = false) => {
+      const row = mapSeller(it, companyId, own);
       const { data: existing } = await admin.from('necta_establishments')
         .select('id').eq('necta_establishment_id', row.necta_establishment_id)
         .eq('company_id', companyId).maybeSingle();
+      if (own) {
+        // Um único perfil próprio por empresa.
+        const clear = admin.from('necta_establishments')
+          .update({ is_own_profile: false })
+          .eq('company_id', companyId).eq('is_own_profile', true);
+        await (existing?.id ? clear.neq('id', existing.id) : clear);
+      }
       if (existing?.id) {
         await admin.from('necta_establishments').update(row).eq('id', existing.id);
         return 'updated' as const;

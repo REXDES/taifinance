@@ -93,41 +93,36 @@ export function NectaChargesPage({ companyId }: Props) {
   const [detail, setDetail] = useState<any | null>(null);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [payers, setPayers] = useState<any[]>([]);
-  const [receivers, setReceivers] = useState<any[]>([]);
   const [cepLoading, setCepLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   const [companyName, setCompanyName] = useState('');
-  // Recebedor da cobrança (perfil próprio na Necta): usado para bloquear autocobrança.
-  const [receiver, setReceiver] = useState<{ name: string; document: string } | null>(null);
-  // Estabelecimento recebedor selecionado (marketplace: define o seller que emite).
-  const selectedReceiver = receivers.find(r => r.id === form.establishment_id) ?? null;
-  const receiverDocument = selectedReceiver?.document ?? receiver?.document ?? null;
+  const [credentialsReady, setCredentialsReady] = useState(false);
+  // Recebedor da cobrança: SEMPRE o perfil próprio da empresa na Necta.
+  const [receiver, setReceiver] = useState<{ id: string; name: string; document: string } | null>(null);
+  const receiverDocument = receiver?.document ?? null;
 
   const load = useCallback(async () => {
     const [{ data }, { data: accs }, { data: company }, { data: estabs }, { data: clients }, { data: own }] = await Promise.all([
       (supabase as any).from('necta_sales').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(300),
       (supabase as any).from('accounts').select('id, name').eq('company_id', companyId).order('name'),
-      (supabase as any).from('companies').select('name').eq('id', companyId).maybeSingle(),
+      (supabase as any).from('companies').select('name, necta_credentials_at').eq('id', companyId).maybeSingle(),
       (supabase as any).from('necta_establishments')
         .select('id, legal_name, trade_name, document, email, phone, whatsapp, address_street, address_number, address_complement, address_district, address_city, address_state, address_zip')
-        .eq('company_id', companyId).eq('is_own_profile', false).order('legal_name'),
+        .eq('company_id', companyId).eq('is_own_profile', false).eq('origin', 'local').order('legal_name'),
       (supabase as any).from('clients_suppliers')
         .select('id, name, document, email, phone, whatsapp_phone, type')
         .eq('company_id', companyId).order('name'),
       (supabase as any).from('necta_establishments')
-        .select('id, legal_name, trade_name, document, necta_establishment_id, is_own_profile')
-        .eq('company_id', companyId).order('is_own_profile', { ascending: false }),
+        .select('id, legal_name, trade_name, document, necta_establishment_id')
+        .eq('company_id', companyId).eq('is_own_profile', true).maybeSingle(),
     ]);
-    // Recebedores possíveis: estabelecimentos com vínculo (seller) na Necta.
-    const receiverList = (own ?? []).filter((e: any) => e.necta_establishment_id);
-    setReceivers(receiverList);
-    const ownProfile = (own ?? []).find((e: any) => e.is_own_profile) ?? null;
-    setReceiver(ownProfile?.document ? { name: ownProfile.trade_name || ownProfile.legal_name || '', document: ownProfile.document } : null);
-    setForm(f => (f.establishment_id ? f : {
-      ...f,
-      establishment_id: (receiverList.find((e: any) => e.is_own_profile) ?? receiverList[0])?.id ?? '',
-    }));
+    const ownProfile = (own as any)?.necta_establishment_id ? own : null;
+    setReceiver(ownProfile
+      ? { id: ownProfile.id, name: ownProfile.trade_name || ownProfile.legal_name || '', document: ownProfile.document ?? '' }
+      : null);
+    setForm(f => ({ ...f, establishment_id: ownProfile?.id ?? '' }));
+    setCredentialsReady(!!company?.necta_credentials_at);
     setRows(data ?? []);
     setAccounts(accs ?? []);
     setCompanyName(company?.name ?? '');
@@ -248,8 +243,8 @@ export function NectaChargesPage({ companyId }: Props) {
     }
     if (form.method === 'credit_card' && (!form.card_number || !form.card_holder)) { toast.error('Informe os dados do cartão'); return; }
     if (!form.establishment_id) {
-      toast.error('Selecione o estabelecimento recebedor', {
-        description: 'A Necta exige um seller vinculado para emitir a cobrança.',
+      toast.error('Sua empresa ainda não está liberada para receber cobranças', {
+        description: 'Conclua a homologação ou fale com o administrador.',
       });
       return;
     }
@@ -257,8 +252,8 @@ export function NectaChargesPage({ companyId }: Props) {
       const errors = validatePayer(form);
       if (errors.length) { toast.error(errors[0], { description: errors.slice(1).join(' ') || undefined }); return; }
       if (receiverDocument && sameDocument(form.payer_document, receiverDocument)) {
-        toast.error('O pagador não pode ter o mesmo CPF/CNPJ do recebedor', {
-          description: 'Selecione outro pagador ou emita a cobrança por outro estabelecimento.',
+        toast.error('O pagador não pode ter o mesmo CPF/CNPJ da sua empresa', {
+          description: 'Escolha outro pagador para esta cobrança.',
         });
         return;
       }
@@ -548,26 +543,24 @@ export function NectaChargesPage({ companyId }: Props) {
           <DialogHeader>
             <DialogTitle>Nova cobrança</DialogTitle>
             <DialogDescription>
-              A cobrança é emitida em nome do estabelecimento recebedor (seller) selecionado na Necta
+              A cobrança é emitida sempre em nome da sua empresa
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label>Estabelecimento recebedor</Label>
-              <Select value={form.establishment_id} onValueChange={(v) => setForm(f => ({ ...f, establishment_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione o recebedor" /></SelectTrigger>
-                <SelectContent>
-                  {receivers.map(r => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {(r.trade_name || r.legal_name || 'Estabelecimento')}
-                      {r.document ? ` — ${maskDocument(r.document)}` : ''}
-                      {r.is_own_profile ? ' (meu perfil)' : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {receivers.length === 0 && (
+            <div><Label>Recebedor</Label>
+              <div className="rounded-md border px-3 py-2 text-sm bg-muted/40">
+                {receiver
+                  ? <>{receiver.name || companyName}{receiver.document ? ` — ${maskDocument(receiver.document)}` : ''}</>
+                  : <span className="text-muted-foreground">Nenhum recebedor liberado</span>}
+              </div>
+              {!receiver && (
                 <p className="text-xs text-destructive mt-1">
-                  Nenhum estabelecimento vinculado à Necta. Vá em Estabelecimentos e use "Importar da Necta".
+                  Sua empresa ainda não está liberada para receber cobranças. Conclua a homologação ou fale com o administrador.
+                </p>
+              )}
+              {receiver && !credentialsReady && (
+                <p className="text-xs text-destructive mt-1">
+                  Aguardando a liberação da chave de cobrança da sua empresa pelo administrador.
                 </p>
               )}
             </div>

@@ -2591,6 +2591,7 @@ export type Database = {
           opening_date: string | null
           opening_days: string[] | null
           opening_hours: string | null
+          origin: string
           person_type: string
           phone: string | null
           pix_key: string | null
@@ -2654,6 +2655,7 @@ export type Database = {
           opening_date?: string | null
           opening_days?: string[] | null
           opening_hours?: string | null
+          origin?: string
           person_type?: string
           phone?: string | null
           pix_key?: string | null
@@ -2717,6 +2719,7 @@ export type Database = {
           opening_date?: string | null
           opening_days?: string[] | null
           opening_hours?: string | null
+          origin?: string
           person_type?: string
           phone?: string | null
           pix_key?: string | null

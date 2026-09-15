@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { nectaAction, nectaCall } from '@/hooks/useNectaApi';
+import { nectaCall } from '@/hooks/useNectaApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -24,7 +24,7 @@ import { translateGatewayError } from '@/lib/nectaFormat';
 import { toast } from 'sonner';
 import {
   Loader2, Plus, Pencil, Trash2, ShieldCheck, RefreshCw, MessageCircle,
-  Building2, Search, AlertTriangle, DownloadCloud,
+  Building2, Search, AlertTriangle,
 } from 'lucide-react';
 
 interface Props { companyId: string }
@@ -91,7 +91,6 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
   const [saving, setSaving] = useState(false);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   // Liberação de cobrança é por EMPRESA (credencial cadastrada no Modo Administrativo)
@@ -105,6 +104,8 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
         .select('*')
         .eq('company_id', companyId)
         .eq('is_own_profile', false)
+        // Sellers do marketplace (importados) ficam apenas no modo administrativo.
+        .eq('origin', 'local')
         .order('created_at', { ascending: false }),
       (supabase as any).from('companies').select('necta_credentials_at').eq('id', companyId).maybeSingle(),
     ]);
@@ -267,16 +268,6 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
     await load();
   };
 
-  /** Importa os sellers já cadastrados na plataforma Necta para este cadastro. */
-  const importSellers = async () => {
-    setImporting(true);
-    try {
-      const r = await nectaAction<any>('import_sellers', { company_id: companyId });
-      toast.success(`${r?.imported ?? 0} novo(s) e ${r?.updated ?? 0} atualizado(s) da Necta`);
-      await load();
-    } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
-    finally { setImporting(false); }
-  };
 
   const openWhatsapp = (row: any) => {
     const phone = digits(row.whatsapp || row.phone);
@@ -304,10 +295,6 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={importSellers} disabled={importing}>
-            {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <DownloadCloud className="w-4 h-4 mr-2" />}
-            Importar da Necta
-          </Button>
           <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo estabelecimento</Button>
         </div>
       </div>

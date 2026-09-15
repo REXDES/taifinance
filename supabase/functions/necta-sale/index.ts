@@ -95,7 +95,7 @@ function extractFields(resp: any, billet?: any) {
     provider_status: providerStatus,
     status_reference: str(resp?.status?.reference),
     // PIX: `qrCode` é o EMV (copia e cola). A imagem do QR é gerada no app.
-    pix_copy_paste: str(resp?.qrCode ?? resp?.emv ?? resp?.qrCodeText ?? resp?.copyPaste),
+    pix_copy_paste: str(resp?.qrCode ?? resp?.emv ?? resp?.qrCodeText ?? resp?.copyPaste ?? billet?.pixQrCode),
     pix_qr_code: str(resp?.qrCodeImage ?? resp?.qrCodeBase64),
     boleto_digitable_line: str(billet?.numberCode ?? resp?.numberCode ?? resp?.digitableLine),
     boleto_barcode: str(billet?.barCode ?? resp?.barCode),

@@ -187,13 +187,19 @@ Deno.serve(async (req) => {
       if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
       if (sale.necta_sale_id || sale.necta_payment_link_id) return json({ error: 'Cobrança já emitida' }, 400);
 
-      // Recebedor: o estabelecimento escolhido na cobrança; se não houver, o
-      // perfil próprio da empresa. O adquirente recusa autocobrança (pagador == recebedor).
-      const { data: receiver } = sale.establishment_id
-        ? await admin.from('necta_establishments').select('id, document, necta_establishment_id')
-            .eq('id', sale.establishment_id).maybeSingle()
-        : await admin.from('necta_establishments').select('id, document, necta_establishment_id')
-            .eq('company_id', sale.company_id).eq('is_own_profile', true).maybeSingle();
+      // Recebedor: SEMPRE o perfil próprio da empresa dona da cobrança.
+      // O adquirente recusa autocobrança (pagador == recebedor).
+      const { data: receiver } = await admin.from('necta_establishments')
+        .select('id, document, necta_establishment_id')
+        .eq('company_id', sale.company_id).eq('is_own_profile', true).maybeSingle();
+      if (!receiver) {
+        return json({
+          error: 'Esta empresa ainda não tem um estabelecimento recebedor próprio vinculado à Necta — conclua a homologação ou solicite o vínculo ao administrador.',
+        }, 400);
+      }
+      if (sale.establishment_id && sale.establishment_id !== (receiver as any).id) {
+        return json({ error: 'A cobrança só pode ser emitida em nome do próprio estabelecimento da empresa.' }, 400);
+      }
       const receiverDocument = (receiver as any)?.document ?? null;
       const gatewayName = Deno.env.get('NECTA_GATEWAY') ?? 'rinne';
 

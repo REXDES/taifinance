@@ -233,6 +233,7 @@ Deno.serve(async (req) => {
       // com `paymentMethod` no corpo — pix-cappta (bolepix) virou bank_slip nos gateways
       // que o suportam, que já devolve o QR PIX embutido junto do boleto.
       let resp: any;
+      let sentBody: Record<string, unknown> | null = null;
       let saleDetail: any = null;
       let billet: any = null;
       try {

@@ -269,16 +269,6 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
     await load();
   };
 
-  /** Importa os sellers já cadastrados na plataforma Necta para este cadastro. */
-  const importSellers = async () => {
-    setImporting(true);
-    try {
-      const r = await nectaAction<any>('import_sellers', { company_id: companyId });
-      toast.success(`${r?.imported ?? 0} novo(s) e ${r?.updated ?? 0} atualizado(s) da Necta`);
-      await load();
-    } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
-    finally { setImporting(false); }
-  };
 
   const openWhatsapp = (row: any) => {
     const phone = digits(row.whatsapp || row.phone);

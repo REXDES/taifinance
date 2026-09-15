@@ -243,8 +243,8 @@ export function NectaChargesPage({ companyId }: Props) {
     }
     if (form.method === 'credit_card' && (!form.card_number || !form.card_holder)) { toast.error('Informe os dados do cartão'); return; }
     if (!form.establishment_id) {
-      toast.error('Selecione o estabelecimento recebedor', {
-        description: 'A Necta exige um seller vinculado para emitir a cobrança.',
+      toast.error('Sua empresa ainda não está liberada para receber cobranças', {
+        description: 'Conclua a homologação ou fale com o administrador.',
       });
       return;
     }
@@ -252,8 +252,8 @@ export function NectaChargesPage({ companyId }: Props) {
       const errors = validatePayer(form);
       if (errors.length) { toast.error(errors[0], { description: errors.slice(1).join(' ') || undefined }); return; }
       if (receiverDocument && sameDocument(form.payer_document, receiverDocument)) {
-        toast.error('O pagador não pode ter o mesmo CPF/CNPJ do recebedor', {
-          description: 'Selecione outro pagador ou emita a cobrança por outro estabelecimento.',
+        toast.error('O pagador não pode ter o mesmo CPF/CNPJ da sua empresa', {
+          description: 'Escolha outro pagador para esta cobrança.',
         });
         return;
       }

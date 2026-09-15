@@ -304,10 +304,6 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={importSellers} disabled={importing}>
-            {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <DownloadCloud className="w-4 h-4 mr-2" />}
-            Importar da Necta
-          </Button>
           <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo estabelecimento</Button>
         </div>
       </div>

@@ -30,6 +30,9 @@ export interface PayableReceivable {
   subcategory?: { id: string; name: string } | null;
   client_supplier?: { id: string; name: string; type: string; whatsapp_phone?: string | null } | null;
   account?: { id: string; name: string } | null;
+  /** 'necta' = cobrança espelhada da Necta (somente leitura, baixa automática). */
+  source?: 'app' | 'necta';
+  necta_sale_id?: string | null;
 }
 
 export interface PayableReceivableFilters {

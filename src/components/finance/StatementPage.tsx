@@ -16,6 +16,7 @@ import autoTable from 'jspdf-autotable';
 import { TagPicker } from './TagPicker';
 import TagBadges from './TagBadges';
 import { fetchTagsForRecords, findRecordIdsByTags } from '@/hooks/useFinanceTags';
+import { NectaCategoryCell } from './NectaCategoryCell';
 
 interface StatementPageProps { companyId: string; }
 
@@ -46,7 +47,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
 
   const hasValidFilter = !!selectedAccountId || !!selectedCategoryId || !!selectedSubcategoryId;
 
-  const { entries, account, loading, totals } = useAccountStatement(
+  const { entries, account, loading, totals, refetch } = useAccountStatement(
     selectedAccountId || null,
     startDate || undefined,
     endDate || undefined,
@@ -275,7 +276,22 @@ export function StatementPage({ companyId }: StatementPageProps) {
                         <TagBadges tags={rowTags[e.id]} className="mt-1 ml-6" />
                       </TableCell>
                       {showAccountColumn && <TableCell className="text-muted-foreground">{e.accountName || '-'}</TableCell>}
-                      <TableCell className="text-muted-foreground">{e.category ? `${e.category}${e.subcategory ? ` / ${e.subcategory}` : ''}` : e.relatedAccount || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {e.source === 'necta' ? (
+                          <NectaCategoryCell
+                            entryId={e.id}
+                            companyId={companyId}
+                            description={e.description}
+                            categoryId={e.categoryId ?? null}
+                            subcategoryId={e.subcategoryId ?? null}
+                            categorySource={e.categorySource}
+                            categories={categories}
+                            onSaved={refetch}
+                          />
+                        ) : (
+                          e.category ? `${e.category}${e.subcategory ? ` / ${e.subcategory}` : ''}` : e.relatedAccount || '-'
+                        )}
+                      </TableCell>
                       <TableCell className={`text-right ${e.type === 'income' || e.type === 'transfer_in' ? 'text-green-600' : 'text-red-600'}`}>{e.type === 'income' || e.type === 'transfer_in' ? '+' : '-'}{formatCurrency(e.amount)}</TableCell>
                       {showBalanceColumn && <TableCell className={`text-right font-medium ${e.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(e.balance)}</TableCell>}
                     </TableRow>

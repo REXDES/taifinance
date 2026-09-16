@@ -66,8 +66,10 @@ export type Database = {
           id: string
           initial_balance: number
           is_active: boolean
+          is_mirror: boolean
           name: string
           reconciliation_tolerance: number
+          source: string
           updated_at: string
         }
         Insert: {
@@ -80,8 +82,10 @@ export type Database = {
           id?: string
           initial_balance?: number
           is_active?: boolean
+          is_mirror?: boolean
           name: string
           reconciliation_tolerance?: number
+          source?: string
           updated_at?: string
         }
         Update: {
@@ -94,8 +98,10 @@ export type Database = {
           id?: string
           initial_balance?: number
           is_active?: boolean
+          is_mirror?: boolean
           name?: string
           reconciliation_tolerance?: number
+          source?: string
           updated_at?: string
         }
         Relationships: [
@@ -812,6 +818,7 @@ export type Database = {
           id: string
           machines_module_enabled: boolean
           name: string
+          necta_account_id: string | null
           necta_credentials_at: string | null
           payments_module_enabled: boolean
           phone: string | null
@@ -840,6 +847,7 @@ export type Database = {
           id?: string
           machines_module_enabled?: boolean
           name: string
+          necta_account_id?: string | null
           necta_credentials_at?: string | null
           payments_module_enabled?: boolean
           phone?: string | null
@@ -868,6 +876,7 @@ export type Database = {
           id?: string
           machines_module_enabled?: boolean
           name?: string
+          necta_account_id?: string | null
           necta_credentials_at?: string | null
           payments_module_enabled?: boolean
           phone?: string | null
@@ -1666,6 +1675,67 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_categorization_memory: {
+        Row: {
+          category_id: string | null
+          company_id: string
+          created_at: string
+          hits: number
+          id: string
+          pattern: string
+          scope: string
+          subcategory_id: string | null
+          tag_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          company_id: string
+          created_at?: string
+          hits?: number
+          id?: string
+          pattern: string
+          scope?: string
+          subcategory_id?: string | null
+          tag_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          company_id?: string
+          created_at?: string
+          hits?: number
+          id?: string
+          pattern?: string
+          scope?: string
+          subcategory_id?: string | null
+          tag_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_categorization_memory_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_categorization_memory_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_categorization_memory_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_subcategories"
             referencedColumns: ["id"]
           },
         ]
@@ -2994,6 +3064,102 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "necta_homologation_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      necta_ledger_entries: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category_id: string | null
+          category_source: string | null
+          company_id: string
+          counterparty: string | null
+          created_at: string
+          date: string
+          description: string
+          direction: string
+          entry_type: string
+          id: string
+          necta_entry_id: string
+          necta_sale_id: string | null
+          raw: Json | null
+          subcategory_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount?: number
+          category_id?: string | null
+          category_source?: string | null
+          company_id: string
+          counterparty?: string | null
+          created_at?: string
+          date: string
+          description?: string
+          direction?: string
+          entry_type?: string
+          id?: string
+          necta_entry_id: string
+          necta_sale_id?: string | null
+          raw?: Json | null
+          subcategory_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category_id?: string | null
+          category_source?: string | null
+          company_id?: string
+          counterparty?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          direction?: string
+          entry_type?: string
+          id?: string
+          necta_entry_id?: string
+          necta_sale_id?: string | null
+          raw?: Json | null
+          subcategory_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "necta_ledger_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_ledger_entries_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_ledger_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_ledger_entries_necta_sale_id_fkey"
+            columns: ["necta_sale_id"]
+            isOneToOne: false
+            referencedRelation: "necta_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "necta_ledger_entries_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_subcategories"
             referencedColumns: ["id"]
           },
         ]
@@ -5246,6 +5412,10 @@ export type Database = {
       count_companies_created_by: {
         Args: { _user_id: string }
         Returns: number
+      }
+      ensure_necta_mirror_account: {
+        Args: { _company_id: string }
+        Returns: string
       }
       generate_invitation_token: { Args: never; Returns: string }
       get_company_limit: { Args: { _user_id: string }; Returns: number }

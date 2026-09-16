@@ -439,7 +439,14 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
                           style={{ backgroundColor: account.color }}
                         />
                         <div>
-                          <p className="font-medium">{account.name}</p>
+                          <p className="font-medium flex items-center gap-2">
+                            {account.name}
+                            {account.is_mirror && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded border border-sky-500/30 bg-sky-500/10 text-sky-600">
+                                Necta
+                              </span>
+                            )}
+                          </p>
                           {account.description && (
                             <p className="text-xs text-muted-foreground">{account.description}</p>
                           )}
@@ -452,14 +459,18 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
                       {formatCurrency(Number(account.current_balance))}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditAccount(account)}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteAccountTarget(account)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
+                      {account.is_mirror ? (
+                        <span className="text-xs text-muted-foreground">Somente leitura</span>
+                      ) : (
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditAccount(account)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteAccountTarget(account)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

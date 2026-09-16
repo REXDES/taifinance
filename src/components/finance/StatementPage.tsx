@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, ArrowRightLeft, FileDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowRightLeft, FileDown, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
@@ -27,6 +27,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>('');
   const [startDate, setStartDate] = useState('');
+  const [syncingNecta, setSyncingNecta] = useState(false);
   const [endDate, setEndDate] = useState('');
   const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
 

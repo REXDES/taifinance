@@ -29,7 +29,7 @@ export function useAccountStatement(
   companyId?: string | null
 ) {
   const [entries, setEntries] = useState<StatementEntry[]>([]);
-  const [account, setAccount] = useState<{ id: string; name: string; initial_balance: number } | null>(null);
+  const [account, setAccount] = useState<{ id: string; name: string; initial_balance: number; is_mirror?: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 

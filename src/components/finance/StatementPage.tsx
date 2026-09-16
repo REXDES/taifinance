@@ -31,6 +31,25 @@ export function StatementPage({ companyId }: StatementPageProps) {
   const [endDate, setEndDate] = useState('');
   const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
 
+  // Atualiza o espelho da conta Necta (saldo e movimentações) sob demanda.
+  const handleSyncNecta = async () => {
+    if (!companyId) return;
+    setSyncingNecta(true);
+    try {
+      const { error } = await supabase.functions.invoke('necta-api', {
+        body: { action: 'sync_ledger', company_id: companyId },
+      });
+      if (error) throw error;
+      toast.success('Conta Necta atualizada');
+      refetch();
+    } catch (error: any) {
+      toast.error('Não foi possível atualizar a Conta Necta', { description: error.message });
+    } finally {
+      setSyncingNecta(false);
+    }
+  };
+
+
   const { data: subcategories = [] } = useQuery({
     queryKey: ['subcategories', selectedCategoryId],
     queryFn: async () => {

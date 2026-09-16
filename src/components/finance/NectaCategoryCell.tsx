@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { categorizeNectaEntry, type NectaLedgerEntry } from '@/hooks/useNectaLedger';
 import type { TransactionCategory } from '@/hooks/useTransactionCategories';
 
@@ -90,6 +89,3 @@ export function NectaCategoryCell({
     </div>
   );
 }
-
-/** Mantém o import do client para não perder o tree-shaking do tipo em build. */
-export const _supabase = supabase;

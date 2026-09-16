@@ -461,7 +461,7 @@ export function StatementImportPage({ companyId }: Props) {
                 <Select value={accountId} onValueChange={setAccountId}>
                   <SelectTrigger><SelectValue placeholder="Selecione a conta" /></SelectTrigger>
                   <SelectContent>
-                    {accounts.map((a) => (
+                    {accounts.filter(mirrorFree => !mirrorFree.is_mirror).map((a) => (
                       <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -770,7 +770,7 @@ export function StatementImportPage({ companyId }: Props) {
                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">— selecionar —</SelectItem>
-                          {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                          {accounts.filter(mirrorFree => !mirrorFree.is_mirror).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       {!done && (

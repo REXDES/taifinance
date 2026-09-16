@@ -1025,7 +1025,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                   <SelectValue placeholder="Selecione a conta" />
                 </SelectTrigger>
                 <SelectContent>
-                  {accounts.map((acc) => (
+                  {accounts.filter(mirrorFree => !mirrorFree.is_mirror).map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
                   ))}
                 </SelectContent>

@@ -137,13 +137,13 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
                 <div><Label>De (Conta Origem) *</Label>
                   <Select value={form.from_account_id} onValueChange={(v) => setForm({ ...form, from_account_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>{accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>{accounts.filter(mirrorFree => !mirrorFree.is_mirror).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div><Label>Para (Conta Destino) *</Label>
                   <Select value={form.to_account_id} onValueChange={(v) => setForm({ ...form, to_account_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>{accounts.filter(a => a.id !== form.from_account_id).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>{accounts.filter(a => a.id !== form.from_account_id && !a.is_mirror).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div><Label>Valor *</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
@@ -189,7 +189,7 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
-                    {accounts.map((account) => (
+                    {accounts.filter(mirrorFree => !mirrorFree.is_mirror).map((account) => (
                       <SelectItem key={account.id} value={account.id}>
                         {account.name}
                       </SelectItem>

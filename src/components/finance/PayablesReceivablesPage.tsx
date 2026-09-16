@@ -635,9 +635,19 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                       formatCurrency(Number(record.amount))
                     )}
                   </TableCell>
-                  <TableCell>{getStatusBadge(record.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(record.status)}
+                      {record.source === 'necta' && (
+                        <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/30">Necta</Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
-                    {record.status === 'pending' && (
+                    {record.source === 'necta' && (
+                      <span className="text-xs text-muted-foreground">Baixa automática</span>
+                    )}
+                    {record.status === 'pending' && record.source !== 'necta' && (
                       <div className="flex justify-end gap-2">
                         {record.type === 'receivable' && !record.is_amount_pending && (
                           <Button
@@ -1015,7 +1025,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                   <SelectValue placeholder="Selecione a conta" />
                 </SelectTrigger>
                 <SelectContent>
-                  {accounts.map((acc) => (
+                  {accounts.filter(mirrorFree => !mirrorFree.is_mirror).map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
                   ))}
                 </SelectContent>

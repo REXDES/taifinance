@@ -30,6 +30,9 @@ export interface PayableReceivable {
   subcategory?: { id: string; name: string } | null;
   client_supplier?: { id: string; name: string; type: string; whatsapp_phone?: string | null } | null;
   account?: { id: string; name: string } | null;
+  /** 'necta' = cobrança espelhada da Necta (somente leitura, baixa automática). */
+  source?: 'app' | 'necta';
+  necta_sale_id?: string | null;
 }
 
 export interface PayableReceivableFilters {
@@ -87,7 +90,54 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
       const { data, error } = await query;
 
       if (error) throw error;
-      setPayablesReceivables((data || []) as PayableReceivable[]);
+      const own = ((data || []) as PayableReceivable[]).map(item => ({ ...item, source: 'app' as const }));
+
+      // Cobranças da Necta aparecem junto das contas a receber do app,
+      // direto da fonte (necta_sales) — sem duplicar registro.
+      let nectaItems: PayableReceivable[] = [];
+      if (filters?.type !== 'payable') {
+        let nectaQuery = (supabase as any)
+          .from('necta_sales')
+          .select('id, company_id, description, amount, due_date, status, paid_at, method, payer_name, category_id, subcategory_id, account_id, created_at, updated_at, created_by')
+          .eq('company_id', companyId)
+          .order('due_date', { ascending: true });
+        if (filters?.startDate) nectaQuery = nectaQuery.gte('due_date', filters.startDate);
+        if (filters?.endDate) nectaQuery = nectaQuery.lte('due_date', filters.endDate);
+        const { data: sales } = await nectaQuery;
+        const methodLabel: Record<string, string> = {
+          pix: 'PIX', bank_slip: 'Boleto', pix_cappta: 'Bolepix', credit_card: 'Cartão', link: 'Link de pagamento',
+        };
+        nectaItems = (sales ?? [])
+          .filter((s: any) => ['pending', 'issued', 'overdue', 'paid'].includes(s.status))
+          .map((s: any) => {
+            const status: 'pending' | 'paid' = s.status === 'paid' ? 'paid' : 'pending';
+            return {
+              id: `necta:${s.id}`,
+              company_id: s.company_id,
+              type: 'receivable',
+              payment_type: 'single',
+              description: `Cobrança ${methodLabel[s.method] ?? s.method}${s.payer_name ? ` - ${s.payer_name}` : ''}${s.description ? ` (${s.description})` : ''}`,
+              amount: Number(s.amount ?? 0),
+              due_date: (s.due_date ?? s.created_at ?? '').slice(0, 10),
+              category_id: s.category_id, subcategory_id: s.subcategory_id,
+              client_supplier_id: null, installment_number: null, total_installments: null, parent_id: null,
+              status,
+              paid_amount: status === 'paid' ? Number(s.amount ?? 0) : null,
+              paid_date: s.paid_at ? String(s.paid_at).slice(0, 10) : null,
+              paid_account_id: s.account_id, transaction_id: null,
+              created_by: s.created_by, paid_by: null,
+              created_at: s.created_at, updated_at: s.updated_at,
+              is_amount_pending: false,
+              source: 'necta' as const,
+              necta_sale_id: s.id,
+            } as PayableReceivable;
+          })
+          .filter((item: PayableReceivable) =>
+            !filters?.status?.length || filters.status.includes(item.status));
+      }
+
+      setPayablesReceivables([...own, ...nectaItems]
+        .sort((a, b) => a.due_date.localeCompare(b.due_date)));
     } catch (error) {
       console.error('Error fetching payables/receivables:', error);
     } finally {

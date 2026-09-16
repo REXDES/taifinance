@@ -24,6 +24,9 @@ export interface Account {
   color: string;
   is_active: boolean;
   created_at: string;
+  /** 'necta' = conta gráfica espelhada da Necta (somente leitura). */
+  source?: string;
+  is_mirror?: boolean;
   group?: AccountGroup;
 }
 

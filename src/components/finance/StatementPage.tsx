@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, ArrowRightLeft, FileDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowRightLeft, FileDown, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
@@ -16,6 +17,7 @@ import autoTable from 'jspdf-autotable';
 import { TagPicker } from './TagPicker';
 import TagBadges from './TagBadges';
 import { fetchTagsForRecords, findRecordIdsByTags } from '@/hooks/useFinanceTags';
+import { NectaCategoryCell } from './NectaCategoryCell';
 
 interface StatementPageProps { companyId: string; }
 
@@ -26,8 +28,28 @@ export function StatementPage({ companyId }: StatementPageProps) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string>('');
   const [startDate, setStartDate] = useState('');
+  const [syncingNecta, setSyncingNecta] = useState(false);
   const [endDate, setEndDate] = useState('');
   const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
+
+  // Atualiza o espelho da conta Necta (saldo e movimentações) sob demanda.
+  const handleSyncNecta = async () => {
+    if (!companyId) return;
+    setSyncingNecta(true);
+    try {
+      const { error } = await supabase.functions.invoke('necta-api', {
+        body: { action: 'sync_ledger', company_id: companyId },
+      });
+      if (error) throw error;
+      toast.success('Conta Necta atualizada');
+      refetch();
+    } catch (error: any) {
+      toast.error('Não foi possível atualizar a Conta Necta', { description: error.message });
+    } finally {
+      setSyncingNecta(false);
+    }
+  };
+
 
   const { data: subcategories = [] } = useQuery({
     queryKey: ['subcategories', selectedCategoryId],
@@ -46,7 +68,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
 
   const hasValidFilter = !!selectedAccountId || !!selectedCategoryId || !!selectedSubcategoryId;
 
-  const { entries, account, loading, totals } = useAccountStatement(
+  const { entries, account, loading, totals, refetch } = useAccountStatement(
     selectedAccountId || null,
     startDate || undefined,
     endDate || undefined,
@@ -191,6 +213,11 @@ export function StatementPage({ companyId }: StatementPageProps) {
           <h1 className="text-2xl font-bold text-foreground">Extrato</h1>
           <p className="text-muted-foreground">Filtre por conta ou categoria/subcategoria para visualizar movimentações</p>
         </div>
+        {account?.is_mirror && (
+          <Button variant="outline" disabled={syncingNecta} onClick={handleSyncNecta} className="flex items-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${syncingNecta ? 'animate-spin' : ''}`} /> Atualizar Necta
+          </Button>
+        )}
         {hasValidFilter && entries.length > 0 && !loading && (
           <Button variant="outline" onClick={exportPDF} className="flex items-center gap-2">
             <FileDown className="w-4 h-4" /> Exportar PDF
@@ -206,7 +233,11 @@ export function StatementPage({ companyId }: StatementPageProps) {
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as contas</SelectItem>
-                {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}{a.is_mirror ? ' (Necta)' : ''}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -275,7 +306,22 @@ export function StatementPage({ companyId }: StatementPageProps) {
                         <TagBadges tags={rowTags[e.id]} className="mt-1 ml-6" />
                       </TableCell>
                       {showAccountColumn && <TableCell className="text-muted-foreground">{e.accountName || '-'}</TableCell>}
-                      <TableCell className="text-muted-foreground">{e.category ? `${e.category}${e.subcategory ? ` / ${e.subcategory}` : ''}` : e.relatedAccount || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {e.source === 'necta' ? (
+                          <NectaCategoryCell
+                            entryId={e.id}
+                            companyId={companyId}
+                            description={e.description}
+                            categoryId={e.categoryId ?? null}
+                            subcategoryId={e.subcategoryId ?? null}
+                            categorySource={e.categorySource}
+                            categories={categories}
+                            onSaved={refetch}
+                          />
+                        ) : (
+                          e.category ? `${e.category}${e.subcategory ? ` / ${e.subcategory}` : ''}` : e.relatedAccount || '-'
+                        )}
+                      </TableCell>
                       <TableCell className={`text-right ${e.type === 'income' || e.type === 'transfer_in' ? 'text-green-600' : 'text-red-600'}`}>{e.type === 'income' || e.type === 'transfer_in' ? '+' : '-'}{formatCurrency(e.amount)}</TableCell>
                       {showBalanceColumn && <TableCell className={`text-right font-medium ${e.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(e.balance)}</TableCell>}
                     </TableRow>

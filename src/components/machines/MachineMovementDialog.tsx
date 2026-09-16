@@ -264,7 +264,7 @@ export function MachineMovementDialog({ companyId, machine, onClose, onDone }: P
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Não informar</SelectItem>
-                    {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                    {accounts.filter(mirrorFree => !mirrorFree.is_mirror).map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

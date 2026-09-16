@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { decode as base64Decode } from 'https://deno.land/std@0.168.0/encoding/base64.ts';
 import { timingSafeEqual } from 'https://deno.land/std@0.168.0/crypto/timing_safe_equal.ts';
+import { mirrorSaleToLedger } from '../_shared/nectaLedger.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
@@ -135,20 +136,14 @@ Deno.serve(async (req) => {
         if (mapped === 'paid') {
           const paidAt = (payload?.occurredAt ?? payload?.data?.saleDate ?? new Date().toISOString()).toString();
           update.paid_at = paidAt;
-          const description = `Cobrança ${sale.method}${sale.payer_name ? ` - ${sale.payer_name}` : ''}`;
+          // Conta gráfica: a liquidação entra no espelho da Conta Necta (líquido)
+          // com a taxa em separado — sem duplicar em transactions.
+          const accountId = await mirrorSaleToLedger(admin, { ...sale, ...update }, paidAt);
+          if (accountId && !sale.account_id) update.account_id = accountId;
           if (sale.payable_receivable_id) {
             await admin.from('payables_receivables')
-              .update({ status: 'paid', paid_date: paidAt.slice(0, 10), paid_account_id: sale.account_id ?? null })
+              .update({ status: 'paid', paid_date: paidAt.slice(0, 10), paid_account_id: sale.account_id ?? accountId ?? null })
               .eq('id', sale.payable_receivable_id);
-          }
-          if (sale.account_id && !sale.transaction_id) {
-            const { data: tx } = await admin.from('transactions').insert({
-              company_id: sale.company_id, account_id: sale.account_id, type: 'income',
-              amount: sale.amount, description, date: paidAt.slice(0, 10),
-              category_id: sale.category_id ?? null, subcategory_id: sale.subcategory_id ?? null,
-              created_by: sale.created_by ?? null,
-            }).select('id').maybeSingle();
-            if (tx) update.transaction_id = tx.id;
           }
         }
 

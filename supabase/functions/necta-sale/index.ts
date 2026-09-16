@@ -4,6 +4,7 @@ import {
   sameDocument, todayISO, translateGatewayError, validatePayer,
 } from './nectaFormat.ts';
 import { type NectaCreds, nectaRequest, companyCredentials } from '../_shared/nectaSeller.ts';
+import { mirrorSaleToLedger } from '../_shared/nectaLedger.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
@@ -106,51 +107,27 @@ function extractFields(resp: any, billet?: any) {
   };
 }
 
-/** Espelha a cobrança na gestão financeira (contas a receber + transação). */
+/**
+ * Espelha a liquidação na Conta Necta (conta gráfica). Nada é duplicado:
+ * as cobranças em aberto aparecem em Contas a Receber a partir de necta_sales,
+ * e o extrato da Conta Necta vem de necta_ledger_entries.
+ */
 async function mirrorFinance(admin: any, sale: any, status: string, paidAt?: string | null) {
-  const isPaid = status === 'paid';
-  const methodLabel: Record<string, string> = {
-    pix: 'PIX', bank_slip: 'Boleto', pix_cappta: 'Bolepix', credit_card: 'Cartão', link: 'Link de pagamento',
-  };
-  const description = `Cobrança ${methodLabel[sale.method] ?? sale.method}${sale.payer_name ? ` - ${sale.payer_name}` : ''}${sale.description ? ` (${sale.description})` : ''}`;
   const update: Record<string, unknown> = {};
+  if (status !== 'paid') return update;
 
-  // Contas a receber
-  if (!sale.payable_receivable_id) {
-    const { data: pr } = await admin.from('payables_receivables').insert({
-      company_id: sale.company_id,
-      type: 'receivable',
-      description,
-      amount: sale.amount,
-      due_date: sale.due_date ?? new Date().toISOString().slice(0, 10),
-      status: isPaid ? 'paid' : 'pending',
-      paid_account_id: isPaid ? (sale.account_id ?? null) : null,
-      category_id: sale.category_id ?? null,
-      subcategory_id: sale.subcategory_id ?? null,
-      paid_date: isPaid ? (paidAt ?? new Date().toISOString()).slice(0, 10) : null,
-      created_by: sale.created_by ?? null,
-    }).select('id').maybeSingle();
-    if (pr) update.payable_receivable_id = pr.id;
-  } else if (isPaid) {
+  const accountId = await mirrorSaleToLedger(admin, sale, paidAt);
+  if (accountId && !sale.account_id) update.account_id = accountId;
+
+  // Registros legados (criados antes da conta espelho) continuam sendo baixados.
+  if (sale.payable_receivable_id) {
     await admin.from('payables_receivables')
-      .update({ status: 'paid', paid_date: (paidAt ?? new Date().toISOString()).slice(0, 10), paid_account_id: sale.account_id ?? null })
+      .update({
+        status: 'paid',
+        paid_date: (paidAt ?? new Date().toISOString()).slice(0, 10),
+        paid_account_id: sale.account_id ?? accountId ?? null,
+      })
       .eq('id', sale.payable_receivable_id);
-  }
-
-  // Transação efetiva na conta (somente quando liquidada e com conta definida)
-  if (isPaid && sale.account_id && !sale.transaction_id) {
-    const { data: tx } = await admin.from('transactions').insert({
-      company_id: sale.company_id,
-      account_id: sale.account_id,
-      type: 'income',
-      amount: sale.amount,
-      description,
-      date: (paidAt ?? new Date().toISOString()).slice(0, 10),
-      category_id: sale.category_id ?? null,
-      subcategory_id: sale.subcategory_id ?? null,
-      created_by: sale.created_by ?? null,
-    }).select('id').maybeSingle();
-    if (tx) update.transaction_id = tx.id;
   }
   return update;
 }

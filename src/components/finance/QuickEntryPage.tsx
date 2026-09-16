@@ -68,7 +68,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
 
 
 
-  const activeAccounts = accounts.filter(a => a.is_active);
+  const activeAccounts = accounts.filter(a => a.is_active && !a.is_mirror);
   const filteredCategories = categories.filter(c => c.type === (isIncome ? 'income' : 'expense') || c.type === 'both');
   
   // Build flat list of all subcategories with parent info

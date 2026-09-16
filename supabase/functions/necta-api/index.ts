@@ -3,6 +3,7 @@ import {
   companyCredentials, marketplaceCreds, nectaBaseUrl, nectaRequest, nectaToken, provisionSellerCredentials,
   saveCompanyCredentials, sellerCredentials,
 } from '../_shared/nectaSeller.ts';
+import { syncCompanyLedger } from '../_shared/nectaLedger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -307,6 +308,16 @@ Deno.serve(async (req) => {
       return json({ ok: true, imported, updated, total: items.length });
     }
 
+    // ------------------------------------------- conta gráfica (espelho) da Necta
+    // Atualiza o espelho da Conta Necta a partir das cobranças liquidadas.
+    if (input?.action === 'sync_ledger') {
+      const companyId = String(input?.company_id ?? '');
+      if (!companyId) return json({ error: 'company_id é obrigatório' }, 400);
+      const { data: hasAccess } = await supabase.rpc('has_company_access', { _user_id: userId, _company_id: companyId });
+      if (!hasAccess) return json({ error: 'Sem acesso a esta empresa.' }, 403);
+      const result = await syncCompanyLedger(admin, companyId, input?.use_ai !== false);
+      return json({ ok: true, ...result });
+    }
 
     // ------------------------------------------------------------ proxy genérico
     const { path, method = 'GET', body, query, establishment_id, company_id } = input ?? {};

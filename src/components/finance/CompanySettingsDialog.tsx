@@ -205,6 +205,17 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
 
 
       if (error) throw error;
+
+      // Ao habilitar Pagamentos, garante a conta espelho "Conta Necta" (idempotente).
+      if (paymentsModuleEnabled) {
+        const { error: mirrorError } = await (supabase as any)
+          .rpc('ensure_necta_mirror_account', { _company_id: effectiveCompanyId });
+        if (mirrorError) {
+          console.error('Error provisioning Necta mirror account:', mirrorError);
+          toast.warning('Configurações salvas, mas a Conta Necta não pôde ser criada agora.');
+        }
+      }
+
       toast.success('Configurações salvas com sucesso!');
       onSaved?.();
       onOpenChange(false);

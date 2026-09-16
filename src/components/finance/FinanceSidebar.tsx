@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { APP_VERSION } from '@/lib/appVersion';
 import {
   ChevronDown,
   ChevronRight,
@@ -761,13 +762,13 @@ export function FinanceSidebar({
                   v1
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="right">Tai Finance v1.0.0</TooltipContent>
+              <TooltipContent side="right">Tai Finance v{APP_VERSION}</TooltipContent>
             </Tooltip>
           </div>
         ) : (
           <div className="px-3 py-2 border-t border-border">
             <span className="text-[10px] text-muted-foreground/70 select-none">
-              Tai Finance v1.0.0
+              Tai Finance v{APP_VERSION}
             </span>
           </div>
         )}

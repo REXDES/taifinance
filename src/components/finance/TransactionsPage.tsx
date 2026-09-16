@@ -294,7 +294,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                         <SelectValue placeholder="Selecione a conta" />
                       </SelectTrigger>
                       <SelectContent>
-                        {accounts.map((account) => (
+                        {accounts.filter(mirrorFree => !mirrorFree.is_mirror).map((account) => (
                           <SelectItem key={account.id} value={account.id}>
                             {account.name}
                           </SelectItem>
@@ -491,7 +491,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
-                    {accounts.map((account) => (
+                    {accounts.filter(mirrorFree => !mirrorFree.is_mirror).map((account) => (
                       <SelectItem key={account.id} value={account.id}>
                         {account.name}
                       </SelectItem>

@@ -13,6 +13,11 @@ export interface StatementEntry {
   subcategory?: string;
   accountName?: string;
   relatedAccount?: string;
+  /** 'necta' quando a linha vem da conta espelho (somente leitura). */
+  source?: 'necta';
+  categoryId?: string | null;
+  subcategoryId?: string | null;
+  categorySource?: string | null;
 }
 
 export function useAccountStatement(
@@ -42,16 +47,66 @@ export function useAccountStatement(
 
     try {
       // If filtering by account, fetch account info
+      let mirrorAccount = false;
       if (accountId) {
         const { data: accountData, error: accountError } = await supabase
           .from('accounts')
-          .select('id, name, initial_balance')
+          .select('id, name, initial_balance, source')
           .eq('id', accountId)
           .single();
         if (accountError) throw accountError;
         setAccount(accountData);
+        mirrorAccount = (accountData as any)?.source === 'necta';
       } else {
         setAccount(null);
+      }
+
+      // Conta espelho da Necta: o extrato vem das movimentações informadas pela Necta.
+      if (mirrorAccount) {
+        let mirrorQuery = (supabase as any)
+          .from('necta_ledger_entries')
+          .select('*, category:transaction_categories(name), subcategory:transaction_subcategories(name)')
+          .eq('account_id', accountId)
+          .order('date', { ascending: true });
+        if (startDate) mirrorQuery = mirrorQuery.gte('date', startDate);
+        if (endDate) mirrorQuery = mirrorQuery.lte('date', endDate);
+        if (categoryId) mirrorQuery = mirrorQuery.eq('category_id', categoryId);
+        if (subcategoryId) mirrorQuery = mirrorQuery.eq('subcategory_id', subcategoryId);
+
+        const { data: mirrorRows, error: mirrorError } = await mirrorQuery;
+        if (mirrorError) throw mirrorError;
+
+        let mirrorBalance = 0;
+        if (startDate) {
+          const { data: prior } = await (supabase as any)
+            .from('necta_ledger_entries')
+            .select('amount, direction').eq('account_id', accountId).lt('date', startDate);
+          (prior ?? []).forEach((row: any) => {
+            mirrorBalance += row.direction === 'out' ? -Number(row.amount) : Number(row.amount);
+          });
+        }
+
+        const mirrorEntries: StatementEntry[] = (mirrorRows ?? []).map((row: any) => {
+          mirrorBalance += row.direction === 'out' ? -Number(row.amount) : Number(row.amount);
+          return {
+            id: row.id,
+            date: row.date,
+            description: row.description,
+            type: row.direction === 'out' ? 'expense' : 'income',
+            amount: Number(row.amount),
+            balance: mirrorBalance,
+            category: row.category?.name,
+            subcategory: row.subcategory?.name,
+            source: 'necta',
+            categoryId: row.category_id,
+            subcategoryId: row.subcategory_id,
+            categorySource: row.category_source,
+          };
+        });
+
+        setEntries(mirrorEntries);
+        setLoading(false);
+        return;
       }
 
       // Fetch transactions

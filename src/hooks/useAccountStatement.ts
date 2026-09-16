@@ -51,11 +51,11 @@ export function useAccountStatement(
       if (accountId) {
         const { data: accountData, error: accountError } = await supabase
           .from('accounts')
-          .select('id, name, initial_balance, source')
+          .select('id, name, initial_balance, source, is_mirror')
           .eq('id', accountId)
           .single();
         if (accountError) throw accountError;
-        setAccount(accountData);
+        setAccount(accountData as any);
         mirrorAccount = (accountData as any)?.source === 'necta';
       } else {
         setAccount(null);

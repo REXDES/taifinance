@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { APP_VERSION } from '@/lib/appVersion';
 import {
   ChevronDown,
   ChevronRight,

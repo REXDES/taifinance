@@ -192,6 +192,11 @@ export function StatementPage({ companyId }: StatementPageProps) {
           <h1 className="text-2xl font-bold text-foreground">Extrato</h1>
           <p className="text-muted-foreground">Filtre por conta ou categoria/subcategoria para visualizar movimentações</p>
         </div>
+        {account?.is_mirror && (
+          <Button variant="outline" disabled={syncingNecta} onClick={handleSyncNecta} className="flex items-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${syncingNecta ? 'animate-spin' : ''}`} /> Atualizar Necta
+          </Button>
+        )}
         {hasValidFilter && entries.length > 0 && !loading && (
           <Button variant="outline" onClick={exportPDF} className="flex items-center gap-2">
             <FileDown className="w-4 h-4" /> Exportar PDF
@@ -207,7 +212,11 @@ export function StatementPage({ companyId }: StatementPageProps) {
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as contas</SelectItem>
-                {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}{a.is_mirror ? ' (Necta)' : ''}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

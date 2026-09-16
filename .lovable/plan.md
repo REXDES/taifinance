@@ -1,45 +1,41 @@
-# Conciliação entre Pagamentos e Gestão Financeira
+# Conta Necta espelhada no Tai Finance
 
-Cada empresa habilitada (só pelo Modo Administrativo) passa a ter uma "Conta Pagando" na Gestão Financeira, e toda cobrança emitida no módulo de Pagamentos vira automaticamente recebível e lançamento nessa conta.
+É viável, sim, e é mais simples do que conciliar. A ressalva: para o saldo e o extrato abrirem rápido e os relatórios funcionarem, os dados da Necta precisam ficar guardados aqui numa cópia atualizada periodicamente (não dá para consultar a Necta a cada clique). Essa cópia é marcada como "espelho": ela nunca vira lançamento normal, nunca entra duas vezes e não pode ser editada à mão — só categorizada.
 
 ## Como vai funcionar
 
 **1. Habilitação (só no Modo Administrativo)**
-- Nas configurações da empresa, no Modo Administrativo, um novo interruptor: "Conciliar Pagamentos com a Gestão Financeira".
-- No Modo Normal a empresa apenas vê se está habilitada ou não, sem poder ligar/desligar.
-- Ao ligar, o sistema cria (se ainda não existir) para aquela empresa:
-  - a conta **Conta Pagando**, dentro de um grupo "Ativo";
-  - a categoria de receita **Recebimentos Pagando** com as subcategorias Boleto, PIX e Cartão;
-  - a categoria de despesa **Taxas Pagando** com a subcategoria Taxa de cobrança.
-- Desligar não apaga nada: só para de gerar novos lançamentos.
+- Ao ligar o módulo Pagamentos para uma empresa, ela ganha automaticamente a conta **Conta Necta**, marcada como conta espelho.
+- A conta aparece nas telas de saldo, extrato, balancete e fluxo de caixa junto com as demais, com um selo indicando que vem da Necta.
+- Ninguém lança, edita ou exclui movimento nessa conta pelo app: o conteúdo é o que a Necta informa.
 
-**2. Cobrança emitida → Contas a Receber**
-- Toda cobrança criada já nasce vinculada à Conta Pagando e às categorias acima; o usuário não precisa escolher conta na tela de Cobranças (o campo passa a mostrar a Conta Pagando fixa quando a empresa é habilitada).
-- Enquanto não está liquidada, a cobrança fica como **recebível pendente** em Contas a Pagar/Receber, com vencimento, descrição, pagador e valor vindos da cobrança.
-- Quando a Necta confirma o pagamento, o recebível é baixado e entra na Conta Pagando **o valor líquido** (valor recebido menos a taxa da Necta), na data da liquidação. A taxa não gera lançamento separado.
-- Estorno ou cancelamento não desfaz nada sozinho: marca a cobrança para revisão (comportamento já existente).
+**2. Movimentações e saldo**
+- O saldo e o extrato da Conta Necta vêm da própria Necta (liquidações, taxas, repasses, estornos), atualizados de hora em hora e também quando a Necta avisa um pagamento.
+- Nada é copiado para lançamentos comuns: o extrato mostra as linhas da Necta como são, com data, descrição, pagador e valor.
 
-**3. Atualização automática de hora em hora**
-- Uma verificação automática a cada hora consulta na Necta as cobranças ainda em aberto e atualiza vencimento, dados do pagador, status e liquidação — inclusive quando o aviso automático da Necta (webhook) não chega.
-- São 24 verificações por dia. Isso mantém o banco de dados ativo mesmo quando não há cobrança em aberto, o que aumenta um pouco o custo do Cloud; a alternativa mais simples seria confiar apenas no aviso da Necta, mas aí uma liquidação perdida poderia demorar dias para aparecer. Mantendo a verificação por hora, o atraso máximo é de 1 hora.
+**3. Contas a Receber**
+- Em Contas a Pagar/Receber, além dos registros do app, aparecem as cobranças em aberto da Necta, também marcadas como Necta.
+- Elas mudam de status sozinhas quando a Necta liquida — sem baixa manual, sem recebível duplicado.
+- Cobranças criadas no app que geram boleto/PIX pela Necta aparecem uma única vez (a origem é sempre a Necta).
 
-**4. Extrato da conta Necta**
-- Nova aba "Extrato Pagando" dentro do módulo de Pagamentos: traz os repasses/liquidações da Necta e marca cada linha como "já lançado" (quando existe cobrança correspondente) ou "não lançado".
-- As linhas sem correspondência (ex.: repasses, taxas avulsas, ajustes) podem ser lançadas na Conta Pagando com um clique, com opção de lançar em lote.
-- Nada é lançado automaticamente a partir do extrato, evitando duplicidade: o casamento é feito pelo identificador da venda/liquidação da Necta, e uma linha já lançada nunca é oferecida de novo.
+**4. Categorização com memória**
+- Cada linha da Necta (no extrato e nos recebíveis) pode ser categorizada a qualquer momento, pelas mesmas telas de categorização que o app já tem, incluindo tags.
+- Ao categorizar, o sistema guarda uma regra de memória a partir do texto da linha (pagador, descrição, tipo de cobrança).
+- Nas próximas atualizações, linhas parecidas são categorizadas sozinhas: primeiro pela memória (correspondência direta), e quando não há regra, pela IA, do mesmo jeito que já acontece nos comprovantes do Lançamento Rápido.
+- Sugestão automática vem marcada como "sugerida" até o usuário confirmar, e ele pode confirmar em lote.
 
 **5. Versão do aplicativo**
-- Passa a existir uma versão visível do app (canto do menu lateral e na tela de perfil), que eu incremento a cada alteração entregue. Começa em 1.1.0.
+- Passa a existir uma versão visível (menu lateral e tela de perfil), incrementada a cada alteração entregue. Começa em 1.1.0.
 
 ## Detalhes técnicos
 
-- `companies`: nova coluna `payments_finance_sync_enabled boolean default false`.
-- `necta_sales`: colunas novas `settlement_reference text`, `finance_synced_at timestamptz`.
-- `necta_settlements` já existe e passa a ser preenchida pela sincronização; nova coluna `transaction_id uuid` para marcar linhas já lançadas + índice único em (`company_id`, `necta_settlement_id`).
-- Provisionamento da Conta Pagando: função SECURITY DEFINER `public.ensure_payments_finance_setup(_company_id uuid)` idempotente (grupo, conta, categorias e subcategorias), chamada pela edge function ao habilitar o interruptor. Retorna os ids para gravar em `companies` (`payments_account_id`, `payments_income_category_id`, `payments_fee_category_id`).
-- `necta-sale`: `mirrorFinance` passa a resolver conta/categoria pelo setup da empresa quando `payments_finance_sync_enabled`; ao liquidar, usa `net_amount` (fallback `amount`) na transação.
-- `necta-webhook`: mesma resolução de conta/categoria e uso de `net_amount` no lançamento; hoje usa `sale.amount` e só lança se `sale.account_id` estiver preenchido.
-- `necta-api`: nova ação `sync_settlements` (GET de liquidações/repasses por empresa, upsert em `necta_settlements` com casamento por `necta_sale_id`) e ação `enable_finance_sync` (admin-only, chama a função de provisionamento).
-- Cron horário via `pg_cron` + `pg_net` chamando `necta-sale` na ação `sync` para vendas em `pending|issued|overdue`, seguido de `sync_settlements`.
-- Front: `usePaymentsFinance.ts` (flag + ids da conta/categorias), ajustes em `CompanySettingsDialog.tsx` (interruptor admin-only), `NectaChargesPage.tsx` (conta fixa), nova `NectaSettlementsMirrorPage.tsx` + item no grupo Pagamentos do `FinanceSidebar.tsx`, chave `pagamentos.extrato` em `src/lib/permissions.ts`.
-- Versão: `src/lib/appVersion.ts` exportando `APP_VERSION`, exibido no `FinanceSidebar` e no `ProfileDialog`; `package.json` acompanha o mesmo número.
+- `accounts`: nova coluna `source text default 'manual'` (`'necta'` para a conta espelho) e `is_mirror boolean default false`. Contas espelho ficam somente-leitura na UI e nos hooks de criação de lançamento/transferência.
+- Provisionamento: função SECURITY DEFINER `public.ensure_necta_mirror_account(_company_id uuid)`, idempotente, chamada ao ligar `payments_module_enabled`; guarda o id em `companies.necta_account_id`.
+- Nova tabela `necta_ledger_entries` (espelho do extrato): `company_id`, `account_id`, `necta_entry_id` (único por empresa), `entry_type` (settlement/fee/refund/transfer), `date`, `description`, `counterparty`, `amount`, `direction`, `necta_sale_id`, `category_id`, `subcategory_id`, `category_source` (`auto`|`memory`|`manual`), `raw jsonb`. GRANTs para `authenticated`/`service_role`, RLS por `has_company_access`.
+- Nova tabela `finance_categorization_memory`: `company_id`, `scope` (`ledger`|`receivable`), `pattern` (texto normalizado do pagador/descrição), `category_id`, `subcategory_id`, `tag_ids uuid[]`, `hits int`, único por (`company_id`,`scope`,`pattern`).
+- `necta_sales` continua sendo a fonte dos recebíveis Necta; nenhuma linha nova em `payables_receivables`. As telas de Contas a Pagar/Receber passam a unir as duas fontes (hook `usePayablesReceivables` recebe as cobranças Necta abertas como itens somente-leitura marcados com origem).
+- Saldo/extrato: `useAccounts` soma o saldo espelho a partir de `necta_ledger_entries`; `useAccountStatement` lê dessa tabela quando a conta é espelho. Balancete, fluxo de caixa e relatórios de categoria incluem as linhas espelho pela mesma união.
+- `necta-api`: nova ação `sync_ledger` — busca liquidações/movimentos da empresa na Necta, faz upsert por `necta_entry_id`, e para cada linha nova aplica memória (match normalizado) e, se não houver, chama a IA (mesma rota de `suggest-category`, modelo padrão do gateway) gravando `category_source='auto'`.
+- Cron horário (`pg_cron` + `pg_net`) chamando `sync_ledger` por empresa habilitada; o webhook da Necta também dispara a atualização da venda afetada. São 24 execuções por dia; mantém o banco ativo mesmo sem movimento, com custo pequeno, e garante atraso máximo de 1 hora quando o aviso da Necta não chega.
+- Front: `useNectaLedger.ts`, `useCategorizationMemory.ts`, ajustes em `AccountsPage`, `StatementPage`, `PayablesReceivablesPage` (badge "Necta", ações de edição desabilitadas exceto categorizar), reuso de `AiCategoryHelper`/`TagPicker` na categorização em lote.
+- Versão: `src/lib/appVersion.ts` com `APP_VERSION`, exibido no `FinanceSidebar` e no `ProfileDialog`, espelhado em `package.json`.

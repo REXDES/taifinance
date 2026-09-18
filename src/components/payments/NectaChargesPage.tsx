@@ -698,12 +698,8 @@ export function NectaChargesPage({ companyId }: Props) {
               </div>
             )}
 
-            <div><Label>Conta de recebimento (Gestão Financeira)</Label>
-              <div className="rounded-md border px-3 py-2 text-sm bg-muted/40">Conta Necta</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Toda cobrança é lançada na Conta Necta, sem opção de escolha.
-              </p>
-            </div>
+            <div className="flex items-center justify-between border rounded-md p-3">
+
 
             <div className="flex items-center justify-between border rounded-md p-3">
               <div>

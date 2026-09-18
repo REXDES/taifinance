@@ -29,6 +29,13 @@
       "when": 1789589024266,
       "tag": "0003_necta_mirror_account",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789745342754,
+      "tag": "0004_split_pix_on_clients_suppliers",
+      "breakpoints": true
     }
   ]
 }

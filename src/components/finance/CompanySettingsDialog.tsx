@@ -146,6 +146,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
         setCreditModuleEnabled(!!d.credit_module_enabled);
         setBankDigitalModuleEnabled(!!d.bank_digital_module_enabled);
         setPaymentsModuleEnabled(!!d.payments_module_enabled);
+        setNectaMirrorEnabled(!!d.necta_mirror_enabled);
       }
     } catch (error) {
       console.error('Error loading company settings:', error);
@@ -200,14 +201,15 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           credit_module_enabled: creditModuleEnabled,
           bank_digital_module_enabled: bankDigitalModuleEnabled,
           payments_module_enabled: paymentsModuleEnabled,
+          necta_mirror_enabled: nectaMirrorEnabled,
         } as any)
         .eq('id', effectiveCompanyId!);
 
 
       if (error) throw error;
 
-      // Ao habilitar Pagamentos, garante a conta espelho "Conta Necta" (idempotente).
-      if (paymentsModuleEnabled) {
+      // Só cria a conta espelho "Conta Necta" quando o toggle específico está ligado (idempotente).
+      if (nectaMirrorEnabled) {
         const { error: mirrorError } = await (supabase as any)
           .rpc('ensure_necta_mirror_account', { _company_id: effectiveCompanyId });
         if (mirrorError) {

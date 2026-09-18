@@ -127,7 +127,6 @@ export function NectaChargesPage({ companyId }: Props) {
     setCredentialsReady(!!company?.necta_credentials_at);
     setRows(data ?? []);
     setAccounts(accs ?? []);
-    void accounts.length; // contas listadas apenas para contexto; a cobrança usa sempre a Conta Necta
     setCompanyName(company?.name ?? '');
     setPayers([
       ...(estabs ?? []).map((e: any) => ({

@@ -12,8 +12,6 @@ Vamos passar a usar um único envio, com o código ou link de pagamento já dent
 - **Cabeçalho e botões:** nenhum
 - **Corpo:**
 
-- **Corpo:**
-
 ```text
 Olá! Você recebeu uma cobrança de {{1}}.
 

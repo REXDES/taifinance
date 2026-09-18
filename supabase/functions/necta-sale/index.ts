@@ -456,15 +456,22 @@ Deno.serve(async (req) => {
     }
 
     const results: any[] = [];
+    const credsCache = new Map<string, NectaCreds | null>();
     for (const sale of targets) {
       if (!sale.necta_sale_id && !sale.necta_payment_link_id) { results.push({ id: sale.id, skipped: 'não emitida' }); continue; }
       try {
+        // A consulta precisa do mesmo contexto de seller usado na emissão, senão a
+        // Necta responde com dados de outro escopo (ou nenhum) e a URL salva quebra.
+        if (!credsCache.has(sale.company_id)) {
+          credsCache.set(sale.company_id, await companyCredentials(admin, sale.company_id));
+        }
+        const saleCreds = credsCache.get(sale.company_id) ?? null;
         const resp = sale.necta_sale_id
-          ? await api(`/sales/${sale.necta_sale_id}`)
-          : await api(`/payment-links/${sale.necta_payment_link_id}`);
+          ? await api(`/sales/${sale.necta_sale_id}`, 'GET', undefined, undefined, saleCreds)
+          : await api(`/payment-links/${sale.necta_payment_link_id}`, 'GET', undefined, undefined, saleCreds);
         let billet: any = null;
         if (sale.necta_sale_id && (sale.method === 'bank_slip' || sale.method === 'pix_cappta')) {
-          billet = await api(`/sales/${sale.necta_sale_id}/billet`).catch(() => null);
+          billet = await api(`/sales/${sale.necta_sale_id}/billet`, 'GET', undefined, undefined, saleCreds).catch(() => null);
         }
         const f = extractFields(resp, billet);
         const mapped = mapStatus(f.provider_status);

@@ -28,7 +28,6 @@ import { PayablesReceivablesFlowPage } from '@/components/finance/PayablesReceiv
 import { QuickEntryPage } from '@/components/finance/QuickEntryPage';
 import { ClientsSuppliersPage } from '@/components/finance/ClientsSuppliersPage';
 import { TagsPage } from '@/components/finance/TagsPage';
-import { SplitPixPage } from '@/components/finance/SplitPixPage';
 import { BankDigitalPage } from '@/components/finance/BankDigitalPage';
 import { BoletosPage } from '@/components/finance/BoletosPage';
 import { CompanySettingsDialog } from '@/components/finance/CompanySettingsDialog';
@@ -82,7 +81,6 @@ export type FinanceView =
   | 'statement-import'
   | 'categories'
   | 'tags'
-  | 'split-pix'
   | 'category-report'
   | 'tag-report'
   | 'cash-flow'
@@ -129,7 +127,6 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'statement-import',
   'categories',
   'tags',
-  'split-pix',
   'category-report',
   'tag-report',
   'cash-flow',
@@ -383,8 +380,6 @@ const Finance = () => {
         return <CategoriesPage companyId={selectedCompanyId} />;
       case 'tags':
         return <TagsPage companyId={selectedCompanyId} />;
-      case 'split-pix':
-        return <SplitPixPage companyId={selectedCompanyId} />;
       case 'category-report':
         return <CategoryReportPage companyId={selectedCompanyId} />;
       case 'tag-report':

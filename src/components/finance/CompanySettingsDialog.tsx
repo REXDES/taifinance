@@ -578,6 +578,25 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                       <Switch checked={paymentsModuleEnabled} onCheckedChange={setPaymentsModuleEnabled} />
                     </div>
                   </div>
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-base flex items-center gap-2">
+                          <Wrench className="w-4 h-4" />
+                          Conta Necta espelhada
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Cria a conta gráfica "Conta Necta" na gestão financeira, somente leitura, com saldo, extrato e cobranças vindos da Necta. Ao desligar, a conta deixa de aparecer nas telas financeiras sem apagar nada.
+                        </p>
+                        {!paymentsModuleEnabled && (
+                          <p className="text-sm text-amber-600">
+                            Requer o módulo Pagamentos ativo para receber dados.
+                          </p>
+                        )}
+                      </div>
+                      <Switch checked={nectaMirrorEnabled} onCheckedChange={setNectaMirrorEnabled} />
+                    </div>
+                  </div>
                 </TabsContent>
               )}
             </div>

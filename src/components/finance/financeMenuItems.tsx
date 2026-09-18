@@ -73,7 +73,6 @@ export const cadastrosMenuItems: MenuItem[] = [
   { view: 'categories', label: 'Categorias', icon: <Tags className="w-4 h-4" /> },
   { view: 'tags', label: 'Tags', icon: <Tags className="w-4 h-4" /> },
   { view: 'clients-suppliers', label: 'Clientes/Fornecedores', icon: <Users className="w-4 h-4" /> },
-  { view: 'split-pix', label: 'Split de PIX', icon: <Split className="w-4 h-4" /> },
 ];
 
 export const machinesTopMenuItems: MenuItem[] = [

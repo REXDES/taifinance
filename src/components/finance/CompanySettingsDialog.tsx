@@ -86,6 +86,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
   const [creditModuleEnabled, setCreditModuleEnabled] = useState(false);
   const [bankDigitalModuleEnabled, setBankDigitalModuleEnabled] = useState(false);
   const [paymentsModuleEnabled, setPaymentsModuleEnabled] = useState(false);
+  const [nectaMirrorEnabled, setNectaMirrorEnabled] = useState(false);
 
   // Reset picked when dialog reopens in picker mode
   useEffect(() => {
@@ -146,6 +147,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
         setCreditModuleEnabled(!!d.credit_module_enabled);
         setBankDigitalModuleEnabled(!!d.bank_digital_module_enabled);
         setPaymentsModuleEnabled(!!d.payments_module_enabled);
+        setNectaMirrorEnabled(!!d.necta_mirror_enabled);
       }
     } catch (error) {
       console.error('Error loading company settings:', error);
@@ -200,14 +202,15 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           credit_module_enabled: creditModuleEnabled,
           bank_digital_module_enabled: bankDigitalModuleEnabled,
           payments_module_enabled: paymentsModuleEnabled,
+          necta_mirror_enabled: nectaMirrorEnabled,
         } as any)
         .eq('id', effectiveCompanyId!);
 
 
       if (error) throw error;
 
-      // Ao habilitar Pagamentos, garante a conta espelho "Conta Necta" (idempotente).
-      if (paymentsModuleEnabled) {
+      // Só cria a conta espelho "Conta Necta" quando o toggle específico está ligado (idempotente).
+      if (nectaMirrorEnabled) {
         const { error: mirrorError } = await (supabase as any)
           .rpc('ensure_necta_mirror_account', { _company_id: effectiveCompanyId });
         if (mirrorError) {
@@ -573,6 +576,25 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                         </p>
                       </div>
                       <Switch checked={paymentsModuleEnabled} onCheckedChange={setPaymentsModuleEnabled} />
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-base flex items-center gap-2">
+                          <Wrench className="w-4 h-4" />
+                          Conta Necta espelhada
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Cria a conta gráfica "Conta Necta" na gestão financeira, somente leitura, com saldo, extrato e cobranças vindos da Necta. Ao desligar, a conta deixa de aparecer nas telas financeiras sem apagar nada.
+                        </p>
+                        {!paymentsModuleEnabled && (
+                          <p className="text-sm text-amber-600">
+                            Requer o módulo Pagamentos ativo para receber dados.
+                          </p>
+                        )}
+                      </div>
+                      <Switch checked={nectaMirrorEnabled} onCheckedChange={setNectaMirrorEnabled} />
                     </div>
                   </div>
                 </TabsContent>

@@ -45,7 +45,7 @@ export function useAccounts(companyId: string | null) {
     }
 
     try {
-      const [accountsRes, groupsRes] = await Promise.all([
+      const [accountsRes, groupsRes, companyRes] = await Promise.all([
         supabase
           .from('accounts')
           .select('*, group:account_groups(*)')
@@ -55,13 +55,21 @@ export function useAccounts(companyId: string | null) {
           .from('account_groups')
           .select('*')
           .eq('company_id', companyId)
-          .order('name')
+          .order('name'),
+        (supabase as any)
+          .from('companies')
+          .select('necta_mirror_enabled')
+          .eq('id', companyId)
+          .maybeSingle()
       ]);
 
       if (accountsRes.error) throw accountsRes.error;
       if (groupsRes.error) throw groupsRes.error;
 
-      setAccounts((accountsRes.data || []) as Account[]);
+      // A conta espelho da Necta só aparece quando o módulo está habilitado para a empresa.
+      const mirrorEnabled = !!(companyRes as any)?.data?.necta_mirror_enabled;
+      const allAccounts = (accountsRes.data || []) as Account[];
+      setAccounts(mirrorEnabled ? allAccounts : allAccounts.filter(a => a.source !== 'necta'));
       setGroups((groupsRes.data || []) as AccountGroup[]);
     } catch (error: any) {
       console.error('Error fetching accounts:', error);

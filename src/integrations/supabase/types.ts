@@ -737,6 +737,9 @@ export type Database = {
       }
       clients_suppliers: {
         Row: {
+          bank_account: string | null
+          bank_branch: string | null
+          bank_name: string | null
           biometry_similarity_score: number | null
           biometry_verified_at: string | null
           company_id: string
@@ -750,12 +753,17 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          pix_key: string | null
+          pix_key_type: string | null
           selfie_url: string | null
           type: string
           updated_at: string
           whatsapp_phone: string | null
         }
         Insert: {
+          bank_account?: string | null
+          bank_branch?: string | null
+          bank_name?: string | null
           biometry_similarity_score?: number | null
           biometry_verified_at?: string | null
           company_id: string
@@ -769,12 +777,17 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
           selfie_url?: string | null
           type: string
           updated_at?: string
           whatsapp_phone?: string | null
         }
         Update: {
+          bank_account?: string | null
+          bank_branch?: string | null
+          bank_name?: string | null
           biometry_similarity_score?: number | null
           biometry_verified_at?: string | null
           company_id?: string
@@ -788,6 +801,8 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
           selfie_url?: string | null
           type?: string
           updated_at?: string
@@ -820,6 +835,7 @@ export type Database = {
           name: string
           necta_account_id: string | null
           necta_credentials_at: string | null
+          necta_mirror_enabled: boolean
           payments_module_enabled: boolean
           phone: string | null
           pix_city: string | null
@@ -849,6 +865,7 @@ export type Database = {
           name: string
           necta_account_id?: string | null
           necta_credentials_at?: string | null
+          necta_mirror_enabled?: boolean
           payments_module_enabled?: boolean
           phone?: string | null
           pix_city?: string | null
@@ -878,6 +895,7 @@ export type Database = {
           name?: string
           necta_account_id?: string | null
           necta_credentials_at?: string | null
+          necta_mirror_enabled?: boolean
           payments_module_enabled?: boolean
           phone?: string | null
           pix_city?: string | null
@@ -4454,6 +4472,7 @@ export type Database = {
       split_rules: {
         Row: {
           active: boolean
+          client_supplier_id: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -4469,6 +4488,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          client_supplier_id?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -4484,6 +4504,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          client_supplier_id?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -4498,6 +4519,13 @@ export type Database = {
           value_type?: Database["public"]["Enums"]["split_value_type"]
         }
         Relationships: [
+          {
+            foreignKeyName: "split_rules_client_supplier_id_fkey"
+            columns: ["client_supplier_id"]
+            isOneToOne: false
+            referencedRelation: "clients_suppliers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "split_rules_company_id_fkey"
             columns: ["company_id"]

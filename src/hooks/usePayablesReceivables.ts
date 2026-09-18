@@ -95,7 +95,12 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
       // Cobranças da Necta aparecem junto das contas a receber do app,
       // direto da fonte (necta_sales) — sem duplicar registro.
       let nectaItems: PayableReceivable[] = [];
-      if (filters?.type !== 'payable') {
+      const { data: companyFlag } = await (supabase as any)
+        .from('companies')
+        .select('necta_mirror_enabled')
+        .eq('id', companyId)
+        .maybeSingle();
+      if (filters?.type !== 'payable' && companyFlag?.necta_mirror_enabled) {
         let nectaQuery = (supabase as any)
           .from('necta_sales')
           .select('id, company_id, description, amount, due_date, status, paid_at, method, payer_name, category_id, subcategory_id, account_id, created_at, updated_at, created_by')

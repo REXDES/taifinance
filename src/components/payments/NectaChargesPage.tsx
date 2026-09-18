@@ -583,23 +583,17 @@ export function NectaChargesPage({ companyId }: Props) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label>Recebedor</Label>
-              <div className="rounded-md border px-3 py-2 text-sm bg-muted/40">
-                {receiver
-                  ? <>{receiver.name || companyName}{receiver.document ? ` — ${maskDocument(receiver.document)}` : ''}</>
-                  : <span className="text-muted-foreground">Nenhum recebedor liberado</span>}
-              </div>
-              {!receiver && (
-                <p className="text-xs text-destructive mt-1">
-                  Sua empresa ainda não está liberada para receber cobranças. Conclua a homologação ou fale com o administrador.
-                </p>
-              )}
-              {receiver && !credentialsReady && (
-                <p className="text-xs text-destructive mt-1">
-                  Aguardando a liberação da chave de cobrança da sua empresa pelo administrador.
-                </p>
-              )}
-            </div>
+            {!receiver && (
+              <p className="text-xs text-destructive rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                Sua empresa ainda não está liberada para receber cobranças. Conclua a homologação ou fale com o administrador.
+              </p>
+            )}
+            {receiver && !credentialsReady && (
+              <p className="text-xs text-destructive rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                Aguardando a liberação da chave de cobrança da sua empresa pelo administrador.
+              </p>
+            )}
+
             <div><Label>Método</Label>
               <Select value={form.method} onValueChange={(v) => setForm(f => ({ ...f, method: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

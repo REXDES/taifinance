@@ -364,6 +364,33 @@ export function NectaChargesPage({ companyId }: Props) {
     return sale.pix_copy_paste ?? null;
   };
 
+  /**
+   * O PDF do boleto e o link de pagamento expiram na Necta, então a URL guardada
+   * costuma dar 404. Buscamos o endereço atual no momento do clique.
+   */
+  const openDocument = async (sale: any) => {
+    setOpeningDoc(true);
+    const tab = window.open('', '_blank');
+    const { data, error } = await supabase.functions.invoke('necta-sale', {
+      body: { action: 'open_document', sale_id: sale.id },
+    });
+    setOpeningDoc(false);
+    const url = (data as any)?.url as string | undefined;
+    const err = error?.message ?? (data as any)?.error;
+    if (!url) {
+      tab?.close();
+      const fallback = sale.boleto_url || sale.payment_url;
+      if (fallback) { window.open(fallback, '_blank', 'noopener'); return; }
+      toast.error(err || 'Não foi possível abrir o documento desta cobrança');
+      return;
+    }
+    if (tab) tab.location.href = url;
+    else window.open(url, '_blank', 'noopener');
+    load();
+  };
+
+
+
   const sendWhatsapp = async (sale: any) => {
     if (!sale.payer_phone) { toast.error('Cadastre o telefone do pagador para enviar por WhatsApp'); return; }
     const paymentInfo = paymentInfoFor(sale);

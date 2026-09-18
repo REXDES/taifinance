@@ -4,7 +4,7 @@ import {
   sameDocument, todayISO, translateGatewayError, validatePayer,
 } from './nectaFormat.ts';
 import { type NectaCreds, nectaRequest, companyCredentials } from '../_shared/nectaSeller.ts';
-import { mirrorSaleToLedger } from '../_shared/nectaLedger.ts';
+import { mirrorSaleToLedger, ensureMirrorAccount } from '../_shared/nectaLedger.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
@@ -114,10 +114,17 @@ function extractFields(resp: any, billet?: any) {
  */
 async function mirrorFinance(admin: any, sale: any, status: string, paidAt?: string | null) {
   const update: Record<string, unknown> = {};
-  if (status !== 'paid') return update;
+
+  // Toda cobrança pertence à Conta Necta — sem escolha de conta na emissão.
+  if (status !== 'paid') {
+    const mirrorId = await ensureMirrorAccount(admin, sale.company_id);
+    if (mirrorId && sale.account_id !== mirrorId) update.account_id = mirrorId;
+    return update;
+  }
 
   const accountId = await mirrorSaleToLedger(admin, sale, paidAt);
-  if (accountId && !sale.account_id) update.account_id = accountId;
+  if (accountId) update.account_id = accountId;
+
 
   // Registros legados (criados antes da conta espelho) continuam sendo baixados.
   if (sale.payable_receivable_id) {

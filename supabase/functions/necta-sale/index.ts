@@ -4,7 +4,7 @@ import {
   sameDocument, todayISO, translateGatewayError, validatePayer,
 } from './nectaFormat.ts';
 import { type NectaCreds, nectaRequest, companyCredentials } from '../_shared/nectaSeller.ts';
-import { mirrorSaleToLedger } from '../_shared/nectaLedger.ts';
+import { mirrorSaleToLedger, ensureMirrorAccount } from '../_shared/nectaLedger.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
@@ -114,10 +114,17 @@ function extractFields(resp: any, billet?: any) {
  */
 async function mirrorFinance(admin: any, sale: any, status: string, paidAt?: string | null) {
   const update: Record<string, unknown> = {};
-  if (status !== 'paid') return update;
+
+  // Toda cobrança pertence à Conta Necta — sem escolha de conta na emissão.
+  if (status !== 'paid') {
+    const mirrorId = await ensureMirrorAccount(admin, sale.company_id);
+    if (mirrorId && sale.account_id !== mirrorId) update.account_id = mirrorId;
+    return update;
+  }
 
   const accountId = await mirrorSaleToLedger(admin, sale, paidAt);
-  if (accountId && !sale.account_id) update.account_id = accountId;
+  if (accountId) update.account_id = accountId;
+
 
   // Registros legados (criados antes da conta espelho) continuam sendo baixados.
   if (sale.payable_receivable_id) {
@@ -358,6 +365,42 @@ Deno.serve(async (req) => {
       return json({ ok: true, sale: updated });
     }
 
+    // -------------------------------------------------------------- open_document
+    // Busca na hora o endereço do boleto/link na Necta. O PDF do boleto expira e
+    // a URL salva vira 404, então nunca abrimos a URL antiga sem revalidar.
+    if (action === 'open_document') {
+      const saleId = input?.sale_id;
+      if (!saleId) return json({ error: 'sale_id é obrigatório' }, 400);
+      const { data: sale } = await admin.from('necta_sales').select('*').eq('id', saleId).maybeSingle();
+      if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
+      const docCreds: NectaCreds | null = await companyCredentials(admin, sale.company_id);
+
+      try {
+        if (sale.necta_payment_link_id) {
+          const link = await api(`/payment-links/${sale.necta_payment_link_id}`, 'GET', undefined, undefined, docCreds);
+          const url = extractFields(link).payment_url;
+          if (!url) return json({ error: 'A Necta não devolveu o link de pagamento desta cobrança.' }, 404);
+          await admin.from('necta_sales').update({ payment_url: url }).eq('id', saleId);
+          return json({ ok: true, url });
+        }
+        if (!sale.necta_sale_id) return json({ error: 'Cobrança ainda não emitida na Necta.' }, 400);
+        const billetDoc = await api(`/sales/${sale.necta_sale_id}/billet`, 'GET', undefined, undefined, docCreds).catch(() => null);
+        const detailDoc = await api(`/sales/${sale.necta_sale_id}`, 'GET', undefined, undefined, docCreds).catch(() => null);
+        const fields = extractFields(detailDoc ?? {}, billetDoc);
+        const url = fields.boleto_url ?? fields.payment_url;
+        if (!url) return json({ error: 'A Necta não devolveu o PDF do boleto desta cobrança.' }, 404);
+        const patch: Record<string, unknown> = { boleto_url: fields.boleto_url ?? sale.boleto_url };
+        if (fields.boleto_digitable_line) patch.boleto_digitable_line = fields.boleto_digitable_line;
+        if (fields.pix_copy_paste) patch.pix_copy_paste = fields.pix_copy_paste;
+        await admin.from('necta_sales').update(patch).eq('id', saleId);
+        return json({ ok: true, url });
+      } catch (e) {
+        return json({ error: translateGatewayError((e as Error).message) }, 502);
+      }
+    }
+
+
+
     // -------------------------------------------------------- settlements_sync
     if (action === 'settlements_sync') {
       const companyId = input?.company_id ?? null;
@@ -413,15 +456,22 @@ Deno.serve(async (req) => {
     }
 
     const results: any[] = [];
+    const credsCache = new Map<string, NectaCreds | null>();
     for (const sale of targets) {
       if (!sale.necta_sale_id && !sale.necta_payment_link_id) { results.push({ id: sale.id, skipped: 'não emitida' }); continue; }
       try {
+        // A consulta precisa do mesmo contexto de seller usado na emissão, senão a
+        // Necta responde com dados de outro escopo (ou nenhum) e a URL salva quebra.
+        if (!credsCache.has(sale.company_id)) {
+          credsCache.set(sale.company_id, await companyCredentials(admin, sale.company_id));
+        }
+        const saleCreds = credsCache.get(sale.company_id) ?? null;
         const resp = sale.necta_sale_id
-          ? await api(`/sales/${sale.necta_sale_id}`)
-          : await api(`/payment-links/${sale.necta_payment_link_id}`);
+          ? await api(`/sales/${sale.necta_sale_id}`, 'GET', undefined, undefined, saleCreds)
+          : await api(`/payment-links/${sale.necta_payment_link_id}`, 'GET', undefined, undefined, saleCreds);
         let billet: any = null;
         if (sale.necta_sale_id && (sale.method === 'bank_slip' || sale.method === 'pix_cappta')) {
-          billet = await api(`/sales/${sale.necta_sale_id}/billet`).catch(() => null);
+          billet = await api(`/sales/${sale.necta_sale_id}/billet`, 'GET', undefined, undefined, saleCreds).catch(() => null);
         }
         const f = extractFields(resp, billet);
         const mapped = mapStatus(f.provider_status);

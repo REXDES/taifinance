@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Copy, FileText, RefreshCw, Receipt, Ban, Loader2, MessageCircle } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { normalizeDate, sameDocument, todayISO, validatePayer } from '@/lib/nectaFormat';
 
 interface Props { companyId: string }
@@ -92,6 +93,7 @@ export function NectaChargesPage({ companyId }: Props) {
   const [syncingAll, setSyncingAll] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const [openingDoc, setOpeningDoc] = useState(false);
   const [payers, setPayers] = useState<any[]>([]);
   const [cepLoading, setCepLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
@@ -362,6 +364,33 @@ export function NectaChargesPage({ companyId }: Props) {
     return sale.pix_copy_paste ?? null;
   };
 
+  /**
+   * O PDF do boleto e o link de pagamento expiram na Necta, então a URL guardada
+   * costuma dar 404. Buscamos o endereço atual no momento do clique.
+   */
+  const openDocument = async (sale: any) => {
+    setOpeningDoc(true);
+    const tab = window.open('', '_blank');
+    const { data, error } = await supabase.functions.invoke('necta-sale', {
+      body: { action: 'open_document', sale_id: sale.id },
+    });
+    setOpeningDoc(false);
+    const url = (data as any)?.url as string | undefined;
+    const err = error?.message ?? (data as any)?.error;
+    if (!url) {
+      tab?.close();
+      const fallback = sale.boleto_url || sale.payment_url;
+      if (fallback) { window.open(fallback, '_blank', 'noopener'); return; }
+      toast.error(err || 'Não foi possível abrir o documento desta cobrança');
+      return;
+    }
+    if (tab) tab.location.href = url;
+    else window.open(url, '_blank', 'noopener');
+    load();
+  };
+
+
+
   const sendWhatsapp = async (sale: any) => {
     if (!sale.payer_phone) { toast.error('Cadastre o telefone do pagador para enviar por WhatsApp'); return; }
     const paymentInfo = paymentInfoFor(sale);
@@ -499,16 +528,20 @@ export function NectaChargesPage({ companyId }: Props) {
                 </div>
               )}
               {detail.pix_copy_paste && (
-                <div><Label>PIX copia e cola</Label>
+                <div className="space-y-2">
+                  <Label>PIX copia e cola</Label>
                   <div className="flex gap-2"><Input readOnly value={detail.pix_copy_paste} />
                     <Button size="icon" variant="outline" onClick={() => copy(detail.pix_copy_paste, 'PIX')}><Copy className="h-4 w-4" /></Button></div>
+                  <div className="flex flex-col items-center gap-2 rounded-md border bg-white p-4">
+                    <QRCodeSVG value={detail.pix_copy_paste} size={180} />
+                    <span className="text-xs text-muted-foreground">Aponte a câmera do banco para pagar</span>
+                  </div>
                 </div>
               )}
-              {(detail.boleto_url || detail.payment_url) && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={detail.boleto_url || detail.payment_url} target="_blank" rel="noopener noreferrer">
-                    <FileText className="h-4 w-4 mr-2" />Abrir boleto / link
-                  </a>
+              {(detail.necta_sale_id || detail.necta_payment_link_id) && (
+                <Button variant="outline" size="sm" onClick={() => openDocument(detail)} disabled={openingDoc}>
+                  {openingDoc ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+                  Abrir boleto / link
                 </Button>
               )}
               {detail.last_sync_at && <p className="text-xs text-muted-foreground">Última verificação: {new Date(detail.last_sync_at).toLocaleString('pt-BR')}</p>}
@@ -666,13 +699,10 @@ export function NectaChargesPage({ companyId }: Props) {
             )}
 
             <div><Label>Conta de recebimento (Gestão Financeira)</Label>
-              <Select value={form.account_id || 'none'} onValueChange={(v) => setForm(f => ({ ...f, account_id: v === 'none' ? '' : v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Não lançar em conta</SelectItem>
-                  {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="rounded-md border px-3 py-2 text-sm bg-muted/40">Conta Necta</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Toda cobrança é lançada na Conta Necta, sem opção de escolha.
+              </p>
             </div>
 
             <div className="flex items-center justify-between border rounded-md p-3">

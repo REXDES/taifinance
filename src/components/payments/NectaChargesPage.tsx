@@ -700,8 +700,6 @@ export function NectaChargesPage({ companyId }: Props) {
 
             <div className="flex items-center justify-between border rounded-md p-3">
 
-
-            <div className="flex items-center justify-between border rounded-md p-3">
               <div>
                 <Label>Cobrança recorrente</Label>
                 <p className="text-xs text-muted-foreground">Gera uma cobrança por período a partir do vencimento</p>
@@ -724,7 +722,6 @@ export function NectaChargesPage({ companyId }: Props) {
               </div>
             )}
 
-            <p className="text-xs text-muted-foreground">A primeira cobrança é emitida na Necta ao salvar. O status é atualizado por webhook e por consulta periódica, refletindo em Contas a Pagar/Receber e no extrato da conta.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>

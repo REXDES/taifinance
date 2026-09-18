@@ -103,7 +103,25 @@ serve(async (req) => {
       );
     }
 
-    const txt = await sendText(to, String(paymentInfo));
+    // O código/linha digitável/link vai como texto puro (sem prefixo e sem
+    // preview) para o cliente poder copiar a mensagem inteira de uma vez.
+    const code = String(paymentInfo).trim();
+    const txt = await sendText(to, code);
+    if (!txt.ok) {
+      console.error("Code text send failed:", JSON.stringify(txt.data));
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            txt.data?.error?.message ||
+            "O aviso foi enviado, mas o código de pagamento não pôde ser entregue.",
+          hint:
+            "A Meta só aceita mensagem de texto livre depois que o cliente responde, ou dentro da janela de 24h de conversa. Peça ao cliente para responder qualquer coisa no WhatsApp e reenvie, ou copie o código e envie manualmente.",
+          details: txt.data,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     return new Response(
       JSON.stringify({ success: true, template: tpl.data, text: txt.data }),

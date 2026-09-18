@@ -1,8 +1,13 @@
 # Template de WhatsApp para envio de cobrança (Meta / WhatsApp Cloud API)
 
-Cadastre este template no Gerenciador do WhatsApp (Meta Business → Ferramentas
-→ Modelos de mensagem). Enquanto ele não estiver **aprovado**, o botão
-"Enviar por WhatsApp" na tela de Cobranças retorna erro de template.
+O envio usa **um único template**, que já carrega o código ou link de pagamento
+no próprio corpo. Assim não dependemos da janela de 24h de conversa (a mensagem
+de texto livre com o código era bloqueada pela Meta).
+
+Edite o template existente no Gerenciador do WhatsApp (Meta Business →
+Ferramentas → Modelos de mensagem). Enquanto a alteração não estiver
+**aprovada**, o botão "Enviar por WhatsApp" na tela de Cobranças retorna erro
+de template.
 
 - **Nome:** `cobranca_pagamento`
 - **Idioma:** Português (BR) — `pt_BR`
@@ -10,15 +15,19 @@ Cadastre este template no Gerenciador do WhatsApp (Meta Business → Ferramentas
 - **Cabeçalho:** nenhum
 - **Botões:** nenhum
 
-## Corpo (4 variáveis, nesta ordem)
+## Corpo (5 variáveis, nesta ordem)
 
 ```text
-Olá! Você tem uma cobrança de {{1}}.
+Olá! Você recebeu uma cobrança de {{1}}.
 
 Referente a: {{2}}
 Valor: {{3}}
+Forma de pagamento: {{4}}
 
-{{4}}
+Código ou link para pagamento:
+{{5}}
+
+Use os dados acima para realizar o pagamento.
 ```
 
 ## Exemplos para submissão
@@ -28,21 +37,11 @@ Valor: {{3}}
 | `{{1}}` | Empresa que está cobrando | Pagando |
 | `{{2}}` | Descrição da cobrança | Mensalidade setembro |
 | `{{3}}` | Valor formatado | R$ 10,00 |
-| `{{4}}` | Instrução conforme o meio | Confira a linha digitável do boleto na mensagem a seguir. |
+| `{{4}}` | Forma de pagamento | Boleto |
+| `{{5}}` | Código PIX, linha digitável ou link | 00020126...5204000053039865802BR |
 
-Textos possíveis para `{{4}}` (gerados pelo sistema):
-
-- PIX: `Confira o código PIX na mensagem a seguir.`
-- Boleto: `Confira a linha digitável do boleto na mensagem a seguir.`
-- Bolepix: `Confira o código de pagamento (bolepix) na mensagem a seguir.`
-- Link: `Acesse o link de pagamento na mensagem a seguir.`
-
-## Como o envio funciona
-
-1. O sistema envia o template acima — isso abre a janela de 24h de conversa.
-2. Em seguida envia uma mensagem de texto simples com o código PIX, a linha
-   digitável ou o link. Esse conteúdo não passa por aprovação da Meta porque
-   viaja como texto livre dentro da janela aberta.
+Valores possíveis de `{{4}}` (gerados pelo sistema): `PIX`, `Boleto`,
+`Bolepix (boleto com PIX)`, `Link de pagamento`.
 
 ## Usar outro nome de template
 

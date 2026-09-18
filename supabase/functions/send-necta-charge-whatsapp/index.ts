@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Reenvio de cobrança Necta (PIX/boleto/link) por WhatsApp Cloud API.
-// Mesmo esqueleto de send-pix-whatsapp, generalizado para os 3 métodos:
-// o template abre a janela de 24h, e uma mensagem de texto simples logo em
-// seguida carrega o código/link em si (fora do limite de aprovação da Meta).
+// Envio de cobrança Necta (PIX/boleto/bolepix/link) por WhatsApp Cloud API.
+// Um único template de utilidade carrega TODO o conteúdo, inclusive o código
+// ou link de pagamento. Isso evita depender da janela de 24h da Meta, que
+// bloqueava a segunda mensagem (texto livre) com o código.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,11 +18,12 @@ const TEMPLATE_LANG = Deno.env.get("WHATSAPP_TEMPLATE_NECTA_CHARGE_LANG") ?? "pt
 const GRAPH_VERSION = "v21.0";
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}/${WA_PHONE_NUMBER_ID}`;
 
-const METHOD_INTRO: Record<string, string> = {
-  pix: "Confira o código PIX na mensagem a seguir.",
-  bank_slip: "Confira a linha digitável do boleto na mensagem a seguir.",
-  pix_cappta: "Confira o código de pagamento (bolepix) na mensagem a seguir.",
-  link: "Acesse o link de pagamento na mensagem a seguir.",
+// {{4}} — forma de pagamento apresentada ao cliente.
+const METHOD_LABEL: Record<string, string> = {
+  pix: "PIX",
+  bank_slip: "Boleto",
+  pix_cappta: "Bolepix (boleto com PIX)",
+  link: "Link de pagamento",
 };
 
 function normalizePhone(phone: string): string {
@@ -31,7 +32,16 @@ function normalizePhone(phone: string): string {
   return n;
 }
 
-async function waPost(path: string, body: any) {
+/**
+ * A Meta recusa parâmetros de template com quebras de linha, tabulações ou
+ * sequências de 5+ espaços. O código PIX/linha digitável já vem em uma linha,
+ * mas normalizamos por segurança.
+ */
+function sanitizeParam(value: string): string {
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+async function waPost(path: string, body: unknown) {
   const res = await fetch(`${GRAPH_BASE}${path}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
@@ -54,84 +64,68 @@ async function sendTemplate(to: string, name: string, lang: string, params: stri
   });
 }
 
-async function sendText(to: string, text: string) {
-  return waPost("/messages", { messaging_product: "whatsapp", to, type: "text", text: { body: text, preview_url: false } });
-}
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     if (!WA_TOKEN || !WA_PHONE_NUMBER_ID) {
-      return new Response(
-        JSON.stringify({ error: "WhatsApp Cloud API não configurada." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return json({ error: "WhatsApp Cloud API não configurada." }, 500);
     }
 
     const { phone, companyName, description, amount, method, paymentInfo } = await req.json();
     if (!phone || !description || !method || !paymentInfo) {
-      return new Response(
-        JSON.stringify({ error: "phone, description, method e paymentInfo são obrigatórios" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-    const intro = METHOD_INTRO[method];
-    if (!intro) {
-      return new Response(
-        JSON.stringify({ error: `method inválido: ${method}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return json({ error: "phone, description, method e paymentInfo são obrigatórios" }, 400);
     }
 
+    const methodLabel = METHOD_LABEL[method];
+    if (!methodLabel) return json({ error: `method inválido: ${method}` }, 400);
+
     const to = normalizePhone(phone);
+    if (to.length < 12) {
+      return json({
+        success: false,
+        error: "Número de WhatsApp inválido.",
+        hint: "Informe o telefone do pagador com DDD (ex.: 11999998888).",
+      });
+    }
+
     const valorStr = amount
       ? `R$ ${Number(amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
       : "valor não informado";
 
-    const tpl = await sendTemplate(to, TEMPLATE, TEMPLATE_LANG, [companyName || "Empresa", description, valorStr, intro]);
+    const params = [
+      sanitizeParam(companyName || "Empresa"),
+      sanitizeParam(description),
+      sanitizeParam(valorStr),
+      sanitizeParam(methodLabel),
+      sanitizeParam(String(paymentInfo)),
+    ];
+
+    const tpl = await sendTemplate(to, TEMPLATE, TEMPLATE_LANG, params);
     if (!tpl.ok) {
       console.error("Template send failed:", JSON.stringify(tpl.data));
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: tpl.data?.error?.message || "Falha ao enviar template",
-          hint: `Cadastre e aprove na Meta o template '${TEMPLATE}' (${TEMPLATE_LANG}), categoria Utilidade, sem cabeçalho e sem botões, com 4 variáveis no corpo: {{1}} empresa, {{2}} descrição, {{3}} valor, {{4}} instrução. O texto pronto está em docs/whatsapp-template-cobranca.md.`,
-          details: tpl.data,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      const metaMessage: string = tpl.data?.error?.message ?? "Falha ao enviar a mensagem";
+      const templateProblem = /template/i.test(metaMessage) || tpl.data?.error?.code === 132000 ||
+        tpl.data?.error?.code === 132001;
+      return json({
+        success: false,
+        error: metaMessage,
+        hint: templateProblem
+          ? `Edite na Meta o template '${TEMPLATE}' (${TEMPLATE_LANG}) para ter 5 variáveis no corpo: {{1}} empresa, {{2}} descrição, {{3}} valor, {{4}} forma de pagamento e {{5}} código ou link. O texto pronto está em docs/whatsapp-template-cobranca.md. O envio volta a funcionar assim que a Meta aprovar a alteração.`
+          : "Confira o número do pagador e tente novamente. Se persistir, copie o código e envie manualmente.",
+        details: tpl.data,
+      });
     }
 
-    // O código/linha digitável/link vai como texto puro (sem prefixo e sem
-    // preview) para o cliente poder copiar a mensagem inteira de uma vez.
-    const code = String(paymentInfo).trim();
-    const txt = await sendText(to, code);
-    if (!txt.ok) {
-      console.error("Code text send failed:", JSON.stringify(txt.data));
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error:
-            txt.data?.error?.message ||
-            "O aviso foi enviado, mas o código de pagamento não pôde ser entregue.",
-          hint:
-            "A Meta só aceita mensagem de texto livre depois que o cliente responde, ou dentro da janela de 24h de conversa. Peça ao cliente para responder qualquer coisa no WhatsApp e reenvie, ou copie o código e envie manualmente.",
-          details: txt.data,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, template: tpl.data, text: txt.data }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return json({ success: true, template: tpl.data });
   } catch (err) {
     console.error("send-necta-charge-whatsapp error:", err);
-    return new Response(
-      JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return json({ error: String(err) }, 500);
   }
 });

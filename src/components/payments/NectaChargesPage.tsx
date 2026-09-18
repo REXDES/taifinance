@@ -583,23 +583,17 @@ export function NectaChargesPage({ companyId }: Props) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label>Recebedor</Label>
-              <div className="rounded-md border px-3 py-2 text-sm bg-muted/40">
-                {receiver
-                  ? <>{receiver.name || companyName}{receiver.document ? ` — ${maskDocument(receiver.document)}` : ''}</>
-                  : <span className="text-muted-foreground">Nenhum recebedor liberado</span>}
-              </div>
-              {!receiver && (
-                <p className="text-xs text-destructive mt-1">
-                  Sua empresa ainda não está liberada para receber cobranças. Conclua a homologação ou fale com o administrador.
-                </p>
-              )}
-              {receiver && !credentialsReady && (
-                <p className="text-xs text-destructive mt-1">
-                  Aguardando a liberação da chave de cobrança da sua empresa pelo administrador.
-                </p>
-              )}
-            </div>
+            {!receiver && (
+              <p className="text-xs text-destructive rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                Sua empresa ainda não está liberada para receber cobranças. Conclua a homologação ou fale com o administrador.
+              </p>
+            )}
+            {receiver && !credentialsReady && (
+              <p className="text-xs text-destructive rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                Aguardando a liberação da chave de cobrança da sua empresa pelo administrador.
+              </p>
+            )}
+
             <div><Label>Método</Label>
               <Select value={form.method} onValueChange={(v) => setForm(f => ({ ...f, method: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -698,14 +692,8 @@ export function NectaChargesPage({ companyId }: Props) {
               </div>
             )}
 
-            <div><Label>Conta de recebimento (Gestão Financeira)</Label>
-              <div className="rounded-md border px-3 py-2 text-sm bg-muted/40">Conta Necta</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Toda cobrança é lançada na Conta Necta, sem opção de escolha.
-              </p>
-            </div>
-
             <div className="flex items-center justify-between border rounded-md p-3">
+
               <div>
                 <Label>Cobrança recorrente</Label>
                 <p className="text-xs text-muted-foreground">Gera uma cobrança por período a partir do vencimento</p>
@@ -728,7 +716,6 @@ export function NectaChargesPage({ companyId }: Props) {
               </div>
             )}
 
-            <p className="text-xs text-muted-foreground">A primeira cobrança é emitida na Necta ao salvar. O status é atualizado por webhook e por consulta periódica, refletindo em Contas a Pagar/Receber e no extrato da conta.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>

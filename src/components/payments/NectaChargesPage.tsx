@@ -501,16 +501,20 @@ export function NectaChargesPage({ companyId }: Props) {
                 </div>
               )}
               {detail.pix_copy_paste && (
-                <div><Label>PIX copia e cola</Label>
+                <div className="space-y-2">
+                  <Label>PIX copia e cola</Label>
                   <div className="flex gap-2"><Input readOnly value={detail.pix_copy_paste} />
                     <Button size="icon" variant="outline" onClick={() => copy(detail.pix_copy_paste, 'PIX')}><Copy className="h-4 w-4" /></Button></div>
+                  <div className="flex flex-col items-center gap-2 rounded-md border bg-white p-4">
+                    <QRCodeSVG value={detail.pix_copy_paste} size={180} />
+                    <span className="text-xs text-muted-foreground">Aponte a câmera do banco para pagar</span>
+                  </div>
                 </div>
               )}
-              {(detail.boleto_url || detail.payment_url) && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={detail.boleto_url || detail.payment_url} target="_blank" rel="noopener noreferrer">
-                    <FileText className="h-4 w-4 mr-2" />Abrir boleto / link
-                  </a>
+              {(detail.necta_sale_id || detail.necta_payment_link_id) && (
+                <Button variant="outline" size="sm" onClick={() => openDocument(detail)} disabled={openingDoc}>
+                  {openingDoc ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+                  Abrir boleto / link
                 </Button>
               )}
               {detail.last_sync_at && <p className="text-xs text-muted-foreground">Última verificação: {new Date(detail.last_sync_at).toLocaleString('pt-BR')}</p>}
@@ -668,13 +672,10 @@ export function NectaChargesPage({ companyId }: Props) {
             )}
 
             <div><Label>Conta de recebimento (Gestão Financeira)</Label>
-              <Select value={form.account_id || 'none'} onValueChange={(v) => setForm(f => ({ ...f, account_id: v === 'none' ? '' : v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Não lançar em conta</SelectItem>
-                  {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="rounded-md border px-3 py-2 text-sm bg-muted/40">Conta Necta</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Toda cobrança é lançada na Conta Necta, sem opção de escolha.
+              </p>
             </div>
 
             <div className="flex items-center justify-between border rounded-md p-3">

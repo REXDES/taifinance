@@ -10,6 +10,13 @@ export interface ClientSupplier {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  whatsapp_phone?: string | null;
+  /** Dados de recebimento usados no split de PIX. */
+  pix_key?: string | null;
+  pix_key_type?: string | null;
+  bank_name?: string | null;
+  bank_branch?: string | null;
+  bank_account?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

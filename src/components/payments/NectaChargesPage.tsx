@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Copy, FileText, RefreshCw, Receipt, Ban, Loader2, MessageCircle } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { normalizeDate, sameDocument, todayISO, validatePayer } from '@/lib/nectaFormat';
 
 interface Props { companyId: string }
@@ -92,6 +93,7 @@ export function NectaChargesPage({ companyId }: Props) {
   const [syncingAll, setSyncingAll] = useState(false);
   const [detail, setDetail] = useState<any | null>(null);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const [openingDoc, setOpeningDoc] = useState(false);
   const [payers, setPayers] = useState<any[]>([]);
   const [cepLoading, setCepLoading] = useState(false);
   const timerRef = useRef<number | null>(null);

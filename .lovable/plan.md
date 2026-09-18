@@ -4,9 +4,9 @@
 
 O fluxo atual envia primeiro o template e depois tenta enviar o código como uma mensagem comum. O envio do template não abre, por si só, a janela de atendimento de 24 horas; por isso o cliente pode receber o aviso, mas não o código.
 
-Vamos substituir esse fluxo por um único template de utilidade, já contendo o código ou link de pagamento como variável. Sugestão para cadastro na Meta:
+Vamos passar a usar um único envio, com o código ou link de pagamento já dentro do corpo do template. Você editará o template já existente:
 
-- **Nome:** `cobranca_pagamento_com_codigo`
+- **Nome:** `cobranca_pagamento` (o mesmo de hoje)
 - **Idioma:** Português (BR)
 - **Categoria:** Utilidade
 - **Cabeçalho e botões:** nenhum

@@ -173,6 +173,7 @@ const Finance = () => {
   });
   const changeView = (view: FinanceView) => {
     localStorage.setItem('tai-finance-current-view', view);
+    recordViewUsage(view, user?.id, selectedCompanyId);
     setCurrentView(view);
   };
   const [userRole, setUserRole] = useState<UserRoleInfo | null>(null);

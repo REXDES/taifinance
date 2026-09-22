@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User as UserIcon, Users, Download, Shield, RefreshCw, Menu } from 'lucide-react';
+import { ArrowLeft, LogOut, User as UserIcon, Users, Download, Shield, RefreshCw, Menu } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,6 +27,8 @@ interface FinanceHeaderProps {
   canSwitchMode?: boolean;
   onSwitchMode?: () => void;
   onOpenMobileMenu?: () => void;
+  showBackButton?: boolean;
+  onBack?: () => void;
 }
 
 export function FinanceHeader({
@@ -39,6 +41,8 @@ export function FinanceHeader({
   canSwitchMode,
   onSwitchMode,
   onOpenMobileMenu,
+  showBackButton,
+  onBack,
 }: FinanceHeaderProps) {
   const initials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.substring(0, 2).toUpperCase()
@@ -89,6 +93,13 @@ export function FinanceHeader({
         >
           <Menu className="h-5 w-5" />
         </Button>
+
+        {showBackButton && onBack && (
+          <Button variant="ghost" size="sm" onClick={onBack} className="shrink-0 gap-2 px-2" aria-label="Voltar">
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Voltar</span>
+          </Button>
+        )}
 
         {isAdminMode && (
           <Badge variant="default" className="gap-1 bg-primary/15 text-primary hover:bg-primary/20 shrink-0">

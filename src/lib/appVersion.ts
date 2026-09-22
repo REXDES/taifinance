@@ -1,2 +1,2 @@
 /** Versão do aplicativo, incrementada a cada alteração entregue. */
-export const APP_VERSION = '1.2.7';
+export const APP_VERSION = '1.2.8';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAccessMode } from '@/contexts/AccessModeContext';
 import { useCompanies } from '@/hooks/useCompanies';
@@ -172,10 +172,26 @@ const Finance = () => {
     const savedView = localStorage.getItem('tai-finance-current-view') as FinanceView | null;
     return savedView && NORMAL_ONLY_VIEWS.includes(savedView) ? savedView : 'dashboard';
   });
+  const viewHistoryRef = useRef<FinanceView[]>([]);
   const changeView = (view: FinanceView) => {
+    if (view === currentView) return;
+    viewHistoryRef.current.push(currentView);
     localStorage.setItem('tai-finance-current-view', view);
     recordViewUsage(view, user?.id, selectedCompanyId);
     setCurrentView(view);
+  };
+  const replaceView = (view: FinanceView) => {
+    if (view === currentView) return;
+    viewHistoryRef.current = [];
+    localStorage.setItem('tai-finance-current-view', view);
+    setCurrentView(view);
+  };
+  const handleBack = () => {
+    const previousView = viewHistoryRef.current.pop();
+    const fallbackView: FinanceView = effectiveMode === 'admin' ? 'admin-dashboard' : 'dashboard';
+    const targetView = previousView ?? fallbackView;
+    localStorage.setItem('tai-finance-current-view', targetView);
+    setCurrentView(targetView);
   };
   const [userRole, setUserRole] = useState<UserRoleInfo | null>(null);
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
@@ -205,11 +221,11 @@ const Finance = () => {
     if (showAccessModeDialog) return;
     if (effectiveMode === 'admin') {
       if (!ADMIN_VIEWS.includes(currentView)) {
-        changeView('admin-dashboard');
+        replaceView('admin-dashboard');
       }
     } else {
       if (!NORMAL_ONLY_VIEWS.includes(currentView) && currentView !== 'bank-digital') {
-        changeView('dashboard');
+        replaceView('dashboard');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -307,7 +323,7 @@ const Finance = () => {
     selectedCompanyId,
     onSelectCompany: setSelectedCompanyId,
     currentView,
-    onChangeView: setCurrentView,
+    onChangeView: changeView,
     isSupervisor,
     isGerente,
     accessMode: effectiveMode,
@@ -466,6 +482,8 @@ const Finance = () => {
           canSwitchMode={isSupervisor}
           onSwitchMode={resetMode}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          showBackButton={currentView !== (effectiveMode === 'admin' ? 'admin-dashboard' : 'dashboard')}
+          onBack={handleBack}
         />
         {/* pb-16 on mobile to clear the bottom nav bar */}
         <main className="flex-1 overflow-auto p-3 md:p-6 pb-20 md:pb-6">
@@ -476,7 +494,7 @@ const Finance = () => {
       {/* Mobile bottom navigation */}
       <MobileBottomNav
         currentView={currentView}
-        onChangeView={setCurrentView}
+        onChangeView={changeView}
         onOpenMenu={() => setMobileMenuOpen(true)}
         isAdminMode={effectiveMode === 'admin'}
       />

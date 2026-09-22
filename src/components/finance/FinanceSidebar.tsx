@@ -184,6 +184,13 @@ export function FinanceSidebar({
   const setGroup = (g: TopGroup) => (open: boolean) => setOpenGroup(open ? g : null);
   const setSubGroup = (g: SubGroup) => (open: boolean) => setOpenSubGroup(open ? g : null);
 
+  // Ao clicar em qualquer item de menu, recolhe todos os grupos expandidos.
+  const handleNavigate = (view: FinanceView) => {
+    setOpenGroup(null);
+    setOpenSubGroup(null);
+    onChangeView(view);
+  };
+
   const renderMenuItem = (item: MenuItem) => (
     collapsed ? (
       <Tooltip key={item.view}>
@@ -192,7 +199,7 @@ export function FinanceSidebar({
             variant="ghost"
             size="icon"
             className={cn("w-full", currentView === item.view && "bg-accent")}
-            onClick={() => onChangeView(item.view)}
+            onClick={() => handleNavigate(item.view)}
           >
             {item.icon}
           </Button>
@@ -207,7 +214,7 @@ export function FinanceSidebar({
           "w-full justify-start gap-2 text-foreground hover:bg-accent",
           currentView === item.view && "bg-accent"
         )}
-        onClick={() => onChangeView(item.view)}
+        onClick={() => handleNavigate(item.view)}
       >
         {item.icon}
         {item.label}

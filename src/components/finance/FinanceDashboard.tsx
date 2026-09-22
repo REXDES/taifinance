@@ -22,11 +22,18 @@ import {
 import { startOfWeek, endOfWeek, format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+import { useShortcutCards } from '@/hooks/useShortcutUsage';
+import { useAuth } from '@/contexts/AuthContext';
+import type { FinanceView } from '@/pages/Finance';
+
 interface FinanceDashboardProps {
   companyId: string;
+  onNavigate?: (view: FinanceView) => void;
 }
 
-export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
+export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProps) {
+  const { user } = useAuth();
+  const shortcuts = useShortcutCards(user?.id, companyId);
   const { accounts, groups, totalAtivo, totalPassivo, totalGeral, loading: accountsLoading } = useAccounts(companyId);
   
   const { categories } = useTransactionCategories(companyId);
@@ -159,6 +166,27 @@ export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground">Visão geral das suas finanças</p>
       </div>
+
+      {/* Atalhos — funções mais usadas pelo usuário (padrões até haver histórico) */}
+      {onNavigate && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {shortcuts.map((s) => (
+            <button
+              key={s.view}
+              onClick={() => onNavigate(s.view)}
+              className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card text-left hover:bg-accent hover:border-primary/40 transition-colors"
+            >
+              <span className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                {s.icon}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-foreground truncate">{s.label}</span>
+                <span className="block text-xs text-muted-foreground truncate">{s.description}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

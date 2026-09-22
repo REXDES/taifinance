@@ -62,6 +62,7 @@ import { NectaAdminSettingsPage } from '@/components/payments/NectaAdminSettings
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { usePermissions } from '@/hooks/usePermissions';
+import { recordViewUsage } from '@/hooks/useShortcutUsage';
 import { FINANCE_VIEW_PERMISSION_KEY } from '@/lib/permissions';
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -173,6 +174,7 @@ const Finance = () => {
   });
   const changeView = (view: FinanceView) => {
     localStorage.setItem('tai-finance-current-view', view);
+    recordViewUsage(view, user?.id, selectedCompanyId);
     setCurrentView(view);
   };
   const [userRole, setUserRole] = useState<UserRoleInfo | null>(null);
@@ -359,7 +361,7 @@ const Finance = () => {
 
     switch (currentView) {
       case 'dashboard':
-        return <FinanceDashboard companyId={selectedCompanyId} />;
+        return <FinanceDashboard companyId={selectedCompanyId} onNavigate={changeView} />;
       case 'quick-entry':
         return <QuickEntryPage companyId={selectedCompanyId} />;
       case 'accounts':

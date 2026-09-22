@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AccessModeProvider } from "@/contexts/AccessModeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -27,35 +28,37 @@ function RouteFallback() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <AccessModeProvider>
-            <Suspense fallback={<RouteFallback />}>
-              <Routes>
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/pix/copiar" element={<PixCopy />} />
-                <Route path="/credit/biometry/:token" element={<CreditBiometryPublic />} />
-                <Route path="/pagamentos/homologacao/:token" element={<NectaHomologationPublic />} />
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <Finance />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </AccessModeProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="tai-finance-theme">
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <AccessModeProvider>
+              <Suspense fallback={<RouteFallback />}>
+                <Routes>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/pix/copiar" element={<PixCopy />} />
+                  <Route path="/credit/biometry/:token" element={<CreditBiometryPublic />} />
+                  <Route path="/pagamentos/homologacao/:token" element={<NectaHomologationPublic />} />
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <Finance />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </AccessModeProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

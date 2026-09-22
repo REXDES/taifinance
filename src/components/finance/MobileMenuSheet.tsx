@@ -1,4 +1,6 @@
 import { cn } from '@/lib/utils';
+import { useTheme } from 'next-themes';
+import { APP_VERSION } from '@/lib/appVersion';
 import {
   Sheet,
   SheetContent,
@@ -38,6 +40,8 @@ import {
   ChevronRight,
   Briefcase,
   Truck,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { FinanceView } from '@/pages/Finance';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -126,6 +130,8 @@ export function MobileMenuSheet({
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
   const { can } = usePermissions();
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light';
 
   // Mesma regra do sidebar desktop: esconde itens sem permissão para o cargo.
   const filterAllowed = (items: MenuItem[]) =>
@@ -446,9 +452,29 @@ export function MobileMenuSheet({
           )}
         </nav>
 
-        <div className="px-4 py-2 border-t border-border">
+        <div className="px-4 py-3 border-t border-border space-y-2">
+          <div className="grid grid-cols-2 gap-1 rounded-md bg-muted/40 p-1" aria-label="Escolher tema">
+            <Button
+              variant={isDark ? 'ghost' : 'secondary'}
+              size="sm"
+              className="h-9 gap-2"
+              onClick={() => setTheme('light')}
+            >
+              <Sun className="h-4 w-4" />
+              Claro
+            </Button>
+            <Button
+              variant={isDark ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-9 gap-2"
+              onClick={() => setTheme('dark')}
+            >
+              <Moon className="h-4 w-4" />
+              Escuro
+            </Button>
+          </div>
           <span className="text-[10px] text-muted-foreground/70 select-none">
-            Tai Finance v1.0.0
+            Tai Finance v{APP_VERSION}
           </span>
         </div>
       </SheetContent>

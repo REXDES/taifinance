@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { APP_VERSION } from '@/lib/appVersion';
 import {
@@ -41,6 +42,8 @@ import {
   Split,
   Barcode,
   ArrowLeftRight,
+  Moon,
+  Sun,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -149,6 +152,8 @@ export function FinanceSidebar({
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
   const { can } = usePermissions();
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light';
 
   // Filter helper: hide sidebar items whose permission key is denied for this role.
   // Supervisor and unknown views always pass (unmapped views default to allowed).
@@ -760,9 +765,23 @@ export function FinanceSidebar({
           </div>
         )}
 
-        {/* Versão do app */}
+        {/* Tema e versão do app */}
         {collapsed ? (
-          <div className="p-2 border-t border-border flex justify-center">
+          <div className="p-2 border-t border-border flex flex-col items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                  aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
+                >
+                  {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">{isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}</TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-[10px] text-muted-foreground/70 select-none cursor-default">
@@ -773,7 +792,27 @@ export function FinanceSidebar({
             </Tooltip>
           </div>
         ) : (
-          <div className="px-3 py-2 border-t border-border">
+          <div className="px-3 py-2 border-t border-border space-y-2">
+            <div className="grid grid-cols-2 gap-1 rounded-md bg-muted/40 p-1" aria-label="Escolher tema">
+              <Button
+                variant={isDark ? 'ghost' : 'secondary'}
+                size="sm"
+                className="h-8 gap-1.5"
+                onClick={() => setTheme('light')}
+              >
+                <Sun className="h-3.5 w-3.5" />
+                Claro
+              </Button>
+              <Button
+                variant={isDark ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 gap-1.5"
+                onClick={() => setTheme('dark')}
+              >
+                <Moon className="h-3.5 w-3.5" />
+                Escuro
+              </Button>
+            </div>
             <span className="text-[10px] text-muted-foreground/70 select-none">
               Tai Finance v{APP_VERSION}
             </span>

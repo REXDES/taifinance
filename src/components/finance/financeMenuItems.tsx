@@ -20,7 +20,6 @@ import {
   Landmark,
   Shield,
   LayoutDashboard,
-  Barcode,
   Split,
   Truck,
   Hammer,

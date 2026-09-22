@@ -242,7 +242,7 @@ const Finance = () => {
       const key = FINANCE_VIEW_PERMISSION_KEY[view];
       return !!key && can(key);
     });
-    if (firstAllowedView && firstAllowedView !== currentView) changeView(firstAllowedView);
+    if (firstAllowedView && firstAllowedView !== currentView) replaceView(firstAllowedView);
   }, [permissionsLoading, isSupervisor, effectiveMode, currentView, can]);
 
   useEffect(() => {

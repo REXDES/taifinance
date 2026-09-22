@@ -199,7 +199,7 @@ export function FinanceSidebar({
             variant="ghost"
             size="icon"
             className={cn("w-full", currentView === item.view && "bg-accent")}
-            onClick={() => onChangeView(item.view)}
+            onClick={() => handleNavigate(item.view)}
           >
             {item.icon}
           </Button>
@@ -214,7 +214,7 @@ export function FinanceSidebar({
           "w-full justify-start gap-2 text-foreground hover:bg-accent",
           currentView === item.view && "bg-accent"
         )}
-        onClick={() => onChangeView(item.view)}
+        onClick={() => handleNavigate(item.view)}
       >
         {item.icon}
         {item.label}

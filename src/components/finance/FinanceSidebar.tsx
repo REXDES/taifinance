@@ -145,7 +145,7 @@ export function FinanceSidebar({
   bankDigitalEnabled = false,
   paymentsEnabled = false,
 }: FinanceSidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
   const { can } = usePermissions();

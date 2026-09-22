@@ -22,11 +22,18 @@ import {
 import { startOfWeek, endOfWeek, format, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+import { useShortcutCards } from '@/hooks/useShortcutUsage';
+import { useAuth } from '@/contexts/AuthContext';
+import type { FinanceView } from '@/pages/Finance';
+
 interface FinanceDashboardProps {
   companyId: string;
+  onNavigate?: (view: FinanceView) => void;
 }
 
-export function FinanceDashboard({ companyId }: FinanceDashboardProps) {
+export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProps) {
+  const { user } = useAuth();
+  const shortcuts = useShortcutCards(user?.id, companyId);
   const { accounts, groups, totalAtivo, totalPassivo, totalGeral, loading: accountsLoading } = useAccounts(companyId);
   
   const { categories } = useTransactionCategories(companyId);

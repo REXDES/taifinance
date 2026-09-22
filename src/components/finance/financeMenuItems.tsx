@@ -20,7 +20,6 @@ import {
   Landmark,
   Shield,
   LayoutDashboard,
-  Barcode,
   Split,
   Truck,
   Hammer,
@@ -46,7 +45,6 @@ export const transacoesMenuItems: MenuItem[] = [
   { view: 'transfers', label: 'Transferências', icon: <ArrowRightLeft className="w-4 h-4" /> },
   { view: 'payables-receivables', label: 'Contas a Pagar/Receber', icon: <CreditCard className="w-4 h-4" /> },
   { view: 'statement-import', label: 'Importar Extrato', icon: <FileSearch className="w-4 h-4" /> },
-  { view: 'boletos', label: 'Boletos', icon: <Barcode className="w-4 h-4" /> },
 ];
 
 export const relatoriosMainItems: MenuItem[] = [

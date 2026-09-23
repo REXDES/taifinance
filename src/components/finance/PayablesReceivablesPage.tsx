@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings, MessageCircle } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings, MessageCircle, Pause, Play } from 'lucide-react';
 import { AiCategoryHelper } from './AiCategoryHelper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -40,7 +40,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
       endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
       type: '' as '' | 'payable' | 'receivable',
-      status: [] as ('pending' | 'paid' | 'cancelled')[]
+      status: [] as ('pending' | 'paid' | 'cancelled' | 'paused')[]
     };
     
     try {
@@ -51,7 +51,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
         return {
           ...defaultFilters,
           type: (parsed.type || '') as '' | 'payable' | 'receivable',
-          status: (parsed.status || []) as ('pending' | 'paid' | 'cancelled')[]
+          status: (parsed.status || []) as ('pending' | 'paid' | 'cancelled' | 'paused')[]
         };
       }
     } catch (e) {
@@ -90,6 +90,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     updatePayableReceivable,
     effectuatePayment,
     cancelPayableReceivable,
+    setPausedPayableReceivable,
     deletePayableReceivable,
     checkRelatedRecords
   } = usePayablesReceivables(companyId, {

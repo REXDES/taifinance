@@ -317,8 +317,18 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
 
       {/* Top Expenses Chart */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 gap-4">
           <CardTitle>Maiores Despesas do Mês</CardTitle>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="toggle-subcategories"
+              checked={showSubcategories}
+              onCheckedChange={setShowSubcategories}
+            />
+            <Label htmlFor="toggle-subcategories" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+              Detalhar subcategorias
+            </Label>
+          </div>
         </CardHeader>
         <CardContent>
           {topExpenses.length === 0 ? (

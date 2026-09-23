@@ -4,7 +4,10 @@ import { useTransfers } from '@/hooks/useTransfers';
 import { usePatrimonialEvolution } from '@/hooks/usePatrimonialEvolution';
 import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft, Calendar } from 'lucide-react';
 import { 
   LineChart, 

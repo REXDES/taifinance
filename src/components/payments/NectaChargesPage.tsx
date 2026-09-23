@@ -395,7 +395,21 @@ export function NectaChargesPage({ companyId }: Props) {
   const sendWhatsapp = async (sale: any) => {
     if (!sale.payer_phone) { toast.error('Cadastre o telefone do pagador para enviar por WhatsApp'); return; }
     const paymentInfo = paymentInfoFor(sale);
-    if (!paymentInfo) { toast.error('Ainda não há código/link para enviar'); return; }
+    if (!paymentInfo) {
+      await logWhatsappAttempt({
+        companyId: companyId ?? null,
+        kind: 'charge',
+        recipientName: sale.payer_name ?? null,
+        recipientPhone: String(sale.payer_phone),
+        description: sale.description || 'Cobrança',
+        amount: Number(sale.amount || 0),
+        method: sale.method ?? null,
+        success: false,
+        errorMessage: 'Ainda não há código/link para enviar',
+      });
+      toast.error('Ainda não há código/link para enviar');
+      return;
+    }
     setSendingWhatsapp(true);
     const { data, error } = await supabase.functions.invoke('send-necta-charge-whatsapp', {
       body: {

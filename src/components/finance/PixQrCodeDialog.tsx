@@ -145,6 +145,17 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
       }
     } catch (error) {
       console.error('Error sending PIX via WhatsApp:', error);
+      await logWhatsappAttempt({
+        companyId: companyId ?? null,
+        kind: 'pix',
+        recipientName: record.client_supplier?.name ?? null,
+        recipientPhone: phoneToUse,
+        description: record.description,
+        amount: record.amount,
+        method: 'pix',
+        success: false,
+        errorMessage: (error as any)?.message || 'Erro ao enviar por WhatsApp',
+      });
       toast.error('Erro ao enviar por WhatsApp');
     } finally {
       setSending(false);

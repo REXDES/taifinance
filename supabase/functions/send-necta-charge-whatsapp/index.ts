@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { logWhatsapp, messageIdFrom } from "../_shared/whatsappLog.ts";
 
 // Envio de cobrança Necta (PIX/boleto/bolepix/link) por WhatsApp Cloud API.
 // Um único template de utilidade carrega TODO o conteúdo, inclusive o código

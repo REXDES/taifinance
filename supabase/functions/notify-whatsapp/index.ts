@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logWhatsapp, messageIdFrom } from "../_shared/whatsappLog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -168,6 +169,17 @@ serve(async (req) => {
         ]);
         if (r.ok) sent++;
         else errors.push({ kind: "task", to: profile.whatsapp_phone, err: r.data });
+        await logWhatsapp({
+          kind: "task",
+          template_name: TASK_TEMPLATE,
+          recipient_name: profile.full_name ?? null,
+          recipient_phone: String(profile.whatsapp_phone),
+          description: task.name,
+          success: r.ok,
+          error_message: r.ok ? null : (r.data?.error?.message ?? "Falha ao enviar lembrete de tarefa"),
+          provider_message_id: r.ok ? messageIdFrom(r.data) : null,
+          response: r.data,
+        });
       }
     }
 
@@ -253,12 +265,38 @@ serve(async (req) => {
             const tpl = await sendTemplate(to, PIX_TEMPLATE, PIX_TEMPLATE_LANG, [company.name, item.description, valorStr]);
             if (!tpl.ok) {
               errors.push({ kind: "pix-template", to: phone, err: tpl.data });
+              await logWhatsapp({
+                company_id: company.id,
+                kind: "pix",
+                template_name: PIX_TEMPLATE,
+                recipient_name: recipientName,
+                recipient_phone: String(phone),
+                description: item.description,
+                amount: item.is_amount_pending ? null : Number(item.amount),
+                method: "pix",
+                success: false,
+                error_message: tpl.data?.error?.message ?? "Falha ao enviar cobrança PIX",
+                response: tpl.data,
+              });
               return;
             }
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(pixPayload)}`;
             await sendImageByUrl(to, qrUrl, `${company.name} — PIX\n${item.description}\nValor: ${valorStr}\nVenc: ${venc}`);
             await sendText(to, pixPayload);
             sent++;
+            await logWhatsapp({
+              company_id: company.id,
+              kind: "pix",
+              template_name: PIX_TEMPLATE,
+              recipient_name: recipientName,
+              recipient_phone: String(phone),
+              description: item.description,
+              amount: item.is_amount_pending ? null : Number(item.amount),
+              method: "pix",
+              success: true,
+              provider_message_id: messageIdFrom(tpl.data),
+              response: tpl.data,
+            });
           } else {
             // Lembrete simples
             const r = await sendTemplate(to, REMINDER_TEMPLATE, REMINDER_TEMPLATE_LANG, [
@@ -269,6 +307,20 @@ serve(async (req) => {
             ]);
             if (r.ok) sent++;
             else errors.push({ kind: "reminder", to: phone, err: r.data });
+            await logWhatsapp({
+              company_id: company.id,
+              kind: "reminder",
+              template_name: REMINDER_TEMPLATE,
+              recipient_name: recipientName,
+              recipient_phone: String(phone),
+              description: item.description,
+              amount: item.is_amount_pending ? null : Number(item.amount),
+              method: item.type,
+              success: r.ok,
+              error_message: r.ok ? null : (r.data?.error?.message ?? "Falha ao enviar lembrete"),
+              provider_message_id: r.ok ? messageIdFrom(r.data) : null,
+              response: r.data,
+            });
           }
         };
 

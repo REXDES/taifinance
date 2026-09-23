@@ -28,7 +28,6 @@ import {
   ClipboardCheck,
   ArrowLeftRight,
   Settings,
-  MessageCircle,
 } from 'lucide-react';
 import { FinanceView } from '@/pages/Finance';
 

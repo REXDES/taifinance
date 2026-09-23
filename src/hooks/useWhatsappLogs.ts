@@ -27,14 +27,14 @@ export interface WhatsappLogFilters {
 }
 
 export function useWhatsappLogs(companyId: string | undefined, filters: WhatsappLogFilters) {
-  const { initialSessionResolved } = useAuth();
+  const { loading: authLoading } = useAuth();
   const [logs, setLogs] = useState<WhatsappLog[]>([]);
   const [loading, setLoading] = useState(false);
 
   const { startDate, endDate, kind, status, search } = filters;
 
   const fetchLogs = useCallback(async () => {
-    if (!initialSessionResolved || !companyId) return;
+    if (authLoading || !companyId) return;
     setLoading(true);
     try {
       let query = supabase
@@ -68,7 +68,7 @@ export function useWhatsappLogs(companyId: string | undefined, filters: Whatsapp
     } finally {
       setLoading(false);
     }
-  }, [initialSessionResolved, companyId, startDate, endDate, kind, status, search]);
+  }, [authLoading, companyId, startDate, endDate, kind, status, search]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 

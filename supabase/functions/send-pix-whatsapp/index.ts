@@ -87,7 +87,8 @@ serve(async (req) => {
       );
     }
 
-    const { phone, pixCode, description, amount, companyName } = await req.json();
+    const { phone, pixCode, description, amount, companyName, companyId, recipientName } =
+      await req.json();
     if (!phone || !pixCode || !description) {
       return new Response(
         JSON.stringify({ error: "phone, pixCode and description are required" }),
@@ -100,6 +101,17 @@ serve(async (req) => {
       ? Number(amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
       : "0,00";
 
+    const logBase = {
+      company_id: companyId ?? null,
+      kind: "pix",
+      template_name: PIX_TEMPLATE,
+      recipient_name: recipientName ?? null,
+      recipient_phone: String(phone),
+      description: description ?? null,
+      amount: amount != null ? Number(amount) : null,
+      method: "pix",
+    };
+
     // 1) Template (abre janela de conversa) — 4 variáveis posicionais
     const tpl = await sendTemplate(to, PIX_TEMPLATE, PIX_TEMPLATE_LANG, [
       companyName || "Empresa",
@@ -109,6 +121,12 @@ serve(async (req) => {
     ]);
     if (!tpl.ok) {
       console.error("Template send failed:", JSON.stringify(tpl.data));
+      await logWhatsapp({
+        ...logBase,
+        success: false,
+        error_message: tpl.data?.error?.message || "Falha ao enviar template",
+        response: tpl.data,
+      });
       return new Response(
         JSON.stringify({
           success: false,
@@ -122,6 +140,13 @@ serve(async (req) => {
 
     // 2) Mensagem de texto isolada com o código PIX (facilita o "copiar" no WhatsApp)
     const txt = await sendText(to, pixCode);
+
+    await logWhatsapp({
+      ...logBase,
+      success: true,
+      provider_message_id: messageIdFrom(tpl.data),
+      response: tpl.data,
+    });
 
     return new Response(
       JSON.stringify({ success: true, template: tpl.data, text: txt.data }),

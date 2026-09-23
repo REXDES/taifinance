@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { logWhatsapp, messageIdFrom } from "../_shared/whatsappLog.ts";
 
 // Envio de cobrança Necta (PIX/boleto/bolepix/link) por WhatsApp Cloud API.
 // Um único template de utilidade carrega TODO o conteúdo, inclusive o código
@@ -78,7 +79,8 @@ serve(async (req) => {
       return json({ error: "WhatsApp Cloud API não configurada." }, 500);
     }
 
-    const { phone, companyName, description, amount, method, paymentInfo } = await req.json();
+    const { phone, companyName, description, amount, method, paymentInfo, companyId, payerName } =
+      await req.json();
     if (!phone || !description || !method || !paymentInfo) {
       return json({ error: "phone, description, method e paymentInfo são obrigatórios" }, 400);
     }
@@ -86,8 +88,24 @@ serve(async (req) => {
     const methodLabel = METHOD_LABEL[method];
     if (!methodLabel) return json({ error: `method inválido: ${method}` }, 400);
 
+    const logBase = {
+      company_id: companyId ?? null,
+      kind: "charge",
+      template_name: TEMPLATE,
+      recipient_name: payerName ?? null,
+      recipient_phone: String(phone),
+      description: description ?? null,
+      amount: amount != null ? Number(amount) : null,
+      method,
+    };
+
     const to = normalizePhone(phone);
     if (to.length < 12) {
+      await logWhatsapp({
+        ...logBase,
+        success: false,
+        error_message: "Número de WhatsApp inválido.",
+      });
       return json({
         success: false,
         error: "Número de WhatsApp inválido.",
@@ -113,6 +131,7 @@ serve(async (req) => {
       const metaMessage: string = tpl.data?.error?.message ?? "Falha ao enviar a mensagem";
       const templateProblem = /template/i.test(metaMessage) || tpl.data?.error?.code === 132000 ||
         tpl.data?.error?.code === 132001;
+      await logWhatsapp({ ...logBase, success: false, error_message: metaMessage, response: tpl.data });
       return json({
         success: false,
         error: metaMessage,
@@ -123,6 +142,12 @@ serve(async (req) => {
       });
     }
 
+    await logWhatsapp({
+      ...logBase,
+      success: true,
+      provider_message_id: messageIdFrom(tpl.data),
+      response: tpl.data,
+    });
     return json({ success: true, template: tpl.data });
   } catch (err) {
     console.error("send-necta-charge-whatsapp error:", err);

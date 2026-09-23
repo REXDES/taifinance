@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings, MessageCircle } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings, MessageCircle, Pause, Play } from 'lucide-react';
 import { AiCategoryHelper } from './AiCategoryHelper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -40,7 +40,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
       endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
       type: '' as '' | 'payable' | 'receivable',
-      status: [] as ('pending' | 'paid' | 'cancelled')[]
+      status: [] as ('pending' | 'paid' | 'cancelled' | 'paused')[]
     };
     
     try {
@@ -51,7 +51,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
         return {
           ...defaultFilters,
           type: (parsed.type || '') as '' | 'payable' | 'receivable',
-          status: (parsed.status || []) as ('pending' | 'paid' | 'cancelled')[]
+          status: (parsed.status || []) as ('pending' | 'paid' | 'cancelled' | 'paused')[]
         };
       }
     } catch (e) {
@@ -90,6 +90,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     updatePayableReceivable,
     effectuatePayment,
     cancelPayableReceivable,
+    setPausedPayableReceivable,
     deletePayableReceivable,
     checkRelatedRecords
   } = usePayablesReceivables(companyId, {
@@ -344,6 +345,19 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     }
   };
 
+  const handleTogglePause = async (record: any) => {
+    const paused = record.status !== 'paused';
+    try {
+      await setPausedPayableReceivable(record.id, paused);
+      toast.success(paused
+        ? 'Conta pausada — fora dos totais até ser reativada'
+        : 'Conta reativada');
+    } catch (error) {
+      console.error(error);
+      toast.error(paused ? 'Erro ao pausar conta' : 'Erro ao reativar conta');
+    }
+  };
+
   const handleDeleteClick = async (record: any) => {
     try {
       const related = await checkRelatedRecords(record.id);
@@ -422,6 +436,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
         return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">Pago</Badge>;
       case 'cancelled':
         return <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">Cancelado</Badge>;
+      case 'paused':
+        return <Badge variant="outline" className="bg-slate-500/10 text-slate-500 border-slate-500/30">Pausado</Badge>;
       default:
         return null;
     }
@@ -504,7 +520,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                 {[
                   { value: 'pending', label: 'Pendente' },
                   { value: 'paid', label: 'Pago' },
-                  { value: 'cancelled', label: 'Cancelado' }
+                  { value: 'cancelled', label: 'Cancelado' },
+                  { value: 'paused', label: 'Pausado' }
                 ].map((status) => (
                   <div key={status.value} className="flex items-center space-x-2">
                     <Checkbox
@@ -512,7 +529,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                       checked={filters.status.includes(status.value as any)}
                       onCheckedChange={(checked) => {
                         const newStatus = checked 
-                          ? [...filters.status, status.value as 'pending' | 'paid' | 'cancelled']
+                          ? [...filters.status, status.value as 'pending' | 'paid' | 'cancelled' | 'paused']
                           : filters.status.filter(s => s !== status.value);
                         updateFilters({ ...filters, status: newStatus });
                       }}
@@ -683,11 +700,42 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                         <Button
                           size="sm"
                           variant="outline"
+                          className="text-slate-500 hover:text-slate-600"
+                          onClick={() => handleTogglePause(record)}
+                          title="Pausar (sai dos totais até reativar)"
+                        >
+                          <Pause className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           className="text-red-600 hover:text-red-700"
                           onClick={() => handleCancel(record.id)}
                           title="Cancelar"
                         >
                           <X className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteClick(record)}
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    {record.status === 'paused' && record.source !== 'necta' && (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 hover:text-green-700"
+                          onClick={() => handleTogglePause(record)}
+                          title="Reativar"
+                        >
+                          <Play className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"

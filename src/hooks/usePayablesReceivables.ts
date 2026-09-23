@@ -16,7 +16,7 @@ export interface PayableReceivable {
   installment_number: number | null;
   total_installments: number | null;
   parent_id: string | null;
-  status: 'pending' | 'paid' | 'cancelled';
+  status: 'pending' | 'paid' | 'cancelled' | 'paused';
   paid_amount: number | null;
   paid_date: string | null;
   paid_account_id: string | null;
@@ -39,7 +39,7 @@ export interface PayableReceivableFilters {
   startDate?: string;
   endDate?: string;
   type?: 'payable' | 'receivable';
-  status?: ('pending' | 'paid' | 'cancelled')[];
+  status?: ('pending' | 'paid' | 'cancelled' | 'paused')[];
   clientSupplierId?: string;
 }
 
@@ -314,6 +314,53 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
     await fetchPayablesReceivables();
   };
 
+  /**
+   * Pausa (ou reativa) uma conta. Pausada sai dos totais e da cobrança até
+   * ser reativada ou excluída. Para parcelamentos/recorrências, aplica também
+   * às ocorrências futuras ainda não pagas.
+   */
+  const setPausedPayableReceivable = async (id: string, paused: boolean) => {
+    const from = paused ? 'pending' : 'paused';
+    const to = paused ? 'paused' : 'pending';
+
+    const { data: record, error: fetchError } = await supabase
+      .from('payables_receivables')
+      .select('id, parent_id, payment_type, description, type, company_id, due_date')
+      .eq('id', id)
+      .single();
+    if (fetchError) throw fetchError;
+
+    const { error } = await supabase
+      .from('payables_receivables')
+      .update({ status: to })
+      .eq('id', id);
+    if (error) throw error;
+
+    if (record.payment_type === 'installment') {
+      const rootId = record.parent_id || record.id;
+      const { error: childrenError } = await supabase
+        .from('payables_receivables')
+        .update({ status: to })
+        .eq('parent_id', rootId)
+        .eq('status', from)
+        .gt('due_date', record.due_date);
+      if (childrenError) throw childrenError;
+    } else if (record.payment_type === 'recurring') {
+      const { error: recurringError } = await supabase
+        .from('payables_receivables')
+        .update({ status: to })
+        .eq('company_id', record.company_id)
+        .eq('description', record.description)
+        .eq('type', record.type)
+        .eq('payment_type', 'recurring')
+        .eq('status', from)
+        .gt('due_date', record.due_date);
+      if (recurringError) throw recurringError;
+    }
+
+    await fetchPayablesReceivables();
+  };
+
   const cancelPayableReceivable = async (id: string) => {
     const { error } = await supabase
       .from('payables_receivables')
@@ -494,6 +541,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
     createPayableReceivable,
     updatePayableReceivable,
     effectuatePayment,
+    setPausedPayableReceivable,
     cancelPayableReceivable,
     deletePayableReceivable,
     checkRelatedRecords,

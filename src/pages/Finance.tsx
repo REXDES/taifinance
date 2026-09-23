@@ -21,6 +21,7 @@ import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
 import { TagReportPage } from '@/components/finance/TagReportPage';
 import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
 import { AuditLogsPage } from '@/components/finance/AuditLogsPage';
+import { WhatsappLogsPage } from '@/components/finance/WhatsappLogsPage';
 import { PayablesReceivablesPage } from '@/components/finance/PayablesReceivablesPage';
 import { PayablesReceivablesReportPage } from '@/components/finance/PayablesReceivablesReportPage';
 import { PayablesReceivablesCalendarPage } from '@/components/finance/PayablesReceivablesCalendarPage';

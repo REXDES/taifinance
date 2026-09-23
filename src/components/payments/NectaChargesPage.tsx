@@ -401,6 +401,7 @@ export function NectaChargesPage({ companyId }: Props) {
       body: {
         phone: sale.payer_phone, companyName, description: sale.description || 'Cobrança',
         amount: sale.amount, method: sale.method === 'pix_cappta' ? 'pix_cappta' : sale.method, paymentInfo,
+        companyId, payerName: sale.payer_name ?? null,
       },
     });
     setSendingWhatsapp(false);

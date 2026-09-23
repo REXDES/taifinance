@@ -700,11 +700,42 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                         <Button
                           size="sm"
                           variant="outline"
+                          className="text-slate-500 hover:text-slate-600"
+                          onClick={() => handleTogglePause(record)}
+                          title="Pausar (sai dos totais até reativar)"
+                        >
+                          <Pause className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           className="text-red-600 hover:text-red-700"
                           onClick={() => handleCancel(record.id)}
                           title="Cancelar"
                         >
                           <X className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteClick(record)}
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    {record.status === 'paused' && record.source !== 'necta' && (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 hover:text-green-700"
+                          onClick={() => handleTogglePause(record)}
+                          title="Reativar"
+                        >
+                          <Play className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"

@@ -19,7 +19,7 @@ Com Pagamentos ativo, "Contas a Receber" leva para **Cobranças**, que passa a t
   - **Pagando:** emitida pela plataforma, com baixa automática.
   - **Simples:** sem emissão externa, com Efetivar, Pausar, Cancelar e Excluir, como hoje na Gestão Financeira.
 - **Parcelado e recorrente:** para os dois tipos, com a opção "cancelar só esta" ou "cancelar todas as futuras". Na cobrança Pagando, o cancelamento também é feito na plataforma, parcela por parcela.
-- **Totais por** dia, mês, pagador, forma de pagamento e status, com agrupamento que abre e fecha.
+- **Visualização:** a padrão continua a lista atual, com cada cobrança separada e detalhada. Os **totais** (por dia, mês, pagador, forma de pagamento ou status) são opcionais e aparecem só quando o usuário escolhe um agrupamento. Os grupos abrem e fecham e mostram as cobranças de cada um.
 - **Cabeçalho:** Total a Receber, Total a Pagar e Saldo Previsto do período filtrado.
 - **Reenviar WhatsApp** pelo sistema, registrado no botão Info.
 - As contas a pagar continuam na Gestão Financeira. O Contas a Receber de lá passa a mostrar as mesmas cobranças, sem duplicar nada.

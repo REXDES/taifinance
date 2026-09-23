@@ -336,11 +336,15 @@ Deno.serve(async (req) => {
       if (!hasAccess) return json({ error: 'Sem acesso a esta empresa.' }, 403);
       creds = await companyCredentials(admin, company_id);
       if (!creds) {
-        return json({
-          error: 'Esta empresa ainda não tem credencial de cobrança cadastrada.',
-          code: 'missing_company_credentials',
-        }, 400);
+        const message = 'Esta empresa ainda não tem credencial de cobrança cadastrada.';
+        // Em leitura, não é erro: devolvemos vazio para a tela seguir exibindo
+        // os dados locais (sem estourar exceção no navegador).
+        if (method === 'GET') {
+          return json({ ok: true, data: null, warning: message, code: 'missing_company_credentials' });
+        }
+        return json({ error: message, code: 'missing_company_credentials' }, 400);
       }
+
     }
     const data = path === '/establishments' && method === 'GET'
       ? await listSellers()

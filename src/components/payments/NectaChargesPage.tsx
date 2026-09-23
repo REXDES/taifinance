@@ -18,6 +18,7 @@ import { Copy, FileText, RefreshCw, Receipt, Ban, Loader2, MessageCircle } from 
 import { QRCodeSVG } from 'qrcode.react';
 import { normalizeDate, sameDocument, todayISO, validatePayer } from '@/lib/nectaFormat';
 import { parseLocalDate } from '@/lib/dateUtils';
+import { logWhatsappAttempt } from '@/lib/whatsappLogClient';
 
 interface Props { companyId: string }
 

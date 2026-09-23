@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/integrations/supabase/client';
+import { logWhatsappAttempt } from '@/lib/whatsappLogClient';
 import {
   Dialog,
   DialogContent,

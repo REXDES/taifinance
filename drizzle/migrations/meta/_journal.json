@@ -36,6 +36,13 @@
       "when": 1789745342754,
       "tag": "0004_split_pix_on_clients_suppliers",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790167995262,
+      "tag": "0005_payables_receivables_paused_status",
+      "breakpoints": true
     }
   ]
 }

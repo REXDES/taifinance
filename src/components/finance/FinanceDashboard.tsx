@@ -36,6 +36,7 @@ interface FinanceDashboardProps {
 
 export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProps) {
   const { user } = useAuth();
+  const [showSubcategories, setShowSubcategories] = useState(false);
   const shortcuts = useShortcutCards(user?.id, companyId);
   const { accounts, groups, totalAtivo, totalPassivo, totalGeral, loading: accountsLoading } = useAccounts(companyId);
   

@@ -43,6 +43,13 @@
       "when": 1790167995262,
       "tag": "0005_payables_receivables_paused_status",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790168977000,
+      "tag": "0006_whatsapp_message_logs",
+      "breakpoints": true
     }
   ]
 }

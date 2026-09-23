@@ -30,9 +30,10 @@ import { parseLocalDate, todayISO } from '@/lib/dateUtils';
 
 interface PayablesReceivablesPageProps {
   companyId: string;
+  onNavigate?: (view: string) => void;
 }
 
-export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPageProps) {
+export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesReceivablesPageProps) {
   const { user } = useAuth();
   const STORAGE_KEY = `payables_receivables_filters_${companyId}`;
 
@@ -463,7 +464,13 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Contas a Pagar/Receber</h1>
          <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsSettingsOpen(true)} title="Configurações da empresa">
+           {onNavigate && (
+             <Button variant="outline" onClick={() => onNavigate('whatsapp-logs')} title="Envios por WhatsApp">
+               <MessageCircle className="h-4 w-4 mr-2" />
+               Info
+             </Button>
+           )}
+           <Button variant="outline" onClick={() => setIsSettingsOpen(true)} title="Configurações da empresa">
             <Settings className="h-4 w-4 mr-2" />
             Configurações
           </Button>

@@ -389,7 +389,7 @@ const Finance = () => {
       case 'transfers':
         return <TransfersPage companyId={selectedCompanyId} />;
       case 'payables-receivables':
-        return <PayablesReceivablesPage companyId={selectedCompanyId} />;
+        return <PayablesReceivablesPage companyId={selectedCompanyId} onNavigate={changeView} />;
       case 'balance':
         return <BalanceSheetPage companyId={selectedCompanyId} />;
       case 'statement':

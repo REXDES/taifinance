@@ -51,7 +51,6 @@ export const transacoesMenuItems: MenuItem[] = [
 export const relatoriosMainItems: MenuItem[] = [
   { view: 'balance', label: 'Balancete', icon: <BarChart3 className="w-4 h-4" /> },
   { view: 'statement', label: 'Extrato', icon: <FileText className="w-4 h-4" /> },
-  { view: 'whatsapp-logs', label: 'Envios por WhatsApp', icon: <MessageCircle className="w-4 h-4" /> },
 ];
 
 export const movimentacoesMenuItems: MenuItem[] = [

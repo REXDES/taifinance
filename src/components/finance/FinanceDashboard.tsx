@@ -28,7 +28,7 @@ import { ptBR } from 'date-fns/locale';
 import { useShortcutCards } from '@/hooks/useShortcutUsage';
 import { useAuth } from '@/contexts/AuthContext';
 import type { FinanceView } from '@/pages/Finance';
-import { parseLocalDate } from '@/lib/dateUtils';
+import { parseLocalDate, formatLocalISO } from '@/lib/dateUtils';
 
 interface FinanceDashboardProps {
   companyId: string;

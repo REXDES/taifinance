@@ -422,6 +422,20 @@ export function NectaChargesPage({ companyId }: Props) {
     setSendingWhatsapp(false);
     const err = error?.message ?? (data as any)?.error;
     if (err) {
+      if (error) {
+        // A função não respondeu: registra a tentativa aqui para não ficar fora do relatório
+        await logWhatsappAttempt({
+          companyId: companyId ?? null,
+          kind: 'charge',
+          recipientName: sale.payer_name ?? null,
+          recipientPhone: String(sale.payer_phone),
+          description: sale.description || 'Cobrança',
+          amount: Number(sale.amount || 0),
+          method: sale.method ?? null,
+          success: false,
+          errorMessage: error.message,
+        });
+      }
       toast.error(`Falha ao enviar: ${err}`, { description: (data as any)?.hint, duration: 12000 });
       return;
     }

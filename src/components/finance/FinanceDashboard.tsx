@@ -4,7 +4,10 @@ import { useTransfers } from '@/hooks/useTransfers';
 import { usePatrimonialEvolution } from '@/hooks/usePatrimonialEvolution';
 import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft, Calendar } from 'lucide-react';
 import { 
   LineChart, 
@@ -33,6 +36,7 @@ interface FinanceDashboardProps {
 
 export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProps) {
   const { user } = useAuth();
+  const [showSubcategories, setShowSubcategories] = useState(false);
   const shortcuts = useShortcutCards(user?.id, companyId);
   const { accounts, groups, totalAtivo, totalPassivo, totalGeral, loading: accountsLoading } = useAccounts(companyId);
   
@@ -93,7 +97,7 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
       .filter((t) => t.type === 'expense')
       .forEach((t) => {
         const categoryName = t.category?.name;
-        const subName = t.subcategory?.name;
+        const subName = showSubcategories ? t.subcategory?.name : undefined;
         const name = subName
           ? (categoryName ? `${categoryName}/${subName}` : subName)
           : (categoryName || 'Sem categoria');
@@ -313,8 +317,18 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
 
       {/* Top Expenses Chart */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 gap-4">
           <CardTitle>Maiores Despesas do Mês</CardTitle>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="toggle-subcategories"
+              checked={showSubcategories}
+              onCheckedChange={setShowSubcategories}
+            />
+            <Label htmlFor="toggle-subcategories" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+              Detalhar subcategorias
+            </Label>
+          </div>
         </CardHeader>
         <CardContent>
           {topExpenses.length === 0 ? (

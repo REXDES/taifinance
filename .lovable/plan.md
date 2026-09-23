@@ -14,6 +14,8 @@ Faz sentido e é viável. Hoje as informações estão duplicadas: cobranças fi
 - O menu "Meu Perfil" sai de Pagamentos, e o botão leva para Configurações da Empresa.
 
 ## Fase 3 — Cobranças completas (o núcleo do plano)
+Empresas **sem** o módulo Pagamentos continuam com o Contas a Receber exatamente como é hoje, sem nenhuma mudança.
+
 Com Pagamentos ativo, "Contas a Receber" leva para **Cobranças**, que passa a ter:
 - **Dois tipos de cobrança:**
   - **Pagando:** emitida pela plataforma, com baixa automática.

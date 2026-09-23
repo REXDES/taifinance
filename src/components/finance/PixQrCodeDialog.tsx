@@ -121,7 +121,7 @@ export function PixQrCodeDialog({ open, onOpenChange, companyId, record }: PixQr
           description: record.description,
           amount: record.amount,
           companyName: pixConfig?.name || '',
-          companyId: record.company_id ?? null,
+          companyId,
           recipientName: record.client_supplier?.name ?? null,
         },
       });

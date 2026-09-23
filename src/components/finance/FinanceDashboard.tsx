@@ -45,8 +45,8 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
 
   // Get current month transactions
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  const startOfMonth = formatLocalISO(new Date(now.getFullYear(), now.getMonth(), 1));
+  const endOfMonth = formatLocalISO(new Date(now.getFullYear(), now.getMonth() + 1, 0));
   
   const { transactions, totalIncome, totalExpense, loading: transactionsLoading } = useTransactions(companyId, {
     startDate: startOfMonth,

@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { Copy, FileText, RefreshCw, Receipt, Ban, Loader2, MessageCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { normalizeDate, sameDocument, todayISO, validatePayer } from '@/lib/nectaFormat';
+import { parseLocalDate, todayISO } from '@/lib/dateUtils';
 
 interface Props { companyId: string }
 
@@ -264,7 +265,7 @@ export function NectaChargesPage({ companyId }: Props) {
     setSaving(true);
 
     const recurrenceCount = form.is_recurring ? Math.max(1, Number(form.recurrence_count || 1)) : 1;
-    const baseDue = form.due_date ? new Date(`${form.due_date}T00:00:00`) : null;
+    const baseDue = form.due_date ? parseLocalDate(form.due_date) : null;
     const created: any[] = [];
 
     for (let i = 0; i < recurrenceCount; i++) {
@@ -465,7 +466,7 @@ export function NectaChargesPage({ companyId }: Props) {
                 <TableCell>{new Date(c.created_at).toLocaleDateString('pt-BR')}</TableCell>
                 <TableCell><Badge variant="outline">{METHOD_LABEL[c.method] ?? c.method}</Badge></TableCell>
                 <TableCell>{c.payer_name ?? '—'}</TableCell>
-                <TableCell>{c.due_date ? new Date(c.due_date + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
+                <TableCell>{c.due_date ? parseLocalDate(c.due_date).toLocaleDateString('pt-BR') : '—'}</TableCell>
                 <TableCell className="text-right">{brl(Number(c.amount || 0))}</TableCell>
                 <TableCell>
                   <Badge variant={statusVariant(c.status)}>{STATUS_LABEL[c.status] ?? c.status}</Badge>
@@ -498,7 +499,7 @@ export function NectaChargesPage({ companyId }: Props) {
             <DialogTitle>Cobrança {detail ? brl(Number(detail.amount || 0)) : ''}</DialogTitle>
             <DialogDescription>
               {detail?.payer_name ?? 'Pagador não informado'} · {detail ? (METHOD_LABEL[detail.method] ?? detail.method) : ''}
-              {detail?.due_date ? ` · venc. ${new Date(detail.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}` : ''}
+              {detail?.due_date ? ` · venc. ${parseLocalDate(detail.due_date).toLocaleDateString('pt-BR')}` : ''}
             </DialogDescription>
           </DialogHeader>
           {detail && (

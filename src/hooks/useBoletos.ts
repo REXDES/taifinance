@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { todayISO } from '@/lib/dateUtils';
 
 export interface Boleto {
   id: string;
@@ -120,7 +121,7 @@ export function useBoletos(companyId: string, filters?: BoletoFilters) {
 
   // Auto-mark overdue on load
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayISO();
     const overdueIds = boletos
       .filter(b => b.status === 'pending' && b.due_date && b.due_date < today)
       .map(b => b.id);

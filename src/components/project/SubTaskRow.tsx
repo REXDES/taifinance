@@ -21,6 +21,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Task, Status, User as UserType } from '@/types';
+import { parseLocalDate, formatLocalISO } from '@/lib/dateUtils';
 
 interface SubTaskRowProps {
   task: Task;
@@ -63,8 +64,8 @@ export function SubTaskRow({
 
   const formatDateRange = () => {
     if (!task.startDate && !task.endDate) return '-';
-    const start = task.startDate ? format(new Date(task.startDate), 'dd/MM', { locale: ptBR }) : '';
-    const end = task.endDate ? format(new Date(task.endDate), 'dd/MM', { locale: ptBR }) : '';
+    const start = task.startDate ? format(parseLocalDate(task.startDate), 'dd/MM', { locale: ptBR }) : '';
+    const end = task.endDate ? format(parseLocalDate(task.endDate), 'dd/MM', { locale: ptBR }) : '';
     if (start && end) return `${start} - ${end}`;
     return start || end;
   };
@@ -76,7 +77,7 @@ export function SubTaskRow({
   };
 
   const handleDateChange = (field: 'startDate' | 'endDate', date: Date | undefined) => {
-    onTaskUpdate(task.id, { [field]: date?.toISOString().split('T')[0] });
+    onTaskUpdate(task.id, { [field]: formatLocalISO(date) });
   };
 
   const handleResponsibleChange = (userId: string | undefined) => {
@@ -221,7 +222,7 @@ export function SubTaskRow({
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Início</label>
                 <Calendar
                   mode="single"
-                  selected={task.startDate ? new Date(task.startDate) : undefined}
+                  selected={task.startDate ? parseLocalDate(task.startDate) : undefined}
                   onSelect={(date) => handleDateChange('startDate', date)}
                   locale={ptBR}
                   className="pointer-events-auto"
@@ -231,7 +232,7 @@ export function SubTaskRow({
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Fim</label>
                 <Calendar
                   mode="single"
-                  selected={task.endDate ? new Date(task.endDate) : undefined}
+                  selected={task.endDate ? parseLocalDate(task.endDate) : undefined}
                   onSelect={(date) => handleDateChange('endDate', date)}
                   locale={ptBR}
                   className="pointer-events-auto"

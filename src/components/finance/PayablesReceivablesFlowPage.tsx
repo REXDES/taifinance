@@ -10,6 +10,7 @@ import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
+import { parseLocalDate, todayISO } from '@/lib/dateUtils';
 import 'jspdf-autotable';
 
 interface PayablesReceivablesFlowPageProps {
@@ -76,7 +77,7 @@ export function PayablesReceivablesFlowPage({ companyId }: PayablesReceivablesFl
       return weeks.map((weekStart, index) => {
         const weekEnd = endOfWeek(weekStart, { locale: ptBR });
         const weekRecords = payablesReceivables.filter(r => {
-          const date = new Date(r.due_date);
+          const date = parseLocalDate(r.due_date);
           return date >= weekStart && date <= weekEnd;
         });
         
@@ -102,7 +103,7 @@ export function PayablesReceivablesFlowPage({ companyId }: PayablesReceivablesFl
         const monthStart = startOfMonth(month);
         const monthEnd = endOfMonth(month);
         const monthRecords = payablesReceivables.filter(r => {
-          const date = new Date(r.due_date);
+          const date = parseLocalDate(r.due_date);
           return date >= monthStart && date <= monthEnd;
         });
         
@@ -144,7 +145,7 @@ export function PayablesReceivablesFlowPage({ companyId }: PayablesReceivablesFl
     const ws = XLSX.utils.json_to_sheet(chartData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Fluxo');
-    XLSX.writeFile(wb, `fluxo_financeiro_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    XLSX.writeFile(wb, `fluxo_financeiro_${todayISO()}.xlsx`);
   };
 
   const exportToPDF = () => {
@@ -169,7 +170,7 @@ export function PayablesReceivablesFlowPage({ companyId }: PayablesReceivablesFl
       headStyles: { fillColor: [59, 130, 246] }
     });
 
-    doc.save(`fluxo_financeiro_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    doc.save(`fluxo_financeiro_${todayISO()}.pdf`);
   };
 
   if (loading) {

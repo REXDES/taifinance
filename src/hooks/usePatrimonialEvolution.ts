@@ -4,6 +4,7 @@ import { Transaction } from './useTransactions';
 import { Transfer } from './useTransfers';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO, isBefore, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface MonthlyBalance {
   month: string;
@@ -56,7 +57,7 @@ export function usePatrimonialEvolution({
         // Add transactions up to this month end
         transactions.forEach(tx => {
           if (tx.account_id === account.id) {
-            const txDate = parseISO(tx.date);
+            const txDate = parseLocalDate(tx.date);
             if (!isAfter(txDate, monthEnd)) {
               if (tx.type === 'income') {
                 balance += tx.amount;
@@ -69,7 +70,7 @@ export function usePatrimonialEvolution({
 
         // Add transfers up to this month end
         transfers.forEach(tr => {
-          const trDate = parseISO(tr.date);
+          const trDate = parseLocalDate(tr.date);
           if (!isAfter(trDate, monthEnd)) {
             if (tr.from_account_id === account.id) {
               balance -= tr.amount;

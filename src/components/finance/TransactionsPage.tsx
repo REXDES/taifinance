@@ -40,6 +40,7 @@ import { TagPicker } from './TagPicker';
 import TagBadges from './TagBadges';
 import { useRecordTags } from '@/hooks/useRecordTags';
 import { setEntityTags, findRecordIdsByTags } from '@/hooks/useFinanceTags';
+import { parseLocalDate, todayISO } from '@/lib/dateUtils';
 
 interface TransactionsPageProps {
   companyId: string;
@@ -102,7 +103,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     subcategory_id: '',
     amount: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayISO(),
     notes: '',
     tags: [] as string[],
   });
@@ -120,7 +121,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
       .map(cat => {
         const spent = transactions
           .filter(t => {
-            const tDate = new Date(t.date + 'T00:00:00');
+            const tDate = parseLocalDate(t.date);
             return t.category_id === cat.id && 
                    t.type === 'expense' &&
                    tDate.getMonth() === currentMonth &&
@@ -193,7 +194,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
       subcategory_id: '',
       amount: '',
       description: '',
-      date: new Date().toISOString().split('T')[0],
+      date: todayISO(),
       notes: '',
       tags: [],
     });
@@ -607,7 +608,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
               <TableBody>
                 {filteredTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
-                    <TableCell>{new Date(transaction.date + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell>{parseLocalDate(transaction.date).toLocaleDateString('pt-BR')}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {transaction.type === 'income' ? (

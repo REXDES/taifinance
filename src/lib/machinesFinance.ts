@@ -1,12 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 export function addMonths(dateStr: string, months: number): string {
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = parseLocalDate(dateStr);
   d.setMonth(d.getMonth() + months);
   return d.toISOString().slice(0, 10);
 }
 export function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = parseLocalDate(dateStr);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 }

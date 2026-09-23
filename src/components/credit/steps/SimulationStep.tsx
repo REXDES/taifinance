@@ -8,6 +8,7 @@ import { Loader2, ArrowRight, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreditRules } from '@/hooks/useCreditModule';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 export interface SimulationData {
   principal: number;
@@ -136,7 +137,7 @@ export function SimulationStep({
   const schedule = useMemo(() => {
     if (!calc) return [];
     const n = Number(numParcelas);
-    const base = new Date(firstDue + 'T00:00:00');
+    const base = parseLocalDate(firstDue);
     return Array.from({ length: n }, (_, k) => {
       const d = new Date(base);
       d.setMonth(d.getMonth() + k);

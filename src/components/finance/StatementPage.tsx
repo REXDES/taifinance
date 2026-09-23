@@ -18,6 +18,7 @@ import { TagPicker } from './TagPicker';
 import TagBadges from './TagBadges';
 import { fetchTagsForRecords, findRecordIdsByTags } from '@/hooks/useFinanceTags';
 import { NectaCategoryCell } from './NectaCategoryCell';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface StatementPageProps { companyId: string; }
 
@@ -154,7 +155,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
     // Table rows
     const rows = entries.map((e) => {
       const row: string[] = [
-        new Date(e.date).toLocaleDateString('pt-BR'),
+        parseLocalDate(e.date).toLocaleDateString('pt-BR'),
         e.description,
       ];
       if (showAccountColumn) row.push(e.accountName || '-');
@@ -300,7 +301,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
                 <TableBody>
                   {visibleEntries.map((e) => (
                     <TableRow key={e.id}>
-                      <TableCell>{new Date(e.date).toLocaleDateString('pt-BR')}</TableCell>
+                      <TableCell>{parseLocalDate(e.date).toLocaleDateString('pt-BR')}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">{getIcon(e.type)}<span>{e.description}</span></div>
                         <TagBadges tags={rowTags[e.id]} className="mt-1 ml-6" />

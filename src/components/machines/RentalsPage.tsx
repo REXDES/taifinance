@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { generateRentalReceivables, addDays, addMonths, recalculatePendingInstallments, deletePendingInstallments } from '@/lib/machinesFinance';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface Props { companyId: string; }
 
@@ -434,7 +435,7 @@ export function RentalsPage({ companyId }: Props) {
                 return (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{client?.name || '-'}</TableCell>
-                    <TableCell className="text-xs">{new Date(r.start_date + 'T00:00:00').toLocaleDateString('pt-BR')}{r.end_date ? ` → ${new Date(r.end_date + 'T00:00:00').toLocaleDateString('pt-BR')}` : ''}</TableCell>
+                    <TableCell className="text-xs">{parseLocalDate(r.start_date).toLocaleDateString('pt-BR')}{r.end_date ? ` → ${parseLocalDate(r.end_date).toLocaleDateString('pt-BR')}` : ''}</TableCell>
                     <TableCell>{r.qty} {UNIT_LABEL[r.unit]}</TableCell>
                     <TableCell>R$ {Number(r.total_amount).toFixed(2)}</TableCell>
                     <TableCell><Badge variant="outline">{r.payment_mode === 'cash' ? 'À vista' : `${r.installments_count}x ${r.billing_frequency === 'monthly' ? 'mensal' : r.billing_frequency === 'weekly' ? 'semanal' : 'diário'}`}</Badge></TableCell>

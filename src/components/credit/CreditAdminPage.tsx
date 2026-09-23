@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompanies } from '@/hooks/useCompanies';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2 } from 'lucide-react';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface Props { companyId: string }
 
@@ -684,7 +685,7 @@ function GlobalConsultationsUsageCard() {
   useEffect(() => {
     setLoading(true);
     (async () => {
-      const fromTs = new Date(`${from}T00:00:00`).toISOString();
+      const fromTs = parseLocalDate(from).toISOString();
       const toTs = new Date(`${to}T23:59:59.999`).toISOString();
       const [{ data: consults }, { data: rules }, { data: companies }] = await Promise.all([
         (supabase as any).from('credit_consultations').select('company_id').gte('created_at', fromTs).lte('created_at', toTs),

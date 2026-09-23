@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { addMonths, format } from 'date-fns';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 export interface PayableReceivable {
   id: string;
@@ -199,7 +200,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
         records.push({
           ...data,
           created_by: userId,
-          due_date: format(addMonths(new Date(data.due_date), i - 1), 'yyyy-MM-dd'),
+          due_date: format(addMonths(parseLocalDate(data.due_date), i - 1), 'yyyy-MM-dd'),
           installment_number: i,
           total_installments: installments,
           parent_id: parent.id,
@@ -291,7 +292,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
 
     // If recurring, create next month entry
     if (record.payment_type === 'recurring') {
-      const nextDueDate = format(addMonths(new Date(record.due_date), 1), 'yyyy-MM-dd');
+      const nextDueDate = format(addMonths(parseLocalDate(record.due_date), 1), 'yyyy-MM-dd');
       const { error: recurringError } = await supabase
         .from('payables_receivables')
         .insert({

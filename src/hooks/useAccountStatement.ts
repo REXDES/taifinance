@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 export interface StatementEntry {
   id: string;
@@ -202,7 +203,7 @@ export function useAccountStatement(
       }
 
       // Sort by date
-      allEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      allEntries.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
 
       // Calculate running balance only when filtering by account
       if (accountId) {

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useBankConnections, BankBalance, ExtractEntry } from '@/hooks/useBankConnections';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
+import { parseLocalDate, todayISO } from '@/lib/dateUtils';
 
 interface BankDigitalPageProps {
   companyId: string;
@@ -36,7 +37,7 @@ export function BankDigitalPage({ companyId }: BankDigitalPageProps) {
   const [extractLoading, setExtractLoading] = useState(false);
   const [extractFilters, setExtractFilters] = useState({
     startDate: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
-    endDate: format(new Date(), 'yyyy-MM-dd'),
+    endDate: todayISO(),
     type: '',
   });
 
@@ -368,7 +369,7 @@ export function BankDigitalPage({ companyId }: BankDigitalPageProps) {
                 ) : (
                   extractData.map((entry, i) => (
                     <TableRow key={entry.id || i}>
-                      <TableCell className="text-sm">{entry.date ? format(new Date(entry.date), 'dd/MM/yyyy') : '--'}</TableCell>
+                      <TableCell className="text-sm">{entry.date ? format(parseLocalDate(entry.date), 'dd/MM/yyyy') : '--'}</TableCell>
                       <TableCell className="text-sm">{entry.description || '--'}</TableCell>
                       <TableCell>
                         <Badge variant={entry.type === 'CREDIT' ? 'default' : 'destructive'} className="text-xs">

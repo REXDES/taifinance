@@ -20,6 +20,7 @@ import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { useFinanceTags } from '@/hooks/useFinanceTags';
 import { TagPicker } from '@/components/finance/TagPicker';
+import { parseLocalDate } from '@/lib/dateUtils';
 import {
   useStatementImports, useStatementLines, parseStatementFile, createStatementImport,
   suggestForLines, reconcileLineAsTransaction, reconcileLineAsSettlement, updateStatementLine,
@@ -37,7 +38,7 @@ const currency = (value: number | null | undefined) =>
     ? '—'
     : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-const fmtDate = (value?: string | null) => (value ? format(parseISO(`${value}T00:00:00`), 'dd/MM/yyyy') : '—');
+const fmtDate = (value?: string | null) => (value ? format(parseLocalDate(value), 'dd/MM/yyyy') : '—');
 
 /** Grau de confiança da sugestão da IA para um campo específico da linha. */
 function ConfBadge({
@@ -412,8 +413,8 @@ export function StatementImportPage({ companyId }: Props) {
       .sort((a, b) => (b.period_end || '').localeCompare(a.period_end || ''))
       .find((i) => (i.period_end || '') < currentImport.period_start!);
     if (!previous) return null;
-    const prevEnd = new Date(`${previous.period_end}T00:00:00`);
-    const thisStart = new Date(`${currentImport.period_start}T00:00:00`);
+    const prevEnd = parseLocalDate(previous.period_end);
+    const thisStart = parseLocalDate(currentImport.period_start);
     const days = Math.round((thisStart.getTime() - prevEnd.getTime()) / 86400000);
     if (days <= 1) return null;
     return { from: previous.period_end!, to: currentImport.period_start!, days };
@@ -426,7 +427,7 @@ export function StatementImportPage({ companyId }: Props) {
       .map((p) => {
         const amountDiff = p.amount === null ? 999999 : Math.abs(p.amount - settleLine.amount);
         const dayDiff = Math.abs(
-          (new Date(`${p.due_date}T00:00:00`).getTime() - new Date(`${settleLine.date}T00:00:00`).getTime()) / 86400000
+          (parseLocalDate(p.due_date).getTime() - parseLocalDate(settleLine.date).getTime()) / 86400000
         );
         return { record: p, score: amountDiff * 10 + dayDiff };
       })

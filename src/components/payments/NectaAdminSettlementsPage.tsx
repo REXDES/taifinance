@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Loader2, RefreshCw, Download } from 'lucide-react';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface Props { companyId: string | null }
 
@@ -127,7 +128,7 @@ export function NectaAdminSettlementsPage({ companyId }: Props) {
             {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma liquidação. Use "Buscar na Necta".</TableCell></TableRow>}
             {filtered.map(r => (
               <TableRow key={r.id} className="cursor-pointer" onClick={() => openDetail(r)}>
-                <TableCell>{r.settlement_date ? new Date(r.settlement_date + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
+                <TableCell>{r.settlement_date ? parseLocalDate(r.settlement_date).toLocaleDateString('pt-BR') : '—'}</TableCell>
                 <TableCell>{r.merchant_name ?? '—'}</TableCell>
                 <TableCell><Badge variant="secondary">{r.status ?? '—'}</Badge></TableCell>
                 <TableCell className="text-right">{brl(Number(r.gross_amount || 0))}</TableCell>
@@ -143,7 +144,7 @@ export function NectaAdminSettlementsPage({ companyId }: Props) {
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Liquidação {detail?.settlement_date ? new Date(detail.settlement_date + 'T00:00:00').toLocaleDateString('pt-BR') : ''}</DialogTitle>
+            <DialogTitle>Liquidação {detail?.settlement_date ? parseLocalDate(detail.settlement_date).toLocaleDateString('pt-BR') : ''}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm">
             <p className="text-muted-foreground">Líquido {brl(Number(detail?.net_amount || 0))} · {detail?.orders_count ?? 0} ordens</p>

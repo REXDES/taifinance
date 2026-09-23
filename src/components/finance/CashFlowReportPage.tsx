@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface CashFlowReportPageProps {
   companyId: string;
@@ -247,7 +248,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
 
     // Data rows
     const dataRows = flowData.map(entry => [
-      format(parseISO(entry.date), 'dd/MM/yyyy'),
+      format(parseLocalDate(entry.date), 'dd/MM/yyyy'),
       entry.accountName,
       entry.category,
       entry.description,
@@ -318,7 +319,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
 
     // Table data
     const tableData = flowData.map(entry => [
-      format(parseISO(entry.date), 'dd/MM/yyyy'),
+      format(parseLocalDate(entry.date), 'dd/MM/yyyy'),
       entry.accountName,
       entry.category,
       entry.description.length > 35 ? entry.description.substring(0, 35) + '...' : entry.description,
@@ -517,7 +518,7 @@ export function CashFlowReportPage({ companyId }: CashFlowReportPageProps) {
                     key={entry.id}
                     className={entry.isInitialBalance ? 'bg-muted/50 font-medium' : ''}
                   >
-                    <TableCell>{format(parseISO(entry.date), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell>{format(parseLocalDate(entry.date), 'dd/MM/yyyy')}</TableCell>
                     <TableCell>{entry.accountName}</TableCell>
                     <TableCell>{entry.category}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{entry.description}</TableCell>

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronDown, ChevronRight, Tags as TagsIcon, TrendingDown, TrendingUp } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 
 interface TagReportPageProps {
@@ -377,7 +378,7 @@ export function TagReportPage({ companyId }: TagReportPageProps) {
                         <div className="pl-6 flex flex-col gap-1 md:flex-row md:items-center md:gap-3">
                           <div className="text-sm min-w-0">
                             <span className="text-muted-foreground mr-2">
-                              {format(new Date(`${t.date}T00:00:00`), 'dd/MM/yyyy')}
+                              {format(parseLocalDate(t.date), 'dd/MM/yyyy')}
                             </span>
                             <span className="truncate">{t.description || 'Sem descrição'}</span>
                             <span className="text-xs text-muted-foreground ml-2">

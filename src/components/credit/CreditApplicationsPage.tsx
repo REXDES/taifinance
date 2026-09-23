@@ -32,6 +32,7 @@ import { BoletosStep } from './steps/BoletosStep';
 import { PaymentProbabilityBadge } from './PaymentProbabilityBadge';
 import { BureauAnalysisCard } from './BureauAnalysisCard';
 import { EngineChecklist } from './EngineChecklist';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface Props { companyId: string }
 
@@ -927,7 +928,7 @@ function ConsultationsUsageCard({ companyId }: { companyId: string }) {
     if (!companyId) return;
     setLoading(true);
     (async () => {
-      const fromTs = new Date(`${from}T00:00:00`).toISOString();
+      const fromTs = parseLocalDate(from).toISOString();
       const toTs = new Date(`${to}T23:59:59.999`).toISOString();
       const { count: c } = await (supabase as any)
         .from('credit_consultations')

@@ -33,6 +33,7 @@ import { TagPicker } from './TagPicker';
 import TagBadges from './TagBadges';
 import { useRecordTags } from '@/hooks/useRecordTags';
 import { setEntityTags, findRecordIdsByTags } from '@/hooks/useFinanceTags';
+import { parseLocalDate, todayISO } from '@/lib/dateUtils';
 
 interface TransfersPageProps {
   companyId: string;
@@ -54,7 +55,7 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
     to_account_id: '',
     amount: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayISO(),
     tags: [] as string[],
   });
   const [tagRefresh, setTagRefresh] = useState(0);
@@ -74,15 +75,15 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
 
   const filteredTransfers = useMemo(() => {
     return transfers.filter(t => {
-      const transferDate = new Date(t.date + 'T00:00:00');
+      const transferDate = parseLocalDate(t.date);
       
       if (filters.startDate) {
-        const startDate = new Date(filters.startDate + 'T00:00:00');
+        const startDate = parseLocalDate(filters.startDate);
         if (transferDate < startDate) return false;
       }
       
       if (filters.endDate) {
-        const endDate = new Date(filters.endDate + 'T00:00:00');
+        const endDate = parseLocalDate(filters.endDate);
         if (transferDate > endDate) return false;
       }
       
@@ -110,7 +111,7 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
     }
     setTagRefresh(r => r + 1);
     setShowDialog(false);
-    setForm({ from_account_id: '', to_account_id: '', amount: '', description: '', date: new Date().toISOString().split('T')[0], tags: [] });
+    setForm({ from_account_id: '', to_account_id: '', amount: '', description: '', date: todayISO(), tags: [] });
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
@@ -214,7 +215,7 @@ export function TransfersPage({ companyId }: TransfersPageProps) {
               {filteredTransfers.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell>
-                    <div>{new Date(t.date + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
+                    <div>{parseLocalDate(t.date).toLocaleDateString('pt-BR')}</div>
                     <TagBadges tags={recordTags[t.id]} className="mt-1" />
                   </TableCell>
                   <TableCell>{t.from_account?.name}</TableCell>

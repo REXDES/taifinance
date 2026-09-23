@@ -88,6 +88,7 @@ export type FinanceView =
   | 'payables-receivables-report'
   | 'payables-receivables-calendar'
   | 'payables-receivables-flow'
+  | 'whatsapp-logs'
   | 'audit-logs'
   | 'clients-suppliers'
   | 'bank-digital'
@@ -410,6 +411,8 @@ const Finance = () => {
         return <PayablesReceivablesCalendarPage companyId={selectedCompanyId} />;
       case 'payables-receivables-flow':
         return <PayablesReceivablesFlowPage companyId={selectedCompanyId} />;
+      case 'whatsapp-logs':
+        return <WhatsappLogsPage companyId={selectedCompanyId} />;
       case 'audit-logs':
         return <AuditLogsPage />;
       case 'clients-suppliers':

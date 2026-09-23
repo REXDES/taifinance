@@ -19,6 +19,8 @@ export async function nectaCall<T = any>(
   });
   if (error) throw new Error(error.message);
   if ((data as any)?.error) throw new Error((data as any).error);
+  // Sem credencial de cobrança a função devolve 200 com aviso e data nula.
+  if ((data as any)?.warning && (data as any)?.data == null) throw new Error((data as any).warning);
   return (data as any)?.data as T;
 }
 

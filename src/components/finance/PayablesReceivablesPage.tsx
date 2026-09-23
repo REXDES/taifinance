@@ -345,6 +345,19 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     }
   };
 
+  const handleTogglePause = async (record: any) => {
+    const paused = record.status !== 'paused';
+    try {
+      await setPausedPayableReceivable(record.id, paused);
+      toast.success(paused
+        ? 'Conta pausada — fora dos totais até ser reativada'
+        : 'Conta reativada');
+    } catch (error) {
+      console.error(error);
+      toast.error(paused ? 'Erro ao pausar conta' : 'Erro ao reativar conta');
+    }
+  };
+
   const handleDeleteClick = async (record: any) => {
     try {
       const related = await checkRelatedRecords(record.id);
@@ -423,6 +436,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
         return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">Pago</Badge>;
       case 'cancelled':
         return <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">Cancelado</Badge>;
+      case 'paused':
+        return <Badge variant="outline" className="bg-slate-500/10 text-slate-500 border-slate-500/30">Pausado</Badge>;
       default:
         return null;
     }
@@ -505,7 +520,8 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                 {[
                   { value: 'pending', label: 'Pendente' },
                   { value: 'paid', label: 'Pago' },
-                  { value: 'cancelled', label: 'Cancelado' }
+                  { value: 'cancelled', label: 'Cancelado' },
+                  { value: 'paused', label: 'Pausado' }
                 ].map((status) => (
                   <div key={status.value} className="flex items-center space-x-2">
                     <Checkbox
@@ -513,7 +529,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
                       checked={filters.status.includes(status.value as any)}
                       onCheckedChange={(checked) => {
                         const newStatus = checked 
-                          ? [...filters.status, status.value as 'pending' | 'paid' | 'cancelled']
+                          ? [...filters.status, status.value as 'pending' | 'paid' | 'cancelled' | 'paused']
                           : filters.status.filter(s => s !== status.value);
                         updateFilters({ ...filters, status: newStatus });
                       }}

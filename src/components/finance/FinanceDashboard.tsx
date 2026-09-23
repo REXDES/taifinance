@@ -97,7 +97,7 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
       .filter((t) => t.type === 'expense')
       .forEach((t) => {
         const categoryName = t.category?.name;
-        const subName = t.subcategory?.name;
+        const subName = showSubcategories ? t.subcategory?.name : undefined;
         const name = subName
           ? (categoryName ? `${categoryName}/${subName}` : subName)
           : (categoryName || 'Sem categoria');

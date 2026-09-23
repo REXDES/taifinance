@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { Copy, FileText, RefreshCw, Receipt, Ban, Loader2, MessageCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { normalizeDate, sameDocument, todayISO, validatePayer } from '@/lib/nectaFormat';
-import { parseLocalDate, todayISO } from '@/lib/dateUtils';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface Props { companyId: string }
 

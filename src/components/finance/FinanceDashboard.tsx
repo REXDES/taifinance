@@ -28,6 +28,7 @@ import { ptBR } from 'date-fns/locale';
 import { useShortcutCards } from '@/hooks/useShortcutUsage';
 import { useAuth } from '@/contexts/AuthContext';
 import type { FinanceView } from '@/pages/Finance';
+import { parseLocalDate, formatLocalISO } from '@/lib/dateUtils';
 
 interface FinanceDashboardProps {
   companyId: string;
@@ -44,8 +45,8 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
 
   // Get current month transactions
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  const startOfMonth = formatLocalISO(new Date(now.getFullYear(), now.getMonth(), 1));
+  const endOfMonth = formatLocalISO(new Date(now.getFullYear(), now.getMonth() + 1, 0));
   
   const { transactions, totalIncome, totalExpense, loading: transactionsLoading } = useTransactions(companyId, {
     startDate: startOfMonth,
@@ -68,7 +69,7 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
   // Group week payables/receivables by day
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
   const weekData = weekDays.map(day => {
-    const dayItems = weekPR.filter(item => isSameDay(parseISO(item.due_date), day));
+    const dayItems = weekPR.filter(item => isSameDay(parseLocalDate(item.due_date), day));
     const payable = dayItems.filter(i => i.type === 'payable').reduce((sum, i) => sum + Number(i.amount), 0);
     const receivable = dayItems.filter(i => i.type === 'receivable').reduce((sum, i) => sum + Number(i.amount), 0);
     return {
@@ -565,7 +566,7 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
                     <div>
                       <p className="font-medium text-foreground">{transaction.subcategory?.name || transaction.category?.name || transaction.description}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(transaction.date).toLocaleDateString('pt-BR')} • {transaction.account?.name}
+                        {parseLocalDate(transaction.date).toLocaleDateString('pt-BR')} • {transaction.account?.name}
                       </p>
                     </div>
                   </div>

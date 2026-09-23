@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 import { generateMaintenancePayables, deletePendingInstallments } from '@/lib/machinesFinance';
 import { TagPicker } from '@/components/finance/TagPicker';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface Props { companyId: string; }
 
@@ -138,7 +139,7 @@ export function MaintenancePage({ companyId }: Props) {
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.machine?.name || '-'}</TableCell>
                   <TableCell>{r.mechanic?.name || '-'}</TableCell>
-                  <TableCell>{new Date(r.start_date + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
+                  <TableCell>{parseLocalDate(r.start_date).toLocaleDateString('pt-BR')}</TableCell>
                   <TableCell>R$ {Number(r.total_cost).toFixed(2)}</TableCell>
                   <TableCell><Badge variant="outline">{r.payment_mode === 'cash' ? 'À vista' : r.payment_mode === 'installments' ? 'Parcelado' : '-'}</Badge></TableCell>
                   <TableCell><Badge>{r.status === 'in_progress' ? 'Em andamento' : r.status === 'completed' ? 'Concluída' : 'Cancelada'}</Badge></TableCell>

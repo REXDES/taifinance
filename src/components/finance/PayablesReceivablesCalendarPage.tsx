@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { cn } from '@/lib/utils';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface PayablesReceivablesCalendarPageProps {
   companyId: string;
@@ -32,7 +33,7 @@ export function PayablesReceivablesCalendarPage({ companyId }: PayablesReceivabl
 
   const getRecordsForDay = (day: Date) => {
     return payablesReceivables.filter(record => 
-      isSameDay(new Date(record.due_date), day)
+      isSameDay(parseLocalDate(record.due_date), day)
     );
   };
 

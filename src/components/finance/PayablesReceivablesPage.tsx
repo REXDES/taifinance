@@ -26,6 +26,7 @@ import { TagPicker } from './TagPicker';
 import TagBadges from './TagBadges';
 import { useRecordTags } from '@/hooks/useRecordTags';
 import { setEntityTags, findRecordIdsByTags, fetchTagsForRecords } from '@/hooks/useFinanceTags';
+import { parseLocalDate, todayISO } from '@/lib/dateUtils';
 
 interface PayablesReceivablesPageProps {
   companyId: string;
@@ -126,7 +127,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     description: '',
     amount: '',
     is_amount_pending: false,
-    due_date: format(new Date(), 'yyyy-MM-dd'),
+    due_date: todayISO(),
     category_id: '',
     subcategory_id: '',
     client_supplier_id: '',
@@ -156,7 +157,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
 
   const [effectuateFormData, setEffectuateFormData] = useState({
     paid_amount: '',
-    paid_date: format(new Date(), 'yyyy-MM-dd'),
+    paid_date: todayISO(),
     account_id: ''
   });
 
@@ -407,7 +408,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
       description: '',
       amount: '',
       is_amount_pending: false,
-      due_date: format(new Date(), 'yyyy-MM-dd'),
+      due_date: todayISO(),
       category_id: '',
       subcategory_id: '',
       client_supplier_id: '',
@@ -422,7 +423,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
     setEffectuateFormData({
       // Se valor pendente, iniciar vazio; senão, usar valor original
       paid_amount: record.is_amount_pending ? '' : String(record.amount),
-      paid_date: format(new Date(), 'yyyy-MM-dd'),
+      paid_date: todayISO(),
       account_id: ''
     });
     setIsEffectuateDialogOpen(true);
@@ -599,7 +600,7 @@ export function PayablesReceivablesPage({ companyId }: PayablesReceivablesPagePr
             ) : (
               displayedRecords.map((record) => (
                 <TableRow key={record.id}>
-                  <TableCell>{format(new Date(record.due_date), 'dd/MM/yyyy')}</TableCell>
+                  <TableCell>{format(parseLocalDate(record.due_date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>
                     {record.description}
                     {record.installment_number && (

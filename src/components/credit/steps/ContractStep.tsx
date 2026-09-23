@@ -8,6 +8,7 @@ import { useCreditRules } from '@/hooks/useCreditModule';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { SimulationData } from './SimulationStep';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 type Contract = {
   id: string;
@@ -79,9 +80,9 @@ export function ContractStep({
     doc.text(`Descrição: ${data.description}`, margin, y); y += 5;
     doc.text(`Valor principal: R$ ${data.principal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 5;
     doc.text(`Juros mensal: ${data.juros_mensal_pct}% · ${data.num_parcelas}x de R$ ${data.parcela_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin, y); y += 5;
-    doc.text(`Total: R$ ${data.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · 1º vencimento: ${new Date(data.first_due_date + 'T00:00:00').toLocaleDateString('pt-BR')}`, margin, y); y += 8;
+    doc.text(`Total: R$ ${data.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · 1º vencimento: ${parseLocalDate(data.first_due_date).toLocaleDateString('pt-BR')}`, margin, y); y += 8;
 
-    const base = new Date(data.first_due_date + 'T00:00:00');
+    const base = parseLocalDate(data.first_due_date);
     const rows = Array.from({ length: data.num_parcelas }, (_, i) => {
       const d = new Date(base); d.setMonth(d.getMonth() + i);
       return [String(i + 1), d.toLocaleDateString('pt-BR'), `R$ ${data.parcela_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`];

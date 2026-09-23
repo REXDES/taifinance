@@ -17,6 +17,7 @@ import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { useUsers } from '@/hooks/useUsers';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
+import { parseLocalDate, todayISO } from '@/lib/dateUtils';
 import 'jspdf-autotable';
 
 interface PayablesReceivablesReportPageProps {
@@ -93,14 +94,14 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
 
   const exportToExcel = () => {
     const data = payablesReceivables.map(record => ({
-      'Vencimento': format(new Date(record.due_date), 'dd/MM/yyyy'),
+      'Vencimento': format(parseLocalDate(record.due_date), 'dd/MM/yyyy'),
       'Tipo': getTypeLabel(record.type),
       'Descrição': record.description,
       'Cliente/Fornecedor': record.client_supplier?.name || '-',
       'Categoria': record.category?.name || '-',
       'Valor': Number(record.amount),
       'Status': getStatusLabel(record.status),
-      'Data Pagamento': record.paid_date ? format(new Date(record.paid_date), 'dd/MM/yyyy') : '-',
+      'Data Pagamento': record.paid_date ? format(parseLocalDate(record.paid_date), 'dd/MM/yyyy') : '-',
       'Valor Pago': record.paid_amount || '-',
       'Criado por': getUserName(record.created_by),
       'Efetivado por': getUserName(record.paid_by)
@@ -109,7 +110,7 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Contas');
-    XLSX.writeFile(wb, `contas_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    XLSX.writeFile(wb, `contas_${todayISO()}.xlsx`);
   };
 
   const exportToPDF = () => {
@@ -117,10 +118,10 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
     doc.setFontSize(16);
     doc.text('Relatório de Contas a Pagar/Receber', 14, 15);
     doc.setFontSize(10);
-    doc.text(`Período: ${format(new Date(filters.startDate), 'dd/MM/yyyy')} a ${format(new Date(filters.endDate), 'dd/MM/yyyy')}`, 14, 22);
+    doc.text(`Período: ${format(parseLocalDate(filters.startDate), 'dd/MM/yyyy')} a ${format(parseLocalDate(filters.endDate), 'dd/MM/yyyy')}`, 14, 22);
 
     const tableData = payablesReceivables.map(record => [
-      format(new Date(record.due_date), 'dd/MM/yyyy'),
+      format(parseLocalDate(record.due_date), 'dd/MM/yyyy'),
       getTypeLabel(record.type),
       record.description,
       record.client_supplier?.name || '-',
@@ -136,7 +137,7 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
       headStyles: { fillColor: [59, 130, 246] }
     });
 
-    doc.save(`contas_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    doc.save(`contas_${todayISO()}.pdf`);
   };
 
   if (loading) {
@@ -272,7 +273,7 @@ export function PayablesReceivablesReportPage({ companyId }: PayablesReceivables
             ) : (
               displayedRecords.map((record) => (
                 <TableRow key={record.id}>
-                  <TableCell>{format(new Date(record.due_date), 'dd/MM/yyyy')}</TableCell>
+                  <TableCell>{format(parseLocalDate(record.due_date), 'dd/MM/yyyy')}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={record.type === 'payable' ? 'text-red-600' : 'text-green-600'}>
                       {getTypeLabel(record.type)}

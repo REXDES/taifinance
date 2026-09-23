@@ -7,6 +7,7 @@ import {
   TrendingUp, Calendar, AlertTriangle, Activity,
 } from 'lucide-react';
 import { useMachines, useRentals, useMachineCategories, useMachineTypes } from '@/hooks/useMachinesModule';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 const brl = (n: number) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
@@ -54,8 +55,8 @@ export function MachinesDashboardPage({ companyId }: Props) {
     // Active rentals overlapping current month
     const activeRentals = rentals.filter(r => {
       if (r.status !== 'active') return false;
-      const s = new Date(r.start_date + 'T00:00:00');
-      const e = r.end_date ? new Date(r.end_date + 'T00:00:00') : monthEnd;
+      const s = parseLocalDate(r.start_date);
+      const e = r.end_date ? parseLocalDate(r.end_date) : monthEnd;
       return s <= monthEnd && e >= monthStart;
     });
 
@@ -65,7 +66,7 @@ export function MachinesDashboardPage({ companyId }: Props) {
         return s + total / r.installments_count;
       }
       // cash: allocate if start_date within month
-      const sd = new Date(r.start_date + 'T00:00:00');
+      const sd = parseLocalDate(r.start_date);
       if (sd >= monthStart && sd <= monthEnd) return s + total;
       return s;
     }, 0);

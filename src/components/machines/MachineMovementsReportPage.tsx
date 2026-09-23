@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PackageMinus, ShoppingCart, Wallet } from 'lucide-react';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface Props { companyId: string; }
 
@@ -26,7 +27,7 @@ interface MovementRow {
 }
 
 const fmtBRL = (v: number) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const fmtDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
+const fmtDate = (d: string) => parseLocalDate(d).toLocaleDateString('pt-BR');
 
 export function MachineMovementsReportPage({ companyId }: Props) {
   const [rows, setRows] = useState<MovementRow[]>([]);

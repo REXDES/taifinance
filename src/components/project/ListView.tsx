@@ -56,6 +56,7 @@ import {
 } from '@/components/ui/popover';
 import { SortableElementCard } from './SortableElementCard';
 import { Element, Task, Status, User as UserType } from '@/types';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface Filters {
   nameInitials: string[];
@@ -215,8 +216,8 @@ export function ListView({
             comparison = (a.estimatedValue ?? 0) - (b.estimatedValue ?? 0);
             break;
           case 'schedule':
-            const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
-            const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+            const dateA = a.startDate ? parseLocalDate(a.startDate).getTime() : 0;
+            const dateB = b.startDate ? parseLocalDate(b.startDate).getTime() : 0;
             comparison = dateA - dateB;
             break;
           case 'responsible':

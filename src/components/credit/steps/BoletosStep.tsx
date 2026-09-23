@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 export function BoletosStep({
   applicationId,
@@ -44,7 +45,7 @@ export function BoletosStep({
     if (!contract) return;
     setGenerating(true);
     try {
-      const base = new Date(contract.first_due_date + 'T00:00:00');
+      const base = parseLocalDate(contract.first_due_date);
       const rows = Array.from({ length: contract.num_parcelas }, (_, i) => {
         const d = new Date(base); d.setMonth(d.getMonth() + i);
         const due = d.toISOString().slice(0, 10);
@@ -109,7 +110,7 @@ export function BoletosStep({
             {items.map((p) => (
               <TableRow key={p.id}>
                 <TableCell>{p.installment_number}/{p.total_installments}</TableCell>
-                <TableCell>{new Date(p.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
+                <TableCell>{parseLocalDate(p.due_date).toLocaleDateString('pt-BR')}</TableCell>
                 <TableCell className="text-right">R$ {Number(p.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                 <TableCell>
                   {p.status === 'paid'

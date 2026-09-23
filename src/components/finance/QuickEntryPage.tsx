@@ -29,6 +29,7 @@ import { analyzeReceiptFile, uploadReceiptFile } from '@/hooks/useStatementImpor
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { parseLocalDate, formatLocalISO } from '@/lib/dateUtils';
 
 interface DuplicateCandidate {
   id: string;
@@ -111,9 +112,9 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
     accountId?: string | null;
   }): Promise<DuplicateCandidate[]> => {
     try {
-      const from = new Date(params.date); from.setDate(from.getDate() - 3);
-      const to = new Date(params.date); to.setDate(to.getDate() + 3);
-      const iso = (d: Date) => d.toISOString().split('T')[0];
+      const from = parseLocalDate(params.date); from.setDate(from.getDate() - 3);
+      const to = parseLocalDate(params.date); to.setDate(to.getDate() + 3);
+      const iso = (d: Date) => formatLocalISO(d);
 
       let query = supabase
         .from('transactions')
@@ -158,7 +159,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       if (analysis.type) { setIsIncome(analysis.type === 'income'); filled.push('tipo'); }
       if (analysis.amount) { setAmount(formatAmountValue(analysis.amount)); filled.push('valor'); }
       if (analysis.description) { setDescription(analysis.description); filled.push('descrição'); }
-      if (analysis.date) { setSelectedDate(new Date(`${analysis.date}T00:00:00`)); filled.push('data'); }
+      if (analysis.date) { setSelectedDate(parseLocalDate(analysis.date)); filled.push('data'); }
       if (analysis.subcategory_id) { setSelectedSubcategoryId(analysis.subcategory_id); setShowMoreSubcategories(true); filled.push('subcategoria'); }
       if (analysis.tag_ids.length > 0) { setSelectedTags(analysis.tag_ids); filled.push('tags'); }
       if (analysis.account_id && activeAccounts.some(a => a.id === analysis.account_id)) {
@@ -174,7 +175,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
       });
 
       if (analysis.amount && analysis.type) {
-        const refDate = analysis.date ? new Date(`${analysis.date}T00:00:00`) : new Date();
+        const refDate = analysis.date ? parseLocalDate(analysis.date) : new Date();
         const found = await checkDuplicates({
           amount: analysis.amount,
           date: refDate,
@@ -256,7 +257,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
         amount: numAmount,
         type: isIncome ? 'income' : 'expense',
         description: description || (isIncome ? 'Receita rápida' : 'Despesa rápida'),
-        date: selectedDate.toISOString().split('T')[0],
+        date: formatLocalISO(selectedDate),
         notes,
       });
 
@@ -384,7 +385,7 @@ export function QuickEntryPage({ companyId }: QuickEntryPageProps) {
                 <ul className="text-xs list-disc pl-4">
                   {duplicates.slice(0, 5).map(d => (
                     <li key={d.id}>
-                      {format(new Date(`${d.date}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR })} — R$ {formatAmountValue(d.amount)}
+                      {format(parseLocalDate(d.date), 'dd/MM/yyyy', { locale: ptBR })} — R$ {formatAmountValue(d.amount)}
                       {d.description ? ` — ${d.description}` : ''}
                     </li>
                   ))}

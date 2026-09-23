@@ -24,6 +24,7 @@ import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, CalendarDays, GripVertical } from 'lucide-react';
 import { Task, Element, Status } from '@/types';
 import { Button } from '@/components/ui/button';
+import { parseLocalDate } from '@/lib/dateUtils';
 import {
   Select,
   SelectContent,
@@ -193,8 +194,8 @@ export function GanttView({ elements, tasks, statuses, onUpdateTask }: GanttView
     const getTaskPosition = (task: Task) => {
       if (!task.startDate || !task.endDate) return null;
       
-      const start = parseISO(task.startDate);
-      const end = parseISO(task.endDate);
+      const start = parseLocalDate(task.startDate);
+      const end = parseLocalDate(task.endDate);
       const firstPeriod = periods[0];
       const lastPeriod = periods[periods.length - 1];
 

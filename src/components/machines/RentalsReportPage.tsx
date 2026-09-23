@@ -13,6 +13,7 @@ import { useClientsSuppliers } from '@/hooks/useClientsSuppliers';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { recalculatePendingInstallments, deletePendingInstallments } from '@/lib/machinesFinance';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface Props { companyId: string; }
 const UNIT_LABEL: Record<string, string> = { hour: 'Hora', day: 'Dia', week: 'Semana', month: 'Mês' };
@@ -128,7 +129,7 @@ export function RentalsReportPage({ companyId }: Props) {
                 return (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{client?.name || '-'}</TableCell>
-                    <TableCell className="text-xs">{new Date(r.start_date + 'T00:00:00').toLocaleDateString('pt-BR')}{r.end_date ? ` → ${new Date(r.end_date + 'T00:00:00').toLocaleDateString('pt-BR')}` : ''}</TableCell>
+                    <TableCell className="text-xs">{parseLocalDate(r.start_date).toLocaleDateString('pt-BR')}{r.end_date ? ` → ${parseLocalDate(r.end_date).toLocaleDateString('pt-BR')}` : ''}</TableCell>
                     <TableCell>{r.qty} {UNIT_LABEL[r.unit]}</TableCell>
                     <TableCell>R$ {Number(r.total_amount).toFixed(2)}</TableCell>
                     <TableCell><Badge variant="outline">{r.payment_mode === 'cash' ? 'À vista' : `${r.installments_count}x`}</Badge></TableCell>

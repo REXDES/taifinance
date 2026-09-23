@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { setEntityTags } from '@/hooks/useFinanceTags';
 import { toast } from 'sonner';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 const RECEIPT_BUCKET = 'statement-receipts';
 
@@ -89,13 +90,13 @@ export function buildFingerprint(line: { date: string; amount: number; type: str
 
 /** Soma/subtrai dias de uma data AAAA-MM-DD sem sofrer com fuso horário. */
 export function shiftDate(value: string, days: number) {
-  const d = new Date(`${value}T00:00:00`);
+  const d = parseLocalDate(value);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 }
 
 const dayDiff = (a: string, b: string) =>
-  Math.round(Math.abs(new Date(`${a}T00:00:00`).getTime() - new Date(`${b}T00:00:00`).getTime()) / 86400000);
+  Math.round(Math.abs(parseLocalDate(a).getTime() - parseLocalDate(b).getTime()) / 86400000);
 
 interface DuplicateCandidateTx {
   id: string;

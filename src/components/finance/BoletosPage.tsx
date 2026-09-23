@@ -38,6 +38,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBoletos, Boleto } from '@/hooks/useBoletos';
 import { AddBoletoDialog } from './AddBoletoDialog';
 import { toast } from 'sonner';
+import { parseLocalDate, todayISO } from '@/lib/dateUtils';
 
 interface BoletosPageProps {
   companyId: string;
@@ -87,7 +88,7 @@ interface MarkPaidDialogProps {
 
 function MarkPaidDialog({ boleto, onConfirm, onClose }: MarkPaidDialogProps) {
   const [amount, setAmount] = useState(boleto?.amount?.toFixed(2).replace('.', ',') ?? '');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayISO());
   const [loading, setLoading] = useState(false);
 
   const handleConfirm = async () => {
@@ -280,7 +281,7 @@ function BoletoCard({ boleto, onMarkPaid, onCancelBoleto, onDelete, onCopyBarcod
   const isActionable = boleto.status === 'pending' || boleto.status === 'overdue';
 
   const dueDateLabel = boleto.due_date
-    ? format(parseISO(boleto.due_date), "d 'de' MMM 'de' yyyy", { locale: ptBR })
+    ? format(parseLocalDate(boleto.due_date), "d 'de' MMM 'de' yyyy", { locale: ptBR })
     : null;
 
   return (

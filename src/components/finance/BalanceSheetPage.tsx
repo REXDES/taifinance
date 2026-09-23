@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, CreditCard, Calculator } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, isBefore, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 // Entry unificado para exibir transações e transferências
 interface AccountEntry {
@@ -104,7 +105,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
     
     // Sort entries by date (oldest first for balance calculation)
     byAccount.forEach((entries) => {
-      entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      entries.sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
     });
     
     return byAccount;
@@ -120,7 +121,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
       
       // Sum all entries before current month
       entries.forEach(entry => {
-        const entryDate = parseISO(entry.date);
+        const entryDate = parseLocalDate(entry.date);
         if (isBefore(entryDate, currentMonthStart)) {
           if (entry.type === 'income' || entry.type === 'transfer_in') {
             balance += entry.amount;
@@ -142,11 +143,11 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
     
     allEntriesByAccount.forEach((entries, accountId) => {
       const filtered = entries.filter(entry => {
-        const entryDate = parseISO(entry.date);
+        const entryDate = parseLocalDate(entry.date);
         return entryDate >= currentMonthStart && entryDate <= currentMonthEnd;
       });
       // Sort newest first for display
-      filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      filtered.sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
       byAccount.set(accountId, filtered);
     });
     
@@ -341,7 +342,7 @@ export function BalanceSheetPage({ companyId }: BalanceSheetPageProps) {
                       {getEntryLabel()}
                     </span>
                     <span className="text-muted-foreground">
-                      {format(new Date(entry.date), 'dd/MM/yyyy', { locale: ptBR })}
+                      {format(parseLocalDate(entry.date), 'dd/MM/yyyy', { locale: ptBR })}
                     </span>
                     <span>{entry.description}</span>
                     {entry.categoryName && (

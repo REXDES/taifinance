@@ -217,6 +217,9 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
     if (groupBy === 'none') return [] as Array<{ key: string; label: string; count: number; payable: number; receivable: number }>;
     const map = new Map<string, { key: string; label: string; count: number; payable: number; receivable: number }>();
     for (const r of (payablesReceivables as any[])) {
+      // Totais consideram apenas contas em aberto; ao agrupar por status, inclui também as pagas
+      if (r.status === 'cancelled' || r.status === 'paused') continue;
+      if (r.status === 'paid' && groupBy !== 'status') continue;
       const d = r.due_date ? parseLocalDate(r.due_date) : null;
       let key = '—', label = '—';
       if (groupBy === 'day' && d) { key = r.due_date.slice(0, 10); label = format(d, 'dd/MM/yyyy'); }

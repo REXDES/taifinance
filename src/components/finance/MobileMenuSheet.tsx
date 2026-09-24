@@ -129,6 +129,7 @@ export function MobileMenuSheet({
   bankDigitalEnabled = false,
   paymentsEnabled = false,
 }: MobileMenuSheetProps) {
+  const { brand } = useModuleBranding();
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
   const { can } = usePermissions();
@@ -333,7 +334,7 @@ export function MobileMenuSheet({
                     <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
                       <span className="flex items-center gap-3">
                         <Briefcase className="w-4 h-4" />
-                        Gestão Financeira
+                        {brand('finance').name}
                       </span>
                       <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                     </Button>
@@ -372,7 +373,7 @@ export function MobileMenuSheet({
                     <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
                       <span className="flex items-center gap-3">
                         <Truck className="w-4 h-4" />
-                        Máquinas & Locação
+                        {brand('machines').name}
                       </span>
                       <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                     </Button>
@@ -392,7 +393,7 @@ export function MobileMenuSheet({
                     <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
                       <span className="flex items-center gap-3">
                         <CreditCard className="w-4 h-4" />
-                        Gestão de Crédito
+                        {brand('credit').name}
                       </span>
                       <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                     </Button>

@@ -54,7 +54,7 @@
 1. Se a transferência para conta própria está liberada por empresa.
 2. Se as taxas vêm por empresa.
 3. Se a lista de maquininhas traz a última venda (se não trouxer, calculo pelas vendas).
-4. Se o gateway avisa o sistema quando envia WhatsApp.
+4. Se o gateway avisa o sistema quando envia WhatsApp. Se não avisar, o Log de Mensagens registra ao menos o **pedido de envio**, com data e hora, marcado como "solicitado ao gateway" (sem confirmação de entrega).
 
 ## Detalhes técnicos
 - Nova tabela de configuração visual por módulo (chave do módulo, nome, caminho do logo, cor). Leitura para todos os usuários autenticados e edição só por supervisor. Os logos ficam em um armazenamento público. O novo menu é cadastrado no catálogo de permissões.

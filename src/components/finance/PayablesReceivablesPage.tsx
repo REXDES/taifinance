@@ -28,6 +28,9 @@ import TagBadges from './TagBadges';
 import { useRecordTags } from '@/hooks/useRecordTags';
 import { setEntityTags, findRecordIdsByTags, fetchTagsForRecords } from '@/hooks/useFinanceTags';
 import { parseLocalDate, todayISO } from '@/lib/dateUtils';
+import { useCompanyPaymentsFlag } from '@/hooks/usePaymentsModule';
+import { NectaChargesPage } from '@/components/payments/NectaChargesPage';
+import { PaymentsBrandName } from '@/contexts/ModuleBrandingContext';
 
 interface PayablesReceivablesPageProps {
   companyId: string;
@@ -95,7 +98,8 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
     cancelPayableReceivable,
     setPausedPayableReceivable,
     deletePayableReceivable,
-    checkRelatedRecords
+    checkRelatedRecords,
+    refetch: refetchPR
   } = usePayablesReceivables(companyId, {
     startDate: filters.startDate,
     endDate: filters.endDate,
@@ -108,6 +112,9 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
   const { accounts } = useAccounts(companyId);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { enabled: paymentsEnabled } = useCompanyPaymentsFlag(companyId);
+  const [gatewayChargeOpen, setGatewayChargeOpen] = useState(false);
+  const [groupBy, setGroupBy] = useState<'none' | 'day' | 'month' | 'payer' | 'method' | 'status'>('none');
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
   const [isEffectuateDialogOpen, setIsEffectuateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -176,6 +183,27 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
   const prRecordTags = useRecordTags('payable_receivable', payablesReceivables.map(r => r.id), tagRefresh);
 
   const selectedCategory = categories.find(c => c.id === formData.category_id);
+
+  const STATUS_TXT: Record<string, string> = { pending: 'Pendente', paid: 'Pago', cancelled: 'Cancelado', paused: 'Pausado' };
+  const groupedTotals = useMemo(() => {
+    if (groupBy === 'none') return [] as Array<{ key: string; label: string; count: number; payable: number; receivable: number }>;
+    const map = new Map<string, { key: string; label: string; count: number; payable: number; receivable: number }>();
+    for (const r of (payablesReceivables as any[])) {
+      const d = r.due_date ? parseLocalDate(r.due_date) : null;
+      let key = '—', label = '—';
+      if (groupBy === 'day' && d) { key = r.due_date.slice(0, 10); label = format(d, 'dd/MM/yyyy'); }
+      else if (groupBy === 'month' && d) { key = r.due_date.slice(0, 7); label = format(d, 'MMMM/yyyy', { locale: ptBR }); }
+      else if (groupBy === 'payer') { key = r.client_supplier?.id ?? 'none'; label = r.client_supplier?.name ?? 'Sem cliente/fornecedor'; }
+      else if (groupBy === 'method') { key = r.source === 'necta' ? 'gw' : 'own'; label = r.source === 'necta' ? 'Cobrança pelo gateway' : 'Própria'; }
+      else if (groupBy === 'status') { key = r.status; label = STATUS_TXT[r.status] ?? r.status; }
+      const g = map.get(key) ?? { key, label, count: 0, payable: 0, receivable: 0 };
+      g.count++;
+      const v = Number(r.amount || 0);
+      if (r.type === 'payable') g.payable += v; else g.receivable += v;
+      map.set(key, g);
+    }
+    return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
+  }, [payablesReceivables, groupBy]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -484,10 +512,16 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
               </Badge>
             )}
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)}>
+          <Button onClick={() => setIsDialogOpen(true)} title={paymentsEnabled ? 'Conta a pagar ou Cobrança Própria' : undefined}>
             <Plus className="h-4 w-4 mr-2" />
-            Nova Conta
+            {paymentsEnabled ? 'Nova Conta / Cobrança Própria' : 'Nova Conta'}
           </Button>
+          {paymentsEnabled && (
+            <Button variant="secondary" onClick={() => setGatewayChargeOpen(true)} title="Boleto, PIX, Bolepix ou link — o valor cai na conta do gateway">
+              <Plus className="h-4 w-4 mr-2" />
+              Cobrar por <span className="ml-1"><PaymentsBrandName /></span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -583,6 +617,45 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
           )}
         </Card>
       </div>
+
+      <Card className="p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium">Totais agrupados <span className="text-muted-foreground font-normal">(opcional — a lista detalhada continua abaixo)</span></p>
+          <Select value={groupBy} onValueChange={(v) => setGroupBy(v as any)}>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Não agrupar</SelectItem>
+              <SelectItem value="day">Por dia</SelectItem>
+              <SelectItem value="month">Por mês</SelectItem>
+              <SelectItem value="payer">Por cliente/fornecedor</SelectItem>
+              <SelectItem value="method">Por forma de cobrança</SelectItem>
+              <SelectItem value="status">Por status</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {groupBy !== 'none' && (
+          <Table>
+            <TableHeader><TableRow><TableHead>Grupo</TableHead><TableHead className="text-right">Qtd</TableHead><TableHead className="text-right">A Pagar</TableHead><TableHead className="text-right">A Receber</TableHead><TableHead className="text-right">Saldo</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {groupedTotals.map(g => (
+                <TableRow key={g.key}>
+                  <TableCell>{g.label}</TableCell>
+                  <TableCell className="text-right">{g.count}</TableCell>
+                  <TableCell className="text-right text-red-600">{formatCurrency(g.payable)}</TableCell>
+                  <TableCell className="text-right text-green-600">{formatCurrency(g.receivable)}</TableCell>
+                  <TableCell className={`text-right ${g.receivable - g.payable >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(g.receivable - g.payable)}</TableCell>
+                </TableRow>
+              ))}
+              {groupedTotals.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">Nenhuma conta no período</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
+
+      {paymentsEnabled && companyId && (
+        <NectaChargesPage companyId={companyId} dialogOnly externalOpen={gatewayChargeOpen}
+          onExternalOpenChange={setGatewayChargeOpen} onCreated={() => refetchPR?.()} />
+      )}
 
       <Card>
         <Table>

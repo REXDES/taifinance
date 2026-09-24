@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { usePaymentsBrand } from '@/contexts/ModuleBrandingContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -35,6 +36,12 @@ export function useAccounts(companyId: string | null) {
   const [groups, setGroups] = useState<AccountGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const paymentsBrandName = usePaymentsBrand().name;
+  // A conta espelhada é exibida com o nome configurado do módulo (ex.: "Conta Pagando.net").
+  const displayAccounts = useMemo(
+    () => accounts.map(a => (a.source === 'necta' || a.is_mirror) ? { ...a, name: `Conta ${paymentsBrandName}` } : a),
+    [accounts, paymentsBrandName],
+  );
 
   const fetchAccounts = useCallback(async () => {
     if (!companyId) {
@@ -240,7 +247,7 @@ export function useAccounts(companyId: string | null) {
   const totalGeral = totalAtivo - totalPassivo;
 
   return {
-    accounts,
+    accounts: displayAccounts,
     groups,
     loading,
     totalBalance,

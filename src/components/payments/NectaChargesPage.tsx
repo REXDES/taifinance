@@ -20,7 +20,7 @@ import { normalizeDate, sameDocument, todayISO, validatePayer } from '@/lib/nect
 import { parseLocalDate } from '@/lib/dateUtils';
 import { logWhatsappAttempt } from '@/lib/whatsappLogClient';
 
-interface Props { companyId: string }
+interface Props { companyId: string; dialogOnly?: boolean; externalOpen?: boolean; onExternalOpenChange?: (o: boolean) => void; onCreated?: () => void }
 
 const METHOD_LABEL: Record<string, string> = {
   pix: 'PIX',
@@ -83,12 +83,14 @@ const maskPhone = (v: string) => {
 const maskCep = (v: string) => digitsOnly(v).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2');
 
 
-export function NectaChargesPage({ companyId }: Props) {
+export function NectaChargesPage({ companyId, dialogOnly = false, externalOpen, onExternalOpenChange, onCreated }: Props) {
   const { user } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [tab, setTab] = useState<'open' | 'paid' | 'recurring' | 'review' | 'all'>('open');
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = dialogOnly ? !!externalOpen : openState;
+  const setOpen = (o: boolean) => { if (dialogOnly) onExternalOpenChange?.(o); else setOpenState(o); };
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -306,6 +308,7 @@ export function NectaChargesPage({ companyId }: Props) {
 
     setSaving(false);
     setOpen(false);
+    onCreated?.();
     toast.success(recurrenceCount > 1 ? `${recurrenceCount} cobranças criadas` : 'Cobrança criada');
     const card = form.method === 'credit_card'
       ? { holderName: form.card_holder, number: form.card_number, expirationMonth: form.card_month, expirationYear: form.card_year, cvv: form.card_cvv }
@@ -455,155 +458,8 @@ export function NectaChargesPage({ companyId }: Props) {
     review: rows.filter(needsReview).length,
   };
 
-  return (
-    <PaymentsListShell
-      title="Cobranças"
-      description="Gere cobranças por PIX, boleto, bolepix, cartão ou link e acompanhe até a liquidação — o status reflete na Gestão Financeira"
-      onRefresh={load}
-      onCreate={() => setOpen(true)}
-      createLabel="Nova cobrança"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-          <TabsList>
-            <TabsTrigger value="open">Em aberto</TabsTrigger>
-            <TabsTrigger value="paid">Pagas</TabsTrigger>
-            <TabsTrigger value="recurring">Recorrentes</TabsTrigger>
-            <TabsTrigger value="review">Revisão{totals.review > 0 ? ` (${totals.review})` : ''}</TabsTrigger>
-            <TabsTrigger value="all">Todas</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">Em aberto: <strong>{brl(totals.open)}</strong> · Pagas: <strong>{brl(totals.paid)}</strong></span>
-          <Button variant="outline" size="sm" onClick={() => syncOpen()} disabled={syncingAll}>
-            {syncingAll ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Atualizar status
-          </Button>
-        </div>
-      </div>
-
-      <Card><CardContent className="p-0 overflow-x-auto">
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead>Criada</TableHead><TableHead>Método</TableHead><TableHead>Pagador</TableHead>
-            <TableHead>Vencimento</TableHead><TableHead className="text-right">Valor</TableHead>
-            <TableHead>Status</TableHead><TableHead>Recorrência</TableHead><TableHead className="text-right">Ações</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {filtered.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhuma cobrança</TableCell></TableRow>}
-            {filtered.map(c => (
-              <TableRow key={c.id} className="cursor-pointer" onClick={() => setDetail(c)}>
-                <TableCell>{new Date(c.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                <TableCell><Badge variant="outline">{METHOD_LABEL[c.method] ?? c.method}</Badge></TableCell>
-                <TableCell>{c.payer_name ?? '—'}</TableCell>
-                <TableCell>{c.due_date ? parseLocalDate(c.due_date).toLocaleDateString('pt-BR') : '—'}</TableCell>
-                <TableCell className="text-right">{brl(Number(c.amount || 0))}</TableCell>
-                <TableCell>
-                  <Badge variant={statusVariant(c.status)}>{STATUS_LABEL[c.status] ?? c.status}</Badge>
-                  {needsReview(c) && <Badge variant="destructive" className="ml-1">Revisar</Badge>}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {c.is_recurring ? `${c.recurrence_index ?? 1}/${c.recurrence_count ?? 1}` : '—'}
-                </TableCell>
-                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                  {!c.necta_sale_id && !c.necta_payment_link_id && c.status !== 'canceled' ? (
-                    <Button size="sm" variant="outline" disabled={busyId === c.id} onClick={() => issue(c.id)}>
-                      {busyId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Receipt className="h-4 w-4 mr-1" />Emitir</>}
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="ghost" disabled={busyId === c.id} onClick={() => syncOne(c.id)}>
-                      {busyId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent></Card>
-
-      {/* Detalhe */}
-      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Cobrança {detail ? brl(Number(detail.amount || 0)) : ''}</DialogTitle>
-            <DialogDescription>
-              {detail?.payer_name ?? 'Pagador não informado'} · {detail ? (METHOD_LABEL[detail.method] ?? detail.method) : ''}
-              {detail?.due_date ? ` · venc. ${parseLocalDate(detail.due_date).toLocaleDateString('pt-BR')}` : ''}
-            </DialogDescription>
-          </DialogHeader>
-          {detail && (
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={statusVariant(detail.status)}>{STATUS_LABEL[detail.status] ?? detail.status}</Badge>
-                {needsReview(detail) && <Badge variant="destructive">Precisa de revisão</Badge>}
-                {detail.provider_status && <span className="text-xs text-muted-foreground">operadora: {detail.provider_status}</span>}
-              </div>
-              {needsReview(detail) && (
-                <div className="border border-destructive/40 bg-destructive/5 rounded-md p-3 text-xs space-y-1">
-                  <p className="font-medium text-destructive">Pendente de revisão manual</p>
-                  <p className="text-muted-foreground">{detail.review_reason ?? 'Situação inesperada detectada nesta cobrança.'}</p>
-                  <p className="text-muted-foreground">Nenhuma baixa em Contas a Receber foi revertida automaticamente — confirme se é um estorno legítimo, erro de input ou possível fraude antes de agir.</p>
-                </div>
-              )}
-              {detail.reviewed_at && <p className="text-xs text-muted-foreground">Revisada em {new Date(detail.reviewed_at).toLocaleString('pt-BR')}</p>}
-              {detail.paid_at && <p className="text-muted-foreground">Paga em {new Date(detail.paid_at).toLocaleString('pt-BR')}</p>}
-              {detail.transaction_id && <p className="text-xs text-muted-foreground">Lançamento financeiro gerado automaticamente.</p>}
-              {detail.payable_receivable_id && <p className="text-xs text-muted-foreground">Vinculada a um recebível em Contas a Pagar/Receber.</p>}
-              {detail.sync_error && <p className="text-destructive text-xs break-words">Erro: {detail.sync_error}</p>}
-
-              {detail.boleto_digitable_line && (
-                <div><Label>Linha digitável</Label>
-                  <div className="flex gap-2"><Input readOnly value={detail.boleto_digitable_line} />
-                    <Button size="icon" variant="outline" onClick={() => copy(detail.boleto_digitable_line, 'Linha digitável')}><Copy className="h-4 w-4" /></Button></div>
-                </div>
-              )}
-              {detail.pix_copy_paste && (
-                <div className="space-y-2">
-                  <Label>PIX copia e cola</Label>
-                  <div className="flex gap-2"><Input readOnly value={detail.pix_copy_paste} />
-                    <Button size="icon" variant="outline" onClick={() => copy(detail.pix_copy_paste, 'PIX')}><Copy className="h-4 w-4" /></Button></div>
-                  <div className="flex flex-col items-center gap-2 rounded-md border bg-white p-4">
-                    <QRCodeSVG value={detail.pix_copy_paste} size={180} />
-                    <span className="text-xs text-muted-foreground">Aponte a câmera do banco para pagar</span>
-                  </div>
-                </div>
-              )}
-              {(detail.necta_sale_id || detail.necta_payment_link_id) && (
-                <Button variant="outline" size="sm" onClick={() => openDocument(detail)} disabled={openingDoc}>
-                  {openingDoc ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
-                  Abrir boleto / link
-                </Button>
-              )}
-              {detail.last_sync_at && <p className="text-xs text-muted-foreground">Última verificação: {new Date(detail.last_sync_at).toLocaleString('pt-BR')}</p>}
-            </div>
-          )}
-          <DialogFooter className="flex-wrap gap-2">
-            {detail && needsReview(detail) && (
-              <Button variant="secondary" onClick={() => markReviewed(detail.id)} disabled={busyId === detail.id}>
-                {busyId === detail.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}Marcar como revisado
-              </Button>
-            )}
-            {detail && !detail.necta_sale_id && !detail.necta_payment_link_id && detail.status !== 'canceled' && (
-              <Button onClick={() => issue(detail.id)} disabled={busyId === detail.id}><Receipt className="h-4 w-4 mr-2" />Emitir</Button>
-            )}
-            {detail && (detail.necta_sale_id || detail.necta_payment_link_id) && (
-              <Button variant="outline" onClick={() => syncOne(detail.id)} disabled={busyId === detail.id}><RefreshCw className="h-4 w-4 mr-2" />Consultar status</Button>
-            )}
-            {detail && paymentInfoFor(detail) && (
-              <Button variant="outline" onClick={() => sendWhatsapp(detail)} disabled={sendingWhatsapp}>
-                {sendingWhatsapp ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-2" />}Enviar por WhatsApp
-              </Button>
-            )}
-            {detail && [...OPEN_STATUSES, 'paid'].includes(detail.status) && (
-              <Button variant="destructive" onClick={() => voidSale(detail.id)} disabled={busyId === detail.id}>
-                <Ban className="h-4 w-4 mr-2" />{detail.status === 'paid' ? 'Estornar' : 'Cancelar'}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+  const newChargeDialog = (
+    <>
       {/* Nova cobrança */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
@@ -754,6 +610,160 @@ export function NectaChargesPage({ companyId }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+  if (dialogOnly) return newChargeDialog;
+
+  return (
+    <PaymentsListShell
+      title="Cobranças"
+      description="Gere cobranças por PIX, boleto, bolepix, cartão ou link e acompanhe até a liquidação — o status reflete na Gestão Financeira"
+      onRefresh={load}
+      onCreate={() => setOpen(true)}
+      createLabel="Nova cobrança"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+          <TabsList>
+            <TabsTrigger value="open">Em aberto</TabsTrigger>
+            <TabsTrigger value="paid">Pagas</TabsTrigger>
+            <TabsTrigger value="recurring">Recorrentes</TabsTrigger>
+            <TabsTrigger value="review">Revisão{totals.review > 0 ? ` (${totals.review})` : ''}</TabsTrigger>
+            <TabsTrigger value="all">Todas</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">Em aberto: <strong>{brl(totals.open)}</strong> · Pagas: <strong>{brl(totals.paid)}</strong></span>
+          <Button variant="outline" size="sm" onClick={() => syncOpen()} disabled={syncingAll}>
+            {syncingAll ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Atualizar status
+          </Button>
+        </div>
+      </div>
+
+      <Card><CardContent className="p-0 overflow-x-auto">
+        <Table>
+          <TableHeader><TableRow>
+            <TableHead>Criada</TableHead><TableHead>Método</TableHead><TableHead>Pagador</TableHead>
+            <TableHead>Vencimento</TableHead><TableHead className="text-right">Valor</TableHead>
+            <TableHead>Status</TableHead><TableHead>Recorrência</TableHead><TableHead className="text-right">Ações</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {filtered.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhuma cobrança</TableCell></TableRow>}
+            {filtered.map(c => (
+              <TableRow key={c.id} className="cursor-pointer" onClick={() => setDetail(c)}>
+                <TableCell>{new Date(c.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                <TableCell><Badge variant="outline">{METHOD_LABEL[c.method] ?? c.method}</Badge></TableCell>
+                <TableCell>{c.payer_name ?? '—'}</TableCell>
+                <TableCell>{c.due_date ? parseLocalDate(c.due_date).toLocaleDateString('pt-BR') : '—'}</TableCell>
+                <TableCell className="text-right">{brl(Number(c.amount || 0))}</TableCell>
+                <TableCell>
+                  <Badge variant={statusVariant(c.status)}>{STATUS_LABEL[c.status] ?? c.status}</Badge>
+                  {needsReview(c) && <Badge variant="destructive" className="ml-1">Revisar</Badge>}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {c.is_recurring ? `${c.recurrence_index ?? 1}/${c.recurrence_count ?? 1}` : '—'}
+                </TableCell>
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                  {!c.necta_sale_id && !c.necta_payment_link_id && c.status !== 'canceled' ? (
+                    <Button size="sm" variant="outline" disabled={busyId === c.id} onClick={() => issue(c.id)}>
+                      {busyId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Receipt className="h-4 w-4 mr-1" />Emitir</>}
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="ghost" disabled={busyId === c.id} onClick={() => syncOne(c.id)}>
+                      {busyId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent></Card>
+
+      {/* Detalhe */}
+      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cobrança {detail ? brl(Number(detail.amount || 0)) : ''}</DialogTitle>
+            <DialogDescription>
+              {detail?.payer_name ?? 'Pagador não informado'} · {detail ? (METHOD_LABEL[detail.method] ?? detail.method) : ''}
+              {detail?.due_date ? ` · venc. ${parseLocalDate(detail.due_date).toLocaleDateString('pt-BR')}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {detail && (
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant={statusVariant(detail.status)}>{STATUS_LABEL[detail.status] ?? detail.status}</Badge>
+                {needsReview(detail) && <Badge variant="destructive">Precisa de revisão</Badge>}
+                {detail.provider_status && <span className="text-xs text-muted-foreground">operadora: {detail.provider_status}</span>}
+              </div>
+              {needsReview(detail) && (
+                <div className="border border-destructive/40 bg-destructive/5 rounded-md p-3 text-xs space-y-1">
+                  <p className="font-medium text-destructive">Pendente de revisão manual</p>
+                  <p className="text-muted-foreground">{detail.review_reason ?? 'Situação inesperada detectada nesta cobrança.'}</p>
+                  <p className="text-muted-foreground">Nenhuma baixa em Contas a Receber foi revertida automaticamente — confirme se é um estorno legítimo, erro de input ou possível fraude antes de agir.</p>
+                </div>
+              )}
+              {detail.reviewed_at && <p className="text-xs text-muted-foreground">Revisada em {new Date(detail.reviewed_at).toLocaleString('pt-BR')}</p>}
+              {detail.paid_at && <p className="text-muted-foreground">Paga em {new Date(detail.paid_at).toLocaleString('pt-BR')}</p>}
+              {detail.transaction_id && <p className="text-xs text-muted-foreground">Lançamento financeiro gerado automaticamente.</p>}
+              {detail.payable_receivable_id && <p className="text-xs text-muted-foreground">Vinculada a um recebível em Contas a Pagar/Receber.</p>}
+              {detail.sync_error && <p className="text-destructive text-xs break-words">Erro: {detail.sync_error}</p>}
+
+              {detail.boleto_digitable_line && (
+                <div><Label>Linha digitável</Label>
+                  <div className="flex gap-2"><Input readOnly value={detail.boleto_digitable_line} />
+                    <Button size="icon" variant="outline" onClick={() => copy(detail.boleto_digitable_line, 'Linha digitável')}><Copy className="h-4 w-4" /></Button></div>
+                </div>
+              )}
+              {detail.pix_copy_paste && (
+                <div className="space-y-2">
+                  <Label>PIX copia e cola</Label>
+                  <div className="flex gap-2"><Input readOnly value={detail.pix_copy_paste} />
+                    <Button size="icon" variant="outline" onClick={() => copy(detail.pix_copy_paste, 'PIX')}><Copy className="h-4 w-4" /></Button></div>
+                  <div className="flex flex-col items-center gap-2 rounded-md border bg-white p-4">
+                    <QRCodeSVG value={detail.pix_copy_paste} size={180} />
+                    <span className="text-xs text-muted-foreground">Aponte a câmera do banco para pagar</span>
+                  </div>
+                </div>
+              )}
+              {(detail.necta_sale_id || detail.necta_payment_link_id) && (
+                <Button variant="outline" size="sm" onClick={() => openDocument(detail)} disabled={openingDoc}>
+                  {openingDoc ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+                  Abrir boleto / link
+                </Button>
+              )}
+              {detail.last_sync_at && <p className="text-xs text-muted-foreground">Última verificação: {new Date(detail.last_sync_at).toLocaleString('pt-BR')}</p>}
+            </div>
+          )}
+          <DialogFooter className="flex-wrap gap-2">
+            {detail && needsReview(detail) && (
+              <Button variant="secondary" onClick={() => markReviewed(detail.id)} disabled={busyId === detail.id}>
+                {busyId === detail.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}Marcar como revisado
+              </Button>
+            )}
+            {detail && !detail.necta_sale_id && !detail.necta_payment_link_id && detail.status !== 'canceled' && (
+              <Button onClick={() => issue(detail.id)} disabled={busyId === detail.id}><Receipt className="h-4 w-4 mr-2" />Emitir</Button>
+            )}
+            {detail && (detail.necta_sale_id || detail.necta_payment_link_id) && (
+              <Button variant="outline" onClick={() => syncOne(detail.id)} disabled={busyId === detail.id}><RefreshCw className="h-4 w-4 mr-2" />Consultar status</Button>
+            )}
+            {detail && paymentInfoFor(detail) && (
+              <Button variant="outline" onClick={() => sendWhatsapp(detail)} disabled={sendingWhatsapp}>
+                {sendingWhatsapp ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-2" />}Enviar por WhatsApp
+              </Button>
+            )}
+            {detail && [...OPEN_STATUSES, 'paid'].includes(detail.status) && (
+              <Button variant="destructive" onClick={() => voidSale(detail.id)} disabled={busyId === detail.id}>
+                <Ban className="h-4 w-4 mr-2" />{detail.status === 'paid' ? 'Estornar' : 'Cancelar'}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {newChargeDialog}
     </PaymentsListShell>
   );
 }

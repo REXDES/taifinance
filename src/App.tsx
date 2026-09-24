@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AccessModeProvider } from "@/contexts/AccessModeContext";
+import { ModuleBrandingProvider } from "@/contexts/ModuleBrandingContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -36,6 +37,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <AccessModeProvider>
+              <ModuleBrandingProvider>
               <Suspense fallback={<RouteFallback />}>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
@@ -53,6 +55,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
+              </ModuleBrandingProvider>
             </AccessModeProvider>
           </AuthProvider>
         </BrowserRouter>

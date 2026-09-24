@@ -17,6 +17,7 @@ import { FinanceDashboard } from '@/components/finance/FinanceDashboard';
 import { AdminDashboard } from '@/components/finance/AdminDashboard';
 import { AdminUsersPage } from '@/components/admin/AdminUsersPage';
 import { AdminRolesPage } from '@/components/admin/AdminRolesPage';
+import { ModuleSettingsPage } from '@/components/admin/ModuleSettingsPage';
 import { CategoryReportPage } from '@/components/finance/CategoryReportPage';
 import { TagReportPage } from '@/components/finance/TagReportPage';
 import { CashFlowReportPage } from '@/components/finance/CashFlowReportPage';
@@ -73,6 +74,7 @@ export type FinanceView =
   | 'admin-dashboard'
   | 'admin-users'
   | 'admin-roles'
+  | 'admin-modules'
   | 'quick-entry'
   | 'accounts'
   | 'transactions'
@@ -115,7 +117,7 @@ export type FinanceView =
   | 'payments-admin-settings'
   | 'boletos';
 
-const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'audit-logs', 'bank-digital', 'credit-admin', 'payments-admin-dashboard', 'payments-admin-registration', 'payments-admin-settlements', 'payments-admin-settings'];
+const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'admin-modules', 'audit-logs', 'bank-digital', 'credit-admin', 'payments-admin-dashboard', 'payments-admin-registration', 'payments-admin-settlements', 'payments-admin-settings'];
 
 // Views available only in normal mode for supervisors
 const NORMAL_ONLY_VIEWS: FinanceView[] = [
@@ -355,6 +357,9 @@ const Finance = () => {
     }
     if (effectiveMode === 'admin' && currentView === 'admin-roles') {
       return <AdminRolesPage />;
+    }
+    if (effectiveMode === 'admin' && currentView === 'admin-modules') {
+      return <ModuleSettingsPage />;
     }
 
 

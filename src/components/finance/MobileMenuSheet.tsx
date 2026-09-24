@@ -1,3 +1,5 @@
+import { Puzzle } from 'lucide-react';
+import { useModuleBranding } from '@/contexts/ModuleBrandingContext';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
 import { APP_VERSION } from '@/lib/appVersion';
@@ -127,6 +129,7 @@ export function MobileMenuSheet({
   bankDigitalEnabled = false,
   paymentsEnabled = false,
 }: MobileMenuSheetProps) {
+  const { brand } = useModuleBranding();
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
   const isAdminMode = accessMode === 'admin';
   const { can } = usePermissions();
@@ -271,10 +274,11 @@ export function MobileMenuSheet({
               {renderMenuItem({ view: 'admin-dashboard', label: 'Dashboard Admin', icon: <LayoutDashboard className="w-4 h-4" /> })}
               {renderMenuItem({ view: 'admin-users', label: 'Usuários', icon: <Users className="w-4 h-4" /> })}
               {renderMenuItem({ view: 'admin-roles', label: 'Cargos & Permissões', icon: <ShieldCheck className="w-4 h-4" /> })}
+              {renderMenuItem({ view: 'admin-modules', label: 'Configuração de Módulos', icon: <Puzzle className="w-4 h-4" /> })}
               {bankDigitalEnabled && renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
               {renderMenuItem({ view: 'credit-admin', label: 'Gestão de Crédito (config)', icon: <CreditCard className="w-4 h-4" /> })}
 
-              {paymentsEnabled && section('payments-admin', 'Pagamentos', <CreditCard className="w-4 h-4" />, paymentsAdminMenuItems)}
+              {paymentsEnabled && section('payments-admin', brand('payments').name, <CreditCard className="w-4 h-4" />, paymentsAdminMenuItems)}
 
               <div className="pt-3 pb-1 px-2">
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
@@ -330,7 +334,7 @@ export function MobileMenuSheet({
                     <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
                       <span className="flex items-center gap-3">
                         <Briefcase className="w-4 h-4" />
-                        Gestão Financeira
+                        {brand('finance').name}
                       </span>
                       <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                     </Button>
@@ -369,7 +373,7 @@ export function MobileMenuSheet({
                     <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
                       <span className="flex items-center gap-3">
                         <Truck className="w-4 h-4" />
-                        Máquinas & Locação
+                        {brand('machines').name}
                       </span>
                       <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                     </Button>
@@ -389,7 +393,7 @@ export function MobileMenuSheet({
                     <Button variant="ghost" className="w-full justify-between h-11 text-base font-normal">
                       <span className="flex items-center gap-3">
                         <CreditCard className="w-4 h-4" />
-                        Gestão de Crédito
+                        {brand('credit').name}
                       </span>
                       <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                     </Button>
@@ -402,7 +406,7 @@ export function MobileMenuSheet({
               )}
 
               {/* Pagamentos (módulo opcional por empresa) */}
-              {section('payments', 'Pagamentos', <CreditCard className="w-4 h-4" />, payments)}
+              {section('payments', brand('payments').name, <CreditCard className="w-4 h-4" />, payments)}
 
               {/* Ações de gestão */}
               {(isSupervisor || isGerente) && (

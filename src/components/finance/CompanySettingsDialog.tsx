@@ -1,3 +1,4 @@
+import { PaymentsBrandName, paymentsBrandName } from '@/contexts/ModuleBrandingContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -215,7 +216,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
           .rpc('ensure_necta_mirror_account', { _company_id: effectiveCompanyId });
         if (mirrorError) {
           console.error('Error provisioning Necta mirror account:', mirrorError);
-          toast.warning('Configurações salvas, mas a Conta Necta não pôde ser criada agora.');
+          toast.warning(`Configurações salvas, mas a Conta ${paymentsBrandName()} não pôde ser criada agora.`);
         }
       }
 
@@ -568,10 +569,10 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                       <div className="space-y-1">
                         <Label className="text-base flex items-center gap-2">
                           <Wrench className="w-4 h-4" />
-                          Pagamentos (Necta)
+                          <PaymentsBrandName />
                         </Label>
                         <p className="text-sm text-muted-foreground">
-                          Habilita o módulo de meios de pagamento via Necta Multi-Pay: cadastro/homologação do estabelecimento, cobranças (PIX, boleto, cartão e link), acompanhamento das transações e reflexo automático na gestão financeira.
+                          Habilita o módulo de meios de pagamento via <PaymentsBrandName />: cadastro/homologação do estabelecimento, cobranças (PIX, boleto, cartão e link), acompanhamento das transações e reflexo automático na gestão financeira.
 
                         </p>
                       </div>
@@ -583,10 +584,10 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
                       <div className="space-y-1">
                         <Label className="text-base flex items-center gap-2">
                           <Wrench className="w-4 h-4" />
-                          Conta Necta espelhada
+                          Conta <PaymentsBrandName /> espelhada
                         </Label>
                         <p className="text-sm text-muted-foreground">
-                          Cria a conta gráfica "Conta Necta" na gestão financeira, somente leitura, com saldo, extrato e cobranças vindos da Necta. Ao desligar, a conta deixa de aparecer nas telas financeiras sem apagar nada.
+                          Cria a conta gráfica "Conta <PaymentsBrandName />" na gestão financeira, somente leitura, com saldo, extrato e cobranças vindos do gateway. Ao desligar, a conta deixa de aparecer nas telas financeiras sem apagar nada.
                         </p>
                         {!paymentsModuleEnabled && (
                           <p className="text-sm text-amber-600">

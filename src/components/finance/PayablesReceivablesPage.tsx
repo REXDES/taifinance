@@ -1,3 +1,4 @@
+import { ModuleBrandMark } from '@/components/ModuleBrandMark';
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -467,7 +468,7 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
            {onNavigate && (
              <Button variant="outline" onClick={() => onNavigate('whatsapp-logs')} title="Envios por WhatsApp">
                <MessageCircle className="h-4 w-4 mr-2" />
-               Info
+               Log de Mensagens
              </Button>
            )}
            <Button variant="outline" onClick={() => setIsSettingsOpen(true)} title="Configurações da empresa">
@@ -664,7 +665,7 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
                     <div className="flex items-center gap-2">
                       {getStatusBadge(record.status)}
                       {record.source === 'necta' && (
-                        <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/30">Necta</Badge>
+                        <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/30"><ModuleBrandMark module="payments" size={12} /></Badge>
                       )}
                     </div>
                   </TableCell>

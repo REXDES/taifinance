@@ -1,11 +1,17 @@
-# Pagamentos como centro do Contas a Receber — análise e plano em fases
+# Pagamentos vira "Vendas e Faturamento" — plano em fases
 
 ## Resposta curta
-Faz sentido e é viável. Hoje as informações estão duplicadas: cobranças ficam em Pagamentos e as contas a receber, na Gestão Financeira. Com o plano, a empresa que usa Pagamentos passa a ter um só lugar para cobrar. Como o escopo é grande, a entrega será em 5 fases, cada uma testável separadamente.
+Faz sentido, e é a melhor divisão:
+- **Contas a Pagar/Receber** (Gestão Financeira) continua exatamente como está. Ele mostra tanto as cobranças da Pagando quanto as contas simples criadas pelo usuário, e segue sendo o lugar de efetivar, pausar e cancelar.
+- **Pagamentos** passa a ser o painel de **vendas e faturamento**: boletos, PIX, links e também as vendas à vista nas maquininhas.
 
 ## Fase 1 — Nomes e organização (rápida)
+- O nome do módulo muda só na tela (nome a definir; sugestões abaixo).
 - "Necta" vira **"Pagando"** em todos os textos que o usuário vê: "Conta Pagando", selos, avisos e relatórios. Os nomes internos não mudam.
-- O menu "Estabelecimentos" em Pagamentos passa a se chamar **"Pagadores"** (título "Relatório de Pagadores").
+- "Estabelecimentos" passa a se chamar **"Pagadores"** (título "Relatório de Pagadores").
+- "Cobranças" passa a se chamar **"Vendas"**.
+
+Sugestões de nome para o módulo: **Vendas e Recebimentos**, **Faturamento**, **Minhas Vendas** ou **Recebimentos Pagando**.
 
 ## Fase 2 — Perfil único da empresa
 - A tela "Meu Perfil" de Pagamentos passa a ser a aba **Cadastro** em Configurações da Empresa, para todas as empresas do Tai Finance.
@@ -13,18 +19,12 @@ Faz sentido e é viável. Hoje as informações estão duplicadas: cobranças fi
 - O envio desses dados para a homologação Pagando só acontece se a empresa tiver o módulo Pagamentos ativo.
 - O menu "Meu Perfil" sai de Pagamentos, e o botão leva para Configurações da Empresa.
 
-## Fase 3 — Cobranças completas (o núcleo do plano)
-Empresas **sem** o módulo Pagamentos continuam com o Contas a Receber exatamente como é hoje, sem nenhuma mudança.
-
-Com Pagamentos ativo, "Contas a Receber" leva para **Cobranças**, que passa a ter:
-- **Dois tipos de cobrança:**
-  - **Pagando:** emitida pela plataforma, com baixa automática.
-  - **Simples:** sem emissão externa, com Efetivar, Pausar, Cancelar e Excluir, como hoje na Gestão Financeira.
-- **Parcelado e recorrente:** para os dois tipos, com a opção "cancelar só esta" ou "cancelar todas as futuras". Na cobrança Pagando, o cancelamento também é feito na plataforma, parcela por parcela.
-- **Visualização:** a padrão continua a lista atual, com cada cobrança separada e detalhada. Os **totais** (por dia, mês, pagador, forma de pagamento ou status) são opcionais e aparecem só quando o usuário escolhe um agrupamento. Os grupos abrem e fecham e mostram as cobranças de cada um.
-- **Cabeçalho:** Total a Receber, Total a Pagar e Saldo Previsto do período filtrado.
-- **Reenviar WhatsApp** pelo sistema, registrado no botão Info.
-- As contas a pagar continuam na Gestão Financeira. O Contas a Receber de lá passa a mostrar as mesmas cobranças, sem duplicar nada.
+## Fase 3 — Tela de Vendas (faturamento)
+- **Tudo que a empresa vendeu:** boletos, PIX, Bolepix, links de pagamento e vendas nas maquininhas (à vista e parcelado).
+- **Visualização:** a padrão é a lista detalhada, com cada venda separada, como hoje. Os **totais** (por dia, mês, pagador, forma de pagamento ou status) são opcionais e aparecem só quando o usuário escolhe um agrupamento. Os grupos abrem e fecham.
+- **Cabeçalho:** faturado, recebido, em aberto e taxas do período.
+- **Ações:** emitir nova cobrança, reenviar WhatsApp (registrado no botão Info) e cancelar. Para parceladas ou recorrentes, a tela pergunta se cancela só esta ou todas as futuras.
+- As contas a receber simples **não** entram aqui; ficam só no Contas a Pagar/Receber.
 
 ## Fase 4 — Mensagens automáticas
 - Nas cobranças Pagando, os lembretes automáticos deixam de sair pelo Tai Finance e passam a ser enviados pela Pagando. O Tai Finance registra cada ocorrência que a Pagando informar e mostra no botão Info.

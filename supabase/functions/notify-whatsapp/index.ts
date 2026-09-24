@@ -211,7 +211,29 @@ serve(async (req) => {
         .eq("status", "pending")
         .in("due_date", targetDates);
 
-      if (!prItems || prItems.length === 0) continue;
+      // Cobranças pelo gateway: o lembrete é enviado pelo próprio gateway, não pelo Tai Finance.
+      // Registramos no Log de Mensagens ao menos o pedido (data/hora), sem confirmação de entrega.
+      const { data: gwSales } = await supabase
+        .from("necta_sales")
+        .select("id, description, amount, method, payer_name, payer_phone, due_date, payable_receivable_id")
+        .eq("company_id", company.id)
+        .in("status", ["pending", "issued", "overdue"])
+        .in("due_date", targetDates);
+      const gwLinked = new Set((gwSales ?? []).map((g: any) => g.payable_receivable_id).filter(Boolean));
+      for (const g of gwSales ?? []) {
+        if (!(g as any).payer_phone) continue;
+        await logWhatsapp({
+          company_id: company.id, kind: "gateway_reminder", template_name: "gateway",
+          recipient_name: (g as any).payer_name, recipient_phone: (g as any).payer_phone,
+          description: (g as any).description, amount: Number((g as any).amount ?? 0), method: (g as any).method,
+          success: true, error_message: null,
+          response: { requested_to_gateway: true, delivery_confirmed: false, due_date: (g as any).due_date },
+        });
+      }
+
+      const prOwn = (prItems ?? []).filter((i: any) => !gwLinked.has(i.id));
+      if (prOwn.length === 0) continue;
+      const prItemsOwn = prOwn;
 
       const csIds = [...new Set(prItems.filter((i: any) => i.client_supplier_id).map((i: any) => i.client_supplier_id))];
       const csMap = new Map<string, { name: string; phone: string }>();

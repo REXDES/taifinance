@@ -467,7 +467,7 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
            {onNavigate && (
              <Button variant="outline" onClick={() => onNavigate('whatsapp-logs')} title="Envios por WhatsApp">
                <MessageCircle className="h-4 w-4 mr-2" />
-               Info
+               Log de Mensagens
              </Button>
            )}
            <Button variant="outline" onClick={() => setIsSettingsOpen(true)} title="Configurações da empresa">

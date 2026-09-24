@@ -1,4 +1,5 @@
 import { Puzzle } from 'lucide-react';
+import { useModuleBranding } from '@/contexts/ModuleBrandingContext';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
 import { APP_VERSION } from '@/lib/appVersion';
@@ -276,7 +277,7 @@ export function MobileMenuSheet({
               {bankDigitalEnabled && renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
               {renderMenuItem({ view: 'credit-admin', label: 'Gestão de Crédito (config)', icon: <CreditCard className="w-4 h-4" /> })}
 
-              {paymentsEnabled && section('payments-admin', 'Pagamentos', <CreditCard className="w-4 h-4" />, paymentsAdminMenuItems)}
+              {paymentsEnabled && section('payments-admin', brand('payments').name, <CreditCard className="w-4 h-4" />, paymentsAdminMenuItems)}
 
               <div className="pt-3 pb-1 px-2">
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
@@ -404,7 +405,7 @@ export function MobileMenuSheet({
               )}
 
               {/* Pagamentos (módulo opcional por empresa) */}
-              {section('payments', 'Pagamentos', <CreditCard className="w-4 h-4" />, payments)}
+              {section('payments', brand('payments').name, <CreditCard className="w-4 h-4" />, payments)}
 
               {/* Ações de gestão */}
               {(isSupervisor || isGerente) && (

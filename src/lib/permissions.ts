@@ -79,7 +79,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     label: 'Pagamentos',
     items: [
       { key: 'payments.dashboard', label: 'Dashboard' },
-      { key: 'payments.registration', label: 'Meu Perfil' },
+      { key: 'payments.registration', label: 'Perfil da Empresa (homologação)' },
       { key: 'payments.establishments', label: 'Pagadores' },
       { key: 'payments.charges', label: 'Vendas/Recebimentos' },
       { key: 'payments.admin_dashboard', label: 'Admin — Dashboard' },

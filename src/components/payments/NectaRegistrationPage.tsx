@@ -18,9 +18,10 @@ import {
   missingEstablishmentFields, invalidEstablishmentFields, mapHomologationStatus, legalPersonOf,
 } from '@/lib/nectaEstablishment';
 import { translateGatewayError } from '@/lib/nectaFormat';
+import { normalizePixKey, validatePixKey, type PixKeyType } from '@/lib/pixUtils';
 import { Loader2, Save, ShieldCheck, RefreshCw, FileSignature, AlertTriangle } from 'lucide-react';
 
-interface Props { companyId: string }
+interface Props { companyId: string; embedded?: boolean; paymentsEnabled?: boolean; onSaved?: () => void }
 
 const HOMOLOG_LABEL: Record<string, string> = {
   draft: 'Cadastro em elaboração',
@@ -33,7 +34,7 @@ const homologVariant = (s: string): 'default' | 'secondary' | 'outline' | 'destr
 
 const digits = (v?: string | null) => (v ?? '').replace(/\D/g, '');
 
-export function NectaRegistrationPage({ companyId }: Props) {
+export function NectaRegistrationPage({ companyId, embedded = false, paymentsEnabled = true, onSaved }: Props) {
   const { user } = useAuth();
   const [row, setRow] = useState<any>(null);
   const [form, setForm] = useState<Record<string, any>>({});
@@ -47,7 +48,20 @@ export function NectaRegistrationPage({ companyId }: Props) {
     const { data } = await (supabase as any).from('necta_establishments').select('*')
       .eq('company_id', companyId).eq('is_own_profile', true).order('created_at').limit(1).maybeSingle();
     setRow(data ?? null);
-    setForm(data ?? { homologation_status: 'draft', bank_account_type: 'CHECKING', address_state: '', pix_key_type: 'CNPJ' });
+    if (data) setForm(data);
+    else {
+      // Sem perfil ainda: pré-preenche com o cadastro básico da empresa.
+      const { data: c } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle();
+      const co: any = c ?? {};
+      setForm({
+        homologation_status: 'draft', bank_account_type: 'CHECKING',
+        legal_name: co.name ?? '', trade_name: co.fantasy_name ?? '', document: co.cnpj ?? '',
+        email: co.email ?? '', phone: co.phone ?? '', address_street: co.address ?? '',
+        address_city: co.city ?? co.pix_city ?? '', address_state: co.state ?? '', address_zip: co.zip_code ?? '',
+        pix_key: co.pix_key ?? '', pix_key_type: (co.pix_key_type ?? 'cnpj').toUpperCase(),
+        bank_account_holder: co.pix_holder_name ?? '',
+      });
+    }
     setLoading(false);
   }, [companyId]);
 
@@ -77,7 +91,27 @@ export function NectaRegistrationPage({ companyId }: Props) {
 
 
   const save = async () => {
+    if (!(form.legal_name ?? '').trim()) { toast.error('Razão social é obrigatória'); return; }
+    let pixType: string | null = form.pix_key_type ? String(form.pix_key_type).toLowerCase() : null;
+    let pixKey: string | null = (form.pix_key ?? '').trim() || null;
+    if (pixKey) {
+      if (!pixType) { toast.error('Selecione o tipo da chave PIX'); return; }
+      const err = validatePixKey(pixKey, pixType as PixKeyType);
+      if (err) { toast.error(err); return; }
+      pixKey = normalizePixKey(pixKey, pixType as PixKeyType);
+    }
     setSaving(true);
+    // Mantém o cadastro básico da empresa sincronizado (usado em PIX, relatórios e demais telas).
+    const street = [form.address_street, form.address_number, form.address_complement, form.address_district].filter(Boolean).join(', ');
+    const { error: cErr } = await supabase.from('companies').update({
+      name: form.legal_name, fantasy_name: form.trade_name || null, cnpj: form.document || null,
+      email: form.email || null, phone: form.phone || null, address: street || null,
+      city: form.address_city || null, state: form.address_state || null, zip_code: form.address_zip || null,
+      pix_key: pixKey, pix_key_type: pixKey ? pixType : null,
+      pix_holder_name: form.bank_account_holder || form.trade_name || form.legal_name || null,
+      pix_city: form.address_city || null,
+    } as any).eq('id', companyId);
+    if (cErr) { setSaving(false); toast.error(cErr.message); return; }
     const payload: Record<string, any> = {
       company_id: companyId,
       is_own_profile: true,
@@ -122,6 +156,7 @@ export function NectaRegistrationPage({ companyId }: Props) {
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success('Cadastro salvo');
+    onSaved?.();
     load();
   };
 
@@ -195,11 +230,15 @@ export function NectaRegistrationPage({ companyId }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Meu Perfil</h1>
-          <p className="text-muted-foreground text-sm">Dados da sua empresa, endereço, conta bancária e homologação</p>
+          {embedded ? (
+            <p className="text-muted-foreground text-sm">Dados da empresa, endereço, conta bancária e PIX{paymentsEnabled ? ' — usados também na homologação' : ''}.</p>
+          ) : (<>
+            <h1 className="text-2xl font-bold">Perfil da Empresa</h1>
+            <p className="text-muted-foreground text-sm">Dados da sua empresa, endereço, conta bancária e homologação</p>
+          </>)}
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={homologVariant(status)}>{HOMOLOG_LABEL[status] ?? status}</Badge>
+          {paymentsEnabled && <Badge variant={homologVariant(status)}>{HOMOLOG_LABEL[status] ?? status}</Badge>}
           <Button size="sm" onClick={save} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}Salvar
           </Button>
@@ -229,7 +268,7 @@ export function NectaRegistrationPage({ companyId }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
+      {paymentsEnabled && <Card>
         <CardHeader>
           <CardTitle className="text-base">Dados exigidos pelo gateway</CardTitle>
           <CardDescription>Obrigatórios para a homologação do estabelecimento na plataforma.</CardDescription>
@@ -295,7 +334,7 @@ export function NectaRegistrationPage({ companyId }: Props) {
             <Switch checked={form.digital_account !== false} onCheckedChange={v => set('digital_account', v)} />
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
       <Card>
         <CardHeader>
@@ -360,7 +399,7 @@ export function NectaRegistrationPage({ companyId }: Props) {
         </CardContent>
       </Card>
 
-      <Card>
+      {paymentsEnabled && <Card>
         <CardHeader>
           <CardTitle className="text-base">Homologação</CardTitle>
           <CardDescription>Envie o cadastro para análise e acompanhe a situação do estabelecimento.</CardDescription>
@@ -407,7 +446,7 @@ export function NectaRegistrationPage({ companyId }: Props) {
             <p className="text-xs text-muted-foreground">Termo {row.term_slug} assinado em {new Date(row.term_accepted_at).toLocaleString('pt-BR')}</p>
           )}
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }

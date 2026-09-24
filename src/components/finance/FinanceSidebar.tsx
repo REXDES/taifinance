@@ -1,3 +1,5 @@
+import { ModuleBrandMark } from '@/components/ModuleBrandMark';
+import { Puzzle } from 'lucide-react';
 import { useState } from 'react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
@@ -336,6 +338,7 @@ export function FinanceSidebar({
                 {renderMenuItem({ view: 'admin-dashboard', label: 'Dashboard Admin', icon: <LayoutDashboard className="w-4 h-4" /> })}
                 {renderMenuItem({ view: 'admin-users', label: 'Usuários', icon: <Users className="w-4 h-4" /> })}
                 {renderMenuItem({ view: 'admin-roles', label: 'Cargos & Permissões', icon: <ShieldCheck className="w-4 h-4" /> })}
+                {renderMenuItem({ view: 'admin-modules', label: 'Configuração de Módulos', icon: <Puzzle className="w-4 h-4" /> })}
                 {bankDigitalEnabled && renderMenuItem({ view: 'bank-digital', label: 'Banco Digital (config)', icon: <Landmark className="w-4 h-4" /> })}
                 {renderMenuItem({ view: 'credit-admin', label: 'Gestão de Crédito (config)', icon: <CreditCard className="w-4 h-4" /> })}
 
@@ -346,8 +349,7 @@ export function FinanceSidebar({
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                         <span className="flex items-center gap-2">
-                          <CreditCard className="w-4 h-4" />
-                          Pagamentos
+                          <ModuleBrandMark module="payments" fallbackIcon={<CreditCard className="w-4 h-4" />} />
                         </span>
                         <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                       </Button>
@@ -473,8 +475,7 @@ export function FinanceSidebar({
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                         <span className="flex items-center gap-2">
-                          <Briefcase className="w-4 h-4" />
-                          Gestão Financeira
+                          <ModuleBrandMark module="finance" fallbackIcon={<Briefcase className="w-4 h-4" />} />
                         </span>
                         <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                       </Button>
@@ -570,8 +571,7 @@ export function FinanceSidebar({
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                           <span className="flex items-center gap-2">
-                            <Truck className="w-4 h-4" />
-                            Máquinas & Locação
+                            <ModuleBrandMark module="machines" fallbackIcon={<Truck className="w-4 h-4" />} />
                           </span>
                           <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                         </Button>
@@ -625,8 +625,7 @@ export function FinanceSidebar({
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                           <span className="flex items-center gap-2">
-                            <CreditCard className="w-4 h-4" />
-                            Gestão de Crédito
+                            <ModuleBrandMark module="credit" fallbackIcon={<CreditCard className="w-4 h-4" />} />
                           </span>
                           <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                         </Button>
@@ -648,8 +647,7 @@ export function FinanceSidebar({
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" className="w-full justify-between text-foreground hover:bg-accent">
                           <span className="flex items-center gap-2">
-                            <CreditCard className="w-4 h-4" />
-                            Pagamentos
+                            <ModuleBrandMark module="payments" fallbackIcon={<CreditCard className="w-4 h-4" />} />
                           </span>
                           <ChevronRight className="w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
                         </Button>

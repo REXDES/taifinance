@@ -54,6 +54,7 @@ import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
 import { CreditApplicationsPage } from '@/components/credit/CreditApplicationsPage';
 import { CreditIgnoredOccurrencesPage } from '@/components/credit/CreditIgnoredOccurrencesPage';
 import { NectaDashboardPage } from '@/components/payments/NectaDashboardPage';
+import { NectaTransferPage, NectaFeesPage, NectaPosPage } from '@/components/payments/NectaServicesPages';
 import { NectaRegistrationPage } from '@/components/payments/NectaRegistrationPage';
 import { NectaChargesPage } from '@/components/payments/NectaChargesPage';
 import { NectaEstablishmentsPage } from '@/components/payments/NectaEstablishmentsPage';
@@ -111,6 +112,9 @@ export type FinanceView =
   | 'payments-registration'
   | 'payments-establishments'
   | 'payments-charges'
+  | 'payments-transfer'
+  | 'payments-fees'
+  | 'payments-pos'
   | 'payments-admin-dashboard'
   | 'payments-admin-registration'
   | 'payments-admin-settlements'
@@ -154,6 +158,9 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'payments-registration',
   'payments-establishments',
   'payments-charges',
+  'payments-transfer',
+  'payments-fees',
+  'payments-pos',
   'boletos',
 ];
 
@@ -457,6 +464,12 @@ const Finance = () => {
         return paymentsEnabled ? <NectaEstablishmentsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-charges':
         return paymentsEnabled ? <NectaChargesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-transfer':
+        return paymentsEnabled ? <NectaTransferPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-fees':
+        return paymentsEnabled ? <NectaFeesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-pos':
+        return paymentsEnabled ? <NectaPosPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-admin-dashboard':
         return <NectaAdminDashboardPage />;
       case 'payments-admin-registration':

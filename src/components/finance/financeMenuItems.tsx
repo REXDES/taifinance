@@ -1,4 +1,6 @@
 import {
+  Smartphone,
+  Percent,
   Home,
   Wallet,
   ArrowUpDown,
@@ -110,6 +112,9 @@ export const paymentsMenuItems: MenuItem[] = [
   { view: 'payments-dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
   { view: 'payments-establishments', label: 'Pagadores', icon: <Users className="w-4 h-4" /> },
   { view: 'payments-charges', label: 'Vendas/Recebimentos', icon: <Receipt className="w-4 h-4" /> },
+  { view: 'payments-pos', label: 'Maquininhas', icon: <Smartphone className="w-4 h-4" /> },
+  { view: 'payments-fees', label: 'Minhas Taxas', icon: <Percent className="w-4 h-4" /> },
+  { view: 'payments-transfer', label: 'Transferir saldo', icon: <ArrowRightLeft className="w-4 h-4" /> },
 ];
 
 export const paymentsAdminMenuItems: MenuItem[] = [

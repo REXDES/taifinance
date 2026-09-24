@@ -1,3 +1,4 @@
+import { PaymentsBrandName } from '@/contexts/ModuleBrandingContext';
 import { useState } from 'react';
 import { useAccounts, Account, AccountGroup } from '@/hooks/useAccounts';
 import { Button } from '@/components/ui/button';
@@ -443,7 +444,7 @@ export function AccountsPage({ companyId }: AccountsPageProps) {
                             {account.name}
                             {account.is_mirror && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded border border-sky-500/30 bg-sky-500/10 text-sky-600">
-                                Necta
+                                <PaymentsBrandName />
                               </span>
                             )}
                           </p>

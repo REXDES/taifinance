@@ -233,9 +233,8 @@ serve(async (req) => {
 
       const prOwn = (prItems ?? []).filter((i: any) => !gwLinked.has(i.id));
       if (prOwn.length === 0) continue;
-      const prItemsOwn = prOwn;
 
-      const csIds = [...new Set(prItems.filter((i: any) => i.client_supplier_id).map((i: any) => i.client_supplier_id))];
+      const csIds = [...new Set(prOwn.filter((i: any) => i.client_supplier_id).map((i: any) => i.client_supplier_id))];
       const csMap = new Map<string, { name: string; phone: string }>();
       if (csIds.length > 0) {
         const { data: csData } = await supabase
@@ -247,7 +246,7 @@ serve(async (req) => {
         }
       }
 
-      const creatorIds = [...new Set(prItems.filter((i: any) => i.created_by).map((i: any) => i.created_by))];
+      const creatorIds = [...new Set(prOwn.filter((i: any) => i.created_by).map((i: any) => i.created_by))];
       const creatorMap = new Map<string, { name: string; phone: string }>();
       if (creatorIds.length > 0) {
         const { data: cp } = await supabase
@@ -262,7 +261,7 @@ serve(async (req) => {
 
       const hasPixConfig = (company as any).pix_key && (company as any).pix_holder_name;
 
-      for (const item of prItems) {
+      for (const item of prOwn) {
         const dueDate = new Date(item.due_date + "T00:00:00-03:00");
         const venc = dueDate.toLocaleDateString("pt-BR");
         const valorNumStr = item.is_amount_pending

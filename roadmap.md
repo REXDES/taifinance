@@ -6,4 +6,4 @@
 - [x] Fase 4 — Cobrança Própria x gateway + totais agrupados
 - [x] Fase 5 — Tela Vendas/Recebimentos só consulta (inclui maquininhas)
 - [x] Fase 6 — Transferir saldo, Minhas Taxas, Maquininhas (transferência depende de o gateway liberar a rota)
-- [ ] Fase 7 — Mensagens automáticas pelo gateway (registrar ao menos o pedido no log)
+- [x] Fase 7 — Mensagens automáticas pelo gateway (registrar ao menos o pedido no log)

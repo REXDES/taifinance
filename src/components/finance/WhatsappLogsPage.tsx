@@ -20,6 +20,7 @@ const KIND_LABEL: Record<string, string> = {
   task: 'Lembrete de tarefa',
   text: 'Mensagem avulsa',
   test: 'Teste de conexão',
+  gateway_reminder: 'Lembrete pelo gateway (solicitado)',
 };
 
 export function WhatsappLogsPage({ companyId }: Props) {

@@ -2583,6 +2583,33 @@ export type Database = {
           },
         ]
       }
+      module_branding: {
+        Row: {
+          color: string | null
+          display_name: string | null
+          logo_url: string | null
+          module_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          color?: string | null
+          display_name?: string | null
+          logo_url?: string | null
+          module_key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          color?: string | null
+          display_name?: string | null
+          logo_url?: string | null
+          module_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       necta_company_credentials: {
         Row: {
           client_secret: string

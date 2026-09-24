@@ -57,6 +57,13 @@
       "when": 1790169889181,
       "tag": "0007_whatsapp_logs_client_insert",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790271771010,
+      "tag": "0008_module_branding",
+      "breakpoints": true
     }
   ]
 }

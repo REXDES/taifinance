@@ -8,18 +8,19 @@
 - O módulo Pagamentos passa a ser **vendas e faturamento**: consulta de vendas, maquininhas, taxas e transferências.
 - Os dois tipos de mensagem ficam registrados no **Log de Mensagens** (novo nome do botão "Info").
 
-## Fase 1 — Marca configurável do módulo (modo administrativo)
-- Nova seção em Pagamentos → Configurações (modo administrativo): **Identidade do módulo**, com:
-  - **Nome exibido** (padrão: "Pagando.net");
+## Fase 1 — Menu "Configuração de Módulos" (modo administrativo)
+- Novo menu no modo administrativo que lista **todos os módulos**: Gestão Financeira, Banco Digital, Máquinas e Locação, Crédito e Pagamentos.
+- Para cada módulo é possível configurar:
+  - **Nome exibido** (por exemplo, Pagamentos → "Pagando.net");
   - **Logo** (envio de imagem);
   - **Cor** de destaque.
-- O nome, o logo e a cor aparecem em todo o app: menu do módulo, opção de cobrança, selos das linhas, nome da conta espelhada no plano de contas (por exemplo, "Conta Pagando.net"), avisos e relatórios.
-- O nome técnico do módulo não muda. A configuração vale para todas as empresas, e o que o usuário vê é sempre a marca configurada.
+- Nome, logo e cor aparecem em todo o app: menu lateral e móvel, títulos, opções e selos. No caso de Pagamentos, também no nome da conta espelhada (por exemplo, "Conta Pagando.net").
+- O nome técnico dos módulos não muda. A configuração vale para todas as empresas, e cada campo sem configuração continua com o nome, ícone e cor atuais.
 
 ## Fase 2 — Nomes e organização
-- "Necta" deixa de aparecer em qualquer tela e é substituído pela marca configurada.
+- "Necta" deixa de aparecer em qualquer tela e é substituído pela marca configurada de Pagamentos.
 - "Estabelecimentos" vira **"Pagadores"** (título "Relatório de Pagadores").
-- "Cobranças" vira **"Vendas"**.
+- "Cobranças" vira **"Vendas/Recebimentos"**.
 - "Info" vira **"Log de Mensagens"**.
 
 ## Fase 3 — Perfil único da empresa

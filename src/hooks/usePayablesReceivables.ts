@@ -34,6 +34,9 @@ export interface PayableReceivable {
   /** 'necta' = cobrança espelhada da Necta (somente leitura, baixa automática). */
   source?: 'app' | 'necta';
   necta_sale_id?: string | null;
+  necta_parent_sale_id?: string | null;
+  necta_recurrence_index?: number | null;
+  necta_is_recurring?: boolean;
 }
 
 export interface PayableReceivableFilters {
@@ -104,7 +107,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
       if (filters?.type !== 'payable' && companyFlag?.necta_mirror_enabled) {
         let nectaQuery = (supabase as any)
           .from('necta_sales')
-          .select('id, company_id, description, amount, due_date, status, paid_at, method, payer_name, category_id, subcategory_id, account_id, created_at, updated_at, created_by')
+          .select('id, company_id, description, amount, due_date, status, paid_at, method, payer_name, parent_sale_id, recurrence_index, is_recurring, category_id, subcategory_id, account_id, created_at, updated_at, created_by')
           .eq('company_id', companyId)
           .order('due_date', { ascending: true });
         if (filters?.startDate) nectaQuery = nectaQuery.gte('due_date', filters.startDate);
@@ -136,6 +139,9 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
               is_amount_pending: false,
               source: 'necta' as const,
               necta_sale_id: s.id,
+              necta_parent_sale_id: s.parent_sale_id ?? null,
+              necta_recurrence_index: s.recurrence_index ?? null,
+              necta_is_recurring: !!s.is_recurring || !!s.parent_sale_id,
             } as PayableReceivable;
           })
           .filter((item: PayableReceivable) =>

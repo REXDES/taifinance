@@ -37,7 +37,7 @@
 - A lista detalhada continua sendo a padrão; os totais por dia, mês, pagador, forma de pagamento ou status são opcionais.
 - Cabeçalho: Total a Receber, Total a Pagar e Saldo Previsto do período.
 
-## Fase 5 — Tela de Vendas (módulo)
+## Fase 5 — Tela de Vendas/Recebimentos (módulo)
 - Todas as vendas pelo gateway: boletos, PIX, links e maquininhas (à vista e parcelado). É só consulta, sem emissão.
 - Lista detalhada, com totais opcionais. Cabeçalho: faturado, recebido, em aberto e taxas.
 
@@ -57,11 +57,11 @@
 4. Se o gateway avisa o sistema quando envia WhatsApp.
 
 ## Detalhes técnicos
-- Nova tabela de configuração global da marca (nome, caminho do logo, cor). Leitura para todos os usuários autenticados e edição só por supervisor. O logo fica em um armazenamento público.
+- Nova tabela de configuração visual por módulo (chave do módulo, nome, caminho do logo, cor). Leitura para todos os usuários autenticados e edição só por supervisor. Os logos ficam em um armazenamento público. O novo menu é cadastrado no catálogo de permissões.
 - Um provedor no front carrega a marca uma vez. Todos os textos e selos passam a usar essa marca, em vez de nomes fixos.
 - O nome da conta espelhada é exibido a partir da marca (o nome gravado não muda).
 - O formulário de conta a receber chama a função de venda já existente quando a cobrança é pelo gateway. Nova coluna para agrupar as parcelas.
-- A tela de Cobranças passa a ser a consulta de Vendas. Tabelas e chaves de permissão continuam iguais, e os novos menus são cadastrados no catálogo de permissões.
+- A tela de Cobranças passa a ser a consulta de Vendas/Recebimentos. Tabelas e chaves de permissão continuam iguais, e os novos menus são cadastrados no catálogo de permissões.
 - A versão do app sobe a cada fase.
 
 ## Ordem sugerida

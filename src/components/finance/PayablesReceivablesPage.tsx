@@ -1,3 +1,4 @@
+import { supabase } from '@/integrations/supabase/client';
 import { ModuleBrandMark } from '@/components/ModuleBrandMark';
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
@@ -114,6 +115,33 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { enabled: paymentsEnabled } = useCompanyPaymentsFlag(companyId);
   const [gatewayChargeOpen, setGatewayChargeOpen] = useState(false);
+  const [gatewayCancel, setGatewayCancel] = useState<any>(null);
+  const [gatewayCancelling, setGatewayCancelling] = useState(false);
+  const cancelGatewayCharge = async (withFuture: boolean) => {
+    const rec = gatewayCancel; if (!rec?.necta_sale_id) return;
+    setGatewayCancelling(true);
+    let ids: string[] = [rec.necta_sale_id];
+    if (withFuture) {
+      const root = rec.necta_parent_sale_id ?? rec.necta_sale_id;
+      const { data } = await (supabase as any).from('necta_sales')
+        .select('id, recurrence_index, status')
+        .or(`id.eq.${root},parent_sale_id.eq.${root}`);
+      const idx = rec.necta_recurrence_index ?? 0;
+      ids = (data ?? []).filter((s: any) => s.status !== 'paid' && !['cancelled', 'refunded', 'voided'].includes(s.status)
+        && (s.recurrence_index ?? 0) >= idx).map((s: any) => s.id);
+      if (!ids.includes(rec.necta_sale_id)) ids.push(rec.necta_sale_id);
+    }
+    let fails = 0;
+    for (const id of ids) {
+      const { data, error } = await supabase.functions.invoke('necta-sale', { body: { action: 'void', sale_id: id } });
+      if (error || (data as any)?.error) fails++;
+    }
+    setGatewayCancelling(false);
+    setGatewayCancel(null);
+    if (fails) toast.error(`${ids.length - fails} cancelada(s), ${fails} com erro no gateway`);
+    else toast.success(ids.length > 1 ? `${ids.length} cobranças canceladas` : 'Cobrança cancelada');
+    refetchPR?.();
+  };
   const [groupBy, setGroupBy] = useState<'none' | 'day' | 'month' | 'payer' | 'method' | 'status'>('none');
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
   const [isEffectuateDialogOpen, setIsEffectuateDialogOpen] = useState(false);
@@ -652,6 +680,25 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
         )}
       </Card>
 
+      <Dialog open={!!gatewayCancel} onOpenChange={(o) => !o && setGatewayCancel(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar cobrança</DialogTitle>
+            <DialogDescription>A cobrança será cancelada também no gateway e deixará de ser cobrada do cliente.</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm">{gatewayCancel?.description}</p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setGatewayCancel(null)} disabled={gatewayCancelling}>Voltar</Button>
+            <Button variant="destructive" onClick={() => cancelGatewayCharge(false)} disabled={gatewayCancelling}>
+              {gatewayCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Cancelar só esta'}
+            </Button>
+            {gatewayCancel?.necta_is_recurring && (
+              <Button variant="destructive" onClick={() => cancelGatewayCharge(true)} disabled={gatewayCancelling}>Cancelar esta e futuras</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {paymentsEnabled && companyId && (
         <NectaChargesPage companyId={companyId} dialogOnly externalOpen={gatewayChargeOpen}
           onExternalOpenChange={setGatewayChargeOpen} onCreated={() => refetchPR?.()} />
@@ -744,7 +791,14 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
                   </TableCell>
                   <TableCell className="text-right">
                     {record.source === 'necta' && (
-                      <span className="text-xs text-muted-foreground">Baixa automática</span>
+                      <div className="flex justify-end items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Baixa automática</span>
+                        {record.status === 'pending' && (
+                          <Button size="sm" variant="ghost" title="Cancelar cobrança" onClick={() => setGatewayCancel(record)}>
+                            <X className="h-4 w-4 text-red-600" />
+                          </Button>
+                        )}
+                      </div>
                     )}
                     {record.status === 'pending' && record.source !== 'necta' && (
                       <div className="flex justify-end gap-2">

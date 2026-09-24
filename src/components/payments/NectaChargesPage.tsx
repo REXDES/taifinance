@@ -616,11 +616,9 @@ export function NectaChargesPage({ companyId, dialogOnly = false, externalOpen, 
 
   return (
     <PaymentsListShell
-      title="Cobranças"
-      description="Gere cobranças por PIX, boleto, bolepix, cartão ou link e acompanhe até a liquidação — o status reflete na Gestão Financeira"
+      title="Vendas/Recebimentos"
+      description="Consulte suas vendas e recebimentos (PIX, boleto, bolepix, cartão e link). Para emitir uma nova cobrança, use Contas a Pagar/Receber."
       onRefresh={load}
-      onCreate={() => setOpen(true)}
-      createLabel="Nova cobrança"
     >
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>

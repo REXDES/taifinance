@@ -24,6 +24,15 @@ const BrandingContext = createContext<Ctx>({
   refetch: async () => {},
 });
 
+let paymentsNameCache = MODULE_DEFAULTS.payments.name;
+/** Nome atual do gateway para textos fora do React (toasts etc.). */
+export const paymentsBrandName = () => paymentsNameCache;
+
+/** Renderiza o nome configurado do gateway de pagamentos. */
+export function PaymentsBrandName() {
+  return <>{useModuleBranding().brand('payments').name}</>;
+}
+
 export function ModuleBrandingProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [rows, setRows] = useState<Record<string, { display_name: string | null; logo_url: string | null; color: string | null }>>({});
@@ -34,6 +43,7 @@ export function ModuleBrandingProvider({ children }: { children: ReactNode }) {
     const map: typeof rows = {};
     (data ?? []).forEach((r) => { map[r.module_key] = r; });
     setRows(map);
+    paymentsNameCache = map.payments?.display_name?.trim() || MODULE_DEFAULTS.payments.name;
   }, [user?.id]);
 
   useEffect(() => { refetch(); }, [refetch]);

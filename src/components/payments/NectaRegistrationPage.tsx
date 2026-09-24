@@ -231,7 +231,7 @@ export function NectaRegistrationPage({ companyId }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Dados exigidos pela Necta</CardTitle>
+          <CardTitle className="text-base">Dados exigidos pelo gateway</CardTitle>
           <CardDescription>Obrigatórios para a homologação do estabelecimento na plataforma.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">

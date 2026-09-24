@@ -131,7 +131,7 @@ export function NectaAdminSettingsPage({ companyId }: Props) {
                 </Alert>
               )}
               <div>
-                <Label>URL para receber notificações (cadastre na Necta)</Label>
+                <Label>URL para receber notificações (cadastre no gateway)</Label>
                 <div className="flex gap-2">
                   <Input readOnly value={webhookUrl} />
                   <Button size="icon" variant="outline" onClick={() => { navigator.clipboard.writeText(webhookUrl); toast.success('URL copiada'); }}>
@@ -178,7 +178,7 @@ export function NectaAdminSettingsPage({ companyId }: Props) {
               <div className="flex gap-2">
                 <Button onClick={createEndpoint}><Plus className="w-4 h-4 mr-2" />Cadastrar URL</Button>
                 <Button variant="outline" onClick={loadRemote} disabled={loading}>
-                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}Consultar na Necta
+                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}Consultar no gateway
                 </Button>
               </div>
             </CardContent>
@@ -188,7 +188,7 @@ export function NectaAdminSettingsPage({ companyId }: Props) {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>URL</TableHead><TableHead>Escopo</TableHead><TableHead>Eventos</TableHead>
-                <TableHead>ID Necta</TableHead><TableHead className="text-right">Ações</TableHead>
+                <TableHead>ID no gateway</TableHead><TableHead className="text-right">Ações</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {endpoints.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma URL cadastrada</TableCell></TableRow>}
@@ -209,7 +209,7 @@ export function NectaAdminSettingsPage({ companyId }: Props) {
 
           {remoteEndpoints.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="text-base">URLs registradas na Necta</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">URLs registradas no gateway</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm">
                 {remoteEndpoints.map((ep: any) => (
                   <div key={ep.id} className="flex items-center justify-between border rounded-md p-2">

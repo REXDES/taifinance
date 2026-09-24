@@ -103,7 +103,7 @@ export function NectaAdminSettlementsPage({ companyId }: Props) {
             {loading ? <Loader2 className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
           </Button>
           <Button size="sm" onClick={sync} disabled={syncing}>
-            {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}Buscar na Necta
+            {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}Buscar no gateway
           </Button>
         </div>
       </div>
@@ -125,7 +125,7 @@ export function NectaAdminSettlementsPage({ companyId }: Props) {
             <TableHead className="text-right">Líquido</TableHead><TableHead className="text-right">Ordens</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma liquidação. Use "Buscar na Necta".</TableCell></TableRow>}
+            {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma liquidação. Use "Buscar no gateway".</TableCell></TableRow>}
             {filtered.map(r => (
               <TableRow key={r.id} className="cursor-pointer" onClick={() => openDetail(r)}>
                 <TableCell>{r.settlement_date ? parseLocalDate(r.settlement_date).toLocaleDateString('pt-BR') : '—'}</TableCell>

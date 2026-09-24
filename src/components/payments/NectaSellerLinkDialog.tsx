@@ -1,3 +1,4 @@
+import { PaymentsBrandName, paymentsBrandName } from '@/contexts/ModuleBrandingContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { nectaAction } from '@/hooks/useNectaApi';
 import { useCompanies } from '@/hooks/useCompanies';
@@ -112,7 +113,7 @@ export function NectaSellerLinkDialog({ open, onOpenChange, onLinked }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl overflow-y-auto max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle>Vincular sellers da Necta às empresas</DialogTitle>
+          <DialogTitle>Vincular sellers do <PaymentsBrandName /> às empresas</DialogTitle>
           <DialogDescription>
             Selecione os estabelecimentos já cadastrados na Necta e escolha a qual empresa do TAI Finance cada um pertence
           </DialogDescription>
@@ -144,7 +145,7 @@ export function NectaSellerLinkDialog({ open, onOpenChange, onLinked }: Props) {
 
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground py-8">
-            <Loader2 className="w-4 h-4 animate-spin" />Buscando sellers na Necta…
+            <Loader2 className="w-4 h-4 animate-spin" />Buscando sellers no <PaymentsBrandName />…
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -157,7 +158,7 @@ export function NectaSellerLinkDialog({ open, onOpenChange, onLinked }: Props) {
                       onCheckedChange={v => selectAllVisible(!!v)}
                     />
                   </TableHead>
-                  <TableHead>Seller na Necta</TableHead>
+                  <TableHead>Seller no gateway</TableHead>
                   <TableHead>Documento</TableHead>
                   <TableHead>Situação</TableHead>
                   <TableHead>Já vinculado a</TableHead>

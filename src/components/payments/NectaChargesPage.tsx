@@ -681,7 +681,7 @@ export function NectaChargesPage({ companyId }: Props) {
 
             <div className="border rounded-md p-3 space-y-3">
               <Label className="text-xs text-muted-foreground">
-                Endereço do pagador{PAYER_REQUIRED_METHODS.includes(form.method) ? ' * (exigido pela Necta)' : ' (opcional)'}
+                Endereço do pagador{PAYER_REQUIRED_METHODS.includes(form.method) ? ' * (exigido pelo gateway)' : ' (opcional)'}
               </Label>
               <div className="grid grid-cols-3 gap-3">
                 <div>

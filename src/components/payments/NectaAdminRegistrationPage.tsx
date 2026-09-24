@@ -1,3 +1,4 @@
+import { PaymentsBrandName, paymentsBrandName } from '@/contexts/ModuleBrandingContext';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -133,7 +134,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
     setLoading(true);
     try {
       await nectaAction('submit_homologation', { request_id: requestId });
-      toast.success('Cadastro e documentos enviados à Necta');
+      toast.success(`Cadastro e documentos enviados ao ${paymentsBrandName()}`);
       await Promise.all([loadEstablishments(), loadHomologationRequests()]);
     } catch (e) { toast.error(translateGatewayError((e as Error).message)); }
     finally { setLoading(false); }
@@ -281,7 +282,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
 
   const applyPlan = async (planId: string, establishmentId: string) => {
     const plan = plans.find(p => p.id === planId);
-    if (!plan?.necta_plan_id) { toast.error('Informe o ID do plano na Necta para aplicá-lo'); return; }
+    if (!plan?.necta_plan_id) { toast.error('Informe o ID do plano no gateway para aplicá-lo'); return; }
     try {
       await nectaCall(`/establishments/${establishmentId}/fee-plan`, 'PUT', { feePlanId: plan.necta_plan_id });
       toast.success('Plano aplicado ao estabelecimento');
@@ -316,12 +317,12 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
           </div>
 
           <div>
-            <h2 className="text-sm font-semibold mb-2">Sellers no marketplace Pagando (Necta)</h2>
+            <h2 className="text-sm font-semibold mb-2">Sellers no marketplace <PaymentsBrandName /></h2>
             <Card><CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Nome</TableHead><TableHead>Documento</TableHead><TableHead>E-mail</TableHead>
-                  <TableHead>Cidade/UF</TableHead><TableHead>Situação Necta</TableHead><TableHead>Empresa TAI vinculada</TableHead>
+                  <TableHead>Cidade/UF</TableHead><TableHead>Situação no gateway</TableHead><TableHead>Empresa TAI vinculada</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {establishments.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum seller</TableCell></TableRow>}
@@ -361,7 +362,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Empresa</TableHead><TableHead>Estabelecimento</TableHead><TableHead>Documento</TableHead>
-                  <TableHead>Cadastrado por</TableHead><TableHead>Homologação</TableHead><TableHead>Necta</TableHead><TableHead className="text-right">Cadastro do cliente</TableHead>
+                  <TableHead>Cadastrado por</TableHead><TableHead>Homologação</TableHead><TableHead>Gateway</TableHead><TableHead className="text-right">Cadastro do cliente</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {localRows.filter((r: any) => originFilter === 'all' || (r.origin ?? 'local') === originFilter).length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum estabelecimento cadastrado</TableCell></TableRow>}
@@ -389,7 +390,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
                           <Button size="sm" variant="outline" onClick={() => createHomologationLink(r.id)}>
                             {request ? <ClipboardCopy className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />}{request ? 'Novo link' : 'Gerar link'}
                           </Button>
-                          {request?.status === 'ready' && <Button size="sm" onClick={() => submitHomologation(request.id)} disabled={loading}>Enviar à Necta</Button>}
+                          {request?.status === 'ready' && <Button size="sm" onClick={() => submitHomologation(request.id)} disabled={loading}>Enviar ao gateway</Button>}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -439,7 +440,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
           <Card><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Plano</TableHead><TableHead>ID Necta</TableHead>
+                <TableHead>Plano</TableHead><TableHead>ID no gateway</TableHead>
                 <TableHead className="text-right">PIX</TableHead><TableHead className="text-right">Boleto</TableHead>
                 <TableHead className="text-right">Débito</TableHead><TableHead className="text-right">Crédito</TableHead>
                 <TableHead className="text-right">Parcelado</TableHead><TableHead className="text-right">Royalty</TableHead>
@@ -477,7 +478,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
         <TabsContent value="credentials" className="space-y-3">
           <Alert>
             <AlertDescription className="text-xs">
-              Cada <strong>empresa</strong> homologada na Necta tem seu próprio usuário de API (Portal Necta, aba <strong>Tokens de API</strong>).
+              Cada <strong>empresa</strong> homologada no gateway tem seu próprio usuário de API (portal do gateway, aba <strong>Tokens de API</strong>).
               A credencial é validada na Necta antes de ser salva e usada em todas as cobranças da empresa.
               O usuário final não precisa conhecê-la.
             </AlertDescription>
@@ -646,7 +647,7 @@ export function NectaAdminRegistrationPage({ companyId }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><Label>Nome *</Label><Input value={planForm.name ?? ''} onChange={e => setPlanForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div className="col-span-2"><Label>Descrição</Label><Input value={planForm.description ?? ''} onChange={e => setPlanForm(f => ({ ...f, description: e.target.value }))} /></div>
-            <div className="col-span-2"><Label>ID do plano na Necta</Label><Input value={planForm.necta_plan_id ?? ''} onChange={e => setPlanForm(f => ({ ...f, necta_plan_id: e.target.value }))} /></div>
+            <div className="col-span-2"><Label>ID do plano no gateway</Label><Input value={planForm.necta_plan_id ?? ''} onChange={e => setPlanForm(f => ({ ...f, necta_plan_id: e.target.value }))} /></div>
             {[['pix_fee', 'Taxa PIX (%)'], ['bank_slip_fee', 'Taxa boleto (R$)'], ['debit_fee', 'Taxa débito (%)'],
               ['credit_fee', 'Taxa crédito (%)'], ['credit_installment_fee', 'Taxa parcelado (%)'],
               ['anticipation_fee', 'Taxa antecipação (%)'], ['royalty_percent', 'Royalty (%)']].map(([k, label]) => (

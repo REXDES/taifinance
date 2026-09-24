@@ -463,7 +463,7 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
             </section>
 
             <section className="space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase">Dados exigidos pela Necta</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase">Dados exigidos pelo gateway</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
                   <Label>Ramo de atividade (MCC) *</Label>
@@ -627,7 +627,7 @@ export function NectaEstablishmentsPage({ companyId }: Props) {
                     {HOMOLOG_LABEL[editing.homologation_status ?? 'draft'] ?? editing.homologation_status}
                   </Badge>
                   {editing.necta_establishment_id && (
-                    <span className="text-xs text-muted-foreground">ID Necta: {editing.necta_establishment_id}</span>
+                    <span className="text-xs text-muted-foreground">ID no gateway: {editing.necta_establishment_id}</span>
                   )}
                 </div>
                 {editing.homologation_notes && (

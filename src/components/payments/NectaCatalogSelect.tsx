@@ -70,7 +70,7 @@ export function NectaCatalogSelect({ kind, value, label, onChange, placeholder, 
           <CommandList>
             {loading && (
               <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />Carregando catálogo da Necta…
+                <Loader2 className="h-4 w-4 animate-spin" />Carregando catálogo do gateway…
               </div>
             )}
             {error && <div className="p-3 text-xs text-destructive break-words">{error}</div>}

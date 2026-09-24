@@ -1,3 +1,4 @@
+import { PaymentsBrandName, paymentsBrandName } from '@/contexts/ModuleBrandingContext';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useAccountStatement, StatementEntry } from '@/hooks/useAccountStatement';
@@ -42,10 +43,10 @@ export function StatementPage({ companyId }: StatementPageProps) {
         body: { action: 'sync_ledger', company_id: companyId },
       });
       if (error) throw error;
-      toast.success('Conta Necta atualizada');
+      toast.success(`Conta ${paymentsBrandName()} atualizada`);
       refetch();
     } catch (error: any) {
-      toast.error('Não foi possível atualizar a Conta Necta', { description: error.message });
+      toast.error(`Não foi possível atualizar a Conta ${paymentsBrandName()}`, { description: error.message });
     } finally {
       setSyncingNecta(false);
     }
@@ -216,7 +217,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
         </div>
         {account?.is_mirror && (
           <Button variant="outline" disabled={syncingNecta} onClick={handleSyncNecta} className="flex items-center gap-2">
-            <RefreshCw className={`w-4 h-4 ${syncingNecta ? 'animate-spin' : ''}`} /> Atualizar Necta
+            <RefreshCw className={`w-4 h-4 ${syncingNecta ? 'animate-spin' : ''}`} /> Atualizar <PaymentsBrandName />
           </Button>
         )}
         {hasValidFilter && entries.length > 0 && !loading && (
@@ -236,7 +237,7 @@ export function StatementPage({ companyId }: StatementPageProps) {
                 <SelectItem value="all">Todas as contas</SelectItem>
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
-                    {a.name}{a.is_mirror ? ' (Necta)' : ''}
+                    {a.name}{a.is_mirror ? ` (${paymentsBrandName()})` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

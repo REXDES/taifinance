@@ -32,7 +32,7 @@ import { ClientsSuppliersPage } from '@/components/finance/ClientsSuppliersPage'
 import { TagsPage } from '@/components/finance/TagsPage';
 import { BankDigitalPage } from '@/components/finance/BankDigitalPage';
 import { BoletosPage } from '@/components/finance/BoletosPage';
-import { CompanySettingsDialog } from '@/components/finance/CompanySettingsDialog';
+import { CompanySettingsPage } from '@/components/finance/CompanySettingsPage';
 import { CreateCompanyDialog } from '@/components/dialogs/CreateCompanyDialog';
 import { FinanceUsersDialog } from '@/components/dialogs/FinanceUsersDialog';
 import { FinanceInvitationsDialog } from '@/components/dialogs/FinanceInvitationsDialog';
@@ -119,9 +119,10 @@ export type FinanceView =
   | 'payments-admin-registration'
   | 'payments-admin-settlements'
   | 'payments-admin-settings'
-  | 'boletos';
+  | 'boletos'
+  | 'company-settings';
 
-const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'admin-modules', 'audit-logs', 'bank-digital', 'credit-admin', 'payments-admin-dashboard', 'payments-admin-registration', 'payments-admin-settlements', 'payments-admin-settings'];
+const ADMIN_VIEWS: FinanceView[] = ['admin-dashboard', 'admin-users', 'admin-roles', 'admin-modules', 'audit-logs', 'bank-digital', 'credit-admin', 'payments-admin-dashboard', 'payments-admin-registration', 'payments-admin-settlements', 'payments-admin-settings', 'company-settings'];
 
 // Views available only in normal mode for supervisors
 const NORMAL_ONLY_VIEWS: FinanceView[] = [
@@ -162,6 +163,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'payments-fees',
   'payments-pos',
   'boletos',
+  'company-settings',
 ];
 
 interface UserRoleInfo {
@@ -208,7 +210,6 @@ const Finance = () => {
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
   const [showUsers, setShowUsers] = useState(false);
   const [showInvitations, setShowInvitations] = useState(false);
-  const [showCompanySettings, setShowCompanySettings] = useState(false);
   const { can, loading: permissionsLoading } = usePermissions();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -345,10 +346,10 @@ const Finance = () => {
     invitationLimit: userRole?.invitationLimit ?? null,
     invitationsCreated: userRole?.invitationsCreated ?? 0,
     onCreateCompany: () => setIsCreateCompanyOpen(true),
-    onManageCompanies: () => setShowCompanySettings(true),
+    onManageCompanies: () => changeView('company-settings'),
     onOpenUsers: () => setShowUsers(true),
     onOpenInvitations: () => setShowInvitations(true),
-    onOpenCompanySettings: () => setShowCompanySettings(true),
+    onOpenCompanySettings: () => changeView('company-settings'),
     machinesEnabled,
     creditEnabled,
     bankDigitalEnabled,
@@ -367,6 +368,16 @@ const Finance = () => {
     }
     if (effectiveMode === 'admin' && currentView === 'admin-modules') {
       return <ModuleSettingsPage />;
+    }
+    if (effectiveMode === 'admin' && currentView === 'company-settings') {
+      return (
+        <CompanySettingsPage
+          companyId={null}
+          showPicker
+          showModulesTab
+          onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); refetchPaymentsFlag(); }}
+        />
+      );
     }
 
 
@@ -480,6 +491,13 @@ const Finance = () => {
         return <NectaAdminSettingsPage companyId={selectedCompanyId} />;
       case 'boletos':
         return <BoletosPage companyId={selectedCompanyId} />;
+      case 'company-settings':
+        return (
+          <CompanySettingsPage
+            companyId={selectedCompanyId}
+            onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); refetchPaymentsFlag(); }}
+          />
+        );
       default:
         return <FinanceDashboard companyId={selectedCompanyId} />;
     }
@@ -557,14 +575,6 @@ const Finance = () => {
         />
       )}
 
-      <CompanySettingsDialog
-        open={showCompanySettings}
-        onOpenChange={setShowCompanySettings}
-        companyId={effectiveMode === 'admin' ? null : selectedCompanyId}
-        showPicker={effectiveMode === 'admin'}
-        showModulesTab={effectiveMode === 'admin'}
-        onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); refetchPaymentsFlag(); }}
-      />
     </div>
   );
 };

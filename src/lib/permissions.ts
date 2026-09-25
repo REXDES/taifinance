@@ -163,6 +163,8 @@ export const FINANCE_VIEW_PERMISSION_KEY: Record<string, string> = {
   'credit-applications': 'credit.applications',
   'credit-ignored': 'credit.ignored',
   'credit-admin': 'credit.admin',
+
+  'company-settings': 'admin.companies',
 };
 
 /**

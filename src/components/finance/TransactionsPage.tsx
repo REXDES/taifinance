@@ -37,6 +37,7 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 import { TagPicker } from './TagPicker';
+import { PrimaryActionRow, PRIMARY_ACTION_BUTTON } from './PrimaryActionRow';
 import TagBadges from './TagBadges';
 import { useRecordTags } from '@/hooks/useRecordTags';
 import { setEntityTags, findRecordIdsByTags } from '@/hooks/useFinanceTags';
@@ -254,19 +255,23 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
             <Filter className="w-4 h-4 mr-2" />
             Filtros
           </Button>
-          <Dialog open={showDialog} onOpenChange={(open) => {
-            setShowDialog(open);
-            if (!open) {
-              setEditingTransaction(null);
-              resetForm();
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Lançamento
-              </Button>
-            </DialogTrigger>
+        </div>
+      </div>
+
+      <PrimaryActionRow>
+        <Dialog open={showDialog} onOpenChange={(open) => {
+          setShowDialog(open);
+          if (!open) {
+            setEditingTransaction(null);
+            resetForm();
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button className={PRIMARY_ACTION_BUTTON}>
+              <Plus className="h-5 w-5 mr-2" />
+              Novo Lançamento
+            </Button>
+          </DialogTrigger>
             <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
               <DialogHeader className="flex-shrink-0">
                 <DialogTitle>
@@ -434,8 +439,8 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
               </Button>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
+      </PrimaryActionRow>
+
 
       {/* Filters */}
       {showFilters && (

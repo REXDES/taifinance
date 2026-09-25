@@ -47,17 +47,24 @@ export default {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
   			},
-  			sidebar: {
-  				DEFAULT: 'hsl(var(--sidebar-background))',
-  				foreground: 'hsl(var(--sidebar-foreground))',
-  				primary: 'hsl(var(--sidebar-primary))',
-  				'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-  				accent: 'hsl(var(--sidebar-accent))',
-  				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-  				border: 'hsl(var(--sidebar-border))',
-  				ring: 'hsl(var(--sidebar-ring))'
-  			}
-  		},
+   			sidebar: {
+   				DEFAULT: 'hsl(var(--sidebar-background))',
+   				foreground: 'hsl(var(--sidebar-foreground))',
+   				primary: 'hsl(var(--sidebar-primary))',
+   				'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+   				accent: 'hsl(var(--sidebar-accent))',
+   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
+   				border: 'hsl(var(--sidebar-border))',
+   				ring: 'hsl(var(--sidebar-ring))'
+   			},
+   			shortcut: {
+   				DEFAULT: 'hsl(var(--shortcut))',
+   				foreground: 'hsl(var(--shortcut-foreground))',
+   				surface: 'hsl(var(--shortcut-surface))',
+   				'surface-hover': 'hsl(var(--shortcut-surface-hover))',
+   				border: 'hsl(var(--shortcut-border))'
+   			}
+   		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
@@ -85,15 +92,17 @@ export default {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
   		},
-  		boxShadow: {
-  			'2xs': 'var(--shadow-2xs)',
-  			xs: 'var(--shadow-xs)',
-  			sm: 'var(--shadow-sm)',
-  			md: 'var(--shadow-md)',
-  			lg: 'var(--shadow-lg)',
-  			xl: 'var(--shadow-xl)',
-  			'2xl': 'var(--shadow-2xl)'
-  		},
+   		boxShadow: {
+   			'2xs': 'var(--shadow-2xs)',
+   			xs: 'var(--shadow-xs)',
+   			sm: 'var(--shadow-sm)',
+   			md: 'var(--shadow-md)',
+   			lg: 'var(--shadow-lg)',
+   			xl: 'var(--shadow-xl)',
+   			'2xl': 'var(--shadow-2xl)',
+   			shortcut: 'var(--shadow-shortcut)',
+   			'shortcut-glow': 'var(--shadow-shortcut-glow)'
+   		},
   		fontFamily: {
   			sans: [
   				'Work Sans',

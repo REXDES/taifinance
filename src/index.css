@@ -94,6 +94,15 @@ All colors MUST be HSL.
     --tracking-normal: 0em;
 
     --spacing: 0.25rem;
+
+    /* Atalhos: cor de ação (clicável), distinta do verde usado nos valores */
+    --shortcut: 221 83% 53%;
+    --shortcut-foreground: 210 40% 98%;
+    --shortcut-surface: 220 45% 99% / 0.8;
+    --shortcut-surface-hover: 220 50% 95% / 0.95;
+    --shortcut-border: 220 30% 85% / 0.9;
+    --shadow-shortcut: 0 10px 24px -14px hsl(221 83% 53% / 0.45);
+    --shadow-shortcut-glow: 0 0 18px -6px hsl(221 83% 53% / 0.55);
   }
 
   .dark {
@@ -146,6 +155,14 @@ All colors MUST be HSL.
     --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
     --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
     --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+
+    --shortcut: 217 91% 60%;
+    --shortcut-foreground: 210 40% 98%;
+    --shortcut-surface: 220 26% 18% / 0.55;
+    --shortcut-surface-hover: 222 30% 24% / 0.8;
+    --shortcut-border: 220 22% 32% / 0.85;
+    --shadow-shortcut: 0 18px 40px -22px hsl(217 91% 60% / 0.55);
+    --shadow-shortcut-glow: 0 0 20px -5px hsl(217 91% 60% / 0.6);
   }
 }
 

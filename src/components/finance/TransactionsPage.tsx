@@ -438,8 +438,8 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
               </Button>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
+      </PrimaryActionRow>
+
 
       {/* Filters */}
       {showFilters && (

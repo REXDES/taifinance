@@ -4,10 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,13 +26,13 @@ import { Loader2, QrCode, MessageSquare, Building2, Wrench, ArrowLeft, ChevronRi
 import { NectaRegistrationPage } from '@/components/payments/NectaRegistrationPage';
 import { normalizePixKey, validatePixKey, type PixKeyType } from '@/lib/pixUtils';
 
-interface CompanySettingsDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface CompanySettingsContentProps {
   companyId: string | null;
   showPicker?: boolean; // se true, força exibir lista de empresas para escolher (modo admin)
   showModulesTab?: boolean; // só admin/supervisor pode ver/alterar módulos
   onSaved?: () => void;
+  variant?: 'dialog' | 'page';
+  onCancel?: () => void; // apenas usado no variante dialog
 }
 
 const NOTIFY_DAYS_OPTIONS = [
@@ -51,7 +49,14 @@ const UF_OPTIONS = [
   'PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
 ];
 
-export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicker = false, showModulesTab = false, onSaved }: CompanySettingsDialogProps) {
+export function CompanySettingsContent({
+  companyId,
+  showPicker = false,
+  showModulesTab = false,
+  onSaved,
+  variant = 'dialog',
+  onCancel,
+}: CompanySettingsContentProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [companiesList, setCompaniesList] = useState<Array<{ id: string; name: string; fantasy_name: string | null; cnpj: string | null; color: string }>>([]);
@@ -90,16 +95,16 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
   const [paymentsModuleEnabled, setPaymentsModuleEnabled] = useState(false);
   const [nectaMirrorEnabled, setNectaMirrorEnabled] = useState(false);
 
-  // Reset picked when dialog reopens in picker mode
+  // Reset picked when picker mode is re-entered
   useEffect(() => {
-    if (open && showPicker) {
+    if (showPicker) {
       setPickedId(null);
     }
-  }, [open, showPicker]);
+  }, [showPicker]);
 
   // Load companies list for picker
   useEffect(() => {
-    if (!open || !showList) return;
+    if (!showList) return;
     (async () => {
       const { data } = await supabase
         .from('companies')
@@ -107,13 +112,14 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
         .order('name');
       setCompaniesList((data as any) || []);
     })();
-  }, [open, showList]);
+  }, [showList]);
 
   useEffect(() => {
-    if (open && effectiveCompanyId) {
+    if (effectiveCompanyId) {
       loadSettings();
     }
-  }, [open, effectiveCompanyId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveCompanyId]);
 
   const loadSettings = async () => {
     if (!effectiveCompanyId) return;
@@ -191,7 +197,7 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
 
       toast.success('Configurações salvas com sucesso!');
       onSaved?.();
-      onOpenChange(false);
+      onCancel?.();
     } catch (error) {
       console.error('Error saving company settings:', error);
       toast.error('Erro ao salvar configurações');
@@ -209,239 +215,292 @@ export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicke
   };
 
   const selectedFromList = companiesList.find(c => c.id === pickedId);
+  const isPage = variant === 'page';
 
+  const headerTitle = showList
+    ? 'Selecionar Empresa'
+    : selectedFromList
+      ? `Configurações — ${selectedFromList.name}`
+      : 'Gerenciar Empresa';
+  const headerDescription = showList
+    ? 'Escolha uma empresa para configurar.'
+    : 'Configure o perfil, notificações e módulos da empresa.';
+
+  const header = (
+    <div className="flex items-center gap-3 flex-shrink-0">
+      {showPicker && pickedId && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => setPickedId(null)}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+      )}
+      <div className="min-w-0">
+        <h2 className={`font-semibold leading-tight tracking-tight ${isPage ? 'text-2xl' : 'text-lg'}`}>
+          {headerTitle}
+        </h2>
+        <p className="text-sm text-muted-foreground truncate">{headerDescription}</p>
+      </div>
+    </div>
+  );
+
+  const body = showList ? (
+    <div className={isPage ? 'space-y-2' : 'flex-1 overflow-y-auto -mx-6 px-6 py-2 space-y-2'}>
+      {companiesList.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">Nenhuma empresa cadastrada.</p>
+      ) : (
+        companiesList.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => setPickedId(c.id)}
+            className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition-colors text-left"
+          >
+            <div
+              className="w-9 h-9 rounded flex items-center justify-center text-sm font-bold text-primary-foreground flex-shrink-0"
+              style={{ backgroundColor: c.color?.startsWith('#') ? c.color : `hsl(${c.color})` }}
+            >
+              {c.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-foreground truncate">{c.name}</div>
+              {(c.fantasy_name || c.cnpj) && (
+                <div className="text-xs text-muted-foreground truncate">
+                  {c.fantasy_name}{c.fantasy_name && c.cnpj ? ' • ' : ''}{c.cnpj}
+                </div>
+              )}
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          </button>
+        ))
+      )}
+    </div>
+  ) : loading ? (
+    <div className="flex items-center justify-center py-8">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+    </div>
+  ) : (
+    <Tabs defaultValue="cadastro" className={isPage ? 'space-y-4' : 'flex-1 overflow-hidden flex flex-col'}>
+      <TabsList className={`grid w-full ${showModulesTab ? 'grid-cols-3' : 'grid-cols-2'} flex-shrink-0`}>
+        <TabsTrigger value="cadastro" className="flex items-center gap-1.5">
+          <Building2 className="w-3.5 h-3.5" />
+          Cadastro
+        </TabsTrigger>
+        <TabsTrigger value="whatsapp" className="flex items-center gap-1.5">
+          <MessageSquare className="w-3.5 h-3.5" />
+          WhatsApp
+        </TabsTrigger>
+        {showModulesTab && (
+          <TabsTrigger value="modulos" className="flex items-center gap-1.5">
+            <Wrench className="w-3.5 h-3.5" />
+            Módulos
+          </TabsTrigger>
+        )}
+      </TabsList>
+
+      <div className={isPage ? 'space-y-4' : 'flex-1 overflow-y-auto mt-4'} style={isPage ? undefined : { maxHeight: '55vh' }}>
+        <TabsContent value="cadastro" className="mt-0 space-y-4">
+          <NectaRegistrationPage companyId={effectiveCompanyId!} embedded paymentsEnabled={paymentsModuleEnabled} onSaved={onSaved} />
+        </TabsContent>
+
+        <TabsContent value="whatsapp" className="mt-0 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Configure lembretes automáticos por WhatsApp para contas a pagar e receber.
+          </p>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="notify-enabled">Ativar notificações</Label>
+            <Switch
+              id="notify-enabled"
+              checked={whatsappNotifyEnabled}
+              onCheckedChange={setWhatsappNotifyEnabled}
+            />
+          </div>
+
+          {whatsappNotifyEnabled && (
+            <>
+              <div className="space-y-3">
+                <Label>Quando notificar</Label>
+                <div className="space-y-2">
+                  {NOTIFY_DAYS_OPTIONS.map((option) => (
+                    <div key={option.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`day-${option.value}`}
+                        checked={whatsappNotifyDaysBefore.includes(option.value)}
+                        onCheckedChange={() => toggleDay(option.value)}
+                      />
+                      <label
+                        htmlFor={`day-${option.value}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {option.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Horário de envio</Label>
+                <Input
+                  type="time"
+                  value={whatsappNotifyTime}
+                  onChange={(e) => setWhatsappNotifyTime(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  As mensagens serão enviadas próximo a este horário (horário de Brasília).
+                </p>
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        {showModulesTab && (
+          <TabsContent value="modulos" className="mt-0 space-y-4">
+            <div className="rounded-lg border border-border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <Label className="text-base flex items-center gap-2">
+                    <Wrench className="w-4 h-4" />
+                    Máquinas & Locação
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Habilita o módulo de gestão de máquinas, equipamentos, ferramentas, manutenções, operadores, mecânicos e locações.
+                    Quando ativo, surge uma nova seção no menu lateral. Compras e manutenções geram contas a pagar; locações geram contas a receber (à vista ou parceladas).
+                  </p>
+                </div>
+                <Switch
+                  checked={machinesModuleEnabled}
+                  onCheckedChange={setMachinesModuleEnabled}
+                />
+              </div>
+            </div>
+            <div className="rounded-lg border border-border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <Label className="text-base flex items-center gap-2">
+                    <Wrench className="w-4 h-4" />
+                    Gestão de Crédito
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Habilita o módulo de venda a prazo: consulta de crédito (RedeBE), motor de decisão, biometria por IA, contrato digital e geração de parcelas em contas a receber.
+                  </p>
+                </div>
+                <Switch checked={creditModuleEnabled} onCheckedChange={setCreditModuleEnabled} />
+              </div>
+            </div>
+            <div className="rounded-lg border border-border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <Label className="text-base flex items-center gap-2">
+                    <Wrench className="w-4 h-4" />
+                    Banco Digital
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Habilita o módulo de Banco Digital (BaaS Unida): conexões bancárias, contas digitais e operações via API. Quando ativo, surge o item "Banco Digital" no menu lateral desta empresa.
+                  </p>
+                </div>
+                <Switch checked={bankDigitalModuleEnabled} onCheckedChange={setBankDigitalModuleEnabled} />
+              </div>
+            </div>
+            <div className="rounded-lg border border-border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <Label className="text-base flex items-center gap-2">
+                    <Wrench className="w-4 h-4" />
+                    <PaymentsBrandName />
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Habilita o módulo de meios de pagamento via <PaymentsBrandName />: cadastro/homologação do estabelecimento, cobranças (PIX, boleto, cartão e link), acompanhamento das transações e reflexo automático na gestão financeira.
+
+                  </p>
+                </div>
+                <Switch checked={paymentsModuleEnabled} onCheckedChange={setPaymentsModuleEnabled} />
+              </div>
+            </div>
+            <div className="rounded-lg border border-border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <Label className="text-base flex items-center gap-2">
+                    <Wrench className="w-4 h-4" />
+                    Conta <PaymentsBrandName /> espelhada
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Cria a conta gráfica "Conta <PaymentsBrandName />" na gestão financeira, somente leitura, com saldo, extrato e cobranças vindos do gateway. Ao desligar, a conta deixa de aparecer nas telas financeiras sem apagar nada.
+                  </p>
+                  {!paymentsModuleEnabled && (
+                    <p className="text-sm text-amber-600">
+                      Requer o módulo Pagamentos ativo para receber dados.
+                    </p>
+                  )}
+                </div>
+                <Switch checked={nectaMirrorEnabled} onCheckedChange={setNectaMirrorEnabled} />
+              </div>
+            </div>
+          </TabsContent>
+        )}
+      </div>
+    </Tabs>
+  );
+
+  const footer = (
+    <div className={isPage ? 'flex justify-end gap-2 pt-2' : 'flex-shrink-0 mt-4'}>
+      <Button variant="outline" onClick={onCancel}>
+        {showList ? 'Fechar' : 'Cancelar'}
+      </Button>
+      {!showList && (
+        <Button onClick={handleSave} disabled={saving || loading}>
+          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Salvar
+        </Button>
+      )}
+    </div>
+  );
+
+  if (isPage) {
+    return (
+      <div className="w-full max-w-4xl mx-auto space-y-6">
+        {header}
+        {body}
+        {footer}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {header}
+      {body}
+      {footer}
+    </>
+  );
+}
+
+interface CompanySettingsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  companyId: string | null;
+  showPicker?: boolean; // se true, força exibir lista de empresas para escolher (modo admin)
+  showModulesTab?: boolean; // só admin/supervisor pode ver/alterar módulos
+  onSaved?: () => void;
+}
+
+export function CompanySettingsDialog({ open, onOpenChange, companyId, showPicker = false, showModulesTab = false, onSaved }: CompanySettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            {showPicker && pickedId && (
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPickedId(null)}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            {showList
-              ? 'Selecionar Empresa'
-              : selectedFromList
-                ? `Configurações — ${selectedFromList.name}`
-                : 'Gerenciar Empresa'}
-          </DialogTitle>
-          <DialogDescription>
-            {showList
-              ? 'Escolha uma empresa para configurar.'
-              : 'Configure o perfil, notificações e módulos da empresa.'}
-          </DialogDescription>
-        </DialogHeader>
-
-        {showList ? (
-          <div className="flex-1 overflow-y-auto -mx-6 px-6 py-2 space-y-2">
-            {companiesList.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Nenhuma empresa cadastrada.</p>
-            ) : (
-              companiesList.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setPickedId(c.id)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition-colors text-left"
-                >
-                  <div
-                    className="w-9 h-9 rounded flex items-center justify-center text-sm font-bold text-primary-foreground flex-shrink-0"
-                    style={{ backgroundColor: c.color?.startsWith('#') ? c.color : `hsl(${c.color})` }}
-                  >
-                    {c.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-foreground truncate">{c.name}</div>
-                    {(c.fantasy_name || c.cnpj) && (
-                      <div className="text-xs text-muted-foreground truncate">
-                        {c.fantasy_name}{c.fantasy_name && c.cnpj ? ' • ' : ''}{c.cnpj}
-                      </div>
-                    )}
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                </button>
-              ))
-            )}
-          </div>
-        ) : loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : (
-          <Tabs defaultValue="cadastro" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className={`grid w-full ${showModulesTab ? 'grid-cols-3' : 'grid-cols-2'} flex-shrink-0`}>
-              <TabsTrigger value="cadastro" className="flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5" />
-                Cadastro
-              </TabsTrigger>
-              <TabsTrigger value="whatsapp" className="flex items-center gap-1.5">
-                <MessageSquare className="w-3.5 h-3.5" />
-                WhatsApp
-              </TabsTrigger>
-              {showModulesTab && (
-                <TabsTrigger value="modulos" className="flex items-center gap-1.5">
-                  <Wrench className="w-3.5 h-3.5" />
-                  Módulos
-                </TabsTrigger>
-              )}
-            </TabsList>
-
-            <div className="flex-1 overflow-y-auto mt-4" style={{ maxHeight: '55vh' }}>
-              <TabsContent value="cadastro" className="mt-0 space-y-4">
-                <NectaRegistrationPage companyId={effectiveCompanyId!} embedded paymentsEnabled={paymentsModuleEnabled} onSaved={onSaved} />
-              </TabsContent>
-
-              <TabsContent value="whatsapp" className="mt-0 space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Configure lembretes automáticos por WhatsApp para contas a pagar e receber.
-                </p>
-
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="notify-enabled">Ativar notificações</Label>
-                  <Switch
-                    id="notify-enabled"
-                    checked={whatsappNotifyEnabled}
-                    onCheckedChange={setWhatsappNotifyEnabled}
-                  />
-                </div>
-
-                {whatsappNotifyEnabled && (
-                  <>
-                    <div className="space-y-3">
-                      <Label>Quando notificar</Label>
-                      <div className="space-y-2">
-                        {NOTIFY_DAYS_OPTIONS.map((option) => (
-                          <div key={option.value} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`day-${option.value}`}
-                              checked={whatsappNotifyDaysBefore.includes(option.value)}
-                              onCheckedChange={() => toggleDay(option.value)}
-                            />
-                            <label
-                              htmlFor={`day-${option.value}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              {option.label}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Horário de envio</Label>
-                      <Input
-                        type="time"
-                        value={whatsappNotifyTime}
-                        onChange={(e) => setWhatsappNotifyTime(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        As mensagens serão enviadas próximo a este horário (horário de Brasília).
-                      </p>
-                    </div>
-                  </>
-                )}
-              </TabsContent>
-
-              {showModulesTab && (
-                <TabsContent value="modulos" className="mt-0 space-y-4">
-                  <div className="rounded-lg border border-border p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-base flex items-center gap-2">
-                          <Wrench className="w-4 h-4" />
-                          Máquinas & Locação
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Habilita o módulo de gestão de máquinas, equipamentos, ferramentas, manutenções, operadores, mecânicos e locações.
-                          Quando ativo, surge uma nova seção no menu lateral. Compras e manutenções geram contas a pagar; locações geram contas a receber (à vista ou parceladas).
-                        </p>
-                      </div>
-                      <Switch
-                        checked={machinesModuleEnabled}
-                        onCheckedChange={setMachinesModuleEnabled}
-                      />
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-border p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-base flex items-center gap-2">
-                          <Wrench className="w-4 h-4" />
-                          Gestão de Crédito
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Habilita o módulo de venda a prazo: consulta de crédito (RedeBE), motor de decisão, biometria por IA, contrato digital e geração de parcelas em contas a receber.
-                        </p>
-                      </div>
-                      <Switch checked={creditModuleEnabled} onCheckedChange={setCreditModuleEnabled} />
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-border p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-base flex items-center gap-2">
-                          <Wrench className="w-4 h-4" />
-                          Banco Digital
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Habilita o módulo de Banco Digital (BaaS Unida): conexões bancárias, contas digitais e operações via API. Quando ativo, surge o item "Banco Digital" no menu lateral desta empresa.
-                        </p>
-                      </div>
-                      <Switch checked={bankDigitalModuleEnabled} onCheckedChange={setBankDigitalModuleEnabled} />
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-border p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-base flex items-center gap-2">
-                          <Wrench className="w-4 h-4" />
-                          <PaymentsBrandName />
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Habilita o módulo de meios de pagamento via <PaymentsBrandName />: cadastro/homologação do estabelecimento, cobranças (PIX, boleto, cartão e link), acompanhamento das transações e reflexo automático na gestão financeira.
-
-                        </p>
-                      </div>
-                      <Switch checked={paymentsModuleEnabled} onCheckedChange={setPaymentsModuleEnabled} />
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-border p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-base flex items-center gap-2">
-                          <Wrench className="w-4 h-4" />
-                          Conta <PaymentsBrandName /> espelhada
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          Cria a conta gráfica "Conta <PaymentsBrandName />" na gestão financeira, somente leitura, com saldo, extrato e cobranças vindos do gateway. Ao desligar, a conta deixa de aparecer nas telas financeiras sem apagar nada.
-                        </p>
-                        {!paymentsModuleEnabled && (
-                          <p className="text-sm text-amber-600">
-                            Requer o módulo Pagamentos ativo para receber dados.
-                          </p>
-                        )}
-                      </div>
-                      <Switch checked={nectaMirrorEnabled} onCheckedChange={setNectaMirrorEnabled} />
-                    </div>
-                  </div>
-                </TabsContent>
-              )}
-            </div>
-          </Tabs>
-        )}
-
-        <DialogFooter className="flex-shrink-0 mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {showList ? 'Fechar' : 'Cancelar'}
-          </Button>
-          {!showList && (
-            <Button onClick={handleSave} disabled={saving || loading}>
-              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Salvar
-            </Button>
-          )}
-        </DialogFooter>
+        {/* Título apenas para acessibilidade; o conteúdo renderiza o cabeçalho visível. */}
+        <DialogTitle className="sr-only">Gerenciar Empresa</DialogTitle>
+        <CompanySettingsContent
+          key={open ? 'open' : 'closed'}
+          companyId={companyId}
+          showPicker={showPicker}
+          showModulesTab={showModulesTab}
+          onSaved={onSaved}
+          onCancel={() => onOpenChange(false)}
+        />
       </DialogContent>
     </Dialog>
   );

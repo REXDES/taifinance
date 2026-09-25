@@ -375,6 +375,7 @@ const Finance = () => {
           companyId={null}
           showPicker
           showModulesTab
+          onCancel={handleBack}
           onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); refetchPaymentsFlag(); }}
         />
       );
@@ -495,6 +496,7 @@ const Finance = () => {
         return (
           <CompanySettingsPage
             companyId={selectedCompanyId}
+            onCancel={handleBack}
             onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchBankDigitalFlag(); refetchPaymentsFlag(); }}
           />
         );

@@ -37,6 +37,7 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
 import { TagPicker } from './TagPicker';
+import { PrimaryActionRow, PRIMARY_ACTION_BUTTON } from './PrimaryActionRow';
 import TagBadges from './TagBadges';
 import { useRecordTags } from '@/hooks/useRecordTags';
 import { setEntityTags, findRecordIdsByTags } from '@/hooks/useFinanceTags';

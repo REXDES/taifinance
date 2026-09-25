@@ -543,18 +543,22 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
               </Badge>
             )}
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)} title={paymentsEnabled ? 'Conta a pagar ou Cobrança Própria' : undefined}>
-            <Plus className="h-4 w-4 mr-2" />
-            {paymentsEnabled ? 'Nova Conta / Cobrança Própria' : 'Nova Conta'}
-          </Button>
-          {paymentsEnabled && (
-            <Button variant="secondary" onClick={() => setGatewayChargeOpen(true)} title="Boleto, PIX, Bolepix ou link — o valor cai na conta do gateway">
-              <Plus className="h-4 w-4 mr-2" />
-              Cobrar por <span className="ml-1"><PaymentsBrandName /></span>
-            </Button>
-          )}
         </div>
       </div>
+
+      <PrimaryActionRow>
+        <Button onClick={() => setIsDialogOpen(true)} className={PRIMARY_ACTION_BUTTON} title={paymentsEnabled ? 'Conta a pagar ou Cobrança Própria' : undefined}>
+          <Plus className="h-5 w-5 mr-2" />
+          {paymentsEnabled ? 'Nova Conta / Cobrança Própria' : 'Nova Conta'}
+        </Button>
+        {paymentsEnabled && (
+          <Button variant="secondary" onClick={() => setGatewayChargeOpen(true)} className={PRIMARY_ACTION_BUTTON} title="Boleto, PIX, Bolepix ou link — o valor cai na conta do gateway">
+            <Plus className="h-5 w-5 mr-2" />
+            Cobrar por <span className="ml-1"><PaymentsBrandName /></span>
+          </Button>
+        )}
+      </PrimaryActionRow>
+
 
       {showFilters && (
         <Card className="p-4">

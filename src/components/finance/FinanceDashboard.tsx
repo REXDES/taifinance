@@ -26,6 +26,7 @@ import { startOfWeek, endOfWeek, format, eachDayOfInterval, isSameDay, parseISO 
 import { ptBR } from 'date-fns/locale';
 
 import { useShortcutCards } from '@/hooks/useShortcutUsage';
+import { ShortcutTiles } from '@/components/finance/ShortcutTiles';
 import { useAuth } from '@/contexts/AuthContext';
 import type { FinanceView } from '@/pages/Finance';
 import { parseLocalDate, formatLocalISO } from '@/lib/dateUtils';

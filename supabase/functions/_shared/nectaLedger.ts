@@ -156,7 +156,14 @@ export async function upsertLedgerEntry(
     return 'updated';
   }
   const { error } = await admin.from('necta_ledger_entries').insert(row);
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Corrida: outra chamada concorrente (webhook + sync periódico, por exemplo)
+    // já inseriu a mesma linha entre o SELECT acima e este INSERT. O índice
+    // único (company_id, necta_entry_id) barra a duplicata — não é erro real,
+    // a linha já está lá com os mesmos dados.
+    if ((error as { code?: string }).code === '23505') return 'updated';
+    throw new Error(error.message);
+  }
   return 'inserted';
 }
 

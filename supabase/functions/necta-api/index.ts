@@ -38,6 +38,19 @@ Deno.serve(async (req) => {
     if (cErr || !claims?.claims) return json({ error: 'Unauthorized' }, 401);
     const userId = (claims.claims as any)?.sub as string | undefined;
 
+    const hasCompanyAccess = async (companyId: string): Promise<boolean> => {
+      const { data } = await supabase.rpc('has_company_access', { _user_id: userId, _company_id: companyId });
+      return !!data;
+    };
+    // Ações que operam no nível do marketplace (listam/atribuem sellers entre
+    // empresas, não ficam restritas a uma empresa que o chamador já acesse) só
+    // podem ser feitas por supervisor — mesma regra já usada na policy de
+    // escrita de necta_establishments.
+    const isSupervisor = async (): Promise<boolean> => {
+      const { data } = await supabase.rpc('is_supervisor', { _user_id: userId });
+      return !!data;
+    };
+
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const input = await req.json();
 
@@ -148,6 +161,7 @@ Deno.serve(async (req) => {
         .select('id, company_id, necta_establishment_id, legal_name, trade_name')
         .eq('id', input?.establishment_id).maybeSingle();
       if (!est) return json({ error: 'Estabelecimento não encontrado' }, 404);
+      if (!(await hasCompanyAccess(est.company_id))) return json({ error: 'Sem acesso a esta empresa.' }, 403);
       const creds = await provisionSellerCredentials(admin, est as any);
       return json({ ok: true, client_secret_preview: `${creds.clientSecret.slice(0, 12)}…` });
     }
@@ -158,6 +172,7 @@ Deno.serve(async (req) => {
       const companyId = String(input?.company_id ?? '');
       const { data: company } = await admin.from('companies').select('id').eq('id', companyId).maybeSingle();
       if (!company) return json({ error: 'Empresa não encontrada' }, 404);
+      if (!(await hasCompanyAccess(companyId))) return json({ error: 'Sem acesso a esta empresa.' }, 403);
       const clientSecret = String(input?.client_secret ?? '').trim();
       const secretKey = String(input?.secret_key ?? '').trim();
       if (!clientSecret || !secretKey) return json({ error: 'Informe clientSecret e secretKey.' }, 400);
@@ -257,6 +272,7 @@ Deno.serve(async (req) => {
 
     // sellers da Necta + em quais empresas do TAI Finance já estão vinculados
     if (input?.action === 'list_sellers') {
+      if (!(await isSupervisor())) return json({ error: 'Apenas supervisores podem listar sellers do marketplace.' }, 403);
       const items = await listSellers();
       const ids = items.map((i: any) => String(i?.id)).filter(Boolean);
       const { data: links } = await admin.from('necta_establishments')
@@ -271,6 +287,7 @@ Deno.serve(async (req) => {
 
     // vincula sellers escolhidos às empresas escolhidas
     if (input?.action === 'link_sellers') {
+      if (!(await isSupervisor())) return json({ error: 'Apenas supervisores podem vincular sellers a empresas.' }, 403);
       const selections: { necta_establishment_id: string; company_id: string; seller?: any }[] = input?.items ?? [];
       if (!selections.length) return json({ error: 'Nenhum seller selecionado' }, 400);
       // Usa o snapshot enviado pela tela; só consulta a Necta se faltar algum.
@@ -294,6 +311,7 @@ Deno.serve(async (req) => {
 
     // ---------------------------------- importa TODOS os sellers para uma empresa
     if (input?.action === 'import_sellers') {
+      if (!(await isSupervisor())) return json({ error: 'Apenas supervisores podem importar sellers.' }, 403);
       const companyId = input?.company_id;
       if (!companyId) return json({ error: 'company_id é obrigatório' }, 400);
       const items = await listSellers();

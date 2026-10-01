@@ -1,5 +1,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+
+// @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
+// `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
+// no mesmo padrão já usado em necta-sale/necta-webhook.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,

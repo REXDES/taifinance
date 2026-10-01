@@ -286,8 +286,13 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
       is_amount_pending: false
     };
 
-    // Sempre alinhar o valor previsto ao valor efetivamente pago/recebido
-    updateData.amount = paidAmount;
+    // Só alinhar o valor previsto (amount) ao valor pago quando ele era
+    // pendente/desconhecido. Quando já havia um valor acordado, ele precisa
+    // continuar intacto para comparação de previsto x realizado — o valor
+    // efetivamente recebido já fica registrado em paid_amount.
+    if (record.is_amount_pending) {
+      updateData.amount = paidAmount;
+    }
 
     const { error: updateError } = await supabase
       .from('payables_receivables')

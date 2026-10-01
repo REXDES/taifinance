@@ -113,10 +113,28 @@ serve(async (req) => {
     // ===== Ação ad-hoc: enviar texto livre (ex: link de biometria) =====
     // Observação: a Cloud API só permite texto livre dentro da janela de 24h após
     // a última mensagem do cliente. Fora dessa janela, é necessário usar um template.
+    // Esta ação é chamada direto do frontend (ex.: BiometryStep.tsx) — diferente
+    // do disparo em lote abaixo (cron, sem sessão de usuário), aqui exigimos um
+    // JWT de usuário válido para não virar um disparador de WhatsApp público.
     if (req.method === "POST") {
       let body: any = null;
       try { body = await req.json(); } catch { /* sem body */ }
       if (body?.action === "send_text" && body?.to && body?.text) {
+        const authHeader = req.headers.get("Authorization");
+        if (!authHeader?.startsWith("Bearer ")) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const userClient = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: claims, error: claimsError } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
+        if (claimsError || !claims?.claims) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const r = await sendText(normalizePhone(String(body.to)), String(body.text));
         return new Response(JSON.stringify({ ok: r.ok, status: r.status, data: r.data }), {
           status: r.ok ? 200 : 400,

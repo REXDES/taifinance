@@ -15,12 +15,14 @@ Deno.serve(async (req) => {
   }
 
   const expected = Deno.env.get('CAPPTA_WEBHOOK_SECRET');
-  if (expected) {
-    const url = new URL(req.url);
-    const provided = url.searchParams.get('secret') ?? req.headers.get('x-cappta-secret');
-    if (provided !== expected) {
-      return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+  if (!expected) {
+    console.error('cappta-webhook: CAPPTA_WEBHOOK_SECRET não configurado — recusando entrega (nunca aceitar sem verificar).');
+    return new Response(JSON.stringify({ error: 'Webhook não configurado' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  const url = new URL(req.url);
+  const provided = url.searchParams.get('secret') ?? req.headers.get('x-cappta-secret');
+  if (provided !== expected) {
+    return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
   let payload: any = null;

@@ -6,6 +6,7 @@ import { FinanceSidebar } from '@/components/finance/FinanceSidebar';
 import { FinanceHeader } from '@/components/finance/FinanceHeader';
 import { MobileBottomNav } from '@/components/finance/MobileBottomNav';
 import { MobileMenuSheet } from '@/components/finance/MobileMenuSheet';
+import { GlobalSearch } from '@/components/finance/GlobalSearch';
 import { AccountsPage } from '@/components/finance/AccountsPage';
 import { TransactionsPage } from '@/components/finance/TransactionsPage';
 import { TransfersPage } from '@/components/finance/TransfersPage';
@@ -212,6 +213,7 @@ const Finance = () => {
   const [showInvitations, setShowInvitations] = useState(false);
   const { can, loading: permissionsLoading } = usePermissions();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const isSupervisor = userRole?.role === 'supervisor';
   const isGerente = userRole?.role === 'gerente';
@@ -524,6 +526,7 @@ const Finance = () => {
           canSwitchMode={isSupervisor}
           onSwitchMode={resetMode}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
           showBackButton={currentView !== (effectiveMode === 'admin' ? 'admin-dashboard' : 'dashboard')}
           onBack={handleBack}
         />
@@ -546,6 +549,23 @@ const Finance = () => {
         open={mobileMenuOpen}
         onOpenChange={setMobileMenuOpen}
         {...sharedSidebarProps}
+      />
+
+      <GlobalSearch
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        companyId={selectedCompanyId}
+        onNavigate={changeView}
+        access={{
+          isAdminMode: effectiveMode === 'admin',
+          isSupervisor,
+          isGerente,
+          can,
+          machinesEnabled,
+          creditEnabled,
+          bankDigitalEnabled,
+          paymentsEnabled,
+        }}
       />
 
       <AccessModeDialog open={showAccessModeDialog} />

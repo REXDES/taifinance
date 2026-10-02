@@ -43,6 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, MoreHorizontal, Pencil, Trash2, Search, Users, Phone, Split } from 'lucide-react';
 import { toast } from 'sonner';
 import { DeleteConfirmDialog } from '@/components/dialogs/DeleteConfirmDialog';
+import { useGlobalSearchSeed } from '@/lib/globalSearchSeed';
 
 interface ClientsSuppliersPageProps {
   companyId: string;
@@ -78,6 +79,13 @@ export function ClientsSuppliersPage({ companyId }: ClientsSuppliersPageProps) {
   const [filterType, setFilterType] = useState<'all' | 'client' | 'supplier' | 'both'>('all');
   const [onlyWithSplit, setOnlyWithSplit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ClientSupplier | null>(null);
+
+  // Vindo da busca global (Ctrl+K): já abre filtrado pelo nome escolhido, sem filtros que o escondam.
+  useGlobalSearchSeed('clients-suppliers', (term) => {
+    setSearchTerm(term);
+    setFilterType('all');
+    setOnlyWithSplit(false);
+  });
 
   // Split rules dialog (dentro do cadastro)
   const [ruleOpen, setRuleOpen] = useState(false);

@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ArrowLeft, LogOut, User as UserIcon, Users, Download, Shield, RefreshCw, Menu } from 'lucide-react';
+import { ArrowLeft, LogOut, User as UserIcon, Users, Download, Shield, RefreshCw, Menu, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,6 +29,7 @@ interface FinanceHeaderProps {
   onOpenMobileMenu?: () => void;
   showBackButton?: boolean;
   onBack?: () => void;
+  onOpenSearch?: () => void;
 }
 
 export function FinanceHeader({
@@ -43,6 +44,7 @@ export function FinanceHeader({
   onOpenMobileMenu,
   showBackButton,
   onBack,
+  onOpenSearch,
 }: FinanceHeaderProps) {
   const initials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.substring(0, 2).toUpperCase()
@@ -115,6 +117,33 @@ export function FinanceHeader({
 
       {/* Right side */}
       <div className="flex items-center gap-1 md:gap-2 shrink-0">
+        {onOpenSearch && (
+          <>
+            <Button
+              variant="outline"
+              onClick={onOpenSearch}
+              className="hidden md:inline-flex h-9 w-64 justify-between gap-2 px-3 font-normal text-muted-foreground"
+              aria-label="Buscar telas e pessoas"
+            >
+              <span className="flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Buscar telas e pessoas…
+              </span>
+              <kbd className="pointer-events-none rounded border border-border bg-muted px-1.5 text-[10px] font-medium">
+                Ctrl K
+              </kbd>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onOpenSearch}
+              className="md:hidden text-muted-foreground"
+              aria-label="Buscar telas e pessoas"
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          </>
+        )}
         <Button
           variant="ghost"
           size="icon"

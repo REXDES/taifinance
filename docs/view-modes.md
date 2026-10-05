@@ -9,9 +9,46 @@ O app tem três níveis de detalhe. Cada pessoa escolhe o seu pelo ícone no hea
 | **Balanceado** | 1 | Padrão — **é o app como ele sempre foi** | Ícones + explicações na medida certa |
 | **Descritivo** | 2 | Quem acompanha e analisa | Tudo do Balanceado + variação vs mês anterior, percentuais, previsões, sugestões e cores de status |
 
-Os modos são **camadas aditivas**: o que existe no Visual existe no Balanceado, e o Balanceado está
-contido no Descritivo. Por isso cada tela é uma só e decide o que mostrar pelo nível — não há três
-versões da mesma tela.
+Os modos são **níveis de detalhe da mesma tela**: o Descritivo contém tudo do Balanceado e
+acrescenta análise; o Visual reorganiza o essencial em tiles grandes. Por isso cada tela é uma só
+e decide o que mostrar pelo nível — não há três versões da mesma tela.
+
+## O que já está em cada modo
+
+**Dashboard**
+
+| | Visual | Balanceado | Descritivo |
+|---|---|---|---|
+| Resumo do mês | 4 tiles (saldo, receitas, despesas, balanço), 2 por linha no celular | 4 cards, como sempre | 4 cards + comparação com o mês anterior e % da receita |
+| Variação vs mês anterior | selo ▲/▼ com % nos tiles de receita e despesa | — | selo + valor do mês anterior |
+| Semana | tiles "a pagar" / "a receber" (clicáveis) | calendário "Contas da Semana" | calendário "Contas da Semana" |
+| Atalhos | só ícone e nome | ícone, nome e descrição | ícone, nome e descrição |
+| Análise | — | — | resumo em texto, previsão de fechamento, sugestões e alertas, participação por categoria |
+
+Todo número clicável abre a tela de detalhe **já filtrada** e a tela confere o total com o número
+clicado ("Confere com «…»").
+
+### Regras de cálculo do Descritivo (`src/lib/dashboardInsights.ts`)
+
+- **Comparação com o mês anterior = mesmo trecho dos dois meses.** Mês em andamento (dias 1 a N)
+  contra os dias 1 a N do mês anterior. Comparar com o mês anterior inteiro faria quase toda
+  despesa parecer "em queda" nos primeiros dias do mês. O texto sempre diz a base ("ao mesmo
+  período de setembro (dias 1 a 5)").
+- **Sem base, sem número**: se o mês anterior não tem lançamentos no trecho, ou se a lista
+  carregada bateu no teto de 1.000 linhas do servidor (pode estar cortada), a comparação some.
+  Pelo mesmo motivo, "nenhuma conta em atraso" só aparece quando há contas em aberto à vista —
+  com a lista vazia não dá para distinguir "nada atrasado" de "não consegui carregar".
+- **Alertas de variação** só aparecem a partir do 7º dia do mês (antes disso a amostra é pequena
+  demais) e quando a variação passa de 10%.
+- **Previsão de fechamento** = balanço já realizado no mês + contas a receber em aberto − contas
+  a pagar em aberto, com vencimento até o fim do mês (inclui atrasadas). É **estimativa
+  rotulada**, mostra a base de cálculo e não adivinha gastos que ainda não foram lançados. Contas
+  sem valor definido entram na contagem, mas não na soma (e o texto avisa).
+- **Sugestões são regras sobre os números** (`source: 'rule'`). O campo `source: 'ai'` está
+  reservado para quando houver sugestões geradas por IA — que só poderão escolher e redigir o que
+  destacar a partir de números já calculados aqui.
+- Variação de despesa usa o sentido: **despesa subindo = atenção** (âmbar), não perigo; perigo
+  fica para saldo negativo e atrasos.
 
 ## Como usar nas telas
 
@@ -36,7 +73,8 @@ Regras:
    Balanceado. Visual e Descritivo entram como camadas por cima.
 2. **Visual** troca tabelas por cartões/tiles grandes, esconde descrições e deixa só o dado e o
    ícone. Alvos de toque grandes (mínimo ~44px).
-3. **Descritivo** só acrescenta — nunca remove nada do Balanceado.
+3. **Descritivo** só acrescenta — nunca remove nada do Balanceado. Informação nova no Descritivo
+   (comparações, previsões, sugestões) entra como bloco separado, não alterando o que o Balanceado mostra.
 4. Telas de configuração/cadastro não precisam mudar entre os modos.
 5. O modo vale para o modo normal do app; o modo administrativo não é afetado.
 

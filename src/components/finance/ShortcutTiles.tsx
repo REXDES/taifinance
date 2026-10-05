@@ -4,6 +4,8 @@ import type { FinanceView } from '@/pages/Finance';
 interface ShortcutTilesProps {
   shortcuts: ShortcutDef[];
   onNavigate: (view: FinanceView) => void;
+  /** Modo Visual: só ícone e nome, em tiles compactos (sem as descrições). */
+  compact?: boolean;
 }
 
 /**
@@ -12,7 +14,31 @@ interface ShortcutTilesProps {
  * borda e brilho azul (cor de ação) e ícone que acende ao passar o mouse,
  * para que fique claro que se trata de botões e não de números.
  */
-export function ShortcutTiles({ shortcuts, onNavigate }: ShortcutTilesProps) {
+export function ShortcutTiles({ shortcuts, onNavigate, compact = false }: ShortcutTilesProps) {
+  if (compact) {
+    return (
+      <section aria-label="Atalhos" className="space-y-3">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-shortcut">Atalhos</h2>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 md:gap-3">
+          {shortcuts.map((s) => (
+            <button
+              key={s.view}
+              type="button"
+              onClick={() => onNavigate(s.view)}
+              aria-label={`${s.label}: ${s.description}`}
+              className="group flex min-h-[5.5rem] flex-col items-center justify-center gap-2 rounded-xl border border-shortcut-border bg-shortcut-surface p-2 text-center transition-all hover:border-shortcut/60 hover:bg-shortcut-surface-hover active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shortcut/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none motion-reduce:active:scale-100"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-shortcut/25 bg-shortcut/10 text-shortcut transition-colors group-hover:border-shortcut group-hover:bg-shortcut group-hover:text-shortcut-foreground">
+                {s.icon}
+              </span>
+              <span className="line-clamp-2 w-full text-xs font-semibold leading-tight text-foreground">{s.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">

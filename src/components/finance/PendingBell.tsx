@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { startDrillDown } from '@/lib/drillDown';
 import type { FinanceView } from '@/pages/Finance';
 import { usePendingItems, type PendingAccess, type PendingItem, type PendingSeverity } from '@/hooks/usePendingItems';
 
@@ -41,6 +42,8 @@ export function PendingBell({ companyId, access, onNavigate }: PendingBellProps)
 
   const go = (item: PendingItem) => {
     setOpen(false);
+    // Com drill: a tela de destino abre já filtrada e confere o total com o número desta linha.
+    if (item.drill) startDrillDown(item.drill);
     onNavigate(item.view);
   };
 

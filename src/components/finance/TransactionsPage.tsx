@@ -41,7 +41,10 @@ import { PrimaryActionRow, PRIMARY_ACTION_BUTTON } from './PrimaryActionRow';
 import TagBadges from './TagBadges';
 import { useRecordTags } from '@/hooks/useRecordTags';
 import { setEntityTags, findRecordIdsByTags } from '@/hooks/useFinanceTags';
-import { parseLocalDate, todayISO } from '@/lib/dateUtils';
+import { parseLocalDate, todayISO, formatBR } from '@/lib/dateUtils';
+import { DrillDownBanner } from './DrillDownBanner';
+import { useDrillDown, type DrillRequest } from '@/lib/drillDown';
+import { exportSheet } from '@/lib/exportSheet';
 
 interface TransactionsPageProps {
   companyId: string;
@@ -93,6 +96,76 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     if (tagFilteredIds) list = list.filter(t => tagFilteredIds.has(t.id));
     return list;
   }, [transactions, searchText, tagFilteredIds]);
+
+  // Drill-down vindo do dashboard: aplica o filtro do card e confere o total desta tela
+  // com o número que a pessoa clicou.
+  const [drill, setDrill] = useState<DrillRequest<'transactions'> | null>(null);
+  const applyDrillFilters = (request: DrillRequest<'transactions'>) => {
+    setFilters({ startDate: request.filters.startDate, endDate: request.filters.endDate, type: request.filters.type });
+    setSearchText('');
+    void setFilterTagIds([]);
+  };
+  useDrillDown('transactions', (request) => {
+    applyDrillFilters(request);
+    setDrill(request);
+  });
+  const filtersKey = (f: typeof filters) => [f.startDate, f.endDate, f.type, f.accountId].map((v) => v ?? '').join('|');
+  const drillChanged =
+    !!drill && (filtersKey(filters) !== filtersKey(drill.filters) || searchText.trim() !== '' || filterTagIds.length > 0);
+  const drillActual = (() => {
+    if (!drill) return null;
+    const income = transactions.filter((t) => t.type === 'income');
+    const expense = transactions.filter((t) => t.type === 'expense');
+    if (drill.origin.metric === 'income') return { value: totalIncome, count: income.length };
+    if (drill.origin.metric === 'expense') return { value: totalExpense, count: expense.length };
+    return { value: totalIncome - totalExpense, count: transactions.length };
+  })();
+
+  const clearDrill = () => {
+    setFilters({});
+    setSearchText('');
+    void setFilterTagIds([]);
+    setDrill(null);
+  };
+
+  const exportCurrentList = () => {
+    if (!drill) return;
+    const rows = filteredTransactions;
+    const sum = (type: 'income' | 'expense') =>
+      rows.filter((t) => t.type === type).reduce((s, t) => s + Number(t.amount), 0);
+    const income = sum('income');
+    const expense = sum('expense');
+    // A descrição do filtro vem dos filtros ATUAIS, para a planilha dizer exatamente o que foi listado.
+    const accountName = accounts.find((a) => a.id === filters.accountId)?.name;
+    const filterText = [
+      `Período: ${filters.startDate ? formatBR(filters.startDate) : 'desde o início'} a ${filters.endDate ? formatBR(filters.endDate) : 'hoje'}`,
+      filters.type ? `Tipo: ${filters.type === 'income' ? 'Receitas' : 'Despesas'}` : null,
+      accountName ? `Conta: ${accountName}` : null,
+      searchText.trim() ? `Descrição contém: ${searchText.trim()}` : null,
+      filterTagIds.length ? 'Filtrado por tags' : null,
+    ].filter(Boolean).join(' · ');
+    exportSheet({
+      fileName: `lancamentos_${todayISO()}`,
+      sheetName: 'Lançamentos',
+      title: 'Lançamentos',
+      meta: [
+        ['Filtro', filterText],
+        ...(drillChanged ? [] : ([['Origem', `Card «${drill.origin.label}»`]] as [string, string][])),
+        ['Gerado em', new Date().toLocaleString('pt-BR')],
+        ['Quantidade', String(rows.length)],
+      ],
+      columns: [
+        { header: 'Data', width: 12, value: (t) => formatBR(t.date) },
+        { header: 'Descrição', width: 40, value: (t) => t.description },
+        { header: 'Conta', width: 22, value: (t) => t.account?.name ?? '' },
+        { header: 'Categoria', width: 24, value: (t) => t.category?.name ?? '' },
+        { header: 'Tipo', width: 10, value: (t) => (t.type === 'income' ? 'Receita' : 'Despesa') },
+        { header: 'Valor (R$)', width: 14, money: true, value: (t) => Number(t.amount) },
+      ],
+      rows,
+      footer: [['Receitas', income], ['Despesas', expense], ['Saldo', income - expense]],
+    });
+  };
 
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
@@ -508,6 +581,21 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {drill && drillActual && (
+        <DrillDownBanner
+          description={drill.description}
+          originLabel={drill.origin.label}
+          expected={{ value: drill.origin.value, count: drill.origin.count }}
+          actual={drillActual}
+          unit={['lançamento', 'lançamentos']}
+          changed={drillChanged}
+          loading={loading}
+          onClear={clearDrill}
+          onRestore={() => applyDrillFilters(drill)}
+          onExport={exportCurrentList}
+        />
       )}
 
       {/* Summary */}

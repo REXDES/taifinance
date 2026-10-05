@@ -8,6 +8,7 @@ import { MobileBottomNav } from '@/components/finance/MobileBottomNav';
 import { MobileMenuSheet } from '@/components/finance/MobileMenuSheet';
 import { GlobalSearch } from '@/components/finance/GlobalSearch';
 import { PendingBell } from '@/components/finance/PendingBell';
+import { ViewModeSwitcher } from '@/components/finance/ViewModeSwitcher';
 import { AccountsPage } from '@/components/finance/AccountsPage';
 import { TransactionsPage } from '@/components/finance/TransactionsPage';
 import { TransfersPage } from '@/components/finance/TransfersPage';
@@ -530,11 +531,14 @@ const Finance = () => {
           onOpenSearch={() => setSearchOpen(true)}
           notificationsSlot={
             effectiveMode === 'normal' ? (
-              <PendingBell
-                companyId={selectedCompanyId}
-                onNavigate={changeView}
-                access={{ isSupervisor, can, paymentsEnabled }}
-              />
+              <>
+                <ViewModeSwitcher />
+                <PendingBell
+                  companyId={selectedCompanyId}
+                  onNavigate={changeView}
+                  access={{ isSupervisor, can, paymentsEnabled }}
+                />
+              </>
             ) : null
           }
           showBackButton={currentView !== (effectiveMode === 'admin' ? 'admin-dashboard' : 'dashboard')}

@@ -29,7 +29,10 @@ import { PrimaryActionRow, PRIMARY_ACTION_BUTTON } from './PrimaryActionRow';
 import TagBadges from './TagBadges';
 import { useRecordTags } from '@/hooks/useRecordTags';
 import { setEntityTags, findRecordIdsByTags, fetchTagsForRecords } from '@/hooks/useFinanceTags';
-import { parseLocalDate, todayISO } from '@/lib/dateUtils';
+import { parseLocalDate, todayISO, formatBR } from '@/lib/dateUtils';
+import { DrillDownBanner } from './DrillDownBanner';
+import { useDrillDown, type DrillRequest } from '@/lib/drillDown';
+import { exportSheet } from '@/lib/exportSheet';
 import { useCompanyPaymentsFlag } from '@/hooks/usePaymentsModule';
 import { NectaChargesPage } from '@/components/payments/NectaChargesPage';
 import { PaymentsBrandName } from '@/contexts/ModuleBrandingContext';
@@ -214,6 +217,86 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
   const selectedCategory = categories.find(c => c.id === formData.category_id);
 
   const STATUS_TXT: Record<string, string> = { pending: 'Pendente', paid: 'Pago', cancelled: 'Cancelado', paused: 'Pausado' };
+
+  // Drill-down (sino de pendências / dashboard): aplica o filtro e confere o total desta
+  // tela com o número que a pessoa clicou. Não grava no localStorage: é uma visita pontual.
+  const [drill, setDrill] = useState<DrillRequest<'payables-receivables'> | null>(null);
+  const applyDrillFilters = (request: DrillRequest<'payables-receivables'>) => {
+    setFilters({
+      startDate: request.filters.startDate,
+      endDate: request.filters.endDate,
+      type: request.filters.type,
+      status: request.filters.status,
+    });
+    setShowFilters(true);
+    void setFilterTagIds([]);
+  };
+  useDrillDown('payables-receivables', (request) => {
+    applyDrillFilters(request);
+    setDrill(request);
+  });
+  const filtersKey = (f: { startDate: string; endDate: string; type: string; status: string[] }) =>
+    [f.startDate, f.endDate, f.type, [...f.status].sort().join(',')].join('|');
+  const drillChanged = !!drill && (filtersKey(filters) !== filtersKey(drill.filters) || filterTagIds.length > 0);
+  const drillActual = (() => {
+    if (!drill) return null;
+    const type = drill.origin.metric === 'payable-open' ? 'payable' : 'receivable';
+    return {
+      value: type === 'payable' ? totalPayable : totalReceivable,
+      count: displayedRecords.filter((r) => r.type === type && r.status === 'pending').length,
+    };
+  })();
+
+  const clearDrill = () => {
+    setFilters({
+      startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+      endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+      type: '',
+      status: [],
+    });
+    void setFilterTagIds([]);
+    setDrill(null);
+  };
+
+  const exportCurrentList = () => {
+    if (!drill) return;
+    const rows = displayedRecords;
+    const openTotal = (type: 'payable' | 'receivable') =>
+      rows
+        .filter((r) => r.type === type && r.status === 'pending' && !r.is_amount_pending && r.amount !== null)
+        .reduce((s, r) => s + Number(r.amount), 0);
+    // A descrição do filtro vem dos filtros ATUAIS, para a planilha dizer exatamente o que foi listado.
+    const filterText = [
+      `Vencimento: ${filters.startDate ? `de ${formatBR(filters.startDate)} ` : ''}até ${filters.endDate ? formatBR(filters.endDate) : 'sem limite'}`,
+      filters.type ? `Tipo: ${filters.type === 'payable' ? 'A pagar' : 'A receber'}` : null,
+      filters.status.length ? `Situação: ${filters.status.map((s) => STATUS_TXT[s] ?? s).join(', ')}` : null,
+      filterTagIds.length ? 'Filtrado por tags' : null,
+    ].filter(Boolean).join(' · ');
+    exportSheet({
+      fileName: `contas_pagar_receber_${todayISO()}`,
+      sheetName: 'Contas',
+      title: 'Contas a Pagar / Receber',
+      meta: [
+        ['Filtro', filterText],
+        ...(drillChanged ? [] : ([['Origem', `«${drill.origin.label}»`]] as [string, string][])),
+        ['Gerado em', new Date().toLocaleString('pt-BR')],
+        ['Quantidade', String(rows.length)],
+      ],
+      columns: [
+        { header: 'Vencimento', width: 12, value: (r) => formatBR(r.due_date) },
+        { header: 'Descrição', width: 44, value: (r) => r.description },
+        { header: 'Cliente/Fornecedor', width: 26, value: (r) => r.client_supplier?.name ?? '' },
+        { header: 'Tipo', width: 10, value: (r) => (r.type === 'payable' ? 'A pagar' : 'A receber') },
+        { header: 'Situação', width: 12, value: (r) => STATUS_TXT[r.status] ?? r.status },
+        { header: 'Valor (R$)', width: 14, money: true, value: (r) => (r.amount === null ? null : Number(r.amount)) },
+      ],
+      rows,
+      footer: [
+        ['Total a pagar (pendentes)', openTotal('payable')],
+        ['Total a receber (pendentes)', openTotal('receivable')],
+      ],
+    });
+  };
   const groupedTotals = useMemo(() => {
     if (groupBy === 'none') return [] as Array<{ key: string; label: string; count: number; payable: number; receivable: number }>;
     const map = new Map<string, { key: string; label: string; count: number; payable: number; receivable: number }>();
@@ -629,6 +712,21 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
             </div>
           </div>
         </Card>
+      )}
+
+      {drill && drillActual && (
+        <DrillDownBanner
+          description={drill.description}
+          originLabel={drill.origin.label}
+          expected={{ value: drill.origin.value, count: drill.origin.count }}
+          actual={drillActual}
+          unit={['conta', 'contas']}
+          changed={drillChanged}
+          loading={loading}
+          onClear={clearDrill}
+          onRestore={() => applyDrillFilters(drill)}
+          onExport={exportCurrentList}
+        />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

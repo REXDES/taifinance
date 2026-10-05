@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { formatLocalISO, parseLocalDate, todayISO } from '@/lib/dateUtils';
+import { formatBR, formatLocalISO, parseLocalDate, todayISO } from '@/lib/dateUtils';
+import type { DrillRequest } from '@/lib/drillDown';
 import type { FinanceView } from '@/pages/Finance';
 
 export type PendingSeverity = 'urgent' | 'attention' | 'info';
@@ -24,6 +25,8 @@ export interface PendingItem {
   detail?: string;
   /** Tela para onde o clique leva. */
   view: FinanceView;
+  /** Se existir, a tela abre já filtrada e confere o total com este item. */
+  drill?: DrillRequest<'payables-receivables'>;
 }
 
 export interface PendingAccess {
@@ -74,6 +77,7 @@ async function fetchPendingItems(companyId: string, scope: PendingScope): Promis
   const today = todayISO();
   const todayDate = parseLocalDate(today);
   const soonLimit = formatLocalISO(addDays(todayDate, DUE_SOON_DAYS));
+  const yesterday = formatLocalISO(addDays(todayDate, -1));
   const items: PendingItem[] = [];
   const { canPayables, canCharges, canHomologation } = scope;
 
@@ -125,6 +129,12 @@ async function fetchPendingItems(companyId: string, scope: PendingScope): Promis
           kind: 'payables-overdue', severity: 'urgent', count: payablesOverdue.count, view: 'payables-receivables',
           title: `${plural(payablesOverdue.count, 'conta a pagar atrasada', 'contas a pagar atrasadas')}`,
           detail: lateText(payablesOverdue),
+          drill: {
+            scope: 'payables-receivables',
+            filters: { startDate: '', endDate: yesterday, type: 'payable', status: ['pending'] },
+            description: `Contas a pagar atrasadas · vencidas até ${formatBR(yesterday)}`,
+            origin: { label: 'Contas a pagar atrasadas', metric: 'payable-open', value: payablesOverdue.total, count: payablesOverdue.count },
+          },
         });
       }
       if (receivablesOverdue.count) {
@@ -132,6 +142,12 @@ async function fetchPendingItems(companyId: string, scope: PendingScope): Promis
           kind: 'receivables-overdue', severity: 'attention', count: receivablesOverdue.count, view: 'payables-receivables',
           title: `${plural(receivablesOverdue.count, 'conta a receber atrasada', 'contas a receber atrasadas')}`,
           detail: lateText(receivablesOverdue),
+          drill: {
+            scope: 'payables-receivables',
+            filters: { startDate: '', endDate: yesterday, type: 'receivable', status: ['pending'] },
+            description: `Contas a receber atrasadas · vencidas até ${formatBR(yesterday)}`,
+            origin: { label: 'Contas a receber atrasadas', metric: 'receivable-open', value: receivablesOverdue.total, count: receivablesOverdue.count },
+          },
         });
       }
       if (payablesSoon.count) {
@@ -139,6 +155,12 @@ async function fetchPendingItems(companyId: string, scope: PendingScope): Promis
           kind: 'payables-due-soon', severity: 'info', count: payablesSoon.count, view: 'payables-receivables',
           title: `${plural(payablesSoon.count, 'conta a pagar vence', 'contas a pagar vencem')} nos próximos ${DUE_SOON_DAYS} dias`,
           detail: payablesSoon.total > 0 ? brl(payablesSoon.total) : undefined,
+          drill: {
+            scope: 'payables-receivables',
+            filters: { startDate: today, endDate: soonLimit, type: 'payable', status: ['pending'] },
+            description: `Contas a pagar · vencem de ${formatBR(today)} a ${formatBR(soonLimit)}`,
+            origin: { label: 'Contas a pagar dos próximos dias', metric: 'payable-open', value: payablesSoon.total, count: payablesSoon.count },
+          },
         });
       }
     })());

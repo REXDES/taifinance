@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft, Calendar } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, ArrowRightLeft, Calendar, ChevronRight } from 'lucide-react';
 import { 
   LineChart, 
   Line, 
@@ -30,6 +30,7 @@ import { ShortcutTiles } from '@/components/finance/ShortcutTiles';
 import { useAuth } from '@/contexts/AuthContext';
 import type { FinanceView } from '@/pages/Finance';
 import { parseLocalDate, formatLocalISO } from '@/lib/dateUtils';
+import { startDrillDown } from '@/lib/drillDown';
 
 interface FinanceDashboardProps {
   companyId: string;
@@ -53,6 +54,47 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
     startDate: startOfMonth,
     endDate: endOfMonth,
   });
+
+  // Drill-down: clicar num card abre Lançamentos já filtrado pelo mesmo período e tipo,
+  // levando o valor/contagem que a pessoa está vendo para a tela confirmar que bate.
+  const monthLabel = format(now, "MMMM 'de' yyyy", { locale: ptBR });
+  const openTransactions = (metric: 'income' | 'expense' | 'balance') => {
+    if (!onNavigate || transactionsLoading) return;
+    const income = transactions.filter((t) => t.type === 'income');
+    const expense = transactions.filter((t) => t.type === 'expense');
+    const spec = {
+      income: { label: 'Receitas do Mês', description: `Receitas · ${monthLabel}`, type: 'income' as const, value: totalIncome, count: income.length },
+      expense: { label: 'Despesas do Mês', description: `Despesas · ${monthLabel}`, type: 'expense' as const, value: totalExpense, count: expense.length },
+      balance: { label: 'Balanço do Mês', description: `Receitas e despesas · ${monthLabel}`, type: undefined, value: totalIncome - totalExpense, count: transactions.length },
+    }[metric];
+    startDrillDown({
+      scope: 'transactions',
+      filters: { startDate: startOfMonth, endDate: endOfMonth, type: spec.type },
+      description: spec.description,
+      origin: { label: spec.label, metric, value: spec.value, count: spec.count },
+    });
+    onNavigate('transactions');
+  };
+  const drillCard = (metric: 'income' | 'expense' | 'balance') =>
+    onNavigate
+      ? {
+          role: 'button' as const,
+          tabIndex: 0,
+          onClick: () => openTransactions(metric),
+          onKeyDown: (e: React.KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openTransactions(metric);
+            }
+          },
+          className: 'group cursor-pointer transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
+        }
+      : {};
+  const drillHint = onNavigate ? (
+    <p className="mt-2 flex items-center gap-0.5 text-xs text-muted-foreground transition-colors group-hover:text-primary">
+      Ver os lançamentos <ChevronRight className="h-3 w-3" aria-hidden />
+    </p>
+  ) : null;
 
   // Get all transactions and transfers for evolution chart
   const { transactions: allTransactions, loading: allTxLoading } = useTransactions(companyId);
@@ -201,7 +243,7 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
           </CardContent>
         </Card>
 
-        <Card>
+        <Card {...drillCard('income')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receitas do Mês</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
@@ -213,10 +255,11 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
             <p className="text-xs text-muted-foreground">
               {transactions.filter(t => t.type === 'income').length} lançamento{transactions.filter(t => t.type === 'income').length !== 1 ? 's' : ''}
             </p>
+            {drillHint}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card {...drillCard('expense')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Despesas do Mês</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-600" />
@@ -228,10 +271,11 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
             <p className="text-xs text-muted-foreground">
               {transactions.filter(t => t.type === 'expense').length} lançamento{transactions.filter(t => t.type === 'expense').length !== 1 ? 's' : ''}
             </p>
+            {drillHint}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card {...drillCard('balance')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Balanço do Mês</CardTitle>
             <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
@@ -243,6 +287,7 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
             <p className="text-xs text-muted-foreground">
               Receitas - Despesas
             </p>
+            {drillHint}
           </CardContent>
         </Card>
       </div>

@@ -1,5 +1,5 @@
 import { User } from '@supabase/supabase-js';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -30,6 +30,8 @@ interface FinanceHeaderProps {
   showBackButton?: boolean;
   onBack?: () => void;
   onOpenSearch?: () => void;
+  /** Espaço para o sino de pendências (renderizado ao lado da busca). */
+  notificationsSlot?: ReactNode;
 }
 
 export function FinanceHeader({
@@ -45,6 +47,7 @@ export function FinanceHeader({
   showBackButton,
   onBack,
   onOpenSearch,
+  notificationsSlot,
 }: FinanceHeaderProps) {
   const initials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.substring(0, 2).toUpperCase()
@@ -144,6 +147,7 @@ export function FinanceHeader({
             </Button>
           </>
         )}
+        {notificationsSlot}
         <Button
           variant="ghost"
           size="icon"

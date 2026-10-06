@@ -23,6 +23,8 @@ export interface TransactionsDrillFilters {
   startDate: string;
   endDate: string;
   type?: 'income' | 'expense';
+  /** Só lançamentos desta categoria (ex.: vindo da participação por categoria). */
+  categoryId?: string;
 }
 
 export interface PayablesDrillFilters {

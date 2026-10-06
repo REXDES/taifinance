@@ -103,6 +103,16 @@ All colors MUST be HSL.
     --shortcut-border: 220 30% 85% / 0.9;
     --shadow-shortcut: 0 10px 24px -14px hsl(221 83% 53% / 0.45);
     --shadow-shortcut-glow: 0 0 18px -6px hsl(221 83% 53% / 0.55);
+
+    /* Cores semânticas (significado, não decoração): usar text-success, bg-warning/15,
+       text-destructive, text-info… em vez de verde/âmbar/azul soltos. Tons escuros no
+       tema claro para manter contraste de texto (>= 4.5:1). */
+    --success: 142 72% 29%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 37%;
+    --warning-foreground: 0 0% 100%;
+    --info: 200 98% 32%;
+    --info-foreground: 0 0% 100%;
   }
 
   .dark {
@@ -163,6 +173,13 @@ All colors MUST be HSL.
     --shortcut-border: 220 22% 32% / 0.85;
     --shadow-shortcut: 0 18px 40px -22px hsl(217 91% 60% / 0.55);
     --shadow-shortcut-glow: 0 0 20px -5px hsl(217 91% 60% / 0.6);
+
+    --success: 142 69% 58%;
+    --success-foreground: 142 60% 8%;
+    --warning: 43 96% 56%;
+    --warning-foreground: 32 90% 10%;
+    --info: 199 89% 60%;
+    --info-foreground: 200 90% 10%;
   }
 }
 

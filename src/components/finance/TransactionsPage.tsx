@@ -56,6 +56,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     endDate?: string;
     type?: 'income' | 'expense';
     accountId?: string;
+    categoryId?: string;
   }>({});
   
   const {
@@ -101,7 +102,12 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
   // com o número que a pessoa clicou.
   const [drill, setDrill] = useState<DrillRequest<'transactions'> | null>(null);
   const applyDrillFilters = (request: DrillRequest<'transactions'>) => {
-    setFilters({ startDate: request.filters.startDate, endDate: request.filters.endDate, type: request.filters.type });
+    setFilters({
+      startDate: request.filters.startDate,
+      endDate: request.filters.endDate,
+      type: request.filters.type,
+      categoryId: request.filters.categoryId,
+    });
     setSearchText('');
     void setFilterTagIds([]);
   };
@@ -109,7 +115,7 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     applyDrillFilters(request);
     setDrill(request);
   });
-  const filtersKey = (f: typeof filters) => [f.startDate, f.endDate, f.type, f.accountId].map((v) => v ?? '').join('|');
+  const filtersKey = (f: typeof filters) => [f.startDate, f.endDate, f.type, f.accountId, f.categoryId].map((v) => v ?? '').join('|');
   const drillChanged =
     !!drill && (filtersKey(filters) !== filtersKey(drill.filters) || searchText.trim() !== '' || filterTagIds.length > 0);
   const drillActual = (() => {
@@ -137,10 +143,12 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
     const expense = sum('expense');
     // A descrição do filtro vem dos filtros ATUAIS, para a planilha dizer exatamente o que foi listado.
     const accountName = accounts.find((a) => a.id === filters.accountId)?.name;
+    const categoryName = categories.find((c) => c.id === filters.categoryId)?.name;
     const filterText = [
       `Período: ${filters.startDate ? formatBR(filters.startDate) : 'desde o início'} a ${filters.endDate ? formatBR(filters.endDate) : 'hoje'}`,
       filters.type ? `Tipo: ${filters.type === 'income' ? 'Receitas' : 'Despesas'}` : null,
       accountName ? `Conta: ${accountName}` : null,
+      categoryName ? `Categoria: ${categoryName}` : null,
       searchText.trim() ? `Descrição contém: ${searchText.trim()}` : null,
       filterTagIds.length ? 'Filtrado por tags' : null,
     ].filter(Boolean).join(' · ');
@@ -573,6 +581,22 @@ export function TransactionsPage({ companyId }: TransactionsPageProps) {
                     {accounts.filter(mirrorFree => !mirrorFree.is_mirror).map((account) => (
                       <SelectItem key={account.id} value={account.id}>
                         {account.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Categoria</Label>
+                <Select value={filters.categoryId || 'all'} onValueChange={(v) => setFilters({ ...filters, categoryId: v === 'all' ? undefined : v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {[...categories].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -12,6 +12,9 @@ import {
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import type { FinanceView } from '@/pages/Finance';
 import { seedGlobalSearch } from '@/lib/globalSearchSeed';
+import { useViewMode } from '@/contexts/ViewModeContext';
+import { VIEW_MODES, VIEW_MODE_INFO, type ViewMode } from '@/lib/viewMode';
+import { VIEW_MODE_ICON } from './viewModeIcons';
 import {
   listSearchableScreens,
   normalizeText,
@@ -133,6 +136,24 @@ export function GlobalSearch({ open, onOpenChange, companyId, access, onNavigate
     onNavigate('clients-suppliers');
   };
 
+  // Ações rápidas: trocar o modo de visualização sem sair do teclado ("modo visual", "descritivo"…).
+  // O modo só vale para as telas do dia a dia — no modo administrativo a ação não aparece.
+  const { mode: currentMode, setMode } = useViewMode();
+  const modeActions = useMemo(() => {
+    if (access.isAdminMode) return [];
+    return VIEW_MODES.filter((m) => {
+      if (!tokens.length) return true;
+      const info = VIEW_MODE_INFO[m];
+      const haystack = [normalizeText(`modo ${info.label}`), normalizeText('visualizacao exibicao tela'), ...info.keywords.map(normalizeText)].join(' | ');
+      return tokens.every((t) => haystack.includes(t));
+    });
+  }, [access.isAdminMode, tokens]);
+
+  const chooseMode = (next: ViewMode) => {
+    onOpenChange(false);
+    setMode(next);
+  };
+
   // Sem busca digitada: mostra as telas agrupadas por seção (um menu navegável pelo teclado).
   const grouped = useMemo(() => {
     if (tokens.length) return null;
@@ -179,6 +200,21 @@ export function GlobalSearch({ open, onOpenChange, companyId, access, onNavigate
               : screenResults.length > 0 && (
                   <CommandGroup heading="Telas">{screenResults.map(renderScreen)}</CommandGroup>
                 )}
+
+            {modeActions.length > 0 && (
+              <CommandGroup heading="Modo de visualização">
+                {modeActions.map((m) => {
+                  const Icon = VIEW_MODE_ICON[m];
+                  return (
+                    <CommandItem key={m} value={`mode-${m}`} onSelect={() => chooseMode(m)} className="gap-3">
+                      <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="flex-1 truncate">Modo {VIEW_MODE_INFO[m].label}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{m === currentMode ? 'em uso' : ''}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            )}
 
             {peopleResults.length > 0 && (
               <CommandGroup heading="Clientes e fornecedores">

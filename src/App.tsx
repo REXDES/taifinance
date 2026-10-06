@@ -9,6 +9,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AccessModeProvider } from "@/contexts/AccessModeContext";
 import { ModuleBrandingProvider } from "@/contexts/ModuleBrandingContext";
+import { AuthViewModeProvider } from "@/contexts/ViewModeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -37,6 +38,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <AccessModeProvider>
+              <AuthViewModeProvider>
               <ModuleBrandingProvider>
               <Suspense fallback={<RouteFallback />}>
                 <Routes>
@@ -56,6 +58,7 @@ const App = () => (
                 </Routes>
               </Suspense>
               </ModuleBrandingProvider>
+              </AuthViewModeProvider>
             </AccessModeProvider>
           </AuthProvider>
         </BrowserRouter>

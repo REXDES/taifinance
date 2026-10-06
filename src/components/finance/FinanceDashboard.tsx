@@ -29,8 +29,26 @@ import { useShortcutCards } from '@/hooks/useShortcutUsage';
 import { ShortcutTiles } from '@/components/finance/ShortcutTiles';
 import { useAuth } from '@/contexts/AuthContext';
 import type { FinanceView } from '@/pages/Finance';
-import { parseLocalDate, formatLocalISO } from '@/lib/dateUtils';
-import { startDrillDown } from '@/lib/drillDown';
+import { parseLocalDate, formatLocalISO, todayISO } from '@/lib/dateUtils';
+import { startDrillDown, type DrillRequest } from '@/lib/drillDown';
+import { useViewMode } from '@/contexts/ViewModeContext';
+import {
+  addDaysISO,
+  analyzeMonth,
+  compareWithPreviousMonth,
+  deltaTone,
+  DUE_SOON_DAYS,
+  formatBRDate,
+  monthRange,
+  fromISODate,
+  percentChange,
+  type CategoryShare,
+  type Insight,
+} from '@/lib/dashboardInsights';
+import { DashboardVisual, type VisualTarget } from './dashboard/DashboardVisual';
+import { DashboardAnalysis, DashboardAnalysisSkeleton } from './dashboard/DashboardAnalysis';
+import { CategoryBreakdown } from './dashboard/CategoryBreakdown';
+import { CompareLine, MarginLine } from './dashboard/CompareLine';
 
 interface FinanceDashboardProps {
   companyId: string;
@@ -39,6 +57,9 @@ interface FinanceDashboardProps {
 
 export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProps) {
   const { user } = useAuth();
+  const { mode, atLeast } = useViewMode();
+  const isVisual = mode === 'visual';
+  const isDetailed = atLeast('detailed');
   const [showSubcategories, setShowSubcategories] = useState(false);
   const shortcuts = useShortcutCards(user?.id, companyId);
   const { accounts, groups, totalAtivo, totalPassivo, totalGeral, loading: accountsLoading } = useAccounts(companyId);
@@ -108,6 +129,15 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
     endDate: format(weekEnd, 'yyyy-MM-dd'),
     status: ['pending']
   });
+
+  // Descritivo: contas em aberto (atrasadas, dos próximos dias e até o fim do mês) para a previsão
+  // e os alertas. Fora do Descritivo o companyId vai nulo e a consulta nem é feita.
+  const todayStr = todayISO();
+  const soonLimit = addDaysISO(todayStr, DUE_SOON_DAYS);
+  const { payablesReceivables: openItems, loading: openLoading } = usePayablesReceivables(
+    isDetailed ? companyId : null,
+    { status: ['pending'], endDate: endOfMonth > soonLimit ? endOfMonth : soonLimit },
+  );
 
   // Group week payables/receivables by day
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
@@ -208,6 +238,115 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
     );
   }
 
+  // ---- Visual e Descritivo: comparação com o mês anterior, análise e navegação por drill-down.
+  // (O Balanceado é o dashboard de sempre e não usa nada disto.)
+  const month = monthRange(fromISODate(todayStr), 0);
+  // Mês em andamento x o MESMO trecho do mês anterior (dias 1 a N): comparar com o mês anterior
+  // inteiro faria quase toda despesa parecer "em queda" nos primeiros dias do mês.
+  const comparison = isVisual || isDetailed ? compareWithPreviousMonth(allTransactions, todayStr) : null;
+  const incomeChange = comparison ? percentChange(comparison.current.income, comparison.previous.income) : null;
+  const expenseChange = comparison ? percentChange(comparison.current.expense, comparison.previous.expense) : null;
+  const incomeCount = transactions.filter((t) => t.type === 'income').length;
+  const expenseCount = transactions.length - incomeCount;
+
+  const analysis = isDetailed
+    ? analyzeMonth({
+        today: todayStr,
+        monthTransactions: transactions,
+        allTransactions,
+        comparison,
+        income: totalIncome,
+        expense: totalExpense,
+        incomeCount,
+        expenseCount,
+        openItems,
+      })
+    : null;
+
+  const openDrill = (request: DrillRequest) => {
+    if (!onNavigate) return;
+    startDrillDown(request);
+    onNavigate(request.scope === 'transactions' ? 'transactions' : 'payables-receivables');
+  };
+
+  const openPayables = (
+    type: 'payable' | 'receivable',
+    range: { startDate: string; endDate: string },
+    description: string,
+    label: string,
+    figure: { total: number; count: number },
+  ) =>
+    openDrill({
+      scope: 'payables-receivables',
+      filters: { ...range, type, status: ['pending'] },
+      description,
+      origin: { label, metric: type === 'payable' ? 'payable-open' : 'receivable-open', value: figure.total, count: figure.count },
+    });
+
+  const weekFigure = (type: 'payable' | 'receivable') => {
+    const items = weekPR.filter((i) => i.type === type);
+    return { total: items.reduce((sum, i) => sum + Number(i.amount ?? 0), 0), count: items.length };
+  };
+
+  const openWeek = (type: 'payable' | 'receivable') =>
+    openPayables(
+      type,
+      { startDate: format(weekStart, 'yyyy-MM-dd'), endDate: format(weekEnd, 'yyyy-MM-dd') },
+      `${type === 'payable' ? 'Contas a pagar' : 'Contas a receber'} · semana de ${format(weekStart, 'dd/MM')} a ${format(weekEnd, 'dd/MM')}`,
+      type === 'payable' ? 'A pagar na semana' : 'A receber na semana',
+      weekFigure(type),
+    );
+
+  const openProjectionBucket = (type: 'payable' | 'receivable') => {
+    const figure = analysis?.projection?.[type];
+    if (!figure) return;
+    openPayables(
+      type,
+      { startDate: '', endDate: month.end },
+      `${type === 'payable' ? 'Contas a pagar' : 'Contas a receber'} em aberto · vencimento até ${formatBRDate(month.end)}`,
+      type === 'payable' ? 'A pagar até o fim do mês' : 'A receber até o fim do mês',
+      figure,
+    );
+  };
+
+  const openCategory = (row: CategoryShare) => {
+    if (!row.categoryId) return;
+    openDrill({
+      scope: 'transactions',
+      filters: { startDate: month.start, endDate: month.end, type: 'expense', categoryId: row.categoryId },
+      description: `Despesas · ${row.name} · ${month.label}`,
+      origin: { label: `Despesas — ${row.name}`, metric: 'expense', value: row.value, count: row.count },
+    });
+  };
+
+  const openInsight = (insight: Insight) => {
+    if (insight.drill) openDrill(insight.drill);
+  };
+
+  const handleVisualSelect = (target: VisualTarget) => {
+    if (!onNavigate) return;
+    if (target === 'accounts') onNavigate('accounts');
+    else if (target === 'week-payable') openWeek('payable');
+    else if (target === 'week-receivable') openWeek('receivable');
+    else openTransactions(target);
+  };
+
+  if (isVisual) {
+    return (
+      <DashboardVisual
+        monthLabel={monthLabel}
+        shortcuts={onNavigate ? <ShortcutTiles shortcuts={shortcuts} onNavigate={onNavigate} compact /> : undefined}
+        balance={totalAtivo}
+        trend={patrimonialData.map((point) => point.ativo)}
+        income={{ value: totalIncome, delta: { change: incomeChange, tone: deltaTone('income', incomeChange), reference: comparison?.reference } }}
+        expense={{ value: totalExpense, delta: { change: expenseChange, tone: deltaTone('expense', expenseChange), reference: comparison?.reference } }}
+        result={{ value: totalIncome - totalExpense }}
+        week={{ payable: weekFigure('payable'), receivable: weekFigure('receivable') }}
+        onSelect={onNavigate ? handleVisualSelect : undefined}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -255,6 +394,15 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
             <p className="text-xs text-muted-foreground">
               {transactions.filter(t => t.type === 'income').length} lançamento{transactions.filter(t => t.type === 'income').length !== 1 ? 's' : ''}
             </p>
+            {isDetailed && comparison && (
+              <CompareLine
+                change={incomeChange}
+                tone={deltaTone('income', incomeChange)}
+                label={comparison.label}
+                previousValue={comparison.previous.income}
+                reference={comparison.reference}
+              />
+            )}
             {drillHint}
           </CardContent>
         </Card>
@@ -271,6 +419,15 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
             <p className="text-xs text-muted-foreground">
               {transactions.filter(t => t.type === 'expense').length} lançamento{transactions.filter(t => t.type === 'expense').length !== 1 ? 's' : ''}
             </p>
+            {isDetailed && comparison && (
+              <CompareLine
+                change={expenseChange}
+                tone={deltaTone('expense', expenseChange)}
+                label={comparison.label}
+                previousValue={comparison.previous.expense}
+                reference={comparison.reference}
+              />
+            )}
             {drillHint}
           </CardContent>
         </Card>
@@ -287,10 +444,34 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
             <p className="text-xs text-muted-foreground">
               Receitas - Despesas
             </p>
+            {isDetailed && (
+              <MarginLine
+                income={totalIncome}
+                balance={totalIncome - totalExpense}
+                previousLabel={comparison?.label ?? null}
+                previousBalance={comparison ? comparison.previous.income - comparison.previous.expense : null}
+              />
+            )}
             {drillHint}
           </CardContent>
         </Card>
       </div>
+
+      {/* Descritivo: resumo em texto, previsão do mês e sugestões */}
+      {isDetailed &&
+        (openLoading ? (
+          <DashboardAnalysisSkeleton />
+        ) : (
+          analysis && (
+            <DashboardAnalysis
+              summary={analysis.summary}
+              projection={analysis.projection}
+              insights={analysis.insights}
+              onOpenInsight={onNavigate ? openInsight : undefined}
+              onOpenBucket={onNavigate ? openProjectionBucket : undefined}
+            />
+          )
+        ))}
 
       {/* Week Payables/Receivables */}
       <Card>
@@ -456,6 +637,17 @@ export function FinanceDashboard({ companyId, onNavigate }: FinanceDashboardProp
           )}
         </CardContent>
       </Card>
+
+      {/* Descritivo: peso de cada categoria nas despesas, com variação sobre o mês anterior */}
+      {isDetailed && analysis && (
+        <CategoryBreakdown
+          rows={analysis.categories}
+          comparisonReference={comparison?.reference ?? null}
+          partial={comparison?.partial ?? false}
+          monthLabel={monthLabel}
+          onSelect={onNavigate ? openCategory : undefined}
+        />
+      )}
 
       {/* Patrimonial Evolution Chart */}
       <Card>

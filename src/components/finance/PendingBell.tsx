@@ -5,15 +5,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { startDrillDown } from '@/lib/drillDown';
+import { TONE } from '@/lib/tone';
 import type { FinanceView } from '@/pages/Finance';
 import { usePendingItems, type PendingAccess, type PendingItem, type PendingSeverity } from '@/hooks/usePendingItems';
 
-// Único lugar com as cores das pendências — tons discretos, sem fundo colorido nas
-// linhas: a cor aparece só num ponto e no contador, o resto segue o tema.
+// Cores vêm dos tons semânticos (lib/tone) — discretas: sem fundo colorido nas linhas,
+// a cor aparece só num ponto e no contador, o resto segue o tema.
 const SEVERITY: Record<PendingSeverity, { dot: string; badge: string; label: string }> = {
-  urgent: { dot: 'bg-red-500', badge: 'bg-red-500 text-white', label: 'Urgente' },
-  attention: { dot: 'bg-amber-500', badge: 'bg-amber-500 text-white', label: 'Atenção' },
-  info: { dot: 'bg-muted-foreground/40', badge: '', label: 'Informativo' },
+  urgent: { dot: TONE.danger.dot, badge: TONE.danger.solidBg, label: 'Urgente' },
+  attention: { dot: TONE.warning.dot, badge: TONE.warning.solidBg, label: 'Atenção' },
+  info: { dot: TONE.neutral.dot, badge: '', label: 'Informativo' },
 };
 
 interface PendingBellProps {
@@ -133,7 +134,7 @@ export function PendingBell({ companyId, access, onNavigate }: PendingBellProps)
             </div>
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center gap-1.5 px-4 py-8 text-center">
-              <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              <CheckCircle2 className="h-7 w-7 text-success" aria-hidden />
               <p className="text-sm font-medium">Tudo em dia</p>
               <p className="text-xs text-muted-foreground">Nenhuma pendência por aqui.</p>
             </div>

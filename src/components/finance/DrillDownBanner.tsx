@@ -75,8 +75,8 @@ export function DrillDownBanner({
         <p
           className={cn(
             'flex items-start gap-2 text-xs leading-snug',
-            tone === 'ok' && 'text-emerald-700 dark:text-emerald-400',
-            tone === 'warn' && 'text-amber-700 dark:text-amber-400',
+            tone === 'ok' && 'text-success',
+            tone === 'warn' && 'text-warning',
             tone === 'neutral' && 'text-muted-foreground',
           )}
           role="status"

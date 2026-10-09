@@ -177,6 +177,15 @@ export function AnticipationPage({ companyId }: Props) {
     toast.success('Atualizado'); load();
   };
 
+  const disburse = async (a: any) => {
+    if (!confirm(`Enviar ${brl(a.net_amount)} da sua conta Pagando.net ao cedente?`)) return;
+    setBusy(a.id);
+    const { data, error } = await supabase.functions.invoke('seller-transfer', { body: { action: 'disburse', assignment_id: a.id } });
+    setBusy(null);
+    if (error || data?.error || data?.ok === false) return toast.error(data?.error ?? error?.message ?? 'Falha no desembolso');
+    toast.success('Desembolso enviado'); load();
+  };
+
   const AssignmentTable = ({ rows, asFinancier }: { rows: any[]; asFinancier: boolean }) => (
     <Table>
       <TableHeader><TableRow>
@@ -209,6 +218,9 @@ export function AnticipationPage({ companyId }: Props) {
                   <Button size="sm" onClick={() => act('approve', a)}>Aprovar</Button>
                   <Button size="sm" variant="outline" onClick={() => { setRejecting(a); setReason(''); }}>Recusar</Button>
                 </>}
+                {asFinancier && !a.disbursed_at && ['assigned', 'paid_by_debtor', 'settled', 'settlement_failed'].includes(a.status) &&
+                  <Button size="sm" onClick={() => disburse(a)}>Desembolsar ao cedente</Button>}
+                {a.disbursed_at && <Badge variant="secondary">Desembolsado</Badge>}
                 {!asFinancier && a.status === 'requested' && <Button size="sm" variant="outline" onClick={() => act('cancel', a)}>Cancelar</Button>}
                 {['settlement_failed', 'paid_by_debtor'].includes(a.status) && <Button size="sm" variant="outline" onClick={() => act('retry', a)}><RefreshCw className="w-3 h-3 mr-1" />Reprocessar repasse</Button>}
               </TableCell>

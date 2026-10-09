@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import SellerTransferPage from '@/components/payments/SellerTransferPage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAccessMode } from '@/contexts/AccessModeContext';
 import { useCompanies } from '@/hooks/useCompanies';
@@ -120,6 +121,7 @@ export type FinanceView =
   | 'payments-establishments'
   | 'payments-charges'
   | 'payments-transfer'
+  | 'payments-seller-transfer'
   | 'payments-fees'
   | 'payments-pos'
   | 'payments-admin-dashboard'
@@ -169,6 +171,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'payments-establishments',
   'payments-charges',
   'payments-transfer',
+  'payments-seller-transfer',
   'payments-fees',
   'payments-pos',
   'boletos',
@@ -496,6 +499,8 @@ const Finance = () => {
         return paymentsEnabled ? <NectaChargesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-transfer':
         return paymentsEnabled ? <NectaTransferPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'payments-seller-transfer':
+        return paymentsEnabled ? <SellerTransferPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-fees':
         return paymentsEnabled ? <NectaFeesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-pos':

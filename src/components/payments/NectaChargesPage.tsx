@@ -101,6 +101,13 @@ export function NectaChargesPage({ companyId, dialogOnly = false, externalOpen, 
   const [payers, setPayers] = useState<any[]>([]);
   const [cepLoading, setCepLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const prefillKey = JSON.stringify(prefill ?? null);
+
+  // Pré-preenche o formulário ao abrir o diálogo (ex.: emissão a partir da esteira de crédito)
+  useEffect(() => {
+    if (open && prefill) setForm(f => ({ ...f, ...prefill }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, prefillKey]);
 
   const [companyName, setCompanyName] = useState('');
   const [credentialsReady, setCredentialsReady] = useState(false);

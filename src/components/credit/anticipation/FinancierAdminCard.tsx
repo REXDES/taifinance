@@ -96,7 +96,7 @@ export function FinancierAdminCard({ companyId, moduleEnabled = true }: Props) {
         </>
       )}
       <div className="flex justify-end">
-        <Button size="sm" onClick={save} disabled={saving}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar financiador</Button>
+        <Button size="sm" onClick={save} disabled={saving || !moduleEnabled}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar financiador</Button>
       </div>
     </div>
   );

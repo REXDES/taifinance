@@ -181,10 +181,10 @@ export function AnticipationPage({ companyId }: Props) {
       <TableHeader><TableRow>
         <TableHead>Título</TableHead><TableHead>Sacado</TableHead><TableHead>Vencimento</TableHead>
         <TableHead className="text-right">Face</TableHead><TableHead className="text-right">Líquido</TableHead>
-        <TableHead>Status</TableHead><TableHead />
+        <TableHead>Status</TableHead><TableHead>Nota fiscal</TableHead><TableHead />
       </TableRow></TableHeader>
       <TableBody>
-        {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Nada por aqui.</TableCell></TableRow>}
+        {rows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Nada por aqui.</TableCell></TableRow>}
         {rows.map(a => {
           const s = ASSIGNMENT_STATUS[a.status] ?? { label: a.status, variant: 'outline' };
           return (

@@ -831,11 +831,13 @@ export type Database = {
           email: string | null
           fantasy_name: string | null
           id: string
+          is_financiador: boolean
           machines_module_enabled: boolean
           name: string
           necta_account_id: string | null
           necta_credentials_at: string | null
           necta_mirror_enabled: boolean
+          necta_seller_id: string | null
           payments_module_enabled: boolean
           phone: string | null
           pix_city: string | null
@@ -861,11 +863,13 @@ export type Database = {
           email?: string | null
           fantasy_name?: string | null
           id?: string
+          is_financiador?: boolean
           machines_module_enabled?: boolean
           name: string
           necta_account_id?: string | null
           necta_credentials_at?: string | null
           necta_mirror_enabled?: boolean
+          necta_seller_id?: string | null
           payments_module_enabled?: boolean
           phone?: string | null
           pix_city?: string | null
@@ -891,11 +895,13 @@ export type Database = {
           email?: string | null
           fantasy_name?: string | null
           id?: string
+          is_financiador?: boolean
           machines_module_enabled?: boolean
           name?: string
           necta_account_id?: string | null
           necta_credentials_at?: string | null
           necta_mirror_enabled?: boolean
+          necta_seller_id?: string | null
           payments_module_enabled?: boolean
           phone?: string | null
           pix_city?: string | null
@@ -1794,6 +1800,160 @@ export type Database = {
             foreignKeyName: "finance_tags_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financier_cedent_links: {
+        Row: {
+          active: boolean
+          cedent_company_id: string
+          created_at: string
+          created_by: string | null
+          financier_company_id: string
+          id: string
+        }
+        Insert: {
+          active?: boolean
+          cedent_company_id: string
+          created_at?: string
+          created_by?: string | null
+          financier_company_id: string
+          id?: string
+        }
+        Update: {
+          active?: boolean
+          cedent_company_id?: string
+          created_at?: string
+          created_by?: string | null
+          financier_company_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financier_cedent_links_cedent_company_id_fkey"
+            columns: ["cedent_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financier_cedent_links_financier_company_id_fkey"
+            columns: ["financier_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financier_contract_templates: {
+        Row: {
+          active: boolean
+          body: string | null
+          created_at: string
+          created_by: string | null
+          financier_company_id: string
+          id: string
+          kind: string
+          name: string
+          storage_path: string | null
+        }
+        Insert: {
+          active?: boolean
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          financier_company_id: string
+          id?: string
+          kind?: string
+          name: string
+          storage_path?: string | null
+        }
+        Update: {
+          active?: boolean
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          financier_company_id?: string
+          id?: string
+          kind?: string
+          name?: string
+          storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financier_contract_templates_financier_company_id_fkey"
+            columns: ["financier_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financier_credit_rules: {
+        Row: {
+          active: boolean
+          created_at: string
+          financier_company_id: string
+          id: string
+          limit_per_cedent: number | null
+          limit_per_debtor: number | null
+          max_days: number
+          max_installments: number
+          max_title_amount: number | null
+          min_days: number
+          min_installments: number
+          min_score: number | null
+          min_title_amount: number
+          monthly_discount_rate: number
+          notes: string | null
+          requires_invoice: boolean
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          financier_company_id: string
+          id?: string
+          limit_per_cedent?: number | null
+          limit_per_debtor?: number | null
+          max_days?: number
+          max_installments?: number
+          max_title_amount?: number | null
+          min_days?: number
+          min_installments?: number
+          min_score?: number | null
+          min_title_amount?: number
+          monthly_discount_rate?: number
+          notes?: string | null
+          requires_invoice?: boolean
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          financier_company_id?: string
+          id?: string
+          limit_per_cedent?: number | null
+          limit_per_debtor?: number | null
+          max_days?: number
+          max_installments?: number
+          max_title_amount?: number | null
+          min_days?: number
+          min_installments?: number
+          min_score?: number | null
+          min_title_amount?: number
+          monthly_discount_rate?: number
+          notes?: string | null
+          requires_invoice?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financier_credit_rules_financier_company_id_fkey"
+            columns: ["financier_company_id"]
+            isOneToOne: true
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
@@ -3821,6 +3981,7 @@ export type Database = {
       payables_receivables: {
         Row: {
           amount: number | null
+          assignment_id: string | null
           category_id: string | null
           client_supplier_id: string | null
           company_id: string
@@ -3850,6 +4011,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          assignment_id?: string | null
           category_id?: string | null
           client_supplier_id?: string | null
           company_id: string
@@ -3879,6 +4041,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          assignment_id?: string | null
           category_id?: string | null
           client_supplier_id?: string | null
           company_id?: string
@@ -4148,6 +4311,202 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      receivable_assignment_attachments: {
+        Row: {
+          assignment_id: string | null
+          company_id: string
+          created_at: string
+          file_name: string
+          id: string
+          kind: string
+          payable_receivable_id: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          company_id: string
+          created_at?: string
+          file_name: string
+          id?: string
+          kind?: string
+          payable_receivable_id: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          assignment_id?: string | null
+          company_id?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          kind?: string
+          payable_receivable_id?: string
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivable_assignment_attachments_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "receivable_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_assignment_attachments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_assignment_attachments_payable_receivable_id_fkey"
+            columns: ["payable_receivable_id"]
+            isOneToOne: false
+            referencedRelation: "payables_receivables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receivable_assignment_events: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          payload: Json | null
+          request_id: string | null
+          response: Json | null
+          success: boolean | null
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id?: string
+          payload?: Json | null
+          request_id?: string | null
+          response?: Json | null
+          success?: boolean | null
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          request_id?: string | null
+          response?: Json | null
+          success?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivable_assignment_events_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "receivable_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receivable_assignments: {
+        Row: {
+          cedent_company_id: string
+          cedent_name: string | null
+          created_at: string
+          debtor_name: string | null
+          decided_at: string | null
+          decided_by: string | null
+          discount_amount: number
+          discount_rate: number
+          due_date: string | null
+          face_amount: number
+          financier_company_id: string
+          id: string
+          necta_sale_id: string | null
+          net_amount: number
+          payable_receivable_id: string
+          rejection_reason: string | null
+          requested_by: string | null
+          settled_at: string | null
+          status: string
+          title_description: string | null
+          updated_at: string
+        }
+        Insert: {
+          cedent_company_id: string
+          cedent_name?: string | null
+          created_at?: string
+          debtor_name?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          discount_amount?: number
+          discount_rate?: number
+          due_date?: string | null
+          face_amount: number
+          financier_company_id: string
+          id?: string
+          necta_sale_id?: string | null
+          net_amount: number
+          payable_receivable_id: string
+          rejection_reason?: string | null
+          requested_by?: string | null
+          settled_at?: string | null
+          status?: string
+          title_description?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cedent_company_id?: string
+          cedent_name?: string | null
+          created_at?: string
+          debtor_name?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          discount_amount?: number
+          discount_rate?: number
+          due_date?: string | null
+          face_amount?: number
+          financier_company_id?: string
+          id?: string
+          necta_sale_id?: string | null
+          net_amount?: number
+          payable_receivable_id?: string
+          rejection_reason?: string | null
+          requested_by?: string | null
+          settled_at?: string | null
+          status?: string
+          title_description?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receivable_assignments_cedent_company_id_fkey"
+            columns: ["cedent_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_assignments_financier_company_id_fkey"
+            columns: ["financier_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_assignments_payable_receivable_id_fkey"
+            columns: ["payable_receivable_id"]
+            isOneToOne: false
+            referencedRelation: "payables_receivables"
+            referencedColumns: ["id"]
           },
         ]
       }

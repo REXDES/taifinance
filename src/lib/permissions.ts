@@ -97,6 +97,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     items: [
       { key: 'credit.applications', label: 'Propostas' },
       { key: 'credit.ignored', label: 'Ocorrências ignoradas' },
+      { key: 'credit.anticipation', label: 'Antecipação' },
+      { key: 'credit.financier', label: 'Financiador' },
       { key: 'credit.admin', label: 'Configuração' },
     ],
   },
@@ -162,6 +164,8 @@ export const FINANCE_VIEW_PERMISSION_KEY: Record<string, string> = {
 
   'credit-applications': 'credit.applications',
   'credit-ignored': 'credit.ignored',
+  'credit-anticipation': 'credit.anticipation',
+  'credit-financier': 'credit.financier',
   'credit-admin': 'credit.admin',
 
   'company-settings': 'admin.companies',

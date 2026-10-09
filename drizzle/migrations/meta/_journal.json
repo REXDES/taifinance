@@ -64,6 +64,27 @@
       "when": 1790271771010,
       "tag": "0008_module_branding",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791552672671,
+      "tag": "0009_receivable_anticipation",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791552721632,
+      "tag": "0010_company_necta_seller_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791552935578,
+      "tag": "0011_assignment_snapshot",
+      "breakpoints": true
     }
   ]
 }

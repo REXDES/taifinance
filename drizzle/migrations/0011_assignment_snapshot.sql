@@ -1,0 +1,1 @@
+ALTER TABLE public.receivable_assignments ADD COLUMN IF NOT EXISTS title_description text, ADD COLUMN IF NOT EXISTS debtor_name text, ADD COLUMN IF NOT EXISTS cedent_name text;

@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.necta-webhook]
 verify_jwt = false
+
+[functions.receivable-assignment]
+verify_jwt = false

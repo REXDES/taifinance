@@ -20,7 +20,7 @@ import { normalizeDate, sameDocument, todayISO, validatePayer } from '@/lib/nect
 import { parseLocalDate } from '@/lib/dateUtils';
 import { logWhatsappAttempt } from '@/lib/whatsappLogClient';
 
-interface Props { companyId: string; dialogOnly?: boolean; externalOpen?: boolean; onExternalOpenChange?: (o: boolean) => void; onCreated?: () => void }
+interface Props { companyId: string; dialogOnly?: boolean; externalOpen?: boolean; onExternalOpenChange?: (o: boolean) => void; onCreated?: () => void; prefill?: Partial<typeof emptyForm> }
 
 const METHOD_LABEL: Record<string, string> = {
   pix: 'PIX',
@@ -83,7 +83,7 @@ const maskPhone = (v: string) => {
 const maskCep = (v: string) => digitsOnly(v).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2');
 
 
-export function NectaChargesPage({ companyId, dialogOnly = false, externalOpen, onExternalOpenChange, onCreated }: Props) {
+export function NectaChargesPage({ companyId, dialogOnly = false, externalOpen, onExternalOpenChange, onCreated, prefill }: Props) {
   const { user } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -101,6 +101,13 @@ export function NectaChargesPage({ companyId, dialogOnly = false, externalOpen, 
   const [payers, setPayers] = useState<any[]>([]);
   const [cepLoading, setCepLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const prefillKey = JSON.stringify(prefill ?? null);
+
+  // Pré-preenche o formulário ao abrir o diálogo (ex.: emissão a partir da esteira de crédito)
+  useEffect(() => {
+    if (open && prefill) setForm(f => ({ ...f, ...prefill }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, prefillKey]);
 
   const [companyName, setCompanyName] = useState('');
   const [credentialsReady, setCredentialsReady] = useState(false);

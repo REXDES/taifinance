@@ -84,9 +84,17 @@ export function AnticipationPage({ companyId }: Props) {
     const active = new Set((asg ?? []).filter((a: any) => !['rejected', 'cancelled'].includes(a.status)).map((a: any) => a.payable_receivable_id));
     setTitles((prs ?? []).filter((p: any) => saleByPr.has(p.id) && !active.has(p.id)).map((p: any) => ({ ...p, sale: saleByPr.get(p.id) })));
     setMine((asg ?? []).filter((a: any) => a.cedent_company_id === companyId));
-    setReceived((asg ?? []).filter((a: any) => a.financier_company_id === companyId));
+    const recv = (asg ?? []).filter((a: any) => a.financier_company_id === companyId);
+    setReceived(recv);
+    // Financiador: os anexos foram enviados com a empresa do cedente — busca pelos títulos cedidos a ele
+    const recvPrIds = recv.map((a: any) => a.payable_receivable_id).filter(Boolean);
+    const allAtt: any[] = [...(att ?? [])];
+    if (recvPrIds.length) {
+      const { data: recvAtt } = await db.from('receivable_assignment_attachments').select('*').in('payable_receivable_id', recvPrIds);
+      allAtt.push(...(recvAtt ?? []));
+    }
     const map: Record<string, any[]> = {};
-    (att ?? []).forEach((a: any) => { (map[a.payable_receivable_id] ||= []).push(a); });
+    allAtt.forEach((a: any) => { (map[a.payable_receivable_id] ||= []).push(a); });
     setAttachments(map);
     setLoading(false);
   }, [companyId]);
@@ -174,10 +182,10 @@ export function AnticipationPage({ companyId }: Props) {
       <TableHeader><TableRow>
         <TableHead>Título</TableHead><TableHead>Sacado</TableHead><TableHead>Vencimento</TableHead>
         <TableHead className="text-right">Face</TableHead><TableHead className="text-right">Líquido</TableHead>
-        <TableHead>Status</TableHead><TableHead />
+        <TableHead>Status</TableHead><TableHead>Nota fiscal</TableHead><TableHead />
       </TableRow></TableHeader>
       <TableBody>
-        {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Nada por aqui.</TableCell></TableRow>}
+        {rows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Nada por aqui.</TableCell></TableRow>}
         {rows.map(a => {
           const s = ASSIGNMENT_STATUS[a.status] ?? { label: a.status, variant: 'outline' };
           return (
@@ -188,6 +196,13 @@ export function AnticipationPage({ companyId }: Props) {
               <TableCell className="text-right">{brl(a.face_amount)}</TableCell>
               <TableCell className="text-right">{brl(a.net_amount)}</TableCell>
               <TableCell><Badge variant={s.variant}>{s.label}</Badge>{a.rejection_reason && <div className="text-xs text-muted-foreground mt-1">{a.rejection_reason}</div>}</TableCell>
+              <TableCell>
+                {(attachments[a.payable_receivable_id] ?? []).length === 0
+                  ? <span className="text-xs text-muted-foreground">—</span>
+                  : (attachments[a.payable_receivable_id] ?? []).map((f: any) => (
+                    <button key={f.id} className="block text-xs underline text-left" onClick={() => openFile(f.storage_path)}>{f.file_name}</button>
+                  ))}
+              </TableCell>
               <TableCell className="text-right space-x-2 whitespace-nowrap">
                 {busy === a.id && <Loader2 className="w-4 h-4 animate-spin inline" />}
                 {asFinancier && a.status === 'requested' && <>

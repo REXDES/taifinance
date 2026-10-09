@@ -6,6 +6,9 @@ import { Loader2, CheckCircle2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { parseLocalDate } from '@/lib/dateUtils';
+import { useCompanyPaymentsFlag } from '@/hooks/usePaymentsModule';
+import { NectaChargesPage } from '@/components/payments/NectaChargesPage';
+import { PaymentsBrandName } from '@/contexts/ModuleBrandingContext';
 
 export function BoletosStep({
   applicationId,
@@ -24,6 +27,9 @@ export function BoletosStep({
   const [contract, setContract] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [gatewayOpen, setGatewayOpen] = useState(false);
+  const [prefill, setPrefill] = useState<Record<string, string> | null>(null);
+  const { enabled: paymentsEnabled } = useCompanyPaymentsFlag(companyId);
 
   const refetch = useCallback(async () => {
     setLoading(true);
@@ -38,6 +44,31 @@ export function BoletosStep({
     }
     setLoading(false);
   }, [applicationId]);
+
+  // Emissão via gateway (Pagando.net): pré-preenche a cobrança com os dados do contrato e do cliente
+  const openGatewayCharge = async () => {
+    if (!contract) return;
+    const [{ data: app }, { data: qual }] = await Promise.all([
+      (supabase as any).from('credit_applications').select('nome, documento').eq('id', applicationId).maybeSingle(),
+      (supabase as any).from('credit_qualifications').select('whatsapp_phone, email, endereco_entrega, cidade, uf, cep').eq('application_id', applicationId).maybeSingle(),
+    ]);
+    setPrefill({
+      method: 'bank_slip',
+      amount: String(contract.parcela_amount ?? ''),
+      description: contract.description ?? '',
+      installments: String(contract.num_parcelas ?? 1),
+      due_date: contract.first_due_date ?? '',
+      payer_name: app?.nome ?? '',
+      payer_document: app?.documento ?? '',
+      payer_email: qual?.email ?? '',
+      payer_phone: qual?.whatsapp_phone ?? '',
+      payer_address_street: qual?.endereco_entrega ?? '',
+      payer_address_city: qual?.cidade ?? '',
+      payer_address_state: qual?.uf ?? '',
+      payer_address_postal_code: qual?.cep ?? '',
+    });
+    setGatewayOpen(true);
+  };
 
   useEffect(() => { refetch(); }, [refetch]);
 
@@ -91,10 +122,17 @@ export function BoletosStep({
       {items.length === 0 ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">Crie as {contract.num_parcelas} parcelas no módulo de Contas a Receber. Cada parcela usará a chave PIX configurada na empresa.</p>
-          <Button onClick={generate} disabled={generating}>
-            {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Receipt className="w-4 h-4 mr-2" />}
-            Gerar parcelas
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={generate} disabled={generating}>
+              {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Receipt className="w-4 h-4 mr-2" />}
+              Gerar parcelas (Cobrança Própria)
+            </Button>
+            {paymentsEnabled && (
+              <Button variant="secondary" onClick={openGatewayCharge} title="Boleto/PIX emitidos pelo gateway — o valor cai na conta Pagando.net e fica disponível para antecipação">
+                Emitir via <span className="ml-1"><PaymentsBrandName /></span>
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <Table>
@@ -121,6 +159,17 @@ export function BoletosStep({
             ))}
           </TableBody>
         </Table>
+      )}
+
+      {paymentsEnabled && (
+        <NectaChargesPage
+          companyId={companyId}
+          dialogOnly
+          externalOpen={gatewayOpen}
+          onExternalOpenChange={setGatewayOpen}
+          prefill={prefill ?? undefined}
+          onCreated={refetch}
+        />
       )}
     </div>
   );

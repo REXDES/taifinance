@@ -210,7 +210,7 @@ export function MobileMenuSheet({
   const machinesCadastros = machinesEnabled ? filterAllowed(machinesCadastrosMenuItems) : [];
   const credit = creditEnabled ? filterAllowed(creditMenuItems.filter(i => i.view !== 'credit-anticipation' || anticipationEnabled)) : [];
   const creditAdmin = creditEnabled && (isSupervisor || isGerente)
-    ? filterAllowed(creditAdminMenuItems.filter(i => i.view !== 'credit-financier' || isFinancier))
+    ? filterAllowed(creditAdminMenuItems.filter(i => i.view !== 'credit-financier' || (isFinancier && anticipationEnabled)))
     : [];
   const payments = paymentsEnabled ? filterAllowed(paymentsMenuItems) : [];
 

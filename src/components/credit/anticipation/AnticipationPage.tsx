@@ -88,6 +88,7 @@ export function AnticipationPage({ companyId }: Props) {
     setReceived(recv);
     // Financiador: os anexos foram enviados com a empresa do cedente — busca pelos títulos cedidos a ele
     const recvPrIds = recv.map((a: any) => a.payable_receivable_id).filter(Boolean);
+    const allAtt: any[] = [...(att ?? [])];
     if (recvPrIds.length) {
       const { data: recvAtt } = await db.from('receivable_assignment_attachments').select('*').in('payable_receivable_id', recvPrIds);
       allAtt.push(...(recvAtt ?? []));

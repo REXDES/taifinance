@@ -83,7 +83,7 @@ const maskPhone = (v: string) => {
 const maskCep = (v: string) => digitsOnly(v).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2');
 
 
-export function NectaChargesPage({ companyId, dialogOnly = false, externalOpen, onExternalOpenChange, onCreated }: Props) {
+export function NectaChargesPage({ companyId, dialogOnly = false, externalOpen, onExternalOpenChange, onCreated, prefill }: Props) {
   const { user } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);

@@ -6,6 +6,9 @@ import { Loader2, CheckCircle2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { parseLocalDate } from '@/lib/dateUtils';
+import { useCompanyPaymentsFlag } from '@/hooks/usePaymentsModule';
+import { NectaChargesPage } from '@/components/payments/NectaChargesPage';
+import { PaymentsBrandName } from '@/components/payments/ModuleBrandMark';
 
 export function BoletosStep({
   applicationId,

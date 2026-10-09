@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
         const r = await nectaRequest(`/establishments/${sellerId}`, 'GET', undefined, undefined, marketplaceCreds());
         const e = r?.data ?? r;
         return e?.tradeName ?? e?.fantasyName ?? e?.legalName ?? e?.companyName ?? e?.name
-          ?? [e?.firstName, e?.lastName].filter(Boolean).join(' ') || null;
+          ?? ([e?.firstName, e?.lastName].filter(Boolean).join(' ') || null);
       } catch { return null; }
     };
 

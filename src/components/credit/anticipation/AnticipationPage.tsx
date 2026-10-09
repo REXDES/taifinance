@@ -84,7 +84,14 @@ export function AnticipationPage({ companyId }: Props) {
     const active = new Set((asg ?? []).filter((a: any) => !['rejected', 'cancelled'].includes(a.status)).map((a: any) => a.payable_receivable_id));
     setTitles((prs ?? []).filter((p: any) => saleByPr.has(p.id) && !active.has(p.id)).map((p: any) => ({ ...p, sale: saleByPr.get(p.id) })));
     setMine((asg ?? []).filter((a: any) => a.cedent_company_id === companyId));
-    setReceived((asg ?? []).filter((a: any) => a.financier_company_id === companyId));
+    const recv = (asg ?? []).filter((a: any) => a.financier_company_id === companyId);
+    setReceived(recv);
+    // Financiador: os anexos foram enviados com a empresa do cedente — busca pelos títulos cedidos a ele
+    const recvPrIds = recv.map((a: any) => a.payable_receivable_id).filter(Boolean);
+    if (recvPrIds.length) {
+      const { data: recvAtt } = await db.from('receivable_assignment_attachments').select('*').in('payable_receivable_id', recvPrIds);
+      (att ??= []).push(...(recvAtt ?? []));
+    }
     const map: Record<string, any[]> = {};
     (att ?? []).forEach((a: any) => { (map[a.payable_receivable_id] ||= []).push(a); });
     setAttachments(map);

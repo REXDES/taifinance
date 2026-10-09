@@ -27,6 +27,9 @@ export function BoletosStep({
   const [contract, setContract] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [gatewayOpen, setGatewayOpen] = useState(false);
+  const [prefill, setPrefill] = useState<Record<string, string> | null>(null);
+  const { enabled: paymentsEnabled } = useCompanyPaymentsFlag(companyId);
 
   const refetch = useCallback(async () => {
     setLoading(true);
@@ -41,6 +44,31 @@ export function BoletosStep({
     }
     setLoading(false);
   }, [applicationId]);
+
+  // Emissão via gateway (Pagando.net): pré-preenche a cobrança com os dados do contrato e do cliente
+  const openGatewayCharge = async () => {
+    if (!contract) return;
+    const [{ data: app }, { data: qual }] = await Promise.all([
+      (supabase as any).from('credit_applications').select('nome, documento').eq('id', applicationId).maybeSingle(),
+      (supabase as any).from('credit_qualifications').select('whatsapp_phone, email, endereco_entrega, cidade, uf, cep').eq('application_id', applicationId).maybeSingle(),
+    ]);
+    setPrefill({
+      method: 'bank_slip',
+      amount: String(contract.parcela_amount ?? ''),
+      description: contract.description ?? '',
+      installments: String(contract.num_parcelas ?? 1),
+      due_date: contract.first_due_date ?? '',
+      payer_name: app?.nome ?? '',
+      payer_document: app?.documento ?? '',
+      payer_email: qual?.email ?? '',
+      payer_phone: qual?.whatsapp_phone ?? '',
+      payer_address_street: qual?.endereco_entrega ?? '',
+      payer_address_city: qual?.cidade ?? '',
+      payer_address_state: qual?.uf ?? '',
+      payer_address_postal_code: qual?.cep ?? '',
+    });
+    setGatewayOpen(true);
+  };
 
   useEffect(() => { refetch(); }, [refetch]);
 

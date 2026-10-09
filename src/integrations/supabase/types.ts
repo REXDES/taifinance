@@ -4826,7 +4826,9 @@ export type Database = {
           request_id: string
           response: Json | null
           status: string
-          to_company_id: string
+          to_company_id: string | null
+          to_seller_id: string | null
+          to_seller_name: string | null
         }
         Insert: {
           amount: number
@@ -4841,7 +4843,9 @@ export type Database = {
           request_id: string
           response?: Json | null
           status?: string
-          to_company_id: string
+          to_company_id?: string | null
+          to_seller_id?: string | null
+          to_seller_name?: string | null
         }
         Update: {
           amount?: number
@@ -4856,7 +4860,9 @@ export type Database = {
           request_id?: string
           response?: Json | null
           status?: string
-          to_company_id?: string
+          to_company_id?: string | null
+          to_seller_id?: string | null
+          to_seller_name?: string | null
         }
         Relationships: [
           {

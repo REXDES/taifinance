@@ -73,6 +73,7 @@ const KEYWORDS: Partial<Record<FinanceView, string[]>> = {
   'payments-charges': ['cobranca', 'cobrar', 'boleto', 'pix', 'link de pagamento', 'cartao', 'vendas', 'receber', 'emitir'],
   'payments-pos': ['maquininha', 'pos', 'terminal'],
   'payments-fees': ['taxas', 'tarifas', 'custo', 'mdr'],
+  'payments-seller-transfer': ['transferência entre sellers', 'transferir entre contas', 'desembolso'],
   'payments-transfer': ['saque', 'repasse', 'transferir saldo', 'retirar'],
   'payments-admin-dashboard': ['pagamentos', 'visao geral', 'marketplace'],
   'payments-admin-registration': ['estabelecimentos', 'sellers', 'credenciais', 'cadastros', 'homologacao'],

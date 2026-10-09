@@ -117,6 +117,7 @@ export const paymentsMenuItems: MenuItem[] = [
   { view: 'payments-pos', label: 'Maquininhas', icon: <Smartphone className="w-4 h-4" /> },
   { view: 'payments-fees', label: 'Minhas Taxas', icon: <Percent className="w-4 h-4" /> },
   { view: 'payments-transfer', label: 'Transferir saldo', icon: <ArrowRightLeft className="w-4 h-4" /> },
+  { view: 'payments-seller-transfer', label: 'Transferir entre contas', icon: <ArrowRightLeft className="w-4 h-4" /> },
 ];
 
 export const paymentsAdminMenuItems: MenuItem[] = [

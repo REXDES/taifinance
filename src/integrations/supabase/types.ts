@@ -4427,6 +4427,8 @@ export type Database = {
           debtor_name: string | null
           decided_at: string | null
           decided_by: string | null
+          disbursed_at: string | null
+          disbursement_transfer_id: string | null
           discount_amount: number
           discount_rate: number
           due_date: string | null
@@ -4450,6 +4452,8 @@ export type Database = {
           debtor_name?: string | null
           decided_at?: string | null
           decided_by?: string | null
+          disbursed_at?: string | null
+          disbursement_transfer_id?: string | null
           discount_amount?: number
           discount_rate?: number
           due_date?: string | null
@@ -4473,6 +4477,8 @@ export type Database = {
           debtor_name?: string | null
           decided_at?: string | null
           decided_by?: string | null
+          disbursed_at?: string | null
+          disbursement_transfer_id?: string | null
           discount_amount?: number
           discount_rate?: number
           due_date?: string | null
@@ -4495,6 +4501,13 @@ export type Database = {
             columns: ["cedent_company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_assignments_disbursement_transfer_id_fkey"
+            columns: ["disbursement_transfer_id"]
+            isOneToOne: false
+            referencedRelation: "seller_transfers"
             referencedColumns: ["id"]
           },
           {
@@ -4798,6 +4811,76 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      seller_transfers: {
+        Row: {
+          amount: number
+          assignment_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          error: string | null
+          from_company_id: string
+          id: string
+          kind: string
+          request_id: string
+          response: Json | null
+          status: string
+          to_company_id: string
+        }
+        Insert: {
+          amount: number
+          assignment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          error?: string | null
+          from_company_id: string
+          id?: string
+          kind?: string
+          request_id: string
+          response?: Json | null
+          status?: string
+          to_company_id: string
+        }
+        Update: {
+          amount?: number
+          assignment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          error?: string | null
+          from_company_id?: string
+          id?: string
+          kind?: string
+          request_id?: string
+          response?: Json | null
+          status?: string
+          to_company_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_transfers_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "receivable_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_transfers_from_company_id_fkey"
+            columns: ["from_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seller_transfers_to_company_id_fkey"
+            columns: ["to_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       split_recipients: {
         Row: {

@@ -90,11 +90,19 @@ Deno.serve(async (req) => {
     const dst = toSeller ? { necta_seller_id: toSeller } : comps?.find((c: any) => c.id === to);
     if (src?.necta_seller_id && src.necta_seller_id === dst?.necta_seller_id) return json({ error: 'Origem e destino iguais.' }, 400);
 
-    const row = existing ?? (await admin.from('seller_transfers').insert({
-      from_company_id: from, to_company_id: to, to_seller_id: dst?.necta_seller_id ?? null, to_seller_name: toName, amount, description, request_id: requestId,
-      kind: body.action === 'disburse' ? 'disbursement' : 'free',
-      assignment_id: assignment?.id ?? null, created_by: u.user.id,
-    }).select().single()).data;
+    let row = existing;
+    if (!row) {
+      const ins = await admin.from('seller_transfers').insert({
+        from_company_id: from, to_company_id: to, to_seller_id: dst?.necta_seller_id ?? null, to_seller_name: toName, amount, description, request_id: requestId,
+        kind: body.action === 'disburse' ? 'disbursement' : 'free',
+        assignment_id: assignment?.id ?? null, created_by: u.user.id,
+      }).select().single();
+      if (ins.error || !ins.data) {
+        console.error('seller-transfer insert', ins.error);
+        return json({ ok: false, error: `Não foi possível registrar a transferência: ${ins.error?.message ?? 'erro desconhecido'}` });
+      }
+      row = ins.data;
+    }
 
     const fail = async (msg: string, detail?: unknown) => {
       await admin.from('seller_transfers').update({ status: 'failed', error: msg, response: detail ?? null }).eq('id', row.id);

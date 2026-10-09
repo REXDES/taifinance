@@ -4419,7 +4419,9 @@ export type Database = {
       receivable_assignments: {
         Row: {
           cedent_company_id: string
+          cedent_name: string | null
           created_at: string
+          debtor_name: string | null
           decided_at: string | null
           decided_by: string | null
           discount_amount: number
@@ -4435,11 +4437,14 @@ export type Database = {
           requested_by: string | null
           settled_at: string | null
           status: string
+          title_description: string | null
           updated_at: string
         }
         Insert: {
           cedent_company_id: string
+          cedent_name?: string | null
           created_at?: string
+          debtor_name?: string | null
           decided_at?: string | null
           decided_by?: string | null
           discount_amount?: number
@@ -4455,11 +4460,14 @@ export type Database = {
           requested_by?: string | null
           settled_at?: string | null
           status?: string
+          title_description?: string | null
           updated_at?: string
         }
         Update: {
           cedent_company_id?: string
+          cedent_name?: string | null
           created_at?: string
+          debtor_name?: string | null
           decided_at?: string | null
           decided_by?: string | null
           discount_amount?: number
@@ -4475,6 +4483,7 @@ export type Database = {
           requested_by?: string | null
           settled_at?: string | null
           status?: string
+          title_description?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -152,6 +152,7 @@ export function AnticipationPage({ companyId }: Props) {
         payable_receivable_id: t.id, necta_sale_id: t.sale?.id, cedent_company_id: companyId, financier_company_id: fin.id,
         face_amount: t.amount, discount_rate: rules.monthly_discount_rate, discount_amount: r.discount, net_amount: r.net,
         due_date: t.due_date, status: 'requested', requested_by: user?.id,
+        title_description: t.description, debtor_name: t.clients_suppliers?.name ?? null,
       };
     });
     const { error } = await db.from('receivable_assignments').insert(rows);
@@ -181,8 +182,8 @@ export function AnticipationPage({ companyId }: Props) {
           const s = ASSIGNMENT_STATUS[a.status] ?? { label: a.status, variant: 'outline' };
           return (
             <TableRow key={a.id}>
-              <TableCell>{a.payables_receivables?.description}</TableCell>
-              <TableCell>{a.payables_receivables?.clients_suppliers?.name ?? '—'}</TableCell>
+              <TableCell>{a.title_description ?? a.payables_receivables?.description}</TableCell>
+              <TableCell>{a.debtor_name ?? a.payables_receivables?.clients_suppliers?.name ?? '—'}</TableCell>
               <TableCell>{formatBR(a.due_date)}</TableCell>
               <TableCell className="text-right">{brl(a.face_amount)}</TableCell>
               <TableCell className="text-right">{brl(a.net_amount)}</TableCell>

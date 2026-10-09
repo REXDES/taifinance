@@ -303,6 +303,7 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
     for (const r of (payablesReceivables as any[])) {
       // Totais consideram apenas contas em aberto; ao agrupar por status, inclui também as pagas
       if (r.status === 'cancelled' || r.status === 'paused') continue;
+      if (r.assignment_id && r.status === 'pending') continue;
       if (r.status === 'paid' && groupBy !== 'status') continue;
       const d = r.due_date ? parseLocalDate(r.due_date) : null;
       let key = '—', label = '—';
@@ -890,6 +891,7 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(record.status)}
+                      {(record as any).assignment_id && <Badge variant="outline" className="ml-1">Cedido</Badge>}
                       {record.source === 'necta' && (
                         <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/30"><ModuleBrandMark module="payments" size={12} /></Badge>
                       )}

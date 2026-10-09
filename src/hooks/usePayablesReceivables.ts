@@ -497,7 +497,8 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
   // Calculate totals - ignorar contas com valor pendente
   const totals = payablesReceivables.reduce(
     (acc, item) => {
-      if (item.status === 'pending' && !item.is_amount_pending && item.amount !== null) {
+      // Títulos cedidos (antecipação) saem da previsão do cedente.
+      if (item.status === 'pending' && !item.is_amount_pending && item.amount !== null && !(item as any).assignment_id) {
         if (item.type === 'payable') {
           acc.totalPayable += Number(item.amount);
         } else {

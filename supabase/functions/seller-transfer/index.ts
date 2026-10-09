@@ -5,7 +5,7 @@
 // Idempotente por request_id; usa a credencial do marketplace.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
-import { nectaRequest, marketplaceCreds, nectaToken, marketplaceIdFromToken } from '../_shared/nectaSeller.ts';
+import { nectaRequest, marketplaceCreds, nectaToken, marketplaceIdFromToken, resolveCompanySellerId } from '../_shared/nectaSeller.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -87,8 +87,9 @@ Deno.serve(async (req) => {
     if (existing?.status === 'done') return json({ ok: true, already: true, transfer: existing });
 
     const { data: comps } = await admin.from('companies').select('id, name, necta_seller_id').in('id', [from, to].filter(Boolean) as string[]);
-    const src = comps?.find((c: any) => c.id === from);
-    const dst = toSeller ? { necta_seller_id: toSeller } : comps?.find((c: any) => c.id === to);
+    const srcRow = comps?.find((c: any) => c.id === from);
+    const src = srcRow ? { ...srcRow, necta_seller_id: await resolveCompanySellerId(admin, from) } : null;
+    const dst = toSeller ? { necta_seller_id: toSeller } : (to ? { necta_seller_id: await resolveCompanySellerId(admin, to) } : null);
     if (src?.necta_seller_id && src.necta_seller_id === dst?.necta_seller_id) return json({ error: 'Origem e destino iguais.' }, 400);
 
     let row = existing;
@@ -109,7 +110,7 @@ Deno.serve(async (req) => {
       await admin.from('seller_transfers').update({ status: 'failed', error: msg, response: detail ?? null }).eq('id', row.id);
       return json({ ok: false, error: msg });
     };
-    if (!src?.necta_seller_id) return await fail('Empresa de origem sem conta Pagando.net (ID de seller).');
+    if (!src?.necta_seller_id) return await fail('Empresa de origem sem conta Pagando.net. Informe o ID da conta em Gerenciar Empresa → Módulos (adm) ou cadastre o CNPJ da empresa.');
     if (!dst?.necta_seller_id) return await fail('Empresa de destino sem conta Pagando.net (ID de seller).');
 
     try {

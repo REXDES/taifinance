@@ -68,12 +68,13 @@ export function FinancierAdminCard({ companyId, moduleEnabled = true }: Props) {
         </div>
         <Switch checked={isFin} onCheckedChange={setIsFin} />
       </div>
+      <div className="space-y-1">
+        <Label>ID da conta Pagando.net da empresa (UUID do seller)</Label>
+        <Input value={sellerId} onChange={e => setSellerId(e.target.value)} placeholder="UUID do estabelecimento" />
+        <p className="text-xs text-muted-foreground">Usado em transferências entre contas, desembolsos e recebimentos de antecipação.</p>
+      </div>
       {isFin && (
         <>
-          <div className="space-y-1">
-            <Label>ID do seller na Pagando (conta digital que recebe)</Label>
-            <Input value={sellerId} onChange={e => setSellerId(e.target.value)} placeholder="UUID do estabelecimento" />
-          </div>
           <div className="space-y-2">
             <Label>Cedentes autorizados (empresas com Antecipação ativa)</Label>
             {cedents.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma empresa com o módulo Antecipação ativo.</p>}

@@ -208,3 +208,22 @@ export async function saveCompanyCredentials(
 
   await admin.from('companies').update({ necta_credentials_at: now }).eq('id', companyId);
 }
+
+/**
+ * UUID do seller Pagando.net da PRÓPRIA empresa.
+ * 1) companies.necta_seller_id; 2) estabelecimento da empresa com o mesmo
+ * CNPJ (é o seller dela, não um cliente) — e grava no cadastro para as próximas vezes.
+ */
+export async function resolveCompanySellerId(admin: any, companyId?: string | null): Promise<string | null> {
+  if (!companyId) return null;
+  const { data: c } = await admin.from('companies').select('necta_seller_id, cnpj').eq('id', companyId).maybeSingle();
+  if (c?.necta_seller_id) return c.necta_seller_id;
+  const doc = String(c?.cnpj ?? '').replace(/\D/g, '');
+  if (!doc) return null;
+  const { data: ests } = await admin.from('necta_establishments')
+    .select('necta_establishment_id, document').eq('company_id', companyId).not('necta_establishment_id', 'is', null);
+  const match = (ests ?? []).find((e: any) => String(e.document ?? '').replace(/\D/g, '') === doc);
+  if (!match?.necta_establishment_id) return null;
+  await admin.from('companies').update({ necta_seller_id: match.necta_establishment_id }).eq('id', companyId);
+  return match.necta_establishment_id;
+}

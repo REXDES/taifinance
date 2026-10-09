@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Landmark, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Props { companyId: string }
+interface Props { companyId: string; moduleEnabled?: boolean }
 
 /** Configuração administrativa: empresa atua como Financiador e quais cedentes a enxergam. */
-export function FinancierAdminCard({ companyId }: Props) {
+export function FinancierAdminCard({ companyId, moduleEnabled = true }: Props) {
   const db = supabase as any;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

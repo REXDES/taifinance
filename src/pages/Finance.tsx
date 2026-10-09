@@ -483,7 +483,7 @@ const Finance = () => {
       case 'credit-anticipation':
         return creditEnabled && anticipationEnabled ? <AnticipationPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
         case 'credit-financier':
-        return creditEnabled && anticipationEnabled && isFinancier ? <FinancierSettingsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+        return creditEnabled && isFinancier ? <FinancierSettingsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'credit-ignored':
         return creditEnabled ? <CreditIgnoredOccurrencesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-dashboard':

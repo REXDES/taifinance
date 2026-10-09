@@ -30,6 +30,7 @@ export interface SearchAccessContext {
   can: (permissionKey: string) => boolean;
   machinesEnabled: boolean;
   creditEnabled: boolean;
+  isFinancier: boolean;
   bankDigitalEnabled: boolean;
   paymentsEnabled: boolean;
 }
@@ -141,7 +142,9 @@ export function listSearchableScreens(ctx: SearchAccessContext): SearchableScree
   if (ctx.machinesEnabled) push(allowed(machinesMenuItems).map(fromMenu('Máquinas')));
   if (ctx.creditEnabled) {
     push(allowed(creditMenuItems).map(fromMenu('Crédito')));
-    if (ctx.isSupervisor || ctx.isGerente) push(allowed(creditAdminMenuItems).map(fromMenu('Crédito')));
+    if (ctx.isSupervisor || ctx.isGerente) {
+      push(allowed(creditAdminMenuItems.filter(i => i.view !== 'credit-financier' || ctx.isFinancier)).map(fromMenu('Crédito')));
+    }
   }
   if (ctx.paymentsEnabled) push(allowed(paymentsMenuItems).map(fromMenu('Pagamentos')));
 

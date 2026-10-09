@@ -589,6 +589,7 @@ const Finance = () => {
           can,
           machinesEnabled,
           creditEnabled,
+          isFinancier,
           bankDigitalEnabled,
           paymentsEnabled,
         }}

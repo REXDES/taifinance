@@ -309,6 +309,25 @@ export function useCompanyCreditFlag(companyId: string | null) {
   return { enabled, loading, refetch };
 }
 
+/** Indica se a empresa está definida como Financiador (companies.is_financiador). */
+export function useCompanyFinancierFlag(companyId: string | null) {
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    if (!companyId) { setEnabled(false); setLoading(false); return; }
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from('companies')
+      .select('is_financiador')
+      .eq('id', companyId)
+      .maybeSingle();
+    setEnabled(!!data?.is_financiador);
+    setLoading(false);
+  }, [companyId]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { enabled, loading, refetch };
+}
+
 export function useCreditRules(companyId: string | null) {
   const [rules, setRules] = useState<CreditRules | null>(null);
   const [loading, setLoading] = useState(true);

@@ -50,7 +50,7 @@ import { RentalsPage } from '@/components/machines/RentalsPage';
 import { RentalsReportPage } from '@/components/machines/RentalsReportPage';
 import { PeoplePage } from '@/components/machines/PeoplePage';
 import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
-import { useCompanyCreditFlag, useCompanyFinancierFlag } from '@/hooks/useCreditModule';
+import { useCompanyCreditFlag, useCompanyFinancierFlag, useCompanyAnticipationFlag } from '@/hooks/useCreditModule';
 import { useCompanyBankDigitalFlag } from '@/hooks/useBankConnections';
 import { useCompanyPaymentsFlag } from '@/hooks/usePaymentsModule';
 import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
@@ -328,6 +328,7 @@ const Finance = () => {
   const { enabled: machinesEnabled, refetch: refetchMachinesFlag } = useCompanyMachinesFlag(selectedCompanyId);
   const { enabled: creditEnabled, refetch: refetchCreditFlag } = useCompanyCreditFlag(selectedCompanyId);
   const { enabled: isFinancier, refetch: refetchFinancierFlag } = useCompanyFinancierFlag(selectedCompanyId);
+  const { enabled: anticipationEnabled, refetch: refetchAnticipationFlag } = useCompanyAnticipationFlag(selectedCompanyId);
   const { enabled: bankDigitalEnabled, refetch: refetchBankDigitalFlag } = useCompanyBankDigitalFlag(selectedCompanyId);
   const { enabled: paymentsEnabled, refetch: refetchPaymentsFlag } = useCompanyPaymentsFlag(selectedCompanyId);
 
@@ -364,6 +365,7 @@ const Finance = () => {
     machinesEnabled,
     creditEnabled,
     isFinancier,
+    anticipationEnabled,
     bankDigitalEnabled,
     paymentsEnabled,
   };
@@ -388,7 +390,7 @@ const Finance = () => {
           showPicker
           showModulesTab
           onCancel={handleBack}
-          onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchFinancierFlag(); refetchBankDigitalFlag(); refetchPaymentsFlag(); }}
+          onSaved={() => { refetchMachinesFlag(); refetchCreditFlag(); refetchFinancierFlag(); refetchAnticipationFlag(); refetchBankDigitalFlag(); refetchPaymentsFlag(); }}
         />
       );
     }
@@ -479,9 +481,9 @@ const Finance = () => {
       case 'credit-applications':
         return creditEnabled ? <CreditApplicationsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'credit-anticipation':
-        return creditEnabled ? <AnticipationPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+        return creditEnabled && anticipationEnabled ? <AnticipationPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
         case 'credit-financier':
-        return creditEnabled && isFinancier ? <FinancierSettingsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+        return creditEnabled && anticipationEnabled && isFinancier ? <FinancierSettingsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'credit-ignored':
         return creditEnabled ? <CreditIgnoredOccurrencesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-dashboard':
@@ -590,6 +592,7 @@ const Finance = () => {
           machinesEnabled,
           creditEnabled,
           isFinancier,
+          anticipationEnabled,
           bankDigitalEnabled,
           paymentsEnabled,
         }}

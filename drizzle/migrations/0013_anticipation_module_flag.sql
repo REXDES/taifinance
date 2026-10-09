@@ -1,0 +1,2 @@
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS anticipation_module_enabled boolean NOT NULL DEFAULT false;
+UPDATE public.companies SET anticipation_module_enabled = true WHERE is_financiador = true OR id IN (SELECT cedent_company_id FROM public.financier_cedent_links WHERE active);

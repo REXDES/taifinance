@@ -25,7 +25,7 @@ export function FinancierAdminCard({ companyId }: Props) {
       setLoading(true);
       const [{ data: c }, { data: list }, { data: links }] = await Promise.all([
         db.from('companies').select('is_financiador, necta_seller_id').eq('id', companyId).maybeSingle(),
-        db.from('companies').select('id, name').eq('credit_module_enabled', true).neq('id', companyId).order('name'),
+        db.from('companies').select('id, name').eq('credit_module_enabled', true).eq('anticipation_module_enabled', true).neq('id', companyId).order('name'),
         db.from('financier_cedent_links').select('cedent_company_id, active').eq('financier_company_id', companyId),
       ]);
       setIsFin(!!c?.is_financiador);
@@ -75,7 +75,7 @@ export function FinancierAdminCard({ companyId }: Props) {
             <Input value={sellerId} onChange={e => setSellerId(e.target.value)} placeholder="UUID do estabelecimento" />
           </div>
           <div className="space-y-2">
-            <Label>Cedentes autorizados (empresas com Gestão de Crédito)</Label>
+            <Label>Cedentes autorizados (empresas com Antecipação ativa)</Label>
             {cedents.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma empresa com Gestão de Crédito ativa.</p>}
             <div className="grid sm:grid-cols-2 gap-2">
               {cedents.map(c => (

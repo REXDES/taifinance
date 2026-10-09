@@ -100,6 +100,7 @@ interface FinanceSidebarProps {
   machinesEnabled?: boolean;
   creditEnabled?: boolean;
   isFinancier?: boolean;
+  anticipationEnabled?: boolean;
   bankDigitalEnabled?: boolean;
   paymentsEnabled?: boolean;
 }
@@ -149,6 +150,7 @@ export function FinanceSidebar({
   machinesEnabled = false,
   creditEnabled = false,
   isFinancier = false,
+  anticipationEnabled = false,
   bankDigitalEnabled = false,
   paymentsEnabled = false,
 }: FinanceSidebarProps) {
@@ -170,7 +172,7 @@ export function FinanceSidebar({
         });
 
   // "Financiador" só existe quando a empresa está definida como financiadora.
-  const creditAdminItems = creditAdminMenuItems.filter(i => i.view !== 'credit-financier' || isFinancier);
+  const creditAdminItems = creditAdminMenuItems.filter(i => i.view !== 'credit-financier' || (isFinancier && anticipationEnabled));
 
 
   // Accordion state for top-level groups in normal mode (only one open at a time)
@@ -622,7 +624,7 @@ export function FinanceSidebar({
                 {creditEnabled && (
                   collapsed ? (
                     <>
-                      {filterAllowed(creditMenuItems).map(renderMenuItem)}
+                      {filterAllowed(creditMenuItems.filter(i => i.view !== 'credit-anticipation' || anticipationEnabled)).map(renderMenuItem)}
                       {(isSupervisor || isGerente) && filterAllowed(creditAdminItems).map(renderMenuItem)}
                     </>
                   ) : (
@@ -636,7 +638,7 @@ export function FinanceSidebar({
                         </Button>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                        {filterAllowed(creditMenuItems).map(renderMenuItem)}
+                        {filterAllowed(creditMenuItems.filter(i => i.view !== 'credit-anticipation' || anticipationEnabled)).map(renderMenuItem)}
                         {(isSupervisor || isGerente) && filterAllowed(creditAdminItems).map(renderMenuItem)}
                       </CollapsibleContent>
                     </Collapsible>

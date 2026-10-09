@@ -837,6 +837,7 @@ export type Database = {
           necta_account_id: string | null
           necta_credentials_at: string | null
           necta_mirror_enabled: boolean
+          necta_seller_id: string | null
           payments_module_enabled: boolean
           phone: string | null
           pix_city: string | null
@@ -868,6 +869,7 @@ export type Database = {
           necta_account_id?: string | null
           necta_credentials_at?: string | null
           necta_mirror_enabled?: boolean
+          necta_seller_id?: string | null
           payments_module_enabled?: boolean
           phone?: string | null
           pix_city?: string | null
@@ -899,6 +901,7 @@ export type Database = {
           necta_account_id?: string | null
           necta_credentials_at?: string | null
           necta_mirror_enabled?: boolean
+          necta_seller_id?: string | null
           payments_module_enabled?: boolean
           phone?: string | null
           pix_city?: string | null

@@ -98,6 +98,7 @@ interface MobileMenuSheetProps {
   onOpenCompanySettings?: () => void;
   machinesEnabled?: boolean;
   creditEnabled?: boolean;
+  isFinancier?: boolean;
   bankDigitalEnabled?: boolean;
   paymentsEnabled?: boolean;
 }
@@ -126,6 +127,7 @@ export function MobileMenuSheet({
   onOpenCompanySettings,
   machinesEnabled = false,
   creditEnabled = false,
+  isFinancier = false,
   bankDigitalEnabled = false,
   paymentsEnabled = false,
 }: MobileMenuSheetProps) {
@@ -205,7 +207,9 @@ export function MobileMenuSheet({
   const machinesGestao = machinesEnabled ? filterAllowed(machinesGestaoMenuItems) : [];
   const machinesCadastros = machinesEnabled ? filterAllowed(machinesCadastrosMenuItems) : [];
   const credit = creditEnabled ? filterAllowed(creditMenuItems) : [];
-  const creditAdmin = creditEnabled && (isSupervisor || isGerente) ? filterAllowed(creditAdminMenuItems) : [];
+  const creditAdmin = creditEnabled && (isSupervisor || isGerente)
+    ? filterAllowed(creditAdminMenuItems.filter(i => i.view !== 'credit-financier' || isFinancier))
+    : [];
   const payments = paymentsEnabled ? filterAllowed(paymentsMenuItems) : [];
 
   const hasGestaoFinanceira =

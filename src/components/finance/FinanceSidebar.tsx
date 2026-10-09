@@ -99,6 +99,7 @@ interface FinanceSidebarProps {
   onOpenCompanySettings?: () => void;
   machinesEnabled?: boolean;
   creditEnabled?: boolean;
+  isFinancier?: boolean;
   bankDigitalEnabled?: boolean;
   paymentsEnabled?: boolean;
 }
@@ -147,6 +148,7 @@ export function FinanceSidebar({
   onOpenCompanySettings,
   machinesEnabled = false,
   creditEnabled = false,
+  isFinancier = false,
   bankDigitalEnabled = false,
   paymentsEnabled = false,
 }: FinanceSidebarProps) {
@@ -166,6 +168,9 @@ export function FinanceSidebar({
            const key = FINANCE_VIEW_PERMISSION_KEY[i.view];
            return !!key && can(key);
         });
+
+  // "Financiador" só existe quando a empresa está definida como financiadora.
+  const creditAdminItems = creditAdminMenuItems.filter(i => i.view !== 'credit-financier' || isFinancier);
 
 
   // Accordion state for top-level groups in normal mode (only one open at a time)
@@ -618,7 +623,7 @@ export function FinanceSidebar({
                   collapsed ? (
                     <>
                       {filterAllowed(creditMenuItems).map(renderMenuItem)}
-                      {(isSupervisor || isGerente) && filterAllowed(creditAdminMenuItems).map(renderMenuItem)}
+                      {(isSupervisor || isGerente) && filterAllowed(creditAdminItems).map(renderMenuItem)}
                     </>
                   ) : (
                     <Collapsible open={openGroup === 'credit'} onOpenChange={setGroup('credit')}>
@@ -632,7 +637,7 @@ export function FinanceSidebar({
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pl-4 space-y-1 mt-1">
                         {filterAllowed(creditMenuItems).map(renderMenuItem)}
-                        {(isSupervisor || isGerente) && filterAllowed(creditAdminMenuItems).map(renderMenuItem)}
+                        {(isSupervisor || isGerente) && filterAllowed(creditAdminItems).map(renderMenuItem)}
                       </CollapsibleContent>
                     </Collapsible>
                   )

@@ -20,7 +20,7 @@ import { normalizeDate, sameDocument, todayISO, validatePayer } from '@/lib/nect
 import { parseLocalDate } from '@/lib/dateUtils';
 import { logWhatsappAttempt } from '@/lib/whatsappLogClient';
 
-interface Props { companyId: string; dialogOnly?: boolean; externalOpen?: boolean; onExternalOpenChange?: (o: boolean) => void; onCreated?: () => void }
+interface Props { companyId: string; dialogOnly?: boolean; externalOpen?: boolean; onExternalOpenChange?: (o: boolean) => void; onCreated?: () => void; prefill?: Partial<typeof emptyForm> }
 
 const METHOD_LABEL: Record<string, string> = {
   pix: 'PIX',

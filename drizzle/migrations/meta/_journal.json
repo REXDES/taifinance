@@ -64,6 +64,13 @@
       "when": 1790271771010,
       "tag": "0008_module_branding",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791552672671,
+      "tag": "0009_receivable_anticipation",
+      "breakpoints": true
     }
   ]
 }

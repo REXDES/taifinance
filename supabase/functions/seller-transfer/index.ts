@@ -16,9 +16,9 @@ const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
 const Body = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('destinations'), from_company_id: z.string().uuid() }),
+  z.object({ action: z.literal('lookup'), from_company_id: z.string().uuid(), seller_id: z.string().uuid() }),
   z.object({
-    action: z.literal('transfer'), from_company_id: z.string().uuid(), to_company_id: z.string().uuid(),
+    action: z.literal('transfer'), from_company_id: z.string().uuid(), to_seller_id: z.string().uuid(),
     amount: z.number().positive().max(10_000_000), description: z.string().trim().max(200).optional(),
     request_id: z.string().min(8).max(100),
   }),
@@ -43,14 +43,23 @@ Deno.serve(async (req) => {
       return !!data;
     };
 
-    if (body.action === 'destinations') {
+    const lookupSeller = async (sellerId: string): Promise<string | null> => {
+      try {
+        const r = await nectaRequest(`/establishments/${sellerId}`, 'GET', undefined, undefined, marketplaceCreds());
+        const e = r?.data ?? r;
+        return e?.tradeName ?? e?.fantasyName ?? e?.legalName ?? e?.companyName ?? e?.name
+          ?? [e?.firstName, e?.lastName].filter(Boolean).join(' ') || null;
+      } catch { return null; }
+    };
+
+    if (body.action === 'lookup') {
       if (!(await access(body.from_company_id))) return json({ error: 'Sem acesso.' }, 403);
-      const { data } = await admin.from('companies').select('id, name')
-        .not('necta_seller_id', 'is', null).neq('id', body.from_company_id).order('name');
-      return json({ ok: true, companies: data ?? [] });
+      const name = await lookupSeller(body.seller_id);
+      if (!name) return json({ ok: false, error: 'Conta Pagando.net não encontrada para este código.' });
+      return json({ ok: true, name });
     }
 
-    let from: string, to: string, amount: number, description: string | null, requestId: string;
+    let from: string, to: string | null, toSeller: string | null = null, toName: string | null = null, amount: number, description: string | null, requestId: string;
     let assignment: any = null;
     if (body.action === 'disburse') {
       const { data: a } = await admin.from('receivable_assignments').select('*').eq('id', body.assignment_id).maybeSingle();
@@ -66,20 +75,23 @@ Deno.serve(async (req) => {
       requestId = `assign-disburse-${a.id}`;
     } else {
       if (!(await access(body.from_company_id))) return json({ error: 'Sem acesso à empresa de origem.' }, 403);
-      if (body.from_company_id === body.to_company_id) return json({ error: 'Origem e destino iguais.' }, 400);
-      from = body.from_company_id; to = body.to_company_id; amount = body.amount;
+      const { data: tc } = await admin.from('companies').select('id').eq('necta_seller_id', body.to_seller_id).maybeSingle();
+      to = tc?.id ?? null; toSeller = body.to_seller_id; toName = await lookupSeller(body.to_seller_id);
+      if (!toName) return json({ ok: false, error: 'Conta Pagando.net de destino não encontrada.' });
+      amount = body.amount;
       description = body.description ?? null; requestId = `free-${body.request_id}`;
     }
 
     const { data: existing } = await admin.from('seller_transfers').select('*').eq('request_id', requestId).maybeSingle();
     if (existing?.status === 'done') return json({ ok: true, already: true, transfer: existing });
 
-    const { data: comps } = await admin.from('companies').select('id, name, necta_seller_id').in('id', [from, to]);
+    const { data: comps } = await admin.from('companies').select('id, name, necta_seller_id').in('id', [from, to].filter(Boolean) as string[]);
     const src = comps?.find((c: any) => c.id === from);
-    const dst = comps?.find((c: any) => c.id === to);
+    const dst = toSeller ? { necta_seller_id: toSeller } : comps?.find((c: any) => c.id === to);
+    if (src?.necta_seller_id && src.necta_seller_id === dst?.necta_seller_id) return json({ error: 'Origem e destino iguais.' }, 400);
 
     const row = existing ?? (await admin.from('seller_transfers').insert({
-      from_company_id: from, to_company_id: to, amount, description, request_id: requestId,
+      from_company_id: from, to_company_id: to, to_seller_id: dst?.necta_seller_id ?? null, to_seller_name: toName, amount, description, request_id: requestId,
       kind: body.action === 'disburse' ? 'disbursement' : 'free',
       assignment_id: assignment?.id ?? null, created_by: u.user.id,
     }).select().single()).data;

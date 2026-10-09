@@ -65,15 +65,10 @@ export function FinancierAdminCard({ companyId, moduleEnabled = true }: Props) {
           <p className="text-sm text-muted-foreground">
             A empresa passa a antecipar títulos de cedentes autorizados. O valor é liquidado automaticamente na conta digital dela quando o sacado paga.
           </p>
-          {!moduleEnabled && (
-            <p className="text-sm text-amber-600 dark:text-amber-400">
-              Ative o módulo "Antecipação de Recebíveis" acima para liberar esta configuração.
-            </p>
-          )}
         </div>
-        <Switch checked={moduleEnabled ? isFin : false} disabled={!moduleEnabled} onCheckedChange={setIsFin} />
+        <Switch checked={isFin} onCheckedChange={setIsFin} />
       </div>
-      {isFin && moduleEnabled && (
+      {isFin && (
         <>
           <div className="space-y-1">
             <Label>ID do seller na Pagando (conta digital que recebe)</Label>
@@ -81,7 +76,7 @@ export function FinancierAdminCard({ companyId, moduleEnabled = true }: Props) {
           </div>
           <div className="space-y-2">
             <Label>Cedentes autorizados (empresas com Antecipação ativa)</Label>
-            {cedents.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma empresa com Gestão de Crédito ativa.</p>}
+            {cedents.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma empresa com o módulo Antecipação ativo.</p>}
             <div className="grid sm:grid-cols-2 gap-2">
               {cedents.map(c => (
                 <label key={c.id} className="flex items-center gap-2 text-sm">
@@ -96,7 +91,7 @@ export function FinancierAdminCard({ companyId, moduleEnabled = true }: Props) {
         </>
       )}
       <div className="flex justify-end">
-        <Button size="sm" onClick={save} disabled={saving || !moduleEnabled}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar financiador</Button>
+        <Button size="sm" onClick={save} disabled={saving}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar financiador</Button>
       </div>
     </div>
   );

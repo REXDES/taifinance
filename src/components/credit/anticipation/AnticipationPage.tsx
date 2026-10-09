@@ -195,6 +195,13 @@ export function AnticipationPage({ companyId }: Props) {
               <TableCell className="text-right">{brl(a.face_amount)}</TableCell>
               <TableCell className="text-right">{brl(a.net_amount)}</TableCell>
               <TableCell><Badge variant={s.variant}>{s.label}</Badge>{a.rejection_reason && <div className="text-xs text-muted-foreground mt-1">{a.rejection_reason}</div>}</TableCell>
+              <TableCell>
+                {(attachments[a.payable_receivable_id] ?? []).length === 0
+                  ? <span className="text-xs text-muted-foreground">—</span>
+                  : (attachments[a.payable_receivable_id] ?? []).map((f: any) => (
+                    <button key={f.id} className="block text-xs underline text-left" onClick={() => openFile(f.storage_path)}>{f.file_name}</button>
+                  ))}
+              </TableCell>
               <TableCell className="text-right space-x-2 whitespace-nowrap">
                 {busy === a.id && <Loader2 className="w-4 h-4 animate-spin inline" />}
                 {asFinancier && a.status === 'requested' && <>

@@ -2,7 +2,7 @@
 // Após o pagamento do boleto (sale.paid), cria um split pós-venda na Multi-Pay
 // direcionando o valor líquido da cessão ao seller do financiador.
 // Idempotente: request_id fixo por cessão; não repete se já houve sucesso.
-import { nectaRequest, companyCredentials } from './nectaSeller.ts';
+import { nectaRequest, companyCredentials, resolveCompanySellerId } from './nectaSeller.ts';
 
 export async function settleAssignment(admin: any, assignmentId: string, actor?: string | null) {
   const { data: a } = await admin.from('receivable_assignments').select('*').eq('id', assignmentId).maybeSingle();
@@ -17,7 +17,8 @@ export async function settleAssignment(admin: any, assignmentId: string, actor?:
     return { ok: true, already: true };
   }
 
-  const { data: fin } = await admin.from('companies').select('necta_seller_id, name').eq('id', a.financier_company_id).maybeSingle();
+  const { data: finRow } = await admin.from('companies').select('name').eq('id', a.financier_company_id).maybeSingle();
+  const fin = { ...(finRow ?? {}), necta_seller_id: await resolveCompanySellerId(admin, a.financier_company_id) };
   let saleUuid: string | null = null;
   if (a.necta_sale_id) {
     const { data: s } = await admin.from('necta_sales').select('necta_sale_id').eq('id', a.necta_sale_id).maybeSingle();

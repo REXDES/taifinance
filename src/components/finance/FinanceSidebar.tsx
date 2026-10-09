@@ -172,7 +172,7 @@ export function FinanceSidebar({
         });
 
   // "Financiador" só existe quando a empresa está definida como financiadora.
-  const creditAdminItems = creditAdminMenuItems.filter(i => i.view !== 'credit-financier' || (isFinancier && anticipationEnabled));
+  const creditAdminItems = creditAdminMenuItems.filter(i => i.view !== 'credit-financier' || isFinancier);
 
 
   // Accordion state for top-level groups in normal mode (only one open at a time)

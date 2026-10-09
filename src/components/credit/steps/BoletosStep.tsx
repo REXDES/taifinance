@@ -122,10 +122,17 @@ export function BoletosStep({
       {items.length === 0 ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">Crie as {contract.num_parcelas} parcelas no módulo de Contas a Receber. Cada parcela usará a chave PIX configurada na empresa.</p>
-          <Button onClick={generate} disabled={generating}>
-            {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Receipt className="w-4 h-4 mr-2" />}
-            Gerar parcelas
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={generate} disabled={generating}>
+              {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Receipt className="w-4 h-4 mr-2" />}
+              Gerar parcelas (Cobrança Própria)
+            </Button>
+            {paymentsEnabled && (
+              <Button variant="secondary" onClick={openGatewayCharge} title="Boleto/PIX emitidos pelo gateway — o valor cai na conta Pagando.net e fica disponível para antecipação">
+                Emitir via <span className="ml-1"><PaymentsBrandName /></span>
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <Table>

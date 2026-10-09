@@ -94,7 +94,7 @@ export function AnticipationPage({ companyId }: Props) {
       allAtt.push(...(recvAtt ?? []));
     }
     const map: Record<string, any[]> = {};
-    (att ?? []).forEach((a: any) => { (map[a.payable_receivable_id] ||= []).push(a); });
+    allAtt.forEach((a: any) => { (map[a.payable_receivable_id] ||= []).push(a); });
     setAttachments(map);
     setLoading(false);
   }, [companyId]);

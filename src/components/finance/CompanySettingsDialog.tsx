@@ -409,7 +409,7 @@ export function CompanySettingsContent({
                 <Switch checked={anticipationModuleEnabled} onCheckedChange={setAnticipationModuleEnabled} />
               </div>
             </div>
-            {effectiveCompanyId && anticipationModuleEnabled && <FinancierAdminCard companyId={effectiveCompanyId} />}
+            {effectiveCompanyId && <FinancierAdminCard companyId={effectiveCompanyId} moduleEnabled={anticipationModuleEnabled} />}
             <div className="rounded-lg border border-border p-4 space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">

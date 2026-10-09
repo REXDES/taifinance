@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Landmark, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Props { companyId: string }
+interface Props { companyId: string; moduleEnabled?: boolean }
 
 /** Configuração administrativa: empresa atua como Financiador e quais cedentes a enxergam. */
-export function FinancierAdminCard({ companyId }: Props) {
+export function FinancierAdminCard({ companyId, moduleEnabled = true }: Props) {
   const db = supabase as any;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -65,10 +65,15 @@ export function FinancierAdminCard({ companyId }: Props) {
           <p className="text-sm text-muted-foreground">
             A empresa passa a antecipar títulos de cedentes autorizados. O valor é liquidado automaticamente na conta digital dela quando o sacado paga.
           </p>
+          {!moduleEnabled && (
+            <p className="text-sm text-amber-600 dark:text-amber-400">
+              Ative o módulo "Antecipação de Recebíveis" acima para liberar esta configuração.
+            </p>
+          )}
         </div>
-        <Switch checked={isFin} onCheckedChange={setIsFin} />
+        <Switch checked={moduleEnabled ? isFin : false} disabled={!moduleEnabled} onCheckedChange={setIsFin} />
       </div>
-      {isFin && (
+      {isFin && moduleEnabled && (
         <>
           <div className="space-y-1">
             <Label>ID do seller na Pagando (conta digital que recebe)</Label>
@@ -91,7 +96,7 @@ export function FinancierAdminCard({ companyId }: Props) {
         </>
       )}
       <div className="flex justify-end">
-        <Button size="sm" onClick={save} disabled={saving}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar financiador</Button>
+        <Button size="sm" onClick={save} disabled={saving || !moduleEnabled}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar financiador</Button>
       </div>
     </div>
   );

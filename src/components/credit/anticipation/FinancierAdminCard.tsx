@@ -65,10 +65,15 @@ export function FinancierAdminCard({ companyId, moduleEnabled = true }: Props) {
           <p className="text-sm text-muted-foreground">
             A empresa passa a antecipar títulos de cedentes autorizados. O valor é liquidado automaticamente na conta digital dela quando o sacado paga.
           </p>
+          {!moduleEnabled && (
+            <p className="text-sm text-amber-600 dark:text-amber-400">
+              Ative o módulo "Antecipação de Recebíveis" acima para liberar esta configuração.
+            </p>
+          )}
         </div>
-        <Switch checked={isFin} onCheckedChange={setIsFin} />
+        <Switch checked={moduleEnabled ? isFin : false} disabled={!moduleEnabled} onCheckedChange={setIsFin} />
       </div>
-      {isFin && (
+      {isFin && moduleEnabled && (
         <>
           <div className="space-y-1">
             <Label>ID do seller na Pagando (conta digital que recebe)</Label>

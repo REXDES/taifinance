@@ -1,3 +1,4 @@
+import { FinancierAdminCard } from '@/components/credit/anticipation/FinancierAdminCard';
 import { PaymentsBrandName, paymentsBrandName } from '@/contexts/ModuleBrandingContext';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -391,6 +392,7 @@ export function CompanySettingsContent({
                 <Switch checked={creditModuleEnabled} onCheckedChange={setCreditModuleEnabled} />
               </div>
             </div>
+            {effectiveCompanyId && <FinancierAdminCard companyId={effectiveCompanyId} />}
             <div className="rounded-lg border border-border p-4 space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">

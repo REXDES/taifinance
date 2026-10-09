@@ -102,10 +102,12 @@ export const machinesMenuItems: MenuItem[] = [
 
 export const creditMenuItems: MenuItem[] = [
   { view: 'credit-applications', label: 'Propostas', icon: <ClipboardList className="w-4 h-4" /> },
+  { view: 'credit-anticipation', label: 'Antecipação', icon: <ArrowRightLeft className="w-4 h-4" /> },
 ];
 
 export const creditAdminMenuItems: MenuItem[] = [
   { view: 'credit-ignored', label: 'Ocorrências Ignoradas', icon: <Shield className="w-4 h-4" /> },
+  { view: 'credit-financier', label: 'Financiador', icon: <Building2 className="w-4 h-4" /> },
 ];
 
 export const paymentsMenuItems: MenuItem[] = [

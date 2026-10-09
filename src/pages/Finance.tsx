@@ -56,6 +56,8 @@ import { useCompanyPaymentsFlag } from '@/hooks/usePaymentsModule';
 import { CreditAdminPage } from '@/components/credit/CreditAdminPage';
 import { CreditApplicationsPage } from '@/components/credit/CreditApplicationsPage';
 import { CreditIgnoredOccurrencesPage } from '@/components/credit/CreditIgnoredOccurrencesPage';
+import { AnticipationPage } from '@/components/credit/anticipation/AnticipationPage';
+import { FinancierSettingsPage } from '@/components/credit/anticipation/FinancierSettingsPage';
 import { NectaDashboardPage } from '@/components/payments/NectaDashboardPage';
 import { NectaTransferPage, NectaFeesPage, NectaPosPage } from '@/components/payments/NectaServicesPages';
 import { NectaRegistrationPage } from '@/components/payments/NectaRegistrationPage';
@@ -111,6 +113,8 @@ export type FinanceView =
   | 'credit-admin'
   | 'credit-applications'
   | 'credit-ignored'
+  | 'credit-anticipation'
+  | 'credit-financier'
   | 'payments-dashboard'
   | 'payments-registration'
   | 'payments-establishments'
@@ -158,6 +162,8 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'machines-movements',
   'credit-applications',
   'credit-ignored',
+  'credit-anticipation',
+  'credit-financier',
   'payments-dashboard',
   'payments-registration',
   'payments-establishments',
@@ -470,6 +476,10 @@ const Finance = () => {
         return creditEnabled ? <CreditAdminPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'credit-applications':
         return creditEnabled ? <CreditApplicationsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'credit-anticipation':
+        return creditEnabled ? <AnticipationPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'credit-financier':
+        return creditEnabled ? <FinancierSettingsPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'credit-ignored':
         return creditEnabled ? <CreditIgnoredOccurrencesPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'payments-dashboard':

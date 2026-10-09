@@ -99,6 +99,7 @@ interface MobileMenuSheetProps {
   machinesEnabled?: boolean;
   creditEnabled?: boolean;
   isFinancier?: boolean;
+  anticipationEnabled?: boolean;
   bankDigitalEnabled?: boolean;
   paymentsEnabled?: boolean;
 }
@@ -128,6 +129,7 @@ export function MobileMenuSheet({
   machinesEnabled = false,
   creditEnabled = false,
   isFinancier = false,
+  anticipationEnabled = false,
   bankDigitalEnabled = false,
   paymentsEnabled = false,
 }: MobileMenuSheetProps) {
@@ -206,7 +208,7 @@ export function MobileMenuSheet({
   const machinesTop = machinesEnabled ? filterAllowed(machinesTopMenuItems) : [];
   const machinesGestao = machinesEnabled ? filterAllowed(machinesGestaoMenuItems) : [];
   const machinesCadastros = machinesEnabled ? filterAllowed(machinesCadastrosMenuItems) : [];
-  const credit = creditEnabled ? filterAllowed(creditMenuItems) : [];
+  const credit = creditEnabled ? filterAllowed(creditMenuItems.filter(i => i.view !== 'credit-anticipation' || anticipationEnabled)) : [];
   const creditAdmin = creditEnabled && (isSupervisor || isGerente)
     ? filterAllowed(creditAdminMenuItems.filter(i => i.view !== 'credit-financier' || isFinancier))
     : [];

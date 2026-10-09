@@ -432,3 +432,18 @@ export async function consultCredit(params: {
   if (data?.error) throw new Error(data.error);
   return data as ConsultResult;
 }
+
+/** Indica se o módulo Antecipação está habilitado para a empresa. */
+export function useCompanyAnticipationFlag(companyId: string | null) {
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    if (!companyId) { setEnabled(false); setLoading(false); return; }
+    setLoading(true);
+    const { data } = await (supabase as any).from('companies').select('anticipation_module_enabled').eq('id', companyId).maybeSingle();
+    setEnabled(!!data?.anticipation_module_enabled);
+    setLoading(false);
+  }, [companyId]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { enabled, loading, refetch };
+}

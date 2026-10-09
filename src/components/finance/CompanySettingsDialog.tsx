@@ -92,6 +92,7 @@ export function CompanySettingsContent({
   // Módulos
   const [machinesModuleEnabled, setMachinesModuleEnabled] = useState(false);
   const [creditModuleEnabled, setCreditModuleEnabled] = useState(false);
+  const [anticipationModuleEnabled, setAnticipationModuleEnabled] = useState(false);
   const [bankDigitalModuleEnabled, setBankDigitalModuleEnabled] = useState(false);
   const [paymentsModuleEnabled, setPaymentsModuleEnabled] = useState(false);
   const [nectaMirrorEnabled, setNectaMirrorEnabled] = useState(false);
@@ -154,6 +155,7 @@ export function CompanySettingsContent({
         setWhatsappNotifyTime(d.whatsapp_notify_time || '08:00');
         setMachinesModuleEnabled(!!d.machines_module_enabled);
         setCreditModuleEnabled(!!d.credit_module_enabled);
+        setAnticipationModuleEnabled(!!d.anticipation_module_enabled);
         setBankDigitalModuleEnabled(!!d.bank_digital_module_enabled);
         setPaymentsModuleEnabled(!!d.payments_module_enabled);
         setNectaMirrorEnabled(!!d.necta_mirror_enabled);
@@ -177,6 +179,7 @@ export function CompanySettingsContent({
           whatsapp_notify_time: whatsappNotifyTime,
           machines_module_enabled: machinesModuleEnabled,
           credit_module_enabled: creditModuleEnabled,
+          anticipation_module_enabled: anticipationModuleEnabled,
           bank_digital_module_enabled: bankDigitalModuleEnabled,
           payments_module_enabled: paymentsModuleEnabled,
           necta_mirror_enabled: nectaMirrorEnabled,
@@ -392,7 +395,21 @@ export function CompanySettingsContent({
                 <Switch checked={creditModuleEnabled} onCheckedChange={setCreditModuleEnabled} />
               </div>
             </div>
-            {effectiveCompanyId && <FinancierAdminCard companyId={effectiveCompanyId} />}
+            <div className="rounded-lg border border-border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <Label className="text-base flex items-center gap-2">
+                    <Wrench className="w-4 h-4" />
+                    Antecipação de Recebíveis
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Libera o menu Antecipação (dentro de Gestão de Crédito) para esta empresa ceder títulos ou atuar como financiador.
+                  </p>
+                </div>
+                <Switch checked={anticipationModuleEnabled} onCheckedChange={setAnticipationModuleEnabled} />
+              </div>
+            </div>
+            {effectiveCompanyId && anticipationModuleEnabled && <FinancierAdminCard companyId={effectiveCompanyId} />}
             <div className="rounded-lg border border-border p-4 space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">

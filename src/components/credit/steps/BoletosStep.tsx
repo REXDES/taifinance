@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { parseLocalDate } from '@/lib/dateUtils';
 import { useCompanyPaymentsFlag } from '@/hooks/usePaymentsModule';
 import { NectaChargesPage } from '@/components/payments/NectaChargesPage';
-import { PaymentsBrandName } from '@/components/payments/ModuleBrandMark';
+import { PaymentsBrandName } from '@/contexts/ModuleBrandingContext';
 
 export function BoletosStep({
   applicationId,

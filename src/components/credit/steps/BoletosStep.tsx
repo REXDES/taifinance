@@ -160,6 +160,17 @@ export function BoletosStep({
           </TableBody>
         </Table>
       )}
+
+      {paymentsEnabled && (
+        <NectaChargesPage
+          companyId={companyId}
+          dialogOnly
+          externalOpen={gatewayOpen}
+          onExternalOpenChange={setGatewayOpen}
+          prefill={prefill ?? undefined}
+          onCreated={refetch}
+        />
+      )}
     </div>
   );
 }

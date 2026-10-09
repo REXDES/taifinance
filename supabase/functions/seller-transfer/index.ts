@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
       requestId = `assign-disburse-${a.id}`;
     } else {
       if (!(await access(body.from_company_id))) return json({ error: 'Sem acesso à empresa de origem.' }, 403);
+      from = body.from_company_id;
       const { data: tc } = await admin.from('companies').select('id').eq('necta_seller_id', body.to_seller_id).maybeSingle();
       to = tc?.id ?? null; toSeller = body.to_seller_id; toName = await lookupSeller(body.to_seller_id);
       if (!toName) return json({ ok: false, error: 'Conta Pagando.net de destino não encontrada.' });

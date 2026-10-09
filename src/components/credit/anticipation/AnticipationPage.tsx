@@ -90,7 +90,7 @@ export function AnticipationPage({ companyId }: Props) {
     const recvPrIds = recv.map((a: any) => a.payable_receivable_id).filter(Boolean);
     if (recvPrIds.length) {
       const { data: recvAtt } = await db.from('receivable_assignment_attachments').select('*').in('payable_receivable_id', recvPrIds);
-      (att ??= []).push(...(recvAtt ?? []));
+      allAtt.push(...(recvAtt ?? []));
     }
     const map: Record<string, any[]> = {};
     (att ?? []).forEach((a: any) => { (map[a.payable_receivable_id] ||= []).push(a); });

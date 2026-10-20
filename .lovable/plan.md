@@ -16,7 +16,9 @@ Um novo grupo de menus dentro de Gestão de Máquinas: **Compra e Venda**.
 3. **Oportunidades de leilão**
    - O usuário escolhe a categoria e clica "Buscar leilões". O app pesquisa só sites de leilão e lista: máquina, lance/preço atual, data do leilão, local, link.
    - Para cada item, o app calcula o **preço máximo de compra**:
-     `preço de venda da tabela ÷ (1 + margem) − despesas de recuperação`
+     - Preço de venda necessário = compra × (1 + margem%) + compra × recuperação%
+     - Logo, lance máximo = preço da tabela ÷ (1 + margem% + recuperação%)
+     - Exemplo: tabela R$ 130.000, margem 20%, recuperação 10% → lance máximo R$ 100.000
    - Mostra se é **Oportunidade** (lance abaixo do máximo), **No limite** ou **Fora**, com o lucro estimado em R$ e %.
    - Anúncios de balcão não entram na comparação (já têm preço final), só alimentam a tabela de preços.
    - O usuário pode salvar uma oportunidade para acompanhar ou marcar "Comprei".
@@ -44,5 +46,5 @@ Um novo grupo de menus dentro de Gestão de Máquinas: **Compra e Venda**.
 - Peças e venda reutilizam `generateMaintenancePayables`/`payables_receivables` para conta a pagar/receber.
 
 ## A confirmar
-- A margem é sobre o preço de venda ou sobre o custo? O plano usa **sobre o custo** (custo × (1+margem) = preço). Se preferir sobre a venda, muda só a fórmula.
+- Fórmula confirmada: margem e recuperação são percentuais sobre o preço de compra. Na venda real, a recuperação usa os custos lançados (peças + manutenções) no lugar do percentual estimado.
 - Sites de leilão preferidos (ex.: Sodré Santoro, Superbid, Mega Leilões) podem ser informados nas configurações.

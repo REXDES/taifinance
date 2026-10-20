@@ -1,28 +1,48 @@
-# Split pelo saldo da conta (Pagando.net)
+# Compra e Venda de Máquinas (módulo Gestão de Máquinas)
 
-## O que a Necta oferece
-`POST /banking/establishments/{uuid}/splits` tira um valor do **saldo** da conta da empresa e envia para um recebedor. Não depende de uma venda paga. Regras da documentação:
-- O recebedor precisa ser um **beneficiário** já cadastrado na Pagando.net. Não aceita outro seller direto.
-- O valor é sempre fixo em reais. Não aceita percentual.
-- Dá para agendar uma data de liquidação. Ela precisa cair em dia útil, senão a Pagando.net recusa.
-- `GET` na mesma rota lista os splits já feitos pela empresa.
+## O que o usuário vai ter
+Um novo grupo de menus dentro de Gestão de Máquinas: **Compra e Venda**.
 
-Isso complementa a "Transferir entre contas", que continua sendo de seller para seller.
+1. **Configurações por categoria** (agrícola, pesada/construção, mini máquinas e outras que o usuário criar)
+   - Margem de lucro desejada (%)
+   - % de despesas de recuperação (deixar a máquina em condições de venda)
+   - Palavras-chave e sites preferidos para a pesquisa
 
-## O que vamos construir
-1. Em **Pagamentos → Transferir entre contas**, uma segunda aba: **Split pelo saldo**.
-   - Escolher o beneficiário na lista dos recebedores de split que já estão cadastrados (os mesmos de Clientes/Fornecedores).
-   - Informar o valor, a data de liquidação (opcional) e uma descrição.
-   - A data aceita só dias úteis. Antes de enviar, o app pede confirmação com o nome e o valor.
-2. Um histórico próprio para essa aba. Ele junta o que foi gravado no Tai Finance com a lista que a Pagando.net devolve, mostrando o status de cada split.
-3. A mesma permissão que hoje controla "Transferir entre contas".
+2. **Tabela de preços de venda**
+   - Uma linha por modelo (categoria, marca, modelo, faixa de ano, horímetro).
+   - Botão "Pesquisar preços na internet": o app busca anúncios de venda direta (fora de leilão), mostra os preços encontrados com link da fonte e sugere um preço (mediana).
+   - O usuário aceita a sugestão ou digita o próprio preço. O preço de referência fica salvo com a data da pesquisa.
+
+3. **Oportunidades de leilão**
+   - O usuário escolhe a categoria e clica "Buscar leilões". O app pesquisa só sites de leilão e lista: máquina, lance/preço atual, data do leilão, local, link.
+   - Para cada item, o app calcula o **preço máximo de compra**:
+     `preço de venda da tabela ÷ (1 + margem) − despesas de recuperação`
+   - Mostra se é **Oportunidade** (lance abaixo do máximo), **No limite** ou **Fora**, com o lucro estimado em R$ e %.
+   - Anúncios de balcão não entram na comparação (já têm preço final), só alimentam a tabela de preços.
+   - O usuário pode salvar uma oportunidade para acompanhar ou marcar "Comprei".
+
+4. **Comprei → controle até a venda**
+   - "Comprei" cadastra a máquina com origem "Compra para revenda", valor pago e gera a conta a pagar (como já acontece nas compras).
+   - Na ficha da máquina, uma aba **Custos de recuperação**: manutenções (já existentes) e compra de peças (novo: peça, fornecedor, valor, data, gera conta a pagar).
+   - Painel de custo: compra + peças + manutenções + outras despesas = **custo total**, comparado com o preço da tabela.
+
+5. **Venda**
+   - Botão "Vender": mostra custo total, preço sugerido pela margem configurada, e o usuário define o preço final. Mostra a margem real.
+   - Gera a conta a receber, marca a máquina como vendida e guarda o histórico (comprada por, gasto, vendida por, lucro).
+   - Relatório simples de revendas: lucro por máquina e por categoria.
+
+## Pesquisa na internet
+- Usaremos o serviço de pesquisa/leitura de páginas Firecrawl (será pedida a conexão uma vez) e a IA do Lovable para organizar os resultados (extrair modelo, ano, horas, preço, data do leilão).
+- Os resultados dependem do que os sites mostram publicamente; alguns leilões exigem login e podem não aparecer. Cada pesquisa gasta créditos do serviço.
 
 ## Detalhes técnicos
-- Na função `seller-transfer`, entram as ações `balance_split` e `list_balance_splits`. As duas validam o acesso à empresa. O envio usa a credencial da própria empresa (`companyCredentials`), porque a rota é por estabelecimento. A empresa é identificada pelo seller dela, via `resolveCompanySellerId`.
-- O envio vai assim: `{ recipientType:'BENEFICIARY', recipientId, amount: centavos, splitType:'ABSOLUTE', settlementDate? }`. Cada envio tem um `request_id`, que evita mandar o mesmo split duas vezes.
-- Cada split fica registrado em `seller_transfers`, com `kind='balance_split'`, `to_seller_id` igual ao id do beneficiário e o nome dele. Não é preciso mudar o banco, a não ser que `kind` tenha uma regra que só aceite certos valores. Se tiver, um ajuste pequeno libera o novo valor.
-- O beneficiário sai do cadastro de recebedores de split que já existe (`useSplitRecipients`). Antes de aparecer na lista, ele precisa ter o id de beneficiário da Pagando.net.
+- Novas tabelas (com company_id, GRANTs e RLS por `has_company_access`): `machine_trade_category_settings` (margem, % recuperação, keywords, sites), `machine_price_table` (modelo, preço referência, preço sugerido, fontes jsonb, pesquisado_em), `machine_auction_opportunities` (dados do leilão, preço máximo calculado, status salvo/comprado/descartado, machine_id), `machine_parts_purchases` (machine_id, peça, valor, payable_id), `machine_sales` (machine_id, preço, custo total, margem real, receivable_id).
+- Coluna em `machines`: `acquisition_source` passa a aceitar `resale_purchase`; usa as categorias existentes (`machine_categories`).
+- Edge function `machine-market-search` com ações `price_research` (busca de anúncios) e `auction_search` (busca de leilões): Firecrawl search + extração por IA (Lovable AI, saída estruturada). Valida acesso à empresa.
+- Cálculo do preço máximo e margem num helper `src/lib/machineTrade.ts` com testes de unidade (fórmula da margem e da recuperação).
+- Novas permissões em `src/lib/permissions.ts`: `machines.trade_settings`, `machines.price_table`, `machines.auctions`, `machines.resale`.
+- Peças e venda reutilizam `generateMaintenancePayables`/`payables_receivables` para conta a pagar/receber.
 
-## A confirmar no primeiro teste
-- Se a credencial da empresa tem permissão nessa rota. Se a Pagando.net responder 403, o envio passa a usar a credencial do marketplace.
-- Teste com R$ 1,00 para um beneficiário real.
+## A confirmar
+- A margem é sobre o preço de venda ou sobre o custo? O plano usa **sobre o custo** (custo × (1+margem) = preço). Se preferir sobre a venda, muda só a fórmula.
+- Sites de leilão preferidos (ex.: Sodré Santoro, Superbid, Mega Leilões) podem ser informados nas configurações.

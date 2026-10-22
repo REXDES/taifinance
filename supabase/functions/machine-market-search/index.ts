@@ -11,6 +11,7 @@ async function search(query: string, lovKey: string, fcKey: string, limit = 8): 
     try { return await searchOnce(query, lovKey, fcKey, limit); }
     catch (e) {
       console.error("search attempt", attempt + 1, e);
+      if (/\[(40[0-4])\]/.test(String(e))) throw e;
       if (attempt === 0) await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
     }
   }

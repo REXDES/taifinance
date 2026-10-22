@@ -107,6 +107,26 @@ export function BiometryStep({
     }
   };
 
+  const requestResend = async () => {
+    if (!bio) return;
+    const { error } = await (supabase as any).from('credit_biometry').update({
+      status: 'pending',
+      selfie_url: null,
+      doc_front_url: null,
+      doc_back_url: null,
+      similarity_score: null,
+      liveness_passed: null,
+      ocr_data: null,
+      ai_analysis: null,
+      rejection_reason: null,
+      completed_at: null,
+      link_sent_at: null,
+    }).eq('id', bio.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Link reaberto. Envie novamente ao cliente.');
+    refetch(true);
+  };
+
   const manualDecision = async (decision: 'approved' | 'rejected') => {
     if (!bio) return;
     await (supabase as any).from('credit_biometry').update({
@@ -197,6 +217,12 @@ export function BiometryStep({
       {bio.rejection_reason && (
         <div className="text-xs text-destructive rounded border border-destructive/30 bg-destructive/5 p-2">
           {bio.rejection_reason}
+        </div>
+      )}
+
+      {bio.status === 'rejected' && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={requestResend}><RefreshCw className="w-3 h-3 mr-1" />Solicitar reenvio da documentação</Button>
         </div>
       )}
 

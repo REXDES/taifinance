@@ -59,7 +59,7 @@ export function MachineTradePage({ companyId }: { companyId: string }) {
           <TabsTrigger value="resale">Minhas revendas</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
         </TabsList>
-        <TabsContent value="auctions"><AuctionsTab companyId={companyId} settings={settings.rows} prices={prices.rows} /></TabsContent>
+        <TabsContent value="auctions"><AuctionsTab companyId={companyId} settings={settings.rows} prices={prices.rows} refetchPrices={prices.refetch} /></TabsContent>
         <TabsContent value="prices"><PricesTab companyId={companyId} settings={settings.rows} prices={prices.rows} refetch={prices.refetch} /></TabsContent>
         <TabsContent value="resale"><ResaleTab companyId={companyId} settings={settings.rows} /></TabsContent>
         <TabsContent value="settings"><SettingsTab companyId={companyId} settings={settings.rows} refetch={settings.refetch} /></TabsContent>
@@ -208,7 +208,8 @@ function PricesTab({ companyId, settings, prices, refetch }: { companyId: string
 }
 
 /* ---------------- Leilões ---------------- */
-function AuctionsTab({ companyId, settings, prices }: { companyId: string; settings: Setting[]; prices: Price[] }) {
+type Market = { loading: boolean; price: number; items: Found[] };
+function AuctionsTab({ companyId, settings, prices, refetchPrices }: { companyId: string; settings: Setting[]; prices: Price[]; refetchPrices: () => void }) {
   const saved = useRows<any>('machine_auction_opportunities', companyId);
   const [settingId, setSettingId] = useState('');
   const [priceId, setPriceId] = useState('all');
@@ -216,6 +217,9 @@ function AuctionsTab({ companyId, settings, prices }: { companyId: string; setti
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<Found[]>([]);
   const [buy, setBuy] = useState<any | null>(null);
+  const [market, setMarket] = useState<Record<number, Market>>({});
+  const [marketView, setMarketView] = useState<(Market & { title: string }) | null>(null);
+  const [addTable, setAddTable] = useState<{ f: Found; k: number } | null>(null);
   const setting = settings.find(s => s.id === settingId);
   const options = prices.filter(p => !settingId || p.setting_id === settingId);
 
@@ -224,23 +228,42 @@ function AuctionsTab({ companyId, settings, prices }: { companyId: string; setti
     const t = `${f.title} ${f.model ?? ''}`.toLowerCase();
     return options.find(p => t.includes(p.model.toLowerCase()));
   };
-  const calc = (f: Found) => {
+  const calc = (f: Found, k?: number) => {
     const p = matchPrice(f);
     const s = settings.find(x => x.id === (p?.setting_id ?? settingId)) ?? setting;
-    if (!p || !p.reference_price || !s) return { p, max: null as number | null };
-    return { p, s, max: maxBid(p.reference_price, s.profit_margin_pct, s.recovery_pct) };
+    const mkPrice = k != null ? market[k]?.price : undefined;
+    const base = p?.reference_price || mkPrice || 0;
+    if (!base || !s) return { p, max: null as number | null };
+    return { p, s, base, estimated: !p?.reference_price, max: maxBid(base, s.profit_margin_pct, s.recovery_pct) };
+  };
+
+  const loadMarket = async (list: Found[]) => {
+    const init: Record<number, Market> = {};
+    list.forEach((_, i) => { init[i] = { loading: true, price: 0, items: [] }; });
+    setMarket(init);
+    await Promise.all(list.slice(0, 8).map(async (f, i) => {
+      const q = [f.brand, f.model, f.year].filter(Boolean).join(' ') || f.title;
+      try {
+        const items = (await invokeSearch({ action: 'price_research', company_id: companyId, query: q })).filter(x => x.price && x.price > 0);
+        setMarket(m => ({ ...m, [i]: { loading: false, price: median(items.map(x => x.price!)), items } }));
+      } catch { setMarket(m => ({ ...m, [i]: { loading: false, price: 0, items: [] } })); }
+    }));
+    setMarket(m => { const n = { ...m }; Object.keys(n).forEach(key => { if (n[+key].loading) n[+key] = { loading: false, price: 0, items: [] }; }); return n; });
   };
 
   const run = async () => {
     if (!setting) return toast.error('Escolha o tipo de máquina');
     const sel = prices.find(p => p.id === priceId);
     const q = query.trim() || (sel ? [sel.brand, sel.model].filter(Boolean).join(' ') : setting.keywords || setting.name);
-    setBusy(true);
-    try { const r = await invokeSearch({ action: 'auction_search', company_id: companyId, query: q, sites: setting.auction_sites }); setResults(r); if (!r.length) toast.info('Nenhum leilão encontrado.'); }
+    setBusy(true); setMarket({});
+    try {
+      const r = await invokeSearch({ action: 'auction_search', company_id: companyId, query: q, sites: setting.auction_sites });
+      setResults(r); if (!r.length) toast.info('Nenhum leilão encontrado.'); else loadMarket(r);
+    }
     catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
   const save = async (f: Found) => {
-    const { p, max } = calc(f);
+    const { p, max } = calc(f, results.indexOf(f));
     const { error } = await db.from('machine_auction_opportunities').insert({
       company_id: companyId, setting_id: settingId || null, price_id: p?.id ?? null, title: f.title, url: f.url,
       auction_date: f.auction_date ?? null, location: f.location ?? null, current_bid: f.price ?? null, max_bid: max, reference_price: p?.reference_price ?? null,
@@ -273,26 +296,48 @@ function AuctionsTab({ companyId, settings, prices }: { companyId: string; setti
         </CardContent>
       </Card>
       {!!results.length && (
-        <Card><CardHeader><CardTitle className="text-base">Resultados (somente leilões)</CardTitle></CardHeader><CardContent>
+        <Card><CardHeader><CardTitle className="text-base">Resultados (somente leilões)</CardTitle></CardHeader><CardContent className="overflow-x-auto">
+          <p className="text-xs text-muted-foreground mb-2">"Preço de mercado" é a mediana de anúncios da mesma máquina em balcão e outras ofertas fora de leilão.</p>
           <Table>
-            <TableHeader><TableRow><TableHead>Lote</TableHead><TableHead>Lance</TableHead><TableHead>Lance máximo</TableHead><TableHead>Lucro estimado</TableHead><TableHead>Situação</TableHead><TableHead /></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Lote</TableHead><TableHead>Data do leilão</TableHead><TableHead>Lance</TableHead><TableHead>Preço de mercado</TableHead><TableHead>Lance máximo</TableHead><TableHead>Lucro estimado</TableHead><TableHead>Situação</TableHead><TableHead /></TableRow></TableHeader>
             <TableBody>{results.map((f, k) => {
-              const { p, s, max } = calc(f) as any;
-              const profit = f.price && p?.reference_price && s ? p.reference_price - f.price * (1 + s.recovery_pct / 100) : null;
+              const { p, s, max, base, estimated } = calc(f, k) as any;
+              const profit = f.price && base && s ? base - f.price * (1 + s.recovery_pct / 100) : null;
+              const mk = market[k];
               return (
                 <TableRow key={k}>
-                  <TableCell><a href={f.url} target="_blank" rel="noreferrer" className="underline">{f.title}</a><div className="text-xs text-muted-foreground">{[f.auction_date, f.location].filter(Boolean).join(' · ')}</div></TableCell>
+                  <TableCell><a href={f.url} target="_blank" rel="noreferrer" className="underline">{f.title}</a>{f.location && <div className="text-xs text-muted-foreground">{f.location}</div>}</TableCell>
+                  <TableCell className="whitespace-nowrap">{f.auction_date || '—'}</TableCell>
                   <TableCell>{f.price ? brl(f.price) : '—'}</TableCell>
-                  <TableCell>{max ? brl(max) : '—'}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {mk?.loading ? <Loader2 className="w-4 h-4 animate-spin" /> : mk?.price ? (
+                      <button className="underline" onClick={() => setMarketView({ title: f.title, ...mk })}>{brl(mk.price)} ({mk.items.length})</button>
+                    ) : mk ? <span className="text-muted-foreground">Sem ofertas</span> : '—'}
+                  </TableCell>
+                  <TableCell>{max ? <>{brl(max)}{estimated && <div className="text-xs text-muted-foreground">pelo mercado</div>}</> : '—'}</TableCell>
                   <TableCell>{profit != null ? `${brl(profit)} (${((profit / (f.price! * (1 + s.recovery_pct / 100))) * 100).toFixed(1)}%)` : '—'}</TableCell>
                   <TableCell>{badge(f.price, max)}</TableCell>
-                  <TableCell><Button size="sm" variant="outline" onClick={() => save(f)}>Salvar</Button></TableCell>
+                  <TableCell className="flex gap-1">
+                    {!p && <Button size="sm" variant="secondary" onClick={() => setAddTable({ f, k })}><Plus className="w-4 h-4 mr-1" />Tabela de preço</Button>}
+                    <Button size="sm" variant="outline" onClick={() => save(f)}>Salvar</Button>
+                  </TableCell>
                 </TableRow>
               );
             })}</TableBody>
           </Table>
         </CardContent></Card>
       )}
+      <Dialog open={!!marketView} onOpenChange={o => !o && setMarketView(null)}>
+        <DialogContent className="max-w-2xl overflow-y-auto max-h-[85vh]">
+          <DialogHeader><DialogTitle>Ofertas de mercado (fora de leilão)</DialogTitle></DialogHeader>
+          <p className="text-sm">{marketView?.title} — sugestão: <strong>{brl(marketView?.price)}</strong></p>
+          <Table><TableBody>{marketView?.items.map((i, n) => (
+            <TableRow key={n}><TableCell>{i.title}{i.year ? ` · ${i.year}` : ''}{i.hours ? ` · ${i.hours} h` : ''}</TableCell><TableCell>{brl(i.price)}</TableCell>
+              <TableCell><a href={i.url} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4" /></a></TableCell></TableRow>
+          ))}</TableBody></Table>
+        </DialogContent>
+      </Dialog>
+      {addTable && <AddToTableDialog companyId={companyId} settings={settings} defaultSetting={settingId} found={addTable.f} market={market[addTable.k]} onClose={(ok) => { setAddTable(null); if (ok) refetchPrices(); }} />}
       <Card><CardHeader><CardTitle className="text-base">Oportunidades salvas</CardTitle></CardHeader><CardContent>
         <Table>
           <TableHeader><TableRow><TableHead>Lote</TableHead><TableHead>Lance</TableHead><TableHead>Lance máximo</TableHead><TableHead>Situação</TableHead><TableHead /></TableRow></TableHeader>

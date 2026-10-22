@@ -2182,6 +2182,86 @@ export type Database = {
           },
         ]
       }
+      machine_auction_opportunities: {
+        Row: {
+          auction_date: string | null
+          company_id: string
+          created_at: string
+          current_bid: number | null
+          id: string
+          location: string | null
+          machine_id: string | null
+          max_bid: number | null
+          price_id: string | null
+          reference_price: number | null
+          setting_id: string | null
+          status: string
+          title: string
+          url: string | null
+        }
+        Insert: {
+          auction_date?: string | null
+          company_id: string
+          created_at?: string
+          current_bid?: number | null
+          id?: string
+          location?: string | null
+          machine_id?: string | null
+          max_bid?: number | null
+          price_id?: string | null
+          reference_price?: number | null
+          setting_id?: string | null
+          status?: string
+          title: string
+          url?: string | null
+        }
+        Update: {
+          auction_date?: string | null
+          company_id?: string
+          created_at?: string
+          current_bid?: number | null
+          id?: string
+          location?: string | null
+          machine_id?: string | null
+          max_bid?: number | null
+          price_id?: string | null
+          reference_price?: number | null
+          setting_id?: string | null
+          status?: string
+          title?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_auction_opportunities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_auction_opportunities_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_auction_opportunities_price_id_fkey"
+            columns: ["price_id"]
+            isOneToOne: false
+            referencedRelation: "machine_resale_prices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_auction_opportunities_setting_id_fkey"
+            columns: ["setting_id"]
+            isOneToOne: false
+            referencedRelation: "machine_trade_settings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machine_categories: {
         Row: {
           company_id: string
@@ -2375,6 +2455,174 @@ export type Database = {
           },
         ]
       }
+      machine_parts_purchases: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          description: string
+          id: string
+          machine_id: string
+          payable_id: string | null
+          purchase_date: string
+          supplier: string | null
+        }
+        Insert: {
+          amount?: number
+          company_id: string
+          created_at?: string
+          description: string
+          id?: string
+          machine_id: string
+          payable_id?: string | null
+          purchase_date?: string
+          supplier?: string | null
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          machine_id?: string
+          payable_id?: string | null
+          purchase_date?: string
+          supplier?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_parts_purchases_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_parts_purchases_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_resale_prices: {
+        Row: {
+          brand: string | null
+          company_id: string
+          created_at: string
+          id: string
+          max_hours: number | null
+          model: string
+          reference_price: number
+          researched_at: string | null
+          setting_id: string | null
+          sources: Json
+          suggested_price: number | null
+          year_from: number | null
+          year_to: number | null
+        }
+        Insert: {
+          brand?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          max_hours?: number | null
+          model: string
+          reference_price?: number
+          researched_at?: string | null
+          setting_id?: string | null
+          sources?: Json
+          suggested_price?: number | null
+          year_from?: number | null
+          year_to?: number | null
+        }
+        Update: {
+          brand?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          max_hours?: number | null
+          model?: string
+          reference_price?: number
+          researched_at?: string | null
+          setting_id?: string | null
+          sources?: Json
+          suggested_price?: number | null
+          year_from?: number | null
+          year_to?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_resale_prices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_resale_prices_setting_id_fkey"
+            columns: ["setting_id"]
+            isOneToOne: false
+            referencedRelation: "machine_trade_settings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_resales: {
+        Row: {
+          buyer_id: string | null
+          company_id: string
+          created_at: string
+          id: string
+          machine_id: string
+          real_margin_pct: number | null
+          receivable_id: string | null
+          sale_date: string
+          sale_price: number
+          total_cost: number
+        }
+        Insert: {
+          buyer_id?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          machine_id: string
+          real_margin_pct?: number | null
+          receivable_id?: string | null
+          sale_date?: string
+          sale_price: number
+          total_cost: number
+        }
+        Update: {
+          buyer_id?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          machine_id?: string
+          real_margin_pct?: number | null
+          receivable_id?: string | null
+          sale_date?: string
+          sale_price?: number
+          total_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_resales_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_resales_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       machine_tag_links: {
         Row: {
           created_at: string
@@ -2442,6 +2690,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "machine_tags_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      machine_trade_settings: {
+        Row: {
+          auction_sites: string | null
+          category_id: string | null
+          company_id: string
+          created_at: string
+          id: string
+          keywords: string | null
+          name: string
+          profit_margin_pct: number
+          recovery_pct: number
+        }
+        Insert: {
+          auction_sites?: string | null
+          category_id?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          keywords?: string | null
+          name: string
+          profit_margin_pct?: number
+          recovery_pct?: number
+        }
+        Update: {
+          auction_sites?: string | null
+          category_id?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          keywords?: string | null
+          name?: string
+          profit_margin_pct?: number
+          recovery_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "machine_trade_settings_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "machine_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "machine_trade_settings_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"

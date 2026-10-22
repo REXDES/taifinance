@@ -109,8 +109,7 @@ export function BoletosStep({
   };
 
   if (loading) return <div className="py-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>;
-  if (!contract) return <p className="p-4 text-sm text-muted-foreground">Gere o contrato antes de criar as parcelas.</p>;
-  if (!contract.whatsapp_accepted_at) return <p className="p-4 text-sm text-muted-foreground">Aguardando aceite do contrato pelo cliente.</p>;
+  if (!contract) return <p className="p-4 text-sm text-muted-foreground">Conclua a formalização antes de criar as parcelas.</p>;
 
   return (
     <div className="p-4 space-y-4">

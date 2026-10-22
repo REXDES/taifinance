@@ -27,7 +27,8 @@ async function scrape(url: string, lovKey: string, fcKey: string) {
   });
   if (!r.ok) { console.error("scrape", url, r.status, (await r.text()).slice(0, 200)); return null; }
   const d = await r.json();
-  const md = d.markdown ?? d.data?.markdown;
+  let md: string | undefined = d.markdown ?? d.data?.markdown;
+  if (md) md = md.replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/\\\\/g, "").replace(/\n\s*\n+/g, "\n");
   return md ? { url, title: d.metadata?.title ?? d.data?.metadata?.title, markdown: md, listing: true } : null;
 }
 
@@ -38,10 +39,10 @@ function pageUrl(base: string, n: number) {
 }
 
 async function extract(mode: "price" | "auction", pages: any[], lovKey: string, ctx: string) {
-  const content = pages.map((p, i) => `### Fonte ${i + 1}: ${p.url}\n${p.title ?? ""}\n${(p.markdown ?? p.description ?? "").slice(0, p.listing ? 12000 : 3500)}`).join("\n\n");
+  const content = pages.map((p, i) => `### Fonte ${i + 1}: ${p.url}\n${p.title ?? ""}\n${(p.markdown ?? p.description ?? "").slice(0, p.listing ? 20000 : 3500)}`).join("\n\n");
   const system = mode === "price"
     ? "Extraia anúncios de VENDA DIRETA de máquinas (não leilão) com preço em reais. Ignore leilões e lances. Retorne só itens com preço explícito."
-    : "Extraia lotes de LEILÃO de máquinas (somente leilões; ignore anúncios de venda com preço fixo). Informe lance atual ou lance inicial em reais, data do leilão e local quando houver. RETORNE SOMENTE leilões que ainda vão acontecer: a data do leilão deve ser igual ou posterior a hoje. Descarte leilões já realizados, encerrados, arrematados ou com data no passado. Se o lote não indicar data, só inclua se o texto deixar claro que ainda vai acontecer (ex.: 'inscrições abertas', 'próximo leilão'); caso contrário, descarte. Leilões de HOJE contam. Em páginas de listagem com vários lotes, extraia cada lote separadamente com o link do lote. Ignore ofertas marcadas como 'Mercado balcão', 'Compre já' ou 'Venda direta' (essas não são leilão).";
+    : "Extraia lotes de LEILÃO de máquinas (somente leilões; ignore anúncios de venda com preço fixo). Informe lance atual ou lance inicial em reais, data do leilão e local quando houver. RETORNE SOMENTE leilões que ainda vão acontecer: a data do leilão deve ser igual ou posterior a hoje. Descarte leilões já realizados, encerrados, arrematados ou com data no passado. Se o lote não indicar data, só inclua se o texto deixar claro que ainda vai acontecer (ex.: 'inscrições abertas', 'próximo leilão'); caso contrário, descarte. Leilões de HOJE contam. Datas como 'Hoje - 13:01' significam a data de hoje; datas sem ano como '29/10 - 13:17' são do ano corrente (ou do próximo, se já passaram). Devolva auction_date SEMPRE no formato AAAA-MM-DD. Em páginas de listagem com vários lotes, extraia cada lote separadamente com o link do lote. Ignore ofertas marcadas como 'Mercado balcão', 'Compre já' ou 'Venda direta' (essas não são leilão).";
   const hoje = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
   const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",

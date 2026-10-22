@@ -251,14 +251,25 @@ function AuctionsTab({ companyId, settings, prices, refetchPrices }: { companyId
     setMarket(m => { const n = { ...m }; Object.keys(n).forEach(key => { if (n[+key].loading) n[+key] = { loading: false, price: 0, items: [] }; }); return n; });
   };
 
+  const isUpcoming = (d?: string | null) => {
+    if (!d) return true; // sem data, o filtro do servidor já decidiu
+    const m = d.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    let dt: Date | null = null;
+    if (m) { const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; dt = new Date(y, +m[2] - 1, +m[1]); }
+    else { const t = Date.parse(d); if (!isNaN(t)) dt = new Date(t); }
+    if (!dt || isNaN(dt.getTime())) return true;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return dt.getTime() >= today.getTime();
+  };
+
   const run = async () => {
     if (!setting) return toast.error('Escolha o tipo de máquina');
     const sel = prices.find(p => p.id === priceId);
     const q = query.trim() || (sel ? [sel.brand, sel.model].filter(Boolean).join(' ') : setting.keywords || setting.name);
     setBusy(true); setMarket({});
     try {
-      const r = await invokeSearch({ action: 'auction_search', company_id: companyId, query: q, sites: setting.auction_sites });
-      setResults(r); if (!r.length) toast.info('Nenhum leilão encontrado.'); else loadMarket(r);
+      const r = (await invokeSearch({ action: 'auction_search', company_id: companyId, query: q, sites: setting.auction_sites })).filter(f => isUpcoming(f.auction_date));
+      setResults(r); if (!r.length) toast.info('Nenhum leilão futuro encontrado.'); else loadMarket(r);
     }
     catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };

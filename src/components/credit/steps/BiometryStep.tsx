@@ -226,6 +226,12 @@ export function BiometryStep({
         </div>
       )}
 
+      {bio.status === 'approved' && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={onCompleted}>Avançar para Formalização</Button>
+        </div>
+      )}
+
       {canApprove && bio.status !== 'approved' && bio.status !== 'rejected' && (bio.selfie_url || bio.similarity_score != null) && (
         <div className="flex gap-2 justify-end">
           <Button size="sm" variant="outline" onClick={() => manualDecision('rejected')}>Rejeitar manualmente</Button>

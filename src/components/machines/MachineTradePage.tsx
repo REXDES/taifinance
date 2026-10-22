@@ -103,7 +103,7 @@ function SettingsTab({ companyId, settings, refetch }: { companyId: string; sett
           <div><Label>Recuperação %</Label><Input type="number" value={form.recovery_pct} onChange={e => setForm({ ...form, recovery_pct: e.target.value })} /></div>
           <Button onClick={add}><Plus className="w-4 h-4 mr-1" />Adicionar</Button>
           <div className="md:col-span-3"><Label>Palavras para pesquisa</Label><Input placeholder="trator, colheitadeira" value={form.keywords} onChange={e => setForm({ ...form, keywords: e.target.value })} /></div>
-          <div className="md:col-span-3"><Label>Sites de leilão preferidos</Label><Input placeholder="superbid.net, sodresantoro.com.br" value={form.auction_sites} onChange={e => setForm({ ...form, auction_sites: e.target.value })} /></div>
+          <div className="md:col-span-3"><Label>Sites ou links de leilão</Label><Input placeholder="https://www.superbid.net/categorias/maquinas-pesadas-agricolas" value={form.auction_sites} onChange={e => setForm({ ...form, auction_sites: e.target.value })} /><p className="text-xs text-muted-foreground mt-1">Cole o link da página de categoria (ex.: Superbid filtrado em Leilão) para o app ler as 3 primeiras páginas de lotes. Pode separar vários por vírgula.</p></div>
         </div>
         <Table>
           <TableHeader><TableRow><TableHead>Tipo</TableHead><TableHead>Margem %</TableHead><TableHead>Recuperação %</TableHead><TableHead>Palavras</TableHead><TableHead>Sites</TableHead><TableHead /></TableRow></TableHeader>

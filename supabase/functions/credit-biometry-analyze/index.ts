@@ -90,7 +90,7 @@ serve(async (req) => {
 
     await admin.from("credit_biometry").update({ status: "analyzing" }).eq("id", bio.id);
 
-    const base = `biometry/${bio.application_id}/${bio.id}`;
+    const base = `${bio.company_id}/biometry/${bio.application_id}/${bio.id}`;
     const selfiePath = await uploadImage(`${base}/selfie.jpg`, selfie_b64);
     const docFrontPath = await uploadImage(`${base}/doc-front.jpg`, doc_front_b64);
     const docBackPath = doc_back_b64 ? await uploadImage(`${base}/doc-back.jpg`, doc_back_b64) : null;
@@ -120,7 +120,7 @@ serve(async (req) => {
     }).eq("id", bio.id);
 
     if (passes) {
-      await admin.from("credit_applications").update({ current_step: 4 }).eq("id", bio.application_id).lt("current_step", 4);
+      await admin.from("credit_applications").update({ current_step: 5 }).eq("id", bio.application_id).lt("current_step", 5);
     }
 
     // Grava as imagens biométricas no cadastro do cliente vinculado à aplicação

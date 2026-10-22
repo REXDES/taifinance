@@ -113,6 +113,13 @@
       "when": 1791557660487,
       "tag": "0015_seller_transfers_external",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792672282422,
+      "tag": "0016_machine_trade",
+      "breakpoints": true
     }
   ]
 }

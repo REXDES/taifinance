@@ -6,11 +6,23 @@ const json = (b: unknown, status = 200) =>
 
 const FC = "https://connector-gateway.lovable.dev/firecrawl/v2";
 
-async function search(query: string, lovKey: string, fcKey: string, limit = 8) {
+async function search(query: string, lovKey: string, fcKey: string, limit = 8): Promise<any[]> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try { return await searchOnce(query, lovKey, fcKey, limit); }
+    catch (e) {
+      console.error("search attempt", attempt + 1, e);
+      if (/\[(40[0-4])\]/.test(String(e))) throw e;
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
+    }
+  }
+  return [];
+}
+
+async function searchOnce(query: string, lovKey: string, fcKey: string, limit: number) {
   const r = await fetch(`${FC}/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovKey}`, "X-Connection-Api-Key": fcKey },
-    body: JSON.stringify({ query, limit, lang: "pt", country: "br", scrapeOptions: { formats: ["markdown"], onlyMainContent: true } }),
+    body: JSON.stringify({ query, limit, timeout: 40000, lang: "pt", country: "br", scrapeOptions: { formats: ["markdown"], onlyMainContent: true } }),
   });
   const text = await r.text();
   if (!r.ok) throw new Error(`Pesquisa falhou [${r.status}]: ${text.slice(0, 300)}`);
@@ -93,7 +105,7 @@ Deno.serve(async (req) => {
     const pages: any[] = [];
     if (action === "auction_search") {
       const jobs: Promise<any>[] = urls.flatMap((u) => [1, 2, 3].map((n) => scrape(pageUrl(u, n), lovKey, fcKey)));
-      jobs.push(search(q, lovKey, fcKey, 15).catch((e) => { console.error(e); return []; }));
+      jobs.push(search(q, lovKey, fcKey, 10).catch((e) => { console.error(e); return []; }));
       for (const r of await Promise.all(jobs)) { if (Array.isArray(r)) pages.push(...r); else if (r) pages.push(r); }
     } else pages.push(...(await search(q, lovKey, fcKey)));
     // processa em lotes para não estourar a leitura da IA

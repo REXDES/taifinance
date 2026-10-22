@@ -27,7 +27,7 @@ import { HorizontalTimeline } from './HorizontalTimeline';
 import { QualificationStep } from './steps/QualificationStep';
 import { BiometryStep } from './steps/BiometryStep';
 import { SimulationStep } from './steps/SimulationStep';
-import { ContractStep } from './steps/ContractStep';
+import { FormalizationStep } from './steps/FormalizationStep';
 import { BoletosStep } from './steps/BoletosStep';
 import { PaymentProbabilityBadge } from './PaymentProbabilityBadge';
 import { BureauAnalysisCard } from './BureauAnalysisCard';
@@ -38,7 +38,7 @@ interface Props { companyId: string }
 
 // Etapas na ordem da jornada — simulação vem antes de qualificação/biometria
 // (cliente pode não aceitar as condições antes de coletar dados pessoais)
-const STEP_LABELS = ['Consulta', 'Simulação', 'Qualificação', 'Biometria', 'Contrato', 'Boletos'];
+const STEP_LABELS = ['Consulta', 'Simulação', 'Qualificação', 'Biometria', 'Formalização', 'Boletos'];
 
 function StatusBadge({ status, decision }: { status: string; decision: string | null }) {
   if (decision === 'rejected' || status === 'rejected')
@@ -899,7 +899,7 @@ function ApplicationDetailDialog({
               {activeStep === 2 && <SimulationStep applicationId={app.id} companyId={companyId} approvedLimit={currentApprovedLimit} recommendedParcelas={currentMaxParcelas} bureauMaxParcelas={bureauAnalysis?.max_parcelas ?? null} bureauParcelaMaxima={bureauAnalysis?.parcela_maxima ?? null} onCompleted={(data) => { setPendingSim(data); advanceStep(3); }} />}
               {activeStep === 3 && <QualificationStep applicationId={app.id} companyId={companyId} consultationRaw={consultation?.raw_response} consultationName={app.nome || consultation?.nome} onCompleted={() => advanceStep(4)} />}
               {activeStep === 4 && <BiometryStep applicationId={app.id} companyId={companyId} canApprove={canApprove} onCompleted={() => advanceStep(5)} />}
-              {activeStep === 5 && <ContractStep applicationId={app.id} companyId={companyId} application={app} pendingSimulation={pendingSim || (app as any).simulation} canApprove={canApprove} onCompleted={() => advanceStep(6)} />}
+              {activeStep === 5 && <FormalizationStep applicationId={app.id} companyId={companyId} pendingSimulation={pendingSim || (app as any).simulation} onCompleted={() => advanceStep(6)} />}
               {activeStep === 6 && <BoletosStep applicationId={app.id} companyId={companyId} clientSupplierId={app.client_supplier_id} userId={userId} onCompleted={() => { onChanged(); }} />}
             </div>
           </div>

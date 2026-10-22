@@ -30,7 +30,7 @@ async function extract(mode: "price" | "auction", pages: any[], lovKey: string, 
     headers: { Authorization: `Bearer ${lovKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-3.8-flash",
-      messages: [{ role: "system", content: system }, { role: "user", content: `Busca: ${ctx}\n\n${content}` }],
+      messages: [{ role: "system", content: system }, { role: "user", content: `Data de hoje: ${hoje} (horário de São Paulo)\n\nBusca: ${ctx}\n\n${content}` }],
       tools: [{ type: "function", function: { name: "items", parameters: { type: "object", properties: { items: { type: "array", items: { type: "object", properties: {
         title: { type: "string" }, brand: { type: "string" }, model: { type: "string" }, year: { type: "number" }, hours: { type: "number" },
         price: { type: "number", description: "preço ou lance em reais" }, auction_date: { type: "string" }, location: { type: "string" }, url: { type: "string" },

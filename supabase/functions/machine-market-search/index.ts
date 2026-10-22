@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     const siteQ = sites.length ? " (" + sites.map((s) => `site:${s}`).join(" OR ") + ")" : "";
     const q = action === "price_research"
       ? `${query} à venda preço -leilão${siteQ}`
-      : `leilão ${query} lance${siteQ || " (site:superbid.net OR site:sodresantoro.com.br OR site:megaleiloes.com.br OR site:mgl.com.br)"}`;
+      : `leilão ${query} lance${siteQ || " (site:superbid.net OR site:sodresantoro.com.br OR site:megaleiloes.com.br OR site:mgl.com.br)"} -realizado -encerrado -resultado -histórico`;
     const pages = await search(q, lovKey, fcKey);
     const items = await extract(action === "price_research" ? "price" : "auction", pages, lovKey, query);
     return json({ items: items.filter((i) => i.url) });

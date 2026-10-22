@@ -48,6 +48,7 @@ import { MachineMovementsReportPage } from '@/components/machines/MachineMovemen
 import { RentalPricingPage } from '@/components/machines/RentalPricingPage';
 import { MaintenancePage } from '@/components/machines/MaintenancePage';
 import { RentalsPage } from '@/components/machines/RentalsPage';
+import { MachineTradePage } from '@/components/machines/MachineTradePage';
 import { RentalsReportPage } from '@/components/machines/RentalsReportPage';
 import { PeoplePage } from '@/components/machines/PeoplePage';
 import { useCompanyMachinesFlag } from '@/hooks/useMachinesModule';
@@ -111,6 +112,7 @@ export type FinanceView =
   | 'machines-catalog'
   | 'machines-pricing'
   | 'machines-movements'
+  | 'machines-trade'
   | 'credit-admin'
   | 'credit-applications'
   | 'credit-ignored'
@@ -162,6 +164,7 @@ const NORMAL_ONLY_VIEWS: FinanceView[] = [
   'machines-catalog',
   'machines-pricing',
   'machines-movements',
+  'machines-trade',
   'credit-applications',
   'credit-ignored',
   'credit-anticipation',
@@ -477,6 +480,8 @@ const Finance = () => {
         return machinesEnabled ? <MachineCatalogPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-pricing':
         return machinesEnabled ? <RentalPricingPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
+      case 'machines-trade':
+        return machinesEnabled ? <MachineTradePage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'machines-movements':
         return machinesEnabled ? <MachineMovementsReportPage companyId={selectedCompanyId} /> : <FinanceDashboard companyId={selectedCompanyId} />;
       case 'credit-admin':

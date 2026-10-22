@@ -85,6 +85,7 @@ export const machinesGestaoMenuItems: MenuItem[] = [
   { view: 'machines-rentals', label: 'Locações', icon: <ClipboardCheck className="w-4 h-4" /> },
   { view: 'machines-pricing', label: 'Tabela de Preços', icon: <Tags className="w-4 h-4" /> },
   { view: 'machines-movements', label: 'Vendidos e Baixados', icon: <ArrowLeftRight className="w-4 h-4" /> },
+  { view: 'machines-trade', label: 'Compra e Venda', icon: <ArrowRightLeft className="w-4 h-4" /> },
 ];
 
 export const machinesCadastrosMenuItems: MenuItem[] = [

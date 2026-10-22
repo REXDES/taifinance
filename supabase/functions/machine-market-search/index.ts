@@ -23,7 +23,7 @@ async function extract(mode: "price" | "auction", pages: any[], lovKey: string, 
   const content = pages.map((p, i) => `### Fonte ${i + 1}: ${p.url}\n${p.title ?? ""}\n${(p.markdown ?? p.description ?? "").slice(0, 3500)}`).join("\n\n");
   const system = mode === "price"
     ? "Extraia anúncios de VENDA DIRETA de máquinas (não leilão) com preço em reais. Ignore leilões e lances. Retorne só itens com preço explícito."
-    : "Extraia lotes de LEILÃO de máquinas (somente leilões; ignore anúncios de venda com preço fixo). Informe lance atual ou lance inicial em reais, data do leilão e local quando houver.";
+    : "Extraia lotes de LEILÃO de máquinas (somente leilões; ignore anúncios de venda com preço fixo). Informe lance atual ou lance inicial em reais, data do leilão e local quando houver. RETORNE SOMENTE leilões que ainda vão acontecer: a data do leilão deve ser igual ou posterior a hoje. Descarte leilões já realizados, encerrados, arrematados ou com data no passado. Se o lote não indicar data, só inclua se o texto deixar claro que ainda vai acontecer (ex.: 'inscrições abertas', 'próximo leilão'); caso contrário, descarte.";
   const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${lovKey}`, "Content-Type": "application/json" },

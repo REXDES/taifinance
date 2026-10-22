@@ -127,6 +127,13 @@
       "when": 1792692630647,
       "tag": "0017_formalization_docs",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792694090658,
+      "tag": "0018_credit_documents_safe_policies",
+      "breakpoints": true
     }
   ]
 }

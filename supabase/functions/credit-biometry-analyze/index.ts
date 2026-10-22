@@ -90,7 +90,7 @@ serve(async (req) => {
 
     await admin.from("credit_biometry").update({ status: "analyzing" }).eq("id", bio.id);
 
-    const base = `biometry/${bio.application_id}/${bio.id}`;
+    const base = `${bio.company_id}/biometry/${bio.application_id}/${bio.id}`;
     const selfiePath = await uploadImage(`${base}/selfie.jpg`, selfie_b64);
     const docFrontPath = await uploadImage(`${base}/doc-front.jpg`, doc_front_b64);
     const docBackPath = doc_back_b64 ? await uploadImage(`${base}/doc-back.jpg`, doc_back_b64) : null;

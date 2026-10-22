@@ -6,7 +6,18 @@ const json = (b: unknown, status = 200) =>
 
 const FC = "https://connector-gateway.lovable.dev/firecrawl/v2";
 
-async function search(query: string, lovKey: string, fcKey: string, limit = 8) {
+async function search(query: string, lovKey: string, fcKey: string, limit = 8): Promise<any[]> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try { return await searchOnce(query, lovKey, fcKey, limit); }
+    catch (e) {
+      console.error("search attempt", attempt + 1, e);
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
+    }
+  }
+  return [];
+}
+
+async function searchOnce(query: string, lovKey: string, fcKey: string, limit: number) {
   const r = await fetch(`${FC}/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovKey}`, "X-Connection-Api-Key": fcKey },

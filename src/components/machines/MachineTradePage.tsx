@@ -268,8 +268,13 @@ function AuctionsTab({ companyId, settings, prices, refetchPrices }: { companyId
     const q = query.trim() || (sel ? [sel.brand, sel.model].filter(Boolean).join(' ') : setting.keywords || setting.name);
     setBusy(true); setMarket({});
     try {
-      const r = (await invokeSearch({ action: 'auction_search', company_id: companyId, query: q, sites: setting.auction_sites })).filter(f => isUpcoming(f.auction_date));
-      setResults(r); if (!r.length) toast.info('Nenhum leilão futuro encontrado.'); else loadMarket(r);
+      const key = `machine-trade-seen:${companyId}:${setting.id}`;
+      const savedUrls = new Set(((saved.rows ?? []) as any[]).map((o: any) => o.url));
+      const seenList: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+      const exclude = seenList.filter(u => !savedUrls.has(u)).slice(-400);
+      const r = (await invokeSearch({ action: 'auction_search', company_id: companyId, query: q, sites: setting.auction_sites, exclude_urls: exclude })).filter(f => isUpcoming(f.auction_date));
+      localStorage.setItem(key, JSON.stringify([...seenList, ...r.map(f => f.url)].slice(-400)));
+      setResults(r); if (!r.length) toast.info('Nenhum leilão futuro novo encontrado.'); else loadMarket(r);
     }
     catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };

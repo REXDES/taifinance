@@ -1130,12 +1130,16 @@ export type Database = {
           application_id: string
           client_supplier_id: string | null
           company_id: string
+          contract_file_name: string | null
+          contract_file_url: string | null
           contract_status: string
           created_at: string
           created_by: string | null
           description: string
           first_due_date: string
           id: string
+          invoice_name: string | null
+          invoice_url: string | null
           juros_mensal_pct: number
           num_parcelas: number
           parcela_amount: number
@@ -1150,12 +1154,16 @@ export type Database = {
           application_id: string
           client_supplier_id?: string | null
           company_id: string
+          contract_file_name?: string | null
+          contract_file_url?: string | null
           contract_status?: string
           created_at?: string
           created_by?: string | null
           description: string
           first_due_date: string
           id?: string
+          invoice_name?: string | null
+          invoice_url?: string | null
           juros_mensal_pct: number
           num_parcelas: number
           parcela_amount: number
@@ -1170,12 +1178,16 @@ export type Database = {
           application_id?: string
           client_supplier_id?: string | null
           company_id?: string
+          contract_file_name?: string | null
+          contract_file_url?: string | null
           contract_status?: string
           created_at?: string
           created_by?: string | null
           description?: string
           first_due_date?: string
           id?: string
+          invoice_name?: string | null
+          invoice_url?: string | null
           juros_mensal_pct?: number
           num_parcelas?: number
           parcela_amount?: number

@@ -120,6 +120,13 @@
       "when": 1792672282422,
       "tag": "0016_machine_trade",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792692630647,
+      "tag": "0017_formalization_docs",
+      "breakpoints": true
     }
   ]
 }

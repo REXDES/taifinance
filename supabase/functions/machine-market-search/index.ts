@@ -5,6 +5,12 @@ const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 const FC = "https://connector-gateway.lovable.dev/firecrawl/v2";
+const T0 = { v: 0 };
+const left = () => 140000 - (Date.now() - T0.v);
+function fetchT(url: string, init: RequestInit, ms: number) {
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), Math.max(1000, ms));
+  return fetch(url, { ...init, signal: c.signal }).finally(() => clearTimeout(t));
+}
 
 async function search(query: string, lovKey: string, fcKey: string, limit = 8): Promise<any[]> {
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -12,18 +18,18 @@ async function search(query: string, lovKey: string, fcKey: string, limit = 8): 
     catch (e) {
       console.error("search attempt", attempt + 1, e);
       if (/\[(40[0-4])\]/.test(String(e))) throw e;
-      if (attempt === 0) await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
+      if (attempt === 0) { if (left() < 90000) break; } if (attempt === 0) await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
     }
   }
   return [];
 }
 
 async function searchOnce(query: string, lovKey: string, fcKey: string, limit: number) {
-  const r = await fetch(`${FC}/search`, {
+  const r = await fetchT(`${FC}/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovKey}`, "X-Connection-Api-Key": fcKey },
-    body: JSON.stringify({ query, limit, timeout: 40000, lang: "pt", country: "br", scrapeOptions: { formats: ["markdown"], onlyMainContent: true } }),
-  });
+    body: JSON.stringify({ query, limit, timeout: 30000, lang: "pt", country: "br", scrapeOptions: { formats: ["markdown"], onlyMainContent: true } }),
+  }, Math.min(38000, left() - 60000));
   const text = await r.text();
   if (!r.ok) throw new Error(`Pesquisa falhou [${r.status}]: ${text.slice(0, 300)}`);
   const d = JSON.parse(text);
@@ -32,11 +38,14 @@ async function searchOnce(query: string, lovKey: string, fcKey: string, limit: n
 }
 
 async function scrape(url: string, lovKey: string, fcKey: string) {
-  const r = await fetch(`${FC}/scrape`, {
+  try { return await scrapeOnce(url, lovKey, fcKey); } catch (e) { console.error("scrape", url, e); return null; }
+}
+async function scrapeOnce(url: string, lovKey: string, fcKey: string) {
+  const r = await fetchT(`${FC}/scrape`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovKey}`, "X-Connection-Api-Key": fcKey },
-    body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, waitFor: 3000 }),
-  });
+    body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, waitFor: 2000, timeout: 30000 }),
+  }, 35000);
   if (!r.ok) { console.error("scrape", url, r.status, (await r.text()).slice(0, 200)); return null; }
   const d = await r.json();
   let md: string | undefined = d.markdown ?? d.data?.markdown;
@@ -56,7 +65,7 @@ async function extract(mode: "price" | "auction", pages: any[], lovKey: string, 
     ? "Extraia anúncios de VENDA DIRETA de máquinas (não leilão) com preço em reais. Ignore leilões e lances. Retorne só itens com preço explícito."
     : "Extraia lotes de LEILÃO de máquinas (somente leilões; ignore anúncios de venda com preço fixo). Informe lance atual ou lance inicial em reais, data do leilão e local quando houver. RETORNE SOMENTE leilões que ainda vão acontecer: a data do leilão deve ser igual ou posterior a hoje. Descarte leilões já realizados, encerrados, arrematados ou com data no passado. Se o lote não indicar data, só inclua se o texto deixar claro que ainda vai acontecer (ex.: 'inscrições abertas', 'próximo leilão'); caso contrário, descarte. Leilões de HOJE contam. Datas como 'Hoje - 13:01' significam a data de hoje; datas sem ano como '29/10 - 13:17' são do ano corrente (ou do próximo, se já passaram). Extraia TODOS os lotes de máquinas compatíveis com o tipo pesquisado (o termo de busca é uma referência ampla, não um filtro exato de marca/modelo); traga até 25 lotes. Devolva auction_date SEMPRE no formato AAAA-MM-DD. Em páginas de listagem com vários lotes, extraia cada lote separadamente com o link do lote. Ignore ofertas marcadas como 'Mercado balcão', 'Compre já' ou 'Venda direta' (essas não são leilão).";
   const hoje = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
-  const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const r = await fetchT("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${lovKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -68,7 +77,7 @@ async function extract(mode: "price" | "auction", pages: any[], lovKey: string, 
       }, required: ["title", "url"] } } }, required: ["items"] } } }],
       tool_choice: { type: "function", function: { name: "items" } },
     }),
-  });
+  }, left() - 3000);
   if (r.status === 429) throw new Error("Muitas pesquisas seguidas. Aguarde um pouco.");
   if (r.status === 402) throw new Error("Créditos de IA esgotados no workspace.");
   if (!r.ok) throw new Error(`IA falhou [${r.status}]: ${(await r.text()).slice(0, 300)}`);
@@ -79,6 +88,7 @@ async function extract(mode: "price" | "auction", pages: any[], lovKey: string, 
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  T0.v = Date.now();
   try {
     const lovKey = Deno.env.get("LOVABLE_API_KEY"); const fcKey = Deno.env.get("FIRECRAWL_API_KEY");
     if (!lovKey || !fcKey) return json({ error: "Pesquisa na internet não configurada" }, 500);

@@ -19,11 +19,29 @@ async function search(query: string, lovKey: string, fcKey: string) {
   return items as { url: string; title?: string; description?: string; markdown?: string }[];
 }
 
+async function scrape(url: string, lovKey: string, fcKey: string) {
+  const r = await fetch(`${FC}/scrape`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovKey}`, "X-Connection-Api-Key": fcKey },
+    body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true, waitFor: 3000 }),
+  });
+  if (!r.ok) { console.error("scrape", url, r.status, (await r.text()).slice(0, 200)); return null; }
+  const d = await r.json();
+  const md = d.markdown ?? d.data?.markdown;
+  return md ? { url, title: d.metadata?.title ?? d.data?.metadata?.title, markdown: md, listing: true } : null;
+}
+
+function pageUrl(base: string, n: number) {
+  const u = new URL(base);
+  if (n > 1) u.searchParams.set("pageNumber", String(n));
+  return u.toString();
+}
+
 async function extract(mode: "price" | "auction", pages: any[], lovKey: string, ctx: string) {
-  const content = pages.map((p, i) => `### Fonte ${i + 1}: ${p.url}\n${p.title ?? ""}\n${(p.markdown ?? p.description ?? "").slice(0, 3500)}`).join("\n\n");
+  const content = pages.map((p, i) => `### Fonte ${i + 1}: ${p.url}\n${p.title ?? ""}\n${(p.markdown ?? p.description ?? "").slice(0, p.listing ? 12000 : 3500)}`).join("\n\n");
   const system = mode === "price"
     ? "Extraia anúncios de VENDA DIRETA de máquinas (não leilão) com preço em reais. Ignore leilões e lances. Retorne só itens com preço explícito."
-    : "Extraia lotes de LEILÃO de máquinas (somente leilões; ignore anúncios de venda com preço fixo). Informe lance atual ou lance inicial em reais, data do leilão e local quando houver. RETORNE SOMENTE leilões que ainda vão acontecer: a data do leilão deve ser igual ou posterior a hoje. Descarte leilões já realizados, encerrados, arrematados ou com data no passado. Se o lote não indicar data, só inclua se o texto deixar claro que ainda vai acontecer (ex.: 'inscrições abertas', 'próximo leilão'); caso contrário, descarte.";
+    : "Extraia lotes de LEILÃO de máquinas (somente leilões; ignore anúncios de venda com preço fixo). Informe lance atual ou lance inicial em reais, data do leilão e local quando houver. RETORNE SOMENTE leilões que ainda vão acontecer: a data do leilão deve ser igual ou posterior a hoje. Descarte leilões já realizados, encerrados, arrematados ou com data no passado. Se o lote não indicar data, só inclua se o texto deixar claro que ainda vai acontecer (ex.: 'inscrições abertas', 'próximo leilão'); caso contrário, descarte. Leilões de HOJE contam. Em páginas de listagem com vários lotes, extraia cada lote separadamente com o link do lote. Ignore ofertas marcadas como 'Mercado balcão', 'Compre já' ou 'Venda direta' (essas não são leilão).";
   const hoje = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
   const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -63,12 +81,19 @@ Deno.serve(async (req) => {
     const { data: ok } = await sb.rpc("has_company_access", { _user_id: u.user.id, _company_id: companyId });
     if (!ok) return json({ error: "Sem acesso à empresa" }, 403);
 
-    const sites = String(body.sites ?? "").split(/[,\s]+/).filter(Boolean).slice(0, 5);
+    const raw = String(body.sites ?? "").split(/[,\s]+/).filter(Boolean);
+    const urls = raw.filter((x) => /^https?:\/\//i.test(x)).slice(0, 3);
+    const sites = raw.filter((x) => !/^https?:\/\//i.test(x)).slice(0, 5);
     const siteQ = sites.length ? " (" + sites.map((s) => `site:${s}`).join(" OR ") + ")" : "";
     const q = action === "price_research"
       ? `${query} à venda preço -leilão${siteQ}`
-      : `leilão ${query} lance${siteQ || " (site:superbid.net OR site:sodresantoro.com.br OR site:megaleiloes.com.br OR site:mgl.com.br)"} -realizado -encerrado -resultado -histórico`;
-    const pages = await search(q, lovKey, fcKey);
+      : `leilão ${query} lance${siteQ || " (site:superbid.net OR site:sodresantoro.com.br OR site:megaleiloes.com.br OR site:mgl.com.br)"} -realizado -encerrado -histórico`;
+    const pages: any[] = [];
+    if (action === "auction_search" && urls.length) {
+      const jobs = urls.flatMap((u) => [1, 2, 3].map((n) => scrape(pageUrl(u, n), lovKey, fcKey)));
+      pages.push(...(await Promise.all(jobs)).filter(Boolean));
+    }
+    if (!urls.length || action === "price_research") pages.push(...(await search(q, lovKey, fcKey)));
     const items = await extract(action === "price_research" ? "price" : "auction", pages, lovKey, query);
     return json({ items: items.filter((i) => i.url) });
   } catch (e) {

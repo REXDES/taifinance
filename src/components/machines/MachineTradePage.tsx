@@ -509,3 +509,50 @@ function ResaleDialog({ companyId, machine, settings, parts, maintCost, sale, on
     </Dialog>
   );
 }
+
+function AddToTableDialog({ companyId, settings, defaultSetting, found, market, onClose }: {
+  companyId: string; settings: Setting[]; defaultSetting: string; found: Found; market?: { price: number; items: Found[] }; onClose: (ok: boolean) => void;
+}) {
+  const [settingId, setSettingId] = useState(defaultSetting);
+  const [brand, setBrand] = useState(found.brand ?? '');
+  const [model, setModel] = useState(found.model ?? found.title.slice(0, 60));
+  const [year, setYear] = useState(found.year ? String(found.year) : '');
+  const [price, setPrice] = useState(market?.price ? String(market.price) : '');
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    if (!model.trim()) return toast.error('Informe o modelo');
+    setSaving(true);
+    const { error } = await db.from('machine_resale_prices').insert({
+      company_id: companyId, setting_id: settingId || null, brand: brand || null, model: model.trim(),
+      year_from: year ? Number(year) : null, year_to: year ? Number(year) : null,
+      reference_price: Number(price) || 0, suggested_price: market?.price || null,
+      sources: market?.items ?? [], researched_at: market ? new Date().toISOString() : null,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success('Máquina incluída na tabela de venda'); onClose(true);
+  };
+  return (
+    <Dialog open onOpenChange={o => !o && onClose(false)}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Incluir na tabela de venda</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Tipo</Label>
+            <Select value={settingId} onValueChange={setSettingId}><SelectTrigger><SelectValue placeholder="Escolha" /></SelectTrigger>
+              <SelectContent>{settings.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select></div>
+          <div className="grid grid-cols-3 gap-2">
+            <div><Label>Marca</Label><Input value={brand} onChange={e => setBrand(e.target.value)} /></div>
+            <div><Label>Modelo</Label><Input value={model} onChange={e => setModel(e.target.value)} /></div>
+            <div><Label>Ano</Label><Input type="number" value={year} onChange={e => setYear(e.target.value)} /></div>
+          </div>
+          <div>
+            <Label>Preço de venda</Label>
+            <Input type="number" value={price} onChange={e => setPrice(e.target.value)} />
+            <p className="text-xs text-muted-foreground mt-1">{market?.price ? `Sugestão do mercado: ${brl(market.price)} (${market.items.length} ofertas). Ajuste se quiser.` : 'Sem sugestão de mercado; informe o preço.'}</p>
+          </div>
+        </div>
+        <DialogFooter><Button variant="outline" onClick={() => onClose(false)}>Cancelar</Button><Button onClick={save} disabled={saving}>Incluir</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

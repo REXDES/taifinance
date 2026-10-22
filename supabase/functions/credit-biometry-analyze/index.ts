@@ -120,7 +120,7 @@ serve(async (req) => {
     }).eq("id", bio.id);
 
     if (passes) {
-      await admin.from("credit_applications").update({ current_step: 4 }).eq("id", bio.application_id).lt("current_step", 4);
+      await admin.from("credit_applications").update({ current_step: 5 }).eq("id", bio.application_id).lt("current_step", 5);
     }
 
     // Grava as imagens biométricas no cadastro do cliente vinculado à aplicação

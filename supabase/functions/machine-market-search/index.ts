@@ -23,13 +23,14 @@ async function extract(mode: "price" | "auction", pages: any[], lovKey: string, 
   const content = pages.map((p, i) => `### Fonte ${i + 1}: ${p.url}\n${p.title ?? ""}\n${(p.markdown ?? p.description ?? "").slice(0, 3500)}`).join("\n\n");
   const system = mode === "price"
     ? "Extraia anúncios de VENDA DIRETA de máquinas (não leilão) com preço em reais. Ignore leilões e lances. Retorne só itens com preço explícito."
-    : "Extraia lotes de LEILÃO de máquinas (somente leilões; ignore anúncios de venda com preço fixo). Informe lance atual ou lance inicial em reais, data do leilão e local quando houver.";
+    : "Extraia lotes de LEILÃO de máquinas (somente leilões; ignore anúncios de venda com preço fixo). Informe lance atual ou lance inicial em reais, data do leilão e local quando houver. RETORNE SOMENTE leilões que ainda vão acontecer: a data do leilão deve ser igual ou posterior a hoje. Descarte leilões já realizados, encerrados, arrematados ou com data no passado. Se o lote não indicar data, só inclua se o texto deixar claro que ainda vai acontecer (ex.: 'inscrições abertas', 'próximo leilão'); caso contrário, descarte.";
+  const hoje = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
   const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${lovKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-3.8-flash",
-      messages: [{ role: "system", content: system }, { role: "user", content: `Busca: ${ctx}\n\n${content}` }],
+      messages: [{ role: "system", content: system }, { role: "user", content: `Data de hoje: ${hoje} (horário de São Paulo)\n\nBusca: ${ctx}\n\n${content}` }],
       tools: [{ type: "function", function: { name: "items", parameters: { type: "object", properties: { items: { type: "array", items: { type: "object", properties: {
         title: { type: "string" }, brand: { type: "string" }, model: { type: "string" }, year: { type: "number" }, hours: { type: "number" },
         price: { type: "number", description: "preço ou lance em reais" }, auction_date: { type: "string" }, location: { type: "string" }, url: { type: "string" },
@@ -66,7 +67,7 @@ Deno.serve(async (req) => {
     const siteQ = sites.length ? " (" + sites.map((s) => `site:${s}`).join(" OR ") + ")" : "";
     const q = action === "price_research"
       ? `${query} à venda preço -leilão${siteQ}`
-      : `leilão ${query} lance${siteQ || " (site:superbid.net OR site:sodresantoro.com.br OR site:megaleiloes.com.br OR site:mgl.com.br)"}`;
+      : `leilão ${query} lance${siteQ || " (site:superbid.net OR site:sodresantoro.com.br OR site:megaleiloes.com.br OR site:mgl.com.br)"} -realizado -encerrado -resultado -histórico`;
     const pages = await search(q, lovKey, fcKey);
     const items = await extract(action === "price_research" ? "price" : "auction", pages, lovKey, query);
     return json({ items: items.filter((i) => i.url) });

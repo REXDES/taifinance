@@ -269,7 +269,7 @@ function AuctionsTab({ companyId, settings, prices, refetchPrices }: { companyId
     setBusy(true); setMarket({});
     try {
       const key = `machine-trade-seen:${companyId}:${setting.id}`;
-      const savedUrls = new Set(((saved.data ?? []) as any[]).map((o: any) => o.url));
+      const savedUrls = new Set(((saved.rows ?? []) as any[]).map((o: any) => o.url));
       const seenList: string[] = JSON.parse(localStorage.getItem(key) || '[]');
       const exclude = seenList.filter(u => !savedUrls.has(u)).slice(-400);
       const r = (await invokeSearch({ action: 'auction_search', company_id: companyId, query: q, sites: setting.auction_sites, exclude_urls: exclude })).filter(f => isUpcoming(f.auction_date));

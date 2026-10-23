@@ -20,7 +20,7 @@ import { normalizeDate, sameDocument, todayISO, validatePayer } from '@/lib/nect
 import { parseLocalDate } from '@/lib/dateUtils';
 import { logWhatsappAttempt } from '@/lib/whatsappLogClient';
 
-interface Props { companyId: string; dialogOnly?: boolean; externalOpen?: boolean; onExternalOpenChange?: (o: boolean) => void; onCreated?: () => void; prefill?: Partial<typeof emptyForm> }
+interface Props { companyId: string; dialogOnly?: boolean; externalOpen?: boolean; onExternalOpenChange?: (o: boolean) => void; onCreated?: (sales: any[]) => void | Promise<void>; prefill?: Partial<typeof emptyForm> }
 
 const METHOD_LABEL: Record<string, string> = {
   pix: 'PIX',
@@ -315,7 +315,7 @@ export function NectaChargesPage({ companyId, dialogOnly = false, externalOpen, 
 
     setSaving(false);
     setOpen(false);
-    onCreated?.();
+    await onCreated?.(created);
     toast.success(recurrenceCount > 1 ? `${recurrenceCount} cobranças criadas` : 'Cobrança criada');
     const card = form.method === 'credit_card'
       ? { holderName: form.card_holder, number: form.card_number, expirationMonth: form.card_month, expirationYear: form.card_year, cvv: form.card_cvv }

@@ -31,6 +31,8 @@ export function BoletosStep({
   const [prefill, setPrefill] = useState<Record<string, string> | null>(null);
   const { enabled: paymentsEnabled } = useCompanyPaymentsFlag(companyId);
 
+  const [sales, setSales] = useState<Record<string, any>>({});
+
   const refetch = useCallback(async () => {
     setLoading(true);
     const { data: c } = await (supabase as any).from('credit_contracts').select('*').eq('application_id', applicationId).order('created_at', { ascending: false }).limit(1).maybeSingle();
@@ -41,9 +43,45 @@ export function BoletosStep({
         .eq('credit_contract_id', c.id)
         .order('installment_number', { ascending: true });
       setItems(pr || []);
+      const ids = (pr || []).map((p: any) => p.id);
+      if (ids.length) {
+        const { data: s } = await (supabase as any).from('necta_sales')
+          .select('id, payable_receivable_id, status, boleto_digitable_line, boleto_url, payment_url')
+          .in('payable_receivable_id', ids);
+        setSales(Object.fromEntries((s || []).map((x: any) => [x.payable_receivable_id, x])));
+      } else setSales({});
     }
     setLoading(false);
   }, [applicationId]);
+
+  // Liga cada cobrança emitida no gateway a uma parcela de Contas a Receber do contrato
+  const linkGatewaySales = async (created: any[]) => {
+    if (!contract || !created?.length) { await refetch(); return; }
+    const total = created.length;
+    for (let i = 0; i < total; i++) {
+      const s = created[i];
+      if (!s?.id) continue;
+      const { data: pr, error } = await (supabase as any).from('payables_receivables').insert({
+        company_id: companyId,
+        type: 'receivable',
+        description: `${contract.description ?? 'Crédito'} (${i + 1}/${total})`,
+        amount: s.amount,
+        due_date: s.due_date ?? contract.first_due_date,
+        payment_type: 'boleto',
+        status: 'pending',
+        installment_number: i + 1,
+        total_installments: total,
+        client_supplier_id: clientSupplierId,
+        credit_contract_id: contract.id,
+        created_by: userId,
+      }).select('id').maybeSingle();
+      if (error) { toast.error('Erro ao criar parcela: ' + error.message); continue; }
+      await (supabase as any).from('necta_sales').update({ payable_receivable_id: pr.id }).eq('id', s.id);
+    }
+    await (supabase as any).from('credit_applications').update({ status: 'contracted', current_step: 6 }).eq('id', applicationId);
+    onCompleted();
+    await refetch();
+  };
 
   // Emissão via gateway (Pagando.net): pré-preenche a cobrança com os dados do contrato e do cliente
   const openGatewayCharge = async () => {
@@ -52,11 +90,15 @@ export function BoletosStep({
       (supabase as any).from('credit_applications').select('nome, documento').eq('id', applicationId).maybeSingle(),
       (supabase as any).from('credit_qualifications').select('whatsapp_phone, email, endereco_entrega, cidade, uf, cep').eq('application_id', applicationId).maybeSingle(),
     ]);
+    const n = Number(contract.num_parcelas ?? 1);
     setPrefill({
       method: 'bank_slip',
-      amount: String(contract.parcela_amount ?? ''),
+      amount: String(contract.parcela_amount != null ? Number(contract.parcela_amount).toFixed(2) : ''),
       description: contract.description ?? '',
-      installments: String(contract.num_parcelas ?? 1),
+      installments: '1',
+      is_recurring: (n > 1) as any,
+      recurrence_interval: 'monthly',
+      recurrence_count: String(n),
       due_date: contract.first_due_date ?? '',
       payer_name: app?.nome ?? '',
       payer_document: app?.documento ?? '',

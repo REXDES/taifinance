@@ -66,7 +66,7 @@ export function AnticipationPage({ companyId }: Props) {
       db.from('financier_cedent_links').select('financier_company_id').eq('cedent_company_id', companyId).eq('active', true),
       db.from('payables_receivables').select('id, description, amount, due_date, status, client_supplier_id, clients_suppliers(name)')
         .eq('company_id', companyId).eq('type', 'receivable').eq('status', 'pending').order('due_date'),
-      db.from('necta_sales').select('id, payable_receivable_id, payment_method').eq('company_id', companyId).not('payable_receivable_id', 'is', null),
+      db.from('necta_sales').select('id, payable_receivable_id').eq('company_id', companyId).not('payable_receivable_id', 'is', null),
       db.from('receivable_assignments').select('*, payables_receivables(description, due_date, clients_suppliers(name))')
         .or(`cedent_company_id.eq.${companyId},financier_company_id.eq.${companyId}`).order('created_at', { ascending: false }),
       db.from('receivable_assignment_attachments').select('*').eq('company_id', companyId),

@@ -183,6 +183,7 @@ export function BoletosStep({
               <TableHead>Vencimento</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Boleto</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -195,6 +196,21 @@ export function BoletosStep({
                   {p.status === 'paid'
                     ? <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">Pago</Badge>
                     : <Badge variant="outline">Pendente</Badge>}
+                </TableCell>
+                <TableCell>
+                  {sales[p.id] ? (
+                    <div className="flex flex-wrap gap-1">
+                      {sales[p.id].boleto_digitable_line && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => navigator.clipboard.writeText(sales[p.id].boleto_digitable_line).then(() => toast.success('Linha digitável copiada'))}>Copiar linha</Button>
+                      )}
+                      {(sales[p.id].boleto_url || sales[p.id].payment_url) && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+                          <a href={sales[p.id].boleto_url || sales[p.id].payment_url} target="_blank" rel="noreferrer">Abrir boleto</a>
+                        </Button>
+                      )}
+                      {!sales[p.id].boleto_digitable_line && !sales[p.id].boleto_url && !sales[p.id].payment_url && <span className="text-xs text-muted-foreground">Emitido ({sales[p.id].status})</span>}
+                    </div>
+                  ) : <span className="text-xs text-muted-foreground">Cobrança própria</span>}
                 </TableCell>
               </TableRow>
             ))}
@@ -209,7 +225,7 @@ export function BoletosStep({
           externalOpen={gatewayOpen}
           onExternalOpenChange={setGatewayOpen}
           prefill={prefill ?? undefined}
-          onCreated={refetch}
+          onCreated={linkGatewaySales}
         />
       )}
     </div>

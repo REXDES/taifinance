@@ -29,7 +29,7 @@ export function verdict(bid: number, max: number): BidVerdict {
 }
 
 export function median(values: number[]): number {
-  const v = values.filter((n) => n > 0).sort((a, b) => n => n);
+  const v = values.filter((n) => n > 0).sort((a, b) => a - b);
   if (!v.length) return 0;
   const m = Math.floor(v.length / 2);
   return v.length % 2 ? v[m] : +((v[m - 1] + v[m]) / 2).toFixed(2);

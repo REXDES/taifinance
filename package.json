@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:insights": "node --experimental-strip-types scripts/test-dashboard-insights.mts"
+    "test:insights": "node --experimental-strip-types scripts/test-dashboard-insights.mts",
+    "test:trade": "node --experimental-strip-types scripts/test-machine-trade.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

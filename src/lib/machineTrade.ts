@@ -34,3 +34,25 @@ export function median(values: number[]): number {
   const m = Math.floor(v.length / 2);
   return v.length % 2 ? v[m] : +((v[m - 1] + v[m]) / 2).toFixed(2);
 }
+
+/** Texto de anúncio → minúsculas, sem acento, sem espaços/pontuação. */
+function norm(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * O preço da tabela de venda só vale para um lote quando o lote é aquela máquina:
+ * o modelo (e a marca, se cadastrada) precisa aparecer no anúncio.
+ */
+export function modelMatches(title: string, model: string, brand?: string | null): boolean {
+  const t = norm(title);
+  if (!t || !model) return false;
+  if (!t.includes(norm(model))) return false;
+  if (brand && brand.trim() && !t.includes(norm(brand))) return false;
+  return true;
+}
+

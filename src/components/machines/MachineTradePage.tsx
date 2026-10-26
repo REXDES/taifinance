@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Search, Plus, Trash2, ExternalLink } from 'lucide-react';
 import { useMachineCategories } from '@/hooks/useMachinesModule';
-import { maxBid, median, realMarginPct, suggestedSalePrice, verdict } from '@/lib/machineTrade';
+import { maxBid, median, modelMatches, realMarginPct, suggestedSalePrice, verdict } from '@/lib/machineTrade';
 import { todayISO, formatBR } from '@/lib/dateUtils';
 
 const db = supabase as any;
@@ -224,10 +224,14 @@ function AuctionsTab({ companyId, settings, prices, refetchPrices }: { companyId
   const options = prices.filter(p => !settingId || p.setting_id === settingId);
 
   const matchPrice = (f: Found): Price | undefined => {
-    if (priceId !== 'all') return prices.find(p => p.id === priceId);
-    const t = `${f.title} ${f.model ?? ''}`.toLowerCase();
-    return options.find(p => t.includes(p.model.toLowerCase()));
+    const text = `${f.title} ${f.model ?? ''}`;
+    if (priceId !== 'all') {
+      const p = prices.find(x => x.id === priceId);
+      return p && modelMatches(text, p.model, p.brand) ? p : undefined;
+    }
+    return options.find(p => modelMatches(text, p.model, p.brand));
   };
+
   const calc = (f: Found, k?: number) => {
     const p = matchPrice(f);
     const s = settings.find(x => x.id === (p?.setting_id ?? settingId)) ?? setting;
@@ -313,7 +317,7 @@ function AuctionsTab({ companyId, settings, prices, refetchPrices }: { companyId
       </Card>
       {!!results.length && (
         <Card><CardHeader><CardTitle className="text-base">Resultados (somente leilões)</CardTitle></CardHeader><CardContent className="overflow-x-auto">
-          <p className="text-xs text-muted-foreground mb-2">"Preço de mercado" é a mediana de anúncios da mesma máquina em balcão e outras ofertas fora de leilão.</p>
+          <p className="text-xs text-muted-foreground mb-2">"Preço de mercado" é a mediana de anúncios da mesma máquina em balcão e outras ofertas fora de leilão. O preço da tabela só vale para lotes do modelo escolhido; os demais usam o preço de mercado.</p>
           <Table>
             <TableHeader><TableRow><TableHead>Lote</TableHead><TableHead>Data do leilão</TableHead><TableHead>Lance</TableHead><TableHead>Preço de mercado</TableHead><TableHead>Lance máximo</TableHead><TableHead>Lucro estimado</TableHead><TableHead>Situação</TableHead><TableHead /></TableRow></TableHeader>
             <TableBody>{results.map((f, k) => {

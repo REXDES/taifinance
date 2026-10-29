@@ -1,3 +1,8 @@
+export function validBrazilianWhatsapp(phone: string): boolean {
+  const digits = phone.replace(/\D/g, '');
+  return /^[1-9]\d{9,10}$/.test(digits) || /^55[1-9]\d{9,10}$/.test(digits);
+}
+
 export function whatsappAccepted(data: any): boolean {
   return (data?.ok === true || data?.success === true)
     && typeof data?.data?.messages?.[0]?.id === 'string'

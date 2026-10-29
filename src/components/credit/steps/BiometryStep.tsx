@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Camera, Copy, ExternalLink, MessageCircle, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { whatsappAccepted, whatsappFailure } from '@/lib/whatsappResult';
+import { whatsappAccepted, whatsappFailure, validBrazilianWhatsapp } from '@/lib/whatsappResult';
 
 type Biometry = {
   id: string;
@@ -82,6 +82,10 @@ export function BiometryStep({
 
   const sendWhatsApp = async () => {
     if (!whatsapp) { toast.error('Cliente sem WhatsApp na qualificação'); return; }
+    if (!validBrazilianWhatsapp(whatsapp)) {
+      toast.error('WhatsApp incompleto. Volte à Qualificação e informe o número com DDD.');
+      return;
+    }
     if (!bio || !publicUrl || sending) return;
     setSending(true);
     const text = `Olá! Para concluir sua análise de crédito, faça sua biometria neste link: ${publicUrl}`;

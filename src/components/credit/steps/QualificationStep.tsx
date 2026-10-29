@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, ArrowRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { validBrazilianWhatsapp } from '@/lib/whatsappResult';
 
 interface Prefilled {
   whatsapp_phone?: string;
@@ -301,6 +302,10 @@ export function QualificationStep({
   const save = async () => {
     if (!form.whatsapp_phone.trim()) {
       toast.error('WhatsApp é obrigatório');
+      return;
+    }
+    if (!validBrazilianWhatsapp(form.whatsapp_phone)) {
+      toast.error('Informe o WhatsApp completo com DDD, por exemplo (11) 99999-0000.');
       return;
     }
     setSaving(true);

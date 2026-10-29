@@ -4739,6 +4739,10 @@ export type Database = {
           decided_at: string | null
           decided_by: string | null
           disbursed_at: string | null
+          disbursement_method: string | null
+          disbursement_note: string | null
+          disbursement_proof_path: string | null
+          disbursement_sale_id: string | null
           disbursement_transfer_id: string | null
           discount_amount: number
           discount_rate: number
@@ -4764,6 +4768,10 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           disbursed_at?: string | null
+          disbursement_method?: string | null
+          disbursement_note?: string | null
+          disbursement_proof_path?: string | null
+          disbursement_sale_id?: string | null
           disbursement_transfer_id?: string | null
           discount_amount?: number
           discount_rate?: number
@@ -4789,6 +4797,10 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           disbursed_at?: string | null
+          disbursement_method?: string | null
+          disbursement_note?: string | null
+          disbursement_proof_path?: string | null
+          disbursement_sale_id?: string | null
           disbursement_transfer_id?: string | null
           discount_amount?: number
           discount_rate?: number
@@ -4812,6 +4824,13 @@ export type Database = {
             columns: ["cedent_company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receivable_assignments_disbursement_sale_id_fkey"
+            columns: ["disbursement_sale_id"]
+            isOneToOne: false
+            referencedRelation: "necta_sales"
             referencedColumns: ["id"]
           },
           {

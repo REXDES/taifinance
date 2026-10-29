@@ -23,6 +23,14 @@ const Body = z.discriminatedUnion('action', [
     request_id: z.string().min(8).max(100),
   }),
   z.object({ action: z.literal('disburse'), assignment_id: z.string().uuid() }),
+  // Financiador sem conta Pagando.net: o cedente emite uma cobrança (PIX/boleto) contra o financiador
+  z.object({ action: z.literal('disburse_charge'), assignment_id: z.string().uuid(), method: z.enum(['pix', 'bank_slip']) }),
+  z.object({ action: z.literal('disburse_status'), assignment_id: z.string().uuid() }),
+  // Cobrança própria: pagamento por fora (TED/PIX de qualquer banco), com comprovante opcional
+  z.object({
+    action: z.literal('disburse_manual'), assignment_id: z.string().uuid(),
+    proof_path: z.string().max(500).optional(), note: z.string().trim().max(300).optional(),
+  }),
 ]);
 
 Deno.serve(async (req) => {
@@ -57,6 +65,73 @@ Deno.serve(async (req) => {
       const name = await lookupSeller(body.seller_id);
       if (!name) return json({ ok: false, error: 'Conta Pagando.net não encontrada para este código.' });
       return json({ ok: true, name });
+    }
+
+    if (body.action === 'disburse_charge' || body.action === 'disburse_status' || body.action === 'disburse_manual') {
+      const { data: a } = await admin.from('receivable_assignments').select('*').eq('id', body.assignment_id).maybeSingle();
+      if (!a) return json({ error: 'Cessão não encontrada' }, 404);
+      if (!(await access(a.financier_company_id))) return json({ error: 'Apenas o financiador desembolsa.' }, 403);
+      if (!['assigned', 'paid_by_debtor', 'settled', 'settlement_failed'].includes(a.status)) {
+        return json({ error: 'Aprove a antecipação antes de desembolsar.' }, 400);
+      }
+      const saleFields = 'id, method, amount, status, due_date, pix_copy_paste, boleto_digitable_line, boleto_url, payment_url, paid_at';
+      const markDone = async (method: string, extra: Record<string, unknown> = {}) => {
+        await admin.from('receivable_assignments').update({ disbursed_at: new Date().toISOString(), disbursement_method: method, ...extra }).eq('id', a.id);
+        await admin.from('receivable_assignment_events').insert({
+          assignment_id: a.id, event_type: 'disbursement', request_id: `assign-disburse-${method}-${a.id}`, success: true,
+          payload: { method, ...extra }, response: {}, created_by: u.user.id,
+        });
+      };
+
+      if (body.action === 'disburse_manual') {
+        if (a.disbursed_at) return json({ ok: true, already: true });
+        await markDone('manual', { disbursement_proof_path: body.proof_path ?? null, disbursement_note: body.note ?? null });
+        return json({ ok: true });
+      }
+
+      const callSale = async (payload: Record<string, unknown>) => {
+        const r = await fetch(`${url}/functions/v1/necta-sale`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: req.headers.get('Authorization') ?? '', apikey: Deno.env.get('SUPABASE_ANON_KEY')! },
+          body: JSON.stringify(payload),
+        });
+        return await r.json().catch(() => ({}));
+      };
+
+      if (body.action === 'disburse_status') {
+        if (!a.disbursement_sale_id) return json({ ok: true, sale: null, disbursed: !!a.disbursed_at });
+        if (!a.disbursed_at) await callSale({ action: 'sync', sale_id: a.disbursement_sale_id });
+        const { data: s } = await admin.from('necta_sales').select(saleFields).eq('id', a.disbursement_sale_id).maybeSingle();
+        if (s?.status === 'paid' && !a.disbursed_at) await markDone(s.method === 'pix' ? 'pix_charge' : 'boleto_charge');
+        return json({ ok: true, sale: s, disbursed: !!a.disbursed_at || s?.status === 'paid' });
+      }
+
+      // disburse_charge
+      if (a.disbursed_at) return json({ ok: true, already: true });
+      if (a.disbursement_sale_id) {
+        const { data: s } = await admin.from('necta_sales').select(saleFields).eq('id', a.disbursement_sale_id).maybeSingle();
+        if (s && !['canceled', 'failed', 'expired'].includes(s.status) && s.method === (body.method)) return json({ ok: true, sale: s });
+      }
+      const { data: est } = await admin.from('necta_establishments').select('id')
+        .eq('company_id', a.cedent_company_id).eq('is_own_profile', true).maybeSingle();
+      if (!est) return json({ ok: false, error: 'O cedente ainda não tem conta Pagando.net homologada para emitir a cobrança. Use "Cobrança própria".' });
+      const { data: fc } = await admin.from('companies').select('name, cnpj, email, phone, address, city, state, zip_code').eq('id', a.financier_company_id).maybeSingle();
+      if (!fc?.cnpj) return json({ ok: false, error: 'Cadastre o CNPJ da empresa financiadora para ser o pagador da cobrança.' });
+      const due = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+      const { data: sale, error: insErr } = await admin.from('necta_sales').insert({
+        company_id: a.cedent_company_id, created_by: u.user.id, establishment_id: est.id,
+        method: body.method, amount: Number(a.net_amount), installments: 1,
+        description: `Desembolso antecipação — ${a.title_description ?? a.id}`,
+        payer_name: fc.name, payer_document: fc.cnpj, payer_email: fc.email, payer_phone: fc.phone,
+        payer_address_street: fc.address, payer_address_city: fc.city, payer_address_state: fc.state, payer_address_postal_code: fc.zip_code,
+        due_date: body.method === 'bank_slip' ? due : null, status: 'pending',
+      }).select('id').single();
+      if (insErr || !sale) return json({ ok: false, error: `Não foi possível criar a cobrança: ${insErr?.message ?? 'erro'}` });
+      await admin.from('receivable_assignments').update({ disbursement_sale_id: sale.id, disbursement_method: body.method === 'pix' ? 'pix_charge' : 'boleto_charge' }).eq('id', a.id);
+      const issued = await callSale({ action: 'issue', sale_id: sale.id });
+      if (issued?.error) return json({ ok: false, error: `Falha na emissão: ${issued.error}` });
+      const { data: s } = await admin.from('necta_sales').select(saleFields).eq('id', sale.id).maybeSingle();
+      return json({ ok: true, sale: s });
     }
 
     let from: string, to: string | null, toSeller: string | null = null, toName: string | null = null, amount: number, description: string | null, requestId: string;
@@ -127,7 +202,7 @@ Deno.serve(async (req) => {
       const res = await nectaRequest(`/banking/marketplaces/${mkt}/internal-transfers`, 'POST', payload, undefined, marketplaceCreds());
       await admin.from('seller_transfers').update({ status: 'done', error: null, response: res ?? {} }).eq('id', row.id);
       if (assignment) {
-        await admin.from('receivable_assignments').update({ disbursed_at: new Date().toISOString(), disbursement_transfer_id: row.id }).eq('id', assignment.id);
+        await admin.from('receivable_assignments').update({ disbursed_at: new Date().toISOString(), disbursement_transfer_id: row.id, disbursement_method: 'pagando_transfer' }).eq('id', assignment.id);
         await admin.from('receivable_assignment_events').insert({
           assignment_id: assignment.id, event_type: 'disbursement', request_id: requestId, success: true,
           payload, response: res ?? {}, created_by: u.user.id,

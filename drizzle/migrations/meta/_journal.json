@@ -134,6 +134,13 @@
       "when": 1792694090658,
       "tag": "0018_credit_documents_safe_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793298276801,
+      "tag": "0019_assignment_disbursement_methods",
+      "breakpoints": true
     }
   ]
 }

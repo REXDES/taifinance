@@ -23,6 +23,14 @@ const Body = z.discriminatedUnion('action', [
     request_id: z.string().min(8).max(100),
   }),
   z.object({ action: z.literal('disburse'), assignment_id: z.string().uuid() }),
+  // Financiador sem conta Pagando.net: o cedente emite uma cobrança (PIX/boleto) contra o financiador
+  z.object({ action: z.literal('disburse_charge'), assignment_id: z.string().uuid(), method: z.enum(['pix', 'bank_slip']) }),
+  z.object({ action: z.literal('disburse_status'), assignment_id: z.string().uuid() }),
+  // Cobrança própria: pagamento por fora (TED/PIX de qualquer banco), com comprovante opcional
+  z.object({
+    action: z.literal('disburse_manual'), assignment_id: z.string().uuid(),
+    proof_path: z.string().max(500).optional(), note: z.string().trim().max(300).optional(),
+  }),
 ]);
 
 Deno.serve(async (req) => {

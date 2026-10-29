@@ -28,7 +28,7 @@ export default function CreditBiometryPublic() {
         .maybeSingle();
       if (error || !data) { setError('Link não encontrado'); setLoading(false); return; }
       setBio(data);
-      if (data.status === 'approved' || data.status === 'rejected' || data.status === 'analyzing') {
+      if (data.status === 'approved' || data.status === 'rejected') {
         setStep('done');
       }
       setLoading(false);
@@ -53,10 +53,11 @@ export default function CreditBiometryPublic() {
     const video = videoRef.current;
     if (!video) return '';
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d')!.drawImage(video, 0, 0);
-    return canvas.toDataURL('image/jpeg', 0.85);
+    const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.8);
   };
 
   const stopCamera = () => { streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null; };
@@ -67,22 +68,41 @@ export default function CreditBiometryPublic() {
     const f = e.target.files?.[0];
     if (!f) return;
     const reader = new FileReader();
-    reader.onload = () => setter(reader.result as string);
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+        setter(c.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = () => setter(reader.result as string);
+      img.src = reader.result as string;
+    };
     reader.readAsDataURL(f);
   };
 
   const submit = async () => {
     if (!selfie || !docFront) { setError('Capture selfie e documento (frente)'); return; }
     setStep('sending');
+    const timeout = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('O envio demorou demais. Verifique sua internet e tente novamente.')), 120000));
     try {
-      const { data, error } = await supabase.functions.invoke('credit-biometry-analyze', {
-        body: { token, selfie_b64: selfie, doc_front_b64: docFront, doc_back_b64: docBack },
-      });
-      if (error) throw error;
+      const { data, error } = await Promise.race([
+        supabase.functions.invoke('credit-biometry-analyze', {
+          body: { token, selfie_b64: selfie, doc_front_b64: docFront, doc_back_b64: docBack },
+        }),
+        timeout,
+      ]);
+      if (error) {
+        let msg = error.message;
+        try { const b = await (error as any).context?.json?.(); if (b?.error) msg = b.error; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
       if (data?.error) throw new Error(data.error);
       setStep('done');
     } catch (e: any) {
-      setError(e.message || 'Erro ao enviar');
+      setError('Suas fotos não foram enviadas. ' + (e.message || 'Erro ao enviar'));
       setStep('error');
     }
   };
@@ -111,7 +131,7 @@ export default function CreditBiometryPublic() {
   if (step === 'sending') return (
     <Center>
       <Loader2 className="w-10 h-10 animate-spin mb-3" />
-      <p className="text-sm">Analisando sua biometria com IA…</p>
+      <p className="text-sm">Enviando suas fotos e analisando… não feche esta página.</p>
     </Center>
   );
 

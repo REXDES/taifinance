@@ -79,6 +79,7 @@ Não inclua texto fora do JSON.` },
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  let bioId: string | null = null;
   try {
     const { token, selfie_b64, doc_front_b64, doc_back_b64 } = await req.json();
     if (!token || !selfie_b64 || !doc_front_b64) {
@@ -88,6 +89,7 @@ serve(async (req) => {
     const { data: bio, error: bioErr } = await admin.from("credit_biometry").select("*").eq("public_token", token).maybeSingle();
     if (bioErr || !bio) return new Response(JSON.stringify({ error: "Biometria não encontrada" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    bioId = bio.id;
     await admin.from("credit_biometry").update({ status: "analyzing" }).eq("id", bio.id);
 
     const base = `${bio.company_id}/biometry/${bio.application_id}/${bio.id}`;
@@ -149,6 +151,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, status, similarity: ai.similarity, liveness: ai.liveness }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("biometry analyze error", e);
+    if (bioId) await admin.from("credit_biometry").update({ status: "pending" }).eq("id", bioId).eq("status", "analyzing");
     return new Response(JSON.stringify({ error: String(e?.message || e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

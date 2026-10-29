@@ -290,7 +290,8 @@ export function FinanceUserManagementDialog({
         body: { phone: profileWhatsapp, companyName },
       });
       if (response.error) throw response.error;
-      toast({ title: 'Mensagem de teste enviada com sucesso!' });
+      if (response.data?.success !== true) throw new Error(response.data?.error || 'O WhatsApp recusou o envio de teste');
+      toast({ title: 'Teste aceito pelo WhatsApp; entrega ainda não confirmada.' });
     } catch (error: any) {
       toast({ title: 'Erro ao enviar mensagem', description: error.message, variant: 'destructive' });
     } finally {

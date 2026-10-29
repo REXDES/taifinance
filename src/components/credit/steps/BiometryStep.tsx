@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Camera, Copy, ExternalLink, MessageCircle, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { whatsappAccepted, whatsappFailure } from '@/lib/whatsappResult';
 
 type Biometry = {
   id: string;
@@ -36,6 +37,7 @@ export function BiometryStep({
   const [bio, setBio] = useState<Biometry | null>(null);
   const [whatsapp, setWhatsapp] = useState<string>('');
   const [creating, setCreating] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const refetch = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -80,17 +82,19 @@ export function BiometryStep({
 
   const sendWhatsApp = async () => {
     if (!whatsapp) { toast.error('Cliente sem WhatsApp na qualificação'); return; }
+    if (!bio || !publicUrl || sending) return;
+    setSending(true);
     const text = `Olá! Para concluir sua análise de crédito, faça sua biometria neste link: ${publicUrl}`;
     let sentViaApi = false;
     try {
       const { data, error } = await (supabase as any).functions.invoke('notify-whatsapp', {
-        body: { action: 'send_text', to: whatsapp, text },
+        body: { action: 'send_text', to: whatsapp, text, company_id: companyId, application_id: applicationId },
       });
-      if (!error && data?.ok) {
+      if (!error && whatsappAccepted(data)) {
         sentViaApi = true;
-        toast.success('Mensagem enviada via WhatsApp');
+        toast.success('Mensagem aceita pelo WhatsApp; entrega ainda não confirmada.');
       } else {
-        const reason = data?.data?.error?.message || error?.message || 'Janela de 24h expirada ou número não habilitado';
+        const reason = await whatsappFailure(data, error);
         toast.error(`Não foi possível enviar pelo sistema: ${reason}. Abrindo WhatsApp Web…`);
       }
     } catch (e: any) {
@@ -101,10 +105,8 @@ export function BiometryStep({
       const full = phone.length === 10 || phone.length === 11 ? `55${phone}` : phone;
       window.open(`https://wa.me/${full}?text=${encodeURIComponent(text)}`, '_blank');
     }
-    if (bio && !bio.link_sent_at) {
-      await (supabase as any).from('credit_biometry').update({ link_sent_at: new Date().toISOString(), status: bio.status === 'pending' ? 'sent' : bio.status }).eq('id', bio.id);
-      refetch(true);
-    }
+    if (sentViaApi) await refetch(true);
+    setSending(false);
   };
 
   const requestResend = async () => {
@@ -188,10 +190,10 @@ export function BiometryStep({
           <Button size="sm" variant="outline" onClick={() => window.open(publicUrl, '_blank')}><ExternalLink className="w-3 h-3" /></Button>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" onClick={sendWhatsApp}><MessageCircle className="w-3 h-3 mr-1" />Enviar por WhatsApp</Button>
+          <Button size="sm" onClick={sendWhatsApp} disabled={sending}>{sending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <MessageCircle className="w-3 h-3 mr-1" />}Enviar por WhatsApp</Button>
           <Button size="sm" variant="ghost" onClick={() => refetch(false)}><RefreshCw className="w-3 h-3 mr-1" />Atualizar</Button>
         </div>
-        {bio.link_sent_at && <p className="text-[11px] text-muted-foreground">Enviado em {new Date(bio.link_sent_at).toLocaleString('pt-BR')}</p>}
+        {bio.link_sent_at && <p className="text-[11px] text-muted-foreground">Aceito pelo WhatsApp em {new Date(bio.link_sent_at).toLocaleString('pt-BR')} · entrega não confirmada</p>}
       </div>
 
       {(bio.selfie_url || bio.doc_front_url) && (

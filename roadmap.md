@@ -8,3 +8,4 @@
 - [x] Fase 6 — Transferir saldo, Minhas Taxas, Maquininhas (transferência depende de o gateway liberar a rota)
 - [x] Fase 7 — Mensagens automáticas pelo gateway (registrar ao menos o pedido no log)
 - [x] Compra e venda de máquinas (leilões, tabela de venda, custos de recuperação, venda)
+- [ ] Verificar envio WhatsApp nas propostas e corrigir histórico e confirmação de aceitação.

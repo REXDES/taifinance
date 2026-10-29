@@ -135,9 +135,42 @@ serve(async (req) => {
             status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+        // Scope proposal messages to a company the authenticated user can access.
+        const { data: application, error: appError } = await userClient.from('credit_applications')
+          .select('id, company_id').eq('id', String(body.application_id ?? ''))
+          .eq('company_id', String(body.company_id ?? '')).maybeSingle();
+        if (appError || !application) {
+          return new Response(JSON.stringify({ error: 'Proposta não encontrada ou sem acesso à empresa.' }), {
+            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        const { data: qualification } = await supabase.from('credit_qualifications')
+          .select('whatsapp_phone').eq('application_id', application.id).maybeSingle();
+        const recipient = normalizePhone(String(qualification?.whatsapp_phone ?? ''));
+        if (!/^\d{10,15}$/.test(recipient) || recipient !== normalizePhone(String(body.to)) || typeof body.text !== 'string' || body.text.length > 4096) {
+          return new Response(JSON.stringify({ error: 'Número do cliente ou mensagem inválidos.' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
         const r = await sendText(normalizePhone(String(body.to)), String(body.text));
-        return new Response(JSON.stringify({ ok: r.ok, status: r.status, data: r.data }), {
-          status: r.ok ? 200 : 400,
+        const accepted = r.ok && Boolean(messageIdFrom(r.data));
+        await logWhatsapp({
+          company_id: application.company_id, kind: 'text', recipient_phone: recipient,
+          description: 'Link de biometria da proposta', success: accepted,
+          created_by: String(claims.claims.sub), provider_message_id: messageIdFrom(r.data),
+          error_message: accepted ? null : (r.data?.error?.message ?? 'WhatsApp não confirmou aceitação'),
+          response: { ...r.data, application_id: application.id, delivery_confirmed: false },
+        });
+        if (accepted) {
+          const { error: updateError } = await supabase.from('credit_biometry')
+            .update({ link_sent_at: new Date().toISOString() }).eq('application_id', application.id)
+            .eq('company_id', application.company_id);
+          if (updateError) console.error('Biometry send timestamp update failed:', updateError.message);
+        } else {
+          console.error('WhatsApp proposal send failed:', r.status, JSON.stringify(r.data));
+        }
+        return new Response(JSON.stringify({ ok: accepted, status: r.status, data: r.data, delivery_confirmed: false }), {
+          status: accepted ? 200 : (r.ok ? 502 : r.status),
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

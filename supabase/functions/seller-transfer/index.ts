@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
       const res = await nectaRequest(`/banking/marketplaces/${mkt}/internal-transfers`, 'POST', payload, undefined, marketplaceCreds());
       await admin.from('seller_transfers').update({ status: 'done', error: null, response: res ?? {} }).eq('id', row.id);
       if (assignment) {
-        await admin.from('receivable_assignments').update({ disbursed_at: new Date().toISOString(), disbursement_transfer_id: row.id }).eq('id', assignment.id);
+        await admin.from('receivable_assignments').update({ disbursed_at: new Date().toISOString(), disbursement_transfer_id: row.id, disbursement_method: 'pagando_transfer' }).eq('id', assignment.id);
         await admin.from('receivable_assignment_events').insert({
           assignment_id: assignment.id, event_type: 'disbursement', request_id: requestId, success: true,
           payload, response: res ?? {}, created_by: u.user.id,

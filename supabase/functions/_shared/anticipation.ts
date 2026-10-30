@@ -1,6 +1,6 @@
 // Liquidação de títulos cedidos (antecipação de recebíveis).
 // Após o pagamento do boleto (sale.paid), cria um split pós-venda na Multi-Pay
-// direcionando o valor líquido da cessão ao seller do financiador.
+// direcionando 100% do valor de face do boleto ao seller do financiador.
 // Idempotente: request_id fixo por cessão; não repete se já houve sucesso.
 import { nectaRequest, companyCredentials, resolveCompanySellerId } from './nectaSeller.ts';
 
@@ -33,7 +33,7 @@ export async function settleAssignment(admin: any, assignmentId: string, actor?:
   const payload = {
     recipientType: 'SELLER',
     recipientId: fin?.necta_seller_id,
-    amount: Math.round(Number(a.net_amount) * 100),
+    amount: Math.round(Number(a.face_amount) * 100),
     metadata: { request_id: requestId, assignment_id: a.id, source: 'tai-finance-anticipation' },
   };
 
@@ -48,6 +48,9 @@ export async function settleAssignment(admin: any, assignmentId: string, actor?:
 
   if (!fin?.necta_seller_id) return await fail('Financiador sem ID de seller Pagando configurado.');
   if (!saleUuid) return await fail('Título sem venda Pagando.net vinculada.');
+  if (!Number.isSafeInteger(payload.amount) || payload.amount <= 0) {
+    return await fail('Valor de face do boleto inválido para liquidação.');
+  }
 
   try {
     const creds = await companyCredentials(admin, a.cedent_company_id);

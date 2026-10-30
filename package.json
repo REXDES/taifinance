@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:insights": "node --experimental-strip-types scripts/test-dashboard-insights.mts",
-    "test:trade": "node --experimental-strip-types scripts/test-machine-trade.mts"
+    "test:trade": "node --experimental-strip-types scripts/test-machine-trade.mts",
+    "test:anticipation": "node --experimental-strip-types scripts/test-anticipation-settlement.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

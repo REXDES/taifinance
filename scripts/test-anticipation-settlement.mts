@@ -55,6 +55,7 @@ try {
   const admin = adminMock();
   await onSalePaid(admin, { id: 'sale-row', payable_receivable_id: 'receivable' });
   assert.equal(splits[0]?.payload.amount, 10000, 'Split must send 100% face, not the R$90 disbursement');
+  assert.equal(splits[0]?.payload.splitType, 'ABSOLUTE', 'Split amount must be interpreted as cents');
   assert.equal(completedFinancier, 'admin-selected-company');
   assert.equal(splits[0]?.payload.recipientId, 'seller-admin-selected-company');
   assert.equal(splits[0]?.url.endsWith('/sales/sale-uuid/splits'), true);
@@ -69,6 +70,7 @@ try {
   assignment = { ...assignment, id: 'assignment-2', status: 'paid_by_debtor', face_amount: '51.75' };
   await settleAssignment(admin, assignment.id);
   assert.equal(splits[1]?.payload.amount, 5175, 'Face cents must be preserved exactly');
+  assert.equal(splits[1]?.payload.splitType, 'ABSOLUTE', 'Split amount must use absolute cents');
 
   for (const face of [null, 'invalid', 0, -10]) {
     succeeded = false;

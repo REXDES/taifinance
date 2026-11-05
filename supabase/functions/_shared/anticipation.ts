@@ -34,6 +34,7 @@ export async function settleAssignment(admin: any, assignmentId: string, actor?:
     recipientType: 'SELLER',
     recipientId: fin?.necta_seller_id,
     amount: Math.round(Number(a.face_amount) * 100),
+    splitType: 'ABSOLUTE',
     metadata: { request_id: requestId, assignment_id: a.id, source: 'tai-finance-anticipation' },
   };
 

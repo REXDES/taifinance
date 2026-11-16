@@ -646,6 +646,22 @@ export async function reconcileLineAsSettlement(line: StatementLine, payableId: 
   if (updateError) throw updateError;
 }
 
+/** Saldo da conta no app ao fim de uma data: saldo atual menos o que foi movimentado depois dela. */
+export async function getAccountBalanceAt(accountId: string, currentBalance: number, date: string | null) {
+  if (!date) return currentBalance;
+  const [tx, out, inn] = await Promise.all([
+    supabase.from('transactions').select('amount, type').eq('account_id', accountId).gt('date', date),
+    (supabase as any).from('transfers').select('amount').eq('from_account_id', accountId).gt('date', date),
+    (supabase as any).from('transfers').select('amount').eq('to_account_id', accountId).gt('date', date),
+  ]);
+  if (tx.error || out.error || inn.error) throw tx.error || out.error || inn.error;
+  let after = 0;
+  for (const t of tx.data || []) after += Math.round(Number(t.amount) * 100) * (t.type === 'income' ? 1 : -1);
+  for (const t of out.data || []) after -= Math.round(Number(t.amount) * 100);
+  for (const t of inn.data || []) after += Math.round(Number(t.amount) * 100);
+  return (Math.round(currentBalance * 100) - after) / 100;
+}
+
 /** Concilia a linha com o lançamento que já existe no app, sem criar outro. */
 export async function linkLineToExistingTransaction(line: StatementLine) {
   if (!line.duplicate_of_transaction_id) throw new Error('Linha sem lançamento correspondente');

@@ -25,7 +25,7 @@ import { findStatementBalanceMatch } from '@/lib/statementBalanceMatch';
 import {
   useStatementImports, useStatementLines, parseStatementFile, createStatementImport,
   suggestForLines, reconcileLineAsTransaction,
-  linkLineToExistingTransaction, reconcileLineAsSettlement, updateStatementLine,
+  linkLineToExistingTransaction, getAccountBalanceAt, reconcileLineAsSettlement, updateStatementLine,
   setImportStatus, finishReconciliation, createReconciliationAdjustment, detectFormat, StatementLine,
   DuplicateLineError,
   attachReceiptToLine, createReceiptsImport, getReceiptUrl,
@@ -212,7 +212,7 @@ export function StatementImportPage({ companyId }: Props) {
         lines: (suggestedLines || []) as StatementLine[],
         openingBalance: created.opening_balance,
         closingBalance: created.closing_balance,
-        accountBalance: sourceAccount?.current_balance ?? null,
+        accountBalance: sourceAccount ? await getAccountBalanceAt(sourceAccount.id, sourceAccount.current_balance, created.period_end ?? null) : null,
         accountId: created.account_id,
       });
       setSelected(Object.fromEntries((match?.lineIds || []).map(id => [id, true])));
@@ -427,7 +427,16 @@ export function StatementImportPage({ companyId }: Props) {
   const balanceDiff = computed !== null && informedClosing !== null ? Number((informedClosing - computed).toFixed(2)) : null;
 
   const appAccount = currentImport?.account_id ? accounts.find((a) => a.id === currentImport.account_id) : null;
-  const appBalance = appAccount?.current_balance ?? null;
+  const [appBalance, setAppBalance] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    if (!appAccount) { setAppBalance(null); return; }
+    // Compare with the account balance on the statement's last day, not today's balance.
+    getAccountBalanceAt(appAccount.id, appAccount.current_balance, currentImport?.period_end ?? null)
+      .then(v => { if (alive) setAppBalance(v); })
+      .catch(() => { if (alive) setAppBalance(null); });
+    return () => { alive = false; };
+  }, [appAccount?.id, appAccount?.current_balance, currentImport?.period_end, lines.filter(l => l.status !== 'pending').length]);
   const appBalanceDiff = informedClosing !== null && appBalance !== null ? Number((informedClosing - appBalance).toFixed(2)) : null;
   const tolerance = appAccount?.reconciliation_tolerance ?? 0;
   const withinTolerance = appBalanceDiff !== null && Math.abs(appBalanceDiff) <= Math.max(tolerance, 0.01);
@@ -667,12 +676,12 @@ export function StatementImportPage({ companyId }: Props) {
       {currentImport?.account_id && !linesLoading && appBalance !== null && informedClosing !== null && (
         <Alert>
           {balanceMatch ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-          <AlertTitle>{balanceMatch ? 'Ponto de conciliação encontrado' : 'Nenhum saldo anterior compatível'}</AlertTitle>
+          <AlertTitle>{balanceMatch ? 'Ponto de conciliação encontrado' : 'O saldo final ainda não bate'}</AlertTitle>
           <AlertDescription className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
             <div className="space-y-2 flex-1">
               {balanceMatch ? <>
                 <p>
-                  Saldo da conta hoje: {currency(appBalance)} · Saldo final do extrato: {currency(balanceMatch.projectedBalance)} · Falta: {currency(balanceMatch.movement)}.
+                  Saldo da conta no app em {fmtDate(currentImport.period_end || '')}: {currency(appBalance)} · Saldo final do extrato: {currency(balanceMatch.projectedBalance)} · Falta: {currency(balanceMatch.movement)}.
                 </p>
                 {balanceMatch.mode === 'checkpoint' && (
                   <p className="text-muted-foreground">O saldo da conta é igual ao do extrato{balanceMatch.checkpointDate ? ` em ${fmtDate(balanceMatch.checkpointDate)}` : ' no início do extrato'}.</p>
@@ -718,7 +727,25 @@ export function StatementImportPage({ companyId }: Props) {
                     </table>
                   </div>
                 )}
-              </> : <p>Não foi possível confirmar uma sequência de lançamentos que feche o saldo final. Revise os saldos e os lançamentos antes de conciliar.</p>}
+              </> : (() => {
+                const pendingLines = lines.filter(l => l.status === 'pending');
+                const allInApp = pendingLines.length > 0 && pendingLines.every(l => l.duplicate_of_transaction_id);
+                const diff = Number(((informedClosing ?? 0) - (appBalance ?? 0)).toFixed(2));
+                return <>
+                  <p>Saldo da conta no app em {fmtDate(currentImport.period_end || '')}: {currency(appBalance)} · Saldo final do extrato: {currency(informedClosing)} · Diferença: {currency(diff)}.</p>
+                  {allInApp ? (
+                    <p className="font-medium">
+                      Todos os lançamentos deste extrato já existem no app — não há nada a efetivar. Use "Vincular já existentes".
+                      {Math.abs(diff) >= 0.01 && ` A diferença de ${currency(diff)} não vem destes lançamentos: ela já existia antes do período (confira o saldo inicial da conta ou gere um ajuste).`}
+                    </p>
+                  ) : <p>Nenhum grupo de lançamentos pendentes fecha essa diferença no centavo. Revise os lançamentos antes de conciliar.</p>}
+                  {allInApp && (
+                    <Button size="sm" variant="outline" disabled={linking} onClick={() => linkAlreadyInApp(pendingLines.map(l => l.id))}>
+                      <Link2 className="w-3.5 h-3.5 mr-1" /> Vincular já existentes ({pendingLines.length})
+                    </Button>
+                  )}
+                </>;
+              })()}
             </div>
             {!!balanceMatch?.lineIds.length && (
               <Button variant="outline" size="sm" className="shrink-0" onClick={() => setSelected(Object.fromEntries(balanceMatch.lineIds.map(id => [id, true])))}>
@@ -737,7 +764,7 @@ export function StatementImportPage({ companyId }: Props) {
           </AlertTitle>
           <AlertDescription className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <span>
-              O saldo atual da conta <strong>{appAccount?.name}</strong> no app é {currency(appBalance)}, mas o extrato
+              O saldo da conta <strong>{appAccount?.name}</strong> no app em {fmtDate(currentImport?.period_end || '')} é {currency(appBalance)}, mas o extrato
               importado informa saldo final de {currency(informedClosing)} (diferença de {currency(appBalanceDiff)}).{' '}
               {withinTolerance
                 ? `A diferença está dentro da tolerância configurada (${currency(tolerance)}). Você pode gerar um ajuste de arredondamento ou encerrar a conciliação.`

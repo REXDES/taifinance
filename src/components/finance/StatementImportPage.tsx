@@ -264,8 +264,9 @@ export function StatementImportPage({ companyId }: Props) {
       .select('current_balance')
       .eq('id', currentImport.account_id)
       .maybeSingle();
-    const balance = data?.current_balance;
-    if (balance === null || balance === undefined) return;
+    if (data?.current_balance === null || data?.current_balance === undefined) return;
+    const balance = await getAccountBalanceAt(currentImport.account_id, Number(data.current_balance), currentImport.period_end ?? null);
+    setAppBalance(balance);
     const diff = Number((Number(currentImport.closing_balance) - Number(balance)).toFixed(2));
     if (Math.abs(diff) < 0.01) {
       toast.success('Saldo do app já está igual ao do extrato. Você pode encerrar a conciliação.');

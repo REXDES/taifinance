@@ -343,7 +343,7 @@ export function StatementImportPage({ companyId }: Props) {
     ].filter(Boolean).join(', ');
     toast[blocked || failed ? 'warning' : 'success'](`${ok} linha(s) conciliada(s)${extra ? `, ${extra}` : ''}`);
     if (blocked) {
-      toast.warning('Linhas marcadas como duplicidade não foram efetivadas. Revise e confirme individualmente se realmente deve lançar.');
+      toast.warning('Linhas marcadas como duplicidade não foram efetivadas: elas já existem no app e já contam no saldo. Use "Vincular já existentes".');
     }
     await recheckBalance();
   };
@@ -1154,7 +1154,7 @@ export function StatementImportPage({ companyId }: Props) {
               </div>
               <p className="text-muted-foreground">{confirmDup.reason}</p>
               <p className="text-muted-foreground">
-                Se já estava lançado, use <strong>Ignorar</strong> para limpar a linha sem alterar o saldo.
+                Se já está lançado, ele já conta no saldo: use <strong>Vincular ao existente</strong> — não crie outro lançamento.
               </p>
             </div>
           )}
@@ -1171,6 +1171,18 @@ export function StatementImportPage({ companyId }: Props) {
                 }}
               >
                 <Ban className="w-4 h-4 mr-2" /> Ignorar linha
+              </Button>
+            )}
+            {confirmDup?.line.duplicate_of_transaction_id && (
+              <Button
+                onClick={async () => {
+                  const line = confirmDup.line;
+                  setConfirmDup(null);
+                  await linkAlreadyInApp([line.id]);
+                  await recheckBalance();
+                }}
+              >
+                <Link2 className="w-4 h-4 mr-2" /> Vincular ao existente
               </Button>
             )}
             {confirmDup && (

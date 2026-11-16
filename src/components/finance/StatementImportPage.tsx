@@ -311,9 +311,11 @@ export function StatementImportPage({ companyId }: Props) {
     let ok = 0;
     let failed = 0;
     let blocked = 0;
+    // Lines in the verified balance block are proven missing from the account.
+    const verified = new Set(balanceMatch?.flaggedDuplicateIds || []);
     for (const line of targets) {
       try {
-        await reconcileLineAsTransaction(line);
+        await reconcileLineAsTransaction(line, undefined, { confirmDuplicate: verified.has(line.id) });
         ok += 1;
       } catch (error) {
         if (error instanceof DuplicateLineError) blocked += 1;
@@ -715,7 +717,7 @@ export function StatementImportPage({ companyId }: Props) {
               importado informa saldo final de {currency(informedClosing)} (diferença de {currency(appBalanceDiff)}).{' '}
               {withinTolerance
                 ? `A diferença está dentro da tolerância configurada (${currency(tolerance)}). Você pode gerar um ajuste de arredondamento ou encerrar a conciliação.`
-                : 'É necessário efetivar os lançamentos pendentes para equalizar os saldos antes de encerrar a conciliação.'}
+                : balanceMatch?.lineIds.length ? 'Efetive o bloco de lançamentos indicado no aviso "Ponto de conciliação encontrado" para o saldo bater.' : 'É necessário efetivar os lançamentos pendentes para equalizar os saldos antes de encerrar a conciliação.'}
             </span>
             {withinTolerance && (
               <Button size="sm" variant="outline" onClick={handleCreateAdjustment} disabled={adjusting}>

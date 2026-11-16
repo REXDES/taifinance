@@ -1,6 +1,6 @@
 # AGENTS
 
-- Statement balance suggestions use the pure `statementBalanceMatch` helper and exact cents to select only a verified chronological remainder; never auto-post entries or bypass duplicate checks to force a closing balance.
+- Statement balance suggestions use the pure `statementBalanceMatch` helper and exact cents to select only a verified chronological remainder; never auto-post entries; lines flagged as possible duplicates may be suggested only when the verified balance chain proves they are missing from the account, and must be labeled as flagged.
 
 - Anticipation settlement is centralized in `supabase/functions/_shared/anticipation.ts`, triggered after payment by `necta-webhook` and idempotent by assignment request ID; use the assignment's financier company so administrator configuration remains authoritative and the cedent does not perform a manual onward transfer.
 - Proposal WhatsApp sends must validate company access and the qualification recipient, persist provider results, and distinguish API acceptance from delivery because send responses do not prove arrival.

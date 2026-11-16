@@ -47,20 +47,27 @@ export function findStatementBalanceMatch(params: {
   }
   if (balances[balances.length - 1] !== cents(closingBalance)) return null;
   // Prefer the most recent checkpoint to avoid suggesting historical movements again.
-  for (let start = lines.length; start >= 0; start--) {
-    if (balances[start] !== cents(accountBalance)) continue;
-    const remainder = lines.slice(start);
-    const eligible = remainder.filter(line => line.status === 'pending' &&
-      !line.duplicate_of_transaction_id && line.suggested_account_id === accountId);
-    if (eligible.reduce((sum, line) => sum + signed(line), cents(accountBalance)) !== cents(closingBalance)) continue;
-    return {
-      lineIds: eligible.map(line => line.id),
-      checkpointDate: start > 0 ? lines[start - 1].date : null,
-      startIndex: start,
-      openingBalance: opening / 100,
-      movement: (cents(closingBalance) - cents(accountBalance)) / 100,
-      projectedBalance: closingBalance,
-    };
+  // A verified balance chain proves the remainder is not yet in the account, so lines
+  // flagged only as *possible* duplicates may be included — but are reported separately.
+  for (const allowFlagged of [false, true]) {
+    for (let start = lines.length; start >= 0; start--) {
+      if (balances[start] !== cents(accountBalance)) continue;
+      const remainder = lines.slice(start);
+      const eligible = remainder.filter(line => line.status === 'pending' &&
+        (allowFlagged || !line.duplicate_of_transaction_id) && line.suggested_account_id === accountId);
+      if (eligible.reduce((sum, line) => sum + signed(line), cents(accountBalance)) !== cents(closingBalance)) continue;
+      return {
+        lineIds: eligible.map(line => line.id),
+        flaggedDuplicateIds: eligible.filter(line => line.duplicate_of_transaction_id).map(line => line.id),
+        checkpointDate: start > 0 ? lines[start - 1].date : null,
+        startIndex: start,
+        firstDate: eligible[0]?.date ?? null,
+        lastDate: eligible[eligible.length - 1]?.date ?? null,
+        openingBalance: opening / 100,
+        movement: (cents(closingBalance) - cents(accountBalance)) / 100,
+        projectedBalance: closingBalance,
+      };
+    }
   }
   return null;
 }

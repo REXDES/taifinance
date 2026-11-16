@@ -653,17 +653,50 @@ export function StatementImportPage({ companyId }: Props) {
         <Alert>
           {balanceMatch ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
           <AlertTitle>{balanceMatch ? 'Ponto de conciliação encontrado' : 'Nenhum saldo anterior compatível'}</AlertTitle>
-          <AlertDescription className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <span>
+          <AlertDescription className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+            <div className="space-y-2 flex-1">
               {balanceMatch ? <>
-                Saldo da conta: {currency(appBalance)}{balanceMatch.checkpointDate ? ` em ${fmtDate(balanceMatch.checkpointDate)}` : ' no início do extrato'}.
-                {' '}{balanceMatch.lineIds.length} lançamento(s) pendente(s), total líquido de {currency(balanceMatch.movement)},
-                {' '}fecham o saldo final de {currency(balanceMatch.projectedBalance)}.
-              </> : 'Não foi possível confirmar uma sequência de lançamentos que feche o saldo final sem duplicidades. Revise os saldos e os lançamentos antes de conciliar.'}
-            </span>
+                <p>
+                  Saldo da conta hoje: {currency(appBalance)} — igual ao saldo do extrato{balanceMatch.checkpointDate ? ` em ${fmtDate(balanceMatch.checkpointDate)}` : ' no início do extrato'}.
+                </p>
+                {balanceMatch.lineIds.length > 0 ? (
+                  <p className="font-medium">
+                    Se você efetivar os {balanceMatch.lineIds.length} lançamento(s) abaixo
+                    {balanceMatch.firstDate ? ` (de ${fmtDate(balanceMatch.firstDate)} a ${fmtDate(balanceMatch.lastDate!)})` : ''},
+                    total líquido de {currency(balanceMatch.movement)}, o saldo final vai bater em {currency(balanceMatch.projectedBalance)}.
+                  </p>
+                ) : <p className="font-medium">O saldo já bate com o extrato. Nada a efetivar.</p>}
+                {balanceMatch.flaggedDuplicateIds.length > 0 && (
+                  <p className="text-muted-foreground">
+                    {balanceMatch.flaggedDuplicateIds.length} desses lançamento(s) estão marcados como "Duplicidade?", mas o saldo da conta mostra que
+                    eles ainda não entraram nela — sem efetivá-los o saldo final não fecha. Confira se o lançamento parecido é de outra data/conta.
+                  </p>
+                )}
+                {balanceMatch.lineIds.length > 0 && (
+                  <div className="max-h-56 overflow-y-auto rounded border bg-background">
+                    <table className="w-full text-xs">
+                      <tbody>
+                        {lines.filter(l => balanceMatch.lineIds.includes(l.id)).map(l => (
+                          <tr key={l.id} className="border-b last:border-0">
+                            <td className="px-2 py-1 whitespace-nowrap">{fmtDate(l.date)}</td>
+                            <td className="px-2 py-1">
+                              {l.raw_description}
+                              {l.duplicate_of_transaction_id && <Badge variant="outline" className="ml-2 text-[10px]">marcado como duplicidade</Badge>}
+                            </td>
+                            <td className={`px-2 py-1 text-right whitespace-nowrap ${l.type === 'income' ? 'text-primary' : 'text-destructive'}`}>
+                              {l.type === 'income' ? '+' : '-'}{currency(l.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </> : <p>Não foi possível confirmar uma sequência de lançamentos que feche o saldo final. Revise os saldos e os lançamentos antes de conciliar.</p>}
+            </div>
             {!!balanceMatch?.lineIds.length && (
-              <Button variant="outline" size="sm" onClick={() => setSelected(Object.fromEntries(balanceMatch.lineIds.map(id => [id, true])))}>
-                <CheckCircle2 className="w-4 h-4 mr-2" /> Selecionar sugeridos
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => setSelected(Object.fromEntries(balanceMatch.lineIds.map(id => [id, true])))}>
+                <CheckCircle2 className="w-4 h-4 mr-2" /> Selecionar estes lançamentos
               </Button>
             )}
           </AlertDescription>

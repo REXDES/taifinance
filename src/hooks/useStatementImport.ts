@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { setEntityTags } from '@/hooks/useFinanceTags';
@@ -324,10 +324,17 @@ export function useStatementImports(companyId: string | null) {
 export function useStatementLines(importId: string | null) {
   const [lines, setLines] = useState<StatementLine[]>([]);
   const [loading, setLoading] = useState(false);
+  const activeImportId = useRef(importId);
+  activeImportId.current = importId;
+  const requestId = useRef(0);
 
   const fetchLines = useCallback(async () => {
+    // Upload's async callback may retain the hook from before selecting the new import.
+    if (importId !== activeImportId.current) return;
+    const request = ++requestId.current;
     if (!importId) {
       setLines([]);
+      setLoading(false);
       return;
     }
     setLoading(true);
@@ -336,6 +343,7 @@ export function useStatementLines(importId: string | null) {
       .select('*')
       .eq('import_id', importId)
       .order('line_index');
+    if (request !== requestId.current || importId !== activeImportId.current) return;
     if (error) toast.error('Erro ao carregar linhas: ' + error.message);
     setLines((data || []) as StatementLine[]);
     setLoading(false);
@@ -343,7 +351,14 @@ export function useStatementLines(importId: string | null) {
 
   useEffect(() => { fetchLines(); }, [fetchLines]);
 
-  return { lines, loading, refetch: fetchLines, setLines };
+  const replaceLines = useCallback((id: string, next: StatementLine[]) => {
+    if (id !== activeImportId.current) return;
+    ++requestId.current;
+    setLines(next);
+    setLoading(false);
+  }, []);
+
+  return { lines, loading, refetch: fetchLines, setLines, replaceLines };
 }
 
 interface CreateImportParams {

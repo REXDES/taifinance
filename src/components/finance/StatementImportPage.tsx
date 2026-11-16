@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Upload, RefreshCw, Sparkles, CheckCircle2, Trash2, AlertTriangle, FileSpreadsheet,
-  Copy, Ban, Link2, ChevronLeft, Paperclip, ExternalLink, Receipt,
+  Copy, Ban, Link2, ChevronLeft, Paperclip, ExternalLink, Receipt, Plus, MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +21,7 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useTransactionCategories } from '@/hooks/useTransactionCategories';
 import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { useFinanceTags } from '@/hooks/useFinanceTags';
+import { usePermissions } from '@/hooks/usePermissions';
 import { TagPicker } from '@/components/finance/TagPicker';
 import { parseLocalDate } from '@/lib/dateUtils';
 import { findStatementBalanceMatch } from '@/lib/statementBalanceMatch';
@@ -61,7 +64,8 @@ function ConfBadge({
 
 export function StatementImportPage({ companyId }: Props) {
   const { accounts, refetch: refetchAccounts } = useAccounts(companyId);
-  const { categories } = useTransactionCategories(companyId);
+  const { categories, createCategory, createSubcategory } = useTransactionCategories(companyId);
+  const { can } = usePermissions();
   const { payablesReceivables } = usePayablesReceivables(companyId, { status: ['pending'] });
   const { tags } = useFinanceTags(companyId);
   const { imports, loading: importsLoading, refetch: refetchImports, deleteImport } = useStatementImports(companyId);
@@ -70,7 +74,7 @@ export function StatementImportPage({ companyId }: Props) {
   const [selectedImportId, setSelectedImportId] = useState<string | null>(() => {
     try { return localStorage.getItem(`statement_import_selected_${companyId}`); } catch { return null; }
   });
-  const { lines, loading: linesLoading, refetch: refetchLines } = useStatementLines(selectedImportId);
+  const { lines, loading: linesLoading, refetch: refetchLines, replaceLines } = useStatementLines(selectedImportId);
 
   const selectImport = (importId: string | null) => {
     try {
@@ -104,6 +108,13 @@ export function StatementImportPage({ companyId }: Props) {
   const [finishing, setFinishing] = useState(false);
   const [adjusting, setAdjusting] = useState(false);
   const [confirmDup, setConfirmDup] = useState<{ line: StatementLine; reason: string } | null>(null);
+  const [descriptionLine, setDescriptionLine] = useState<StatementLine | null>(null);
+  const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [savingDescription, setSavingDescription] = useState(false);
+  const [catalogTarget, setCatalogTarget] = useState<{ line: StatementLine; kind: 'category' | 'subcategory' } | null>(null);
+  const [catalogName, setCatalogName] = useState('');
+  const [catalogType, setCatalogType] = useState<'income' | 'expense' | 'both'>('expense');
+  const [savingCatalog, setSavingCatalog] = useState(false);
 
   const currentImport = imports.find((i) => i.id === selectedImportId) || null;
 
@@ -203,10 +214,10 @@ export function StatementImportPage({ companyId }: Props) {
         categories: categoriesPayload,
         defaultAccountId: accountId || null,
       });
-      await refetchLines();
       const { data: suggestedLines, error: suggestedError } = await (await import('@/integrations/supabase/client')).supabase
         .from('statement_lines').select('*').eq('company_id', companyId).eq('import_id', created.id).order('line_index');
       if (suggestedError) throw suggestedError;
+      replaceLines(created.id, (suggestedLines || []) as StatementLine[]);
       const sourceAccount = accounts.find(a => a.id === created.account_id);
       const match = findStatementBalanceMatch({
         lines: (suggestedLines || []) as StatementLine[],
@@ -249,8 +260,50 @@ export function StatementImportPage({ companyId }: Props) {
     try {
       await updateStatementLine(line.id, { ...patch, suggestion_source: 'manual' });
       await refetchLines();
+      return true;
     } catch (error) {
       toast.error('Erro ao salvar linha: ' + (error as Error).message);
+      return false;
+    }
+  };
+
+  const openCatalog = (line: StatementLine, kind: 'category' | 'subcategory') => {
+    setCatalogTarget({ line, kind });
+    setCatalogName('');
+    setCatalogType(line.type);
+  };
+
+  const saveCatalog = async () => {
+    if (!catalogTarget || !catalogName.trim() || !can('registry.categories')) return;
+    setSavingCatalog(true);
+    try {
+      const { line, kind } = catalogTarget;
+      if (kind === 'category') {
+        const created = await createCategory({ name: catalogName.trim(), type: catalogType });
+        if (!created) return;
+        await patchLine(line, { suggested_category_id: created.id, suggested_subcategory_id: null });
+      } else {
+        if (!line.suggested_category_id) return;
+        const created = await createSubcategory(line.suggested_category_id, catalogName.trim());
+        if (!created) return;
+        await patchLine(line, { suggested_category_id: created.category_id, suggested_subcategory_id: created.id });
+      }
+      setCatalogTarget(null);
+    } finally {
+      setSavingCatalog(false);
+    }
+  };
+
+  const saveDescription = async () => {
+    if (!descriptionLine || !descriptionDraft.trim()) return;
+    setSavingDescription(true);
+    try {
+      if (await patchLine(descriptionLine, { suggested_description: descriptionDraft.trim() })) {
+        setDescriptionLine(null);
+        toast.success('Descrição salva');
+      }
+    } finally {
+      setSavingDescription(false);
     }
   };
 
@@ -634,7 +687,7 @@ export function StatementImportPage({ companyId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => { selectImport(null); setSelected({}); }}>
+          <Button variant="ghost" size="sm" disabled={uploading} onClick={() => { selectImport(null); setSelected({}); }}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
           </Button>
           <div>
@@ -646,7 +699,7 @@ export function StatementImportPage({ companyId }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleResuggest} disabled={suggesting}>
+          <Button variant="outline" size="sm" onClick={handleResuggest} disabled={suggesting || uploading}>
             <Sparkles className={`w-4 h-4 mr-2 ${suggesting ? 'animate-pulse' : ''}`} /> Sugerir com IA
           </Button>
           <Button size="sm" onClick={effectivateSelected}>
@@ -837,6 +890,12 @@ export function StatementImportPage({ companyId }: Props) {
         </Alert>
       )}
 
+      {uploading && (
+        <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+          <RefreshCw className="w-4 h-4 animate-spin" /> Extrato importado. Gerando sugestões…
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <Table wrapperClassName="max-h-[65vh] overflow-auto accessible-scrollbar">
@@ -912,6 +971,7 @@ export function StatementImportPage({ companyId }: Props) {
                       )}
                     </TableCell>
                     <TableCell>
+                      <div className="flex items-center gap-1">
                       <Select
                         value={line.suggested_category_id || 'none'}
                         disabled={done}
@@ -928,6 +988,17 @@ export function StatementImportPage({ companyId }: Props) {
                             .map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      {!done && can('registry.categories') && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" aria-label="Criar categoria" onClick={() => openCatalog(line, 'category')}>
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Criar categoria</TooltipContent>
+                        </Tooltip>
+                      )}
+                      </div>
                       {!done && (
                         <ConfBadge
                           confidence={line.suggestion_confidence}
@@ -938,6 +1009,7 @@ export function StatementImportPage({ companyId }: Props) {
                     </TableCell>
 
                     <TableCell>
+                      <div className="flex items-center gap-1">
                       <Select
                         value={line.suggested_subcategory_id || 'none'}
                         disabled={done || !line.suggested_category_id}
@@ -951,6 +1023,17 @@ export function StatementImportPage({ companyId }: Props) {
                           ))}
                         </SelectContent>
                       </Select>
+                      {!done && can('registry.categories') && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" disabled={!line.suggested_category_id} aria-label="Criar subcategoria" onClick={() => openCatalog(line, 'subcategory')}>
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Criar subcategoria</TooltipContent>
+                        </Tooltip>
+                      )}
+                      </div>
                       {!done && (
                         <ConfBadge
                           confidence={line.suggestion_confidence}
@@ -961,7 +1044,9 @@ export function StatementImportPage({ companyId }: Props) {
                     </TableCell>
 
                     <TableCell>
+                      <div className="flex items-center gap-1">
                       <Input
+                        key={line.suggested_description || line.raw_description}
                         className="h-8 text-xs"
                         disabled={done}
                         defaultValue={line.suggested_description || line.raw_description}
@@ -972,6 +1057,18 @@ export function StatementImportPage({ companyId }: Props) {
                           }
                         }}
                       />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant={line.suggested_description && line.suggested_description !== line.raw_description ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 shrink-0" aria-label="Histórico e descrição do lançamento" onClick={() => {
+                            setDescriptionLine(line);
+                            setDescriptionDraft(line.suggested_description || line.raw_description);
+                          }}>
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Histórico e descrição do lançamento</TooltipContent>
+                      </Tooltip>
+                      </div>
                       {!done && (
                         <ConfBadge
                           confidence={line.suggestion_confidence}
@@ -1078,6 +1175,58 @@ export function StatementImportPage({ companyId }: Props) {
           if (file) handleLineReceipt(file);
         }}
       />
+
+      <Dialog open={!!descriptionLine} onOpenChange={(open) => { if (!open && !savingDescription) setDescriptionLine(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Histórico e descrição do lançamento</DialogTitle>
+            <DialogDescription>{fmtDate(descriptionLine?.date)} · {currency(descriptionLine?.amount)}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Histórico do banco</Label>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{descriptionLine?.raw_description}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="statement-description">Descrição do lançamento</Label>
+              <Textarea id="statement-description" rows={5} value={descriptionDraft} onChange={e => setDescriptionDraft(e.target.value)} disabled={savingDescription || descriptionLine?.status !== 'pending'} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={savingDescription} onClick={() => setDescriptionLine(null)}>Fechar</Button>
+            {descriptionLine?.status === 'pending' && <Button onClick={saveDescription} disabled={savingDescription || !descriptionDraft.trim()}>{savingDescription ? 'Salvando…' : 'Salvar'}</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!catalogTarget} onOpenChange={open => { if (!open && !savingCatalog) setCatalogTarget(null); }}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{catalogTarget?.kind === 'category' ? 'Criar categoria' : 'Criar subcategoria'}</DialogTitle>
+            <DialogDescription>{catalogTarget?.kind === 'subcategory' ? categories.find(c => c.id === catalogTarget.line.suggested_category_id)?.name : 'Cadastro de categorias'}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={e => { e.preventDefault(); void saveCatalog(); }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="statement-catalog-name">Nome</Label>
+              <Input id="statement-catalog-name" autoFocus value={catalogName} onChange={e => setCatalogName(e.target.value)} disabled={savingCatalog} />
+            </div>
+            {catalogTarget?.kind === 'category' && <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select value={catalogType} onValueChange={v => setCatalogType(v as 'income' | 'expense' | 'both')} disabled={savingCatalog}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={catalogTarget.line.type}>{catalogTarget.line.type === 'income' ? 'Receita' : 'Despesa'}</SelectItem>
+                  <SelectItem value="both">Receita e despesa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>}
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={savingCatalog} onClick={() => setCatalogTarget(null)}>Cancelar</Button>
+              <Button type="submit" disabled={savingCatalog || !catalogName.trim()}>{savingCatalog ? 'Criando…' : 'Criar'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!detailsLine} onOpenChange={(open) => !open && setDetailsLine(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">

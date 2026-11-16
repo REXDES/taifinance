@@ -111,30 +111,32 @@ export function TagPicker({
           {filtered.map(tag => {
             const checked = value.includes(tag.id);
             return (
-              <button
+              <Button
                 key={tag.id}
                 type="button"
+                variant="ghost"
                 onClick={() => toggle(tag.id)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent text-left"
+                className="w-full justify-start h-auto rounded-none gap-2 px-2 py-1.5 text-sm text-left font-normal"
               >
                 <div className={cn('w-4 h-4 rounded border flex items-center justify-center', checked ? 'bg-primary border-primary' : 'border-input')}>
                   {checked && <Check className="w-3 h-3 text-primary-foreground" />}
                 </div>
                 <span className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
                 <span className="flex-1 truncate">{tag.name}</span>
-              </button>
+              </Button>
             );
           })}
           {allowCreate && query.trim() && !exactExists && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
               disabled={creating}
               onClick={handleCreate}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent text-left border-t mt-1 text-primary"
+              className="w-full justify-start h-auto rounded-none gap-2 px-2 py-1.5 text-sm text-left border-t mt-1 text-primary font-normal"
             >
               <Plus className="w-4 h-4" />
               Criar "{query.trim()}"
-            </button>
+            </Button>
           )}
         </div>
         {selected.length > 0 && (

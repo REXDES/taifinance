@@ -10,3 +10,7 @@
 - [x] Compra e venda de máquinas (leilões, tabela de venda, custos de recuperação, venda)
 - [x] Verificar envio WhatsApp nas propostas e corrigir histórico e confirmação de aceitação.
 - [ ] Confirmar chegada da mensagem — depende de corrigir o número da proposta com DDD e conferir o telefone destinatário.
+- [x] Conciliação: balão para editar o histórico/descrição do lançamento.
+- [x] Conciliação: sincronizar tags recém-criadas entre lançamentos.
+- [x] Conciliação: proteger a tela contra respostas antigas e interrupções de recuperação da sessão (falta confirmar na importação real).
+- [x] Conciliação: criar categoria/subcategoria pelo botão + e atualizar seletores.

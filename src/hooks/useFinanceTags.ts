@@ -61,6 +61,23 @@ export function useFinanceTags(companyId: string | null) {
 
   useEffect(() => { fetch(); }, [fetch]);
 
+  // Every picker has its own hook instance; share successful catalog mutations.
+  useEffect(() => {
+    const onChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ companyId: string; tags: FinanceTag[] }>).detail;
+      if (detail.companyId === companyId) setTags(detail.tags);
+    };
+    window.addEventListener('finance-tags-changed', onChanged);
+    return () => window.removeEventListener('finance-tags-changed', onChanged);
+  }, [companyId]);
+
+  const publishTags = useCallback(async () => {
+    if (!companyId) return;
+    const { data, error } = await supabase.from('finance_tags').select('*').eq('company_id', companyId).order('name');
+    if (error) return;
+    window.dispatchEvent(new CustomEvent('finance-tags-changed', { detail: { companyId, tags: data || [] } }));
+  }, [companyId]);
+
   const createTag = useCallback(async (input: { name: string; color?: string; description?: string }) => {
     if (!companyId) return null;
     const name = input.name.trim();
@@ -79,6 +96,7 @@ export function useFinanceTags(companyId: string | null) {
       .single();
     if (error) {
       if ((error as any).code === '23505') {
+        await publishTags();
         toast({ title: 'Tag já existe', description: 'Já existe uma tag com este nome.', variant: 'destructive' });
       } else {
         toast({ title: 'Erro ao criar tag', description: error.message, variant: 'destructive' });
@@ -86,23 +104,26 @@ export function useFinanceTags(companyId: string | null) {
       return null;
     }
     await fetch();
+    await publishTags();
     return data;
-  }, [companyId, fetch, toast]);
+  }, [companyId, fetch, publishTags, toast]);
 
   const updateTag = useCallback(async (id: string, input: Partial<Pick<FinanceTag, 'name' | 'color' | 'description'>>) => {
     const { error } = await supabase.from('finance_tags').update(input).eq('id', id);
     if (error) { toast({ title: 'Erro ao atualizar tag', description: error.message, variant: 'destructive' }); return false; }
     await fetch();
+    await publishTags();
     return true;
-  }, [fetch, toast]);
+  }, [fetch, publishTags, toast]);
 
   const deleteTag = useCallback(async (id: string) => {
     const { error } = await supabase.from('finance_tags').delete().eq('id', id);
     if (error) { toast({ title: 'Erro ao excluir tag', description: error.message, variant: 'destructive' }); return false; }
     await fetch();
+    await publishTags();
     toast({ title: 'Tag excluída' });
     return true;
-  }, [fetch, toast]);
+  }, [fetch, publishTags, toast]);
 
   return { tags, usageCounts, loading, createTag, updateTag, deleteTag, refetch: fetch };
 }

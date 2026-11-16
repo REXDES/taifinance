@@ -38,10 +38,11 @@ export function messageIdFrom(data: unknown): string | null {
 
 export async function logWhatsapp(entry: WhatsappLogEntry): Promise<void> {
   try {
-    const { error } = await admin().from("whatsapp_message_logs").insert({
+    const payload = {
       ...entry,
       response: entry.response ?? null,
-    });
+    };
+    const { error } = await admin().from("whatsapp_message_logs").insert(payload as never);
     if (error) console.error("whatsapp log insert failed:", error.message);
   } catch (err) {
     console.error("whatsapp log error:", String(err));

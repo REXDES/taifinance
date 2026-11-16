@@ -21,6 +21,7 @@ import { usePayablesReceivables } from '@/hooks/usePayablesReceivables';
 import { useFinanceTags } from '@/hooks/useFinanceTags';
 import { TagPicker } from '@/components/finance/TagPicker';
 import { parseLocalDate } from '@/lib/dateUtils';
+import { findStatementBalanceMatch } from '@/lib/statementBalanceMatch';
 import {
   useStatementImports, useStatementLines, parseStatementFile, createStatementImport,
   suggestForLines, reconcileLineAsTransaction, reconcileLineAsSettlement, updateStatementLine,
@@ -202,7 +203,19 @@ export function StatementImportPage({ companyId }: Props) {
         defaultAccountId: accountId || null,
       });
       await refetchLines();
-      toast.success('Sugestões geradas pela IA');
+      const { data: suggestedLines, error: suggestedError } = await (await import('@/integrations/supabase/client')).supabase
+        .from('statement_lines').select('*').eq('company_id', companyId).eq('import_id', created.id).order('line_index');
+      if (suggestedError) throw suggestedError;
+      const sourceAccount = accounts.find(a => a.id === created.account_id);
+      const match = findStatementBalanceMatch({
+        lines: (suggestedLines || []) as StatementLine[],
+        openingBalance: created.opening_balance,
+        closingBalance: created.closing_balance,
+        accountBalance: sourceAccount?.current_balance ?? null,
+        accountId: created.account_id,
+      });
+      setSelected(Object.fromEntries((match?.lineIds || []).map(id => [id, true])));
+      toast.success(match?.lineIds.length ? `${match.lineIds.length} lançamentos sugeridos para fechar o saldo final` : 'Sugestões geradas pela IA');
     } catch (error) {
       toast.error('Erro ao importar extrato: ' + ((error as Error).message || 'desconhecido'));
     } finally {
@@ -403,6 +416,14 @@ export function StatementImportPage({ companyId }: Props) {
   const appBalanceDiff = informedClosing !== null && appBalance !== null ? Number((informedClosing - appBalance).toFixed(2)) : null;
   const tolerance = appAccount?.reconciliation_tolerance ?? 0;
   const withinTolerance = appBalanceDiff !== null && Math.abs(appBalanceDiff) <= Math.max(tolerance, 0.01);
+
+  const balanceMatch = useMemo(() => findStatementBalanceMatch({
+    lines,
+    openingBalance: currentImport?.opening_balance ?? null,
+    closingBalance: informedClosing,
+    accountBalance: appBalance,
+    accountId: currentImport?.account_id ?? null,
+  }), [lines, currentImport?.opening_balance, informedClosing, appBalance, currentImport?.account_id]);
 
 
   // Continuidade da linha do tempo: procura buracos entre importações da mesma conta
@@ -627,6 +648,27 @@ export function StatementImportPage({ companyId }: Props) {
           <p className="text-2xl font-bold">{currency(informedClosing)}</p>
         </CardContent></Card>
       </div>
+
+      {currentImport?.account_id && !linesLoading && appBalance !== null && informedClosing !== null && (
+        <Alert>
+          {balanceMatch ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+          <AlertTitle>{balanceMatch ? 'Ponto de conciliação encontrado' : 'Nenhum saldo anterior compatível'}</AlertTitle>
+          <AlertDescription className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <span>
+              {balanceMatch ? <>
+                Saldo da conta: {currency(appBalance)}{balanceMatch.checkpointDate ? ` em ${fmtDate(balanceMatch.checkpointDate)}` : ' no início do extrato'}.
+                {' '}{balanceMatch.lineIds.length} lançamento(s) pendente(s), total líquido de {currency(balanceMatch.movement)},
+                {' '}fecham o saldo final de {currency(balanceMatch.projectedBalance)}.
+              </> : 'Não foi possível confirmar uma sequência de lançamentos que feche o saldo final sem duplicidades. Revise os saldos e os lançamentos antes de conciliar.'}
+            </span>
+            {!!balanceMatch?.lineIds.length && (
+              <Button variant="outline" size="sm" onClick={() => setSelected(Object.fromEntries(balanceMatch.lineIds.map(id => [id, true])))}>
+                <CheckCircle2 className="w-4 h-4 mr-2" /> Selecionar sugeridos
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {appBalanceDiff !== null && Math.abs(appBalanceDiff) >= 0.01 && (
         <Alert variant={withinTolerance ? 'default' : 'destructive'}>

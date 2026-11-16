@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "test:insights": "node --experimental-strip-types scripts/test-dashboard-insights.mts",
     "test:trade": "node --experimental-strip-types scripts/test-machine-trade.mts",
+    "test:statement": "node --experimental-strip-types scripts/test-statement-balance.mts",
     "test:anticipation": "node --experimental-strip-types scripts/test-anticipation-settlement.mts"
   },
   "dependencies": {

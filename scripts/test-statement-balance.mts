@@ -22,3 +22,8 @@ assert.equal(findStatementBalanceMatch({ ...params, openingBalance: null, lines:
 assert.deepEqual(findStatementBalanceMatch({ ...params, accountBalance: 1250 })?.lineIds, []);
 assert.equal(findStatementBalanceMatch({ ...params, lines: lines.map(l => l.id === 'debit' ? { ...l, running_balance: 1040 } : l) }), null);
 console.log('11 verificações de saldo e seleção passaram');
+// Possible duplicate already in app: balance 1000 + credit 200 = 1200; only old+debit are missing.
+const inApp = findStatementBalanceMatch({ ...params, accountBalance: 1200, lines: lines.map(l => l.id === 'credit' ? { ...l, duplicate_of_transaction_id: 'existing' } : l) });
+assert.deepEqual(inApp?.lineIds, ['old', 'debit']);
+assert.deepEqual(inApp?.alreadyInAppIds, ['credit']);
+assert.equal(inApp?.mode, 'already_in_app');

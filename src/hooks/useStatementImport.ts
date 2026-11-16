@@ -646,6 +646,15 @@ export async function reconcileLineAsSettlement(line: StatementLine, payableId: 
   if (updateError) throw updateError;
 }
 
+/** Concilia a linha com o lançamento que já existe no app, sem criar outro. */
+export async function linkLineToExistingTransaction(line: StatementLine) {
+  if (!line.duplicate_of_transaction_id) throw new Error('Linha sem lançamento correspondente');
+  const { error } = await (supabase as any).from('statement_lines')
+    .update({ status: 'reconciled', transaction_id: line.duplicate_of_transaction_id })
+    .eq('id', line.id).eq('status', 'pending');
+  if (error) throw error;
+}
+
 export async function updateStatementLine(id: string, patch: Partial<StatementLine>) {
   const { error } = await (supabase as any).from('statement_lines').update(patch).eq('id', id);
   if (error) throw error;

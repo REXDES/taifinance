@@ -49,6 +49,17 @@ export function findStatementBalanceMatch(params: {
   // Prefer the most recent checkpoint to avoid suggesting historical movements again.
   // A verified balance chain proves the remainder is not yet in the account, so lines
   // flagged only as *possible* duplicates may be included — but are reported separately.
+  const base = { openingBalance: opening / 100, movement: (cents(closingBalance) - cents(accountBalance)) / 100, projectedBalance: closingBalance };
+  // Possible duplicates already exist in the app, so they are already inside the account balance:
+  // only the missing (unflagged) lines should be posted, and they must close the final balance exactly.
+  const pending = lines.filter(line => line.status === 'pending' && line.suggested_account_id === accountId);
+  const alreadyInApp = pending.filter(line => line.duplicate_of_transaction_id);
+  const missing = pending.filter(line => !line.duplicate_of_transaction_id);
+  if (alreadyInApp.length && missing.reduce((sum, line) => sum + signed(line), cents(accountBalance)) === cents(closingBalance)) {
+    return { ...base, mode: 'already_in_app' as const, lineIds: missing.map(l => l.id), alreadyInAppIds: alreadyInApp.map(l => l.id),
+      flaggedDuplicateIds: [] as string[], checkpointDate: null, startIndex: 0,
+      firstDate: missing[0]?.date ?? null, lastDate: missing[missing.length - 1]?.date ?? null };
+  }
   for (const allowFlagged of [false, true]) {
     for (let start = lines.length; start >= 0; start--) {
       if (balances[start] !== cents(accountBalance)) continue;
@@ -57,6 +68,8 @@ export function findStatementBalanceMatch(params: {
         (allowFlagged || !line.duplicate_of_transaction_id) && line.suggested_account_id === accountId);
       if (eligible.reduce((sum, line) => sum + signed(line), cents(accountBalance)) !== cents(closingBalance)) continue;
       return {
+        mode: 'checkpoint' as const,
+        alreadyInAppIds: [] as string[],
         lineIds: eligible.map(line => line.id),
         flaggedDuplicateIds: eligible.filter(line => line.duplicate_of_transaction_id).map(line => line.id),
         checkpointDate: start > 0 ? lines[start - 1].date : null,

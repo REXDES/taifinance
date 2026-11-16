@@ -24,7 +24,8 @@ import { parseLocalDate } from '@/lib/dateUtils';
 import { findStatementBalanceMatch } from '@/lib/statementBalanceMatch';
 import {
   useStatementImports, useStatementLines, parseStatementFile, createStatementImport,
-  suggestForLines, reconcileLineAsTransaction, reconcileLineAsSettlement, updateStatementLine,
+  suggestForLines, reconcileLineAsTransaction,
+  linkLineToExistingTransaction, reconcileLineAsSettlement, updateStatementLine,
   setImportStatus, finishReconciliation, createReconciliationAdjustment, detectFormat, StatementLine,
   DuplicateLineError,
   attachReceiptToLine, createReceiptsImport, getReceiptUrl,
@@ -290,6 +291,18 @@ export function StatementImportPage({ companyId }: Props) {
     } finally {
       setBusyLine(null);
     }
+  };
+
+  const [linking, setLinking] = useState(false);
+  const linkAlreadyInApp = async (ids: string[]) => {
+    setLinking(true);
+    try {
+      for (const line of lines.filter(l => ids.includes(l.id))) await linkLineToExistingTransaction(line);
+      await refetchLines();
+      toast.success(`${ids.length} linha(s) vinculada(s) aos lançamentos que já existem no app`);
+    } catch (error) {
+      toast.error('Erro ao vincular: ' + (error as Error).message);
+    } finally { setLinking(false); }
   };
 
   const ignoreLine = async (line: StatementLine) => {
@@ -659,13 +672,24 @@ export function StatementImportPage({ companyId }: Props) {
             <div className="space-y-2 flex-1">
               {balanceMatch ? <>
                 <p>
-                  Saldo da conta hoje: {currency(appBalance)} — igual ao saldo do extrato{balanceMatch.checkpointDate ? ` em ${fmtDate(balanceMatch.checkpointDate)}` : ' no início do extrato'}.
+                  Saldo da conta hoje: {currency(appBalance)} · Saldo final do extrato: {currency(balanceMatch.projectedBalance)} · Falta: {currency(balanceMatch.movement)}.
                 </p>
+                {balanceMatch.mode === 'checkpoint' && (
+                  <p className="text-muted-foreground">O saldo da conta é igual ao do extrato{balanceMatch.checkpointDate ? ` em ${fmtDate(balanceMatch.checkpointDate)}` : ' no início do extrato'}.</p>
+                )}
+                {balanceMatch.alreadyInAppIds.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+                    <span>{balanceMatch.alreadyInAppIds.length} linha(s) "Duplicidade?" já estão no app e já contam no saldo — <strong>não efetive</strong>, apenas vincule.</span>
+                    <Button size="sm" variant="ghost" className="h-7" disabled={linking} onClick={() => linkAlreadyInApp(balanceMatch.alreadyInAppIds)}>
+                      <Link2 className="w-3.5 h-3.5 mr-1" /> Vincular já existentes
+                    </Button>
+                  </div>
+                )}
                 {balanceMatch.lineIds.length > 0 ? (
                   <p className="font-medium">
-                    Se você efetivar os {balanceMatch.lineIds.length} lançamento(s) abaixo
+                    Só faltam no app estes {balanceMatch.lineIds.length} lançamento(s). Efetivando
                     {balanceMatch.firstDate ? ` (de ${fmtDate(balanceMatch.firstDate)} a ${fmtDate(balanceMatch.lastDate!)})` : ''},
-                    total líquido de {currency(balanceMatch.movement)}, o saldo final vai bater em {currency(balanceMatch.projectedBalance)}.
+                    total líquido de {currency(balanceMatch.movement)}, o saldo fica {currency(balanceMatch.projectedBalance)}, igual ao extrato.
                   </p>
                 ) : <p className="font-medium">O saldo já bate com o extrato. Nada a efetivar.</p>}
                 {balanceMatch.flaggedDuplicateIds.length > 0 && (

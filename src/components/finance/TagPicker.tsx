@@ -1,3 +1,5 @@
+// @refresh reset
+// Remount on live updates: useFinanceTags changes can alter the nested hook order.
 import { useState, useMemo } from 'react';
 import { Check, Plus, X, Tag as TagIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -5,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useFinanceTags, FinanceTag } from '@/hooks/useFinanceTags';
+import { useFinanceTags } from '@/hooks/useFinanceTags';
 
 interface TagPickerProps {
   companyId: string | null;

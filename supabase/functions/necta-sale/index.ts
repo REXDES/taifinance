@@ -5,6 +5,14 @@ import {
 } from './nectaFormat.ts';
 import { type NectaCreds, nectaRequest, companyCredentials } from '../_shared/nectaSeller.ts';
 import { mirrorSaleToLedger, ensureMirrorAccount } from '../_shared/nectaLedger.ts';
+import { onSalePaid, onDisbursementSalePaid, settleAssignment } from '../_shared/anticipation.ts';
+
+/** Antecipação: depois de gravar uma venda como paga, liquida o título cedido / registra o desembolso. */
+async function anticipationAfterPaid(admin: any, sale: any) {
+  if (!sale) return;
+  try { await onSalePaid(admin, sale); } catch (err) { console.error('anticipation settle', err); }
+  try { await onDisbursementSalePaid(admin, sale); } catch (err) { console.error('anticipation disbursement', err); }
+}
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
@@ -335,6 +343,7 @@ Deno.serve(async (req) => {
       Object.assign(update, await mirrorFinance(admin, sale, status, update.paid_at as string | undefined));
       const { data: updated, error } = await admin.from('necta_sales').update(update).eq('id', saleId).select('*').maybeSingle();
       if (error) return json({ error: error.message }, 500);
+      if (status === 'paid') await anticipationAfterPaid(admin, updated);
       return json({ ok: true, sale: updated });
     }
 
@@ -343,6 +352,16 @@ Deno.serve(async (req) => {
       const saleId = input?.sale_id;
       const { data: sale } = await admin.from('necta_sales').select('*').eq('id', saleId).maybeSingle();
       if (!sale) return json({ error: 'Cobrança não encontrada' }, 404);
+      // Boleto cedido a um financiador não pode ser cancelado/estornado por aqui.
+      const { data: locks } = await admin.from('receivable_assignments').select('id')
+        .in('status', ['requested', 'approved', 'assigned', 'paid_by_debtor', 'split_pending', 'settlement_failed'])
+        .or(sale.payable_receivable_id
+          ? `necta_sale_id.eq.${sale.id},payable_receivable_id.eq.${sale.payable_receivable_id}`
+          : `necta_sale_id.eq.${sale.id}`)
+        .limit(1);
+      if (locks?.length) {
+        return json({ error: 'Este boleto está em antecipação com um financiador e não pode ser cancelado. Se a solicitação ainda não foi aprovada, cancele-a na tela Antecipação.' }, 409);
+      }
       const voidCreds: NectaCreds | null = await companyCredentials(admin, sale.company_id);
       try {
         if (sale.necta_sale_id) {
@@ -493,7 +512,9 @@ Deno.serve(async (req) => {
           update.needs_review = true;
           update.review_reason = `Sincronização detectou status "${mapped}" (era "${sale.status}")`;
         }
-        await admin.from('necta_sales').update(update).eq('id', sale.id);
+        const { data: synced } = await admin.from('necta_sales').update(update).eq('id', sale.id).select('*').maybeSingle();
+        // Pagamento descoberto pela sincronização também liquida a antecipação (não só o webhook).
+        if (mapped === 'paid') await anticipationAfterPaid(admin, synced ?? { ...sale, ...update });
         results.push({ id: sale.id, status: mapped ?? sale.status });
       } catch (e) {
         const msg = (e as Error).message;
@@ -501,7 +522,27 @@ Deno.serve(async (req) => {
         results.push({ id: sale.id, error: msg });
       }
     }
-    return json({ ok: true, synced: results.length, results });
+
+    // Rotina (sync_open): confere repasses de antecipação ainda não liquidados na Necta.
+    // A tela de Cobranças chama a cada 2 min: só cessões da empresa, no máximo 3, e cada
+    // uma no máximo a cada 10 min — para não deixar a sincronização lenta.
+    let anticipation = 0;
+    if (action === 'sync_open') {
+      const companyId = input?.company_id ? String(input.company_id) : null;
+      let pendingQuery = admin.from('receivable_assignments').select('id, split_checked_at')
+        .in('status', ['paid_by_debtor', 'split_pending'])
+        .order('split_checked_at', { ascending: true, nullsFirst: true })
+        .limit(20);
+      if (companyId) pendingQuery = pendingQuery.or(`cedent_company_id.eq.${companyId},financier_company_id.eq.${companyId}`);
+      const { data: pending } = await pendingQuery;
+      const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const due = (pending ?? []).filter((r: any) => !r.split_checked_at || r.split_checked_at < staleBefore)
+        .slice(0, companyId ? 3 : 10);
+      for (const row of due) {
+        try { await settleAssignment(admin, row.id); anticipation++; } catch (err) { console.error('anticipation check', err); }
+      }
+    }
+    return json({ ok: true, synced: results.length, results, anticipation_checked: anticipation });
   } catch (e) {
     console.error('necta-sale error:', e);
     return json({ error: (e as Error).message }, 500);

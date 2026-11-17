@@ -6,6 +6,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
 import { nectaRequest, marketplaceCreds, nectaToken, marketplaceIdFromToken, resolveCompanySellerId } from '../_shared/nectaSeller.ts';
+import { loadAnticipationSettings, markDisbursed } from '../_shared/anticipation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,6 +51,12 @@ Deno.serve(async (req) => {
       const { data } = await admin.rpc('has_company_access', { _user_id: u.user.id, _company_id: cid });
       return !!data;
     };
+    // Desembolso da antecipação: membro do financiador com a permissão "Financiador".
+    const financierAccess = async (cid: string) => {
+      if (!(await access(cid))) return false;
+      const { data } = await admin.rpc('has_permission', { _user_id: u.user.id, _permission_key: 'credit.financier' });
+      return !!data;
+    };
 
     const lookupSeller = async (sellerId: string): Promise<string | null> => {
       try {
@@ -70,18 +77,18 @@ Deno.serve(async (req) => {
     if (body.action === 'disburse_charge' || body.action === 'disburse_status' || body.action === 'disburse_manual') {
       const { data: a } = await admin.from('receivable_assignments').select('*').eq('id', body.assignment_id).maybeSingle();
       if (!a) return json({ error: 'Cessão não encontrada' }, 404);
-      if (!(await access(a.financier_company_id))) return json({ error: 'Apenas o financiador desembolsa.' }, 403);
-      if (!['assigned', 'paid_by_debtor', 'settled', 'settlement_failed'].includes(a.status)) {
-        return json({ error: 'Aprove a antecipação antes de desembolsar.' }, 400);
+      if (!(await financierAccess(a.financier_company_id))) return json({ error: 'Apenas o financiador (com a permissão Financiador) desembolsa.' }, 403);
+      const closedMessage = a.cancel_reason
+        ? `Cessão encerrada: ${a.cancel_reason} Não pague a cobrança de desembolso.`
+        : 'Cessão encerrada. Não pague a cobrança de desembolso.';
+      // Desembolsar só faz sentido com a cessão aprovada e o boleto ainda não pago.
+      if (body.action !== 'disburse_status' && a.status !== 'assigned') {
+        if (a.status === 'cancelled') return json({ ok: false, error: closedMessage });
+        if (a.disbursed_at) return json({ ok: true, already: true });
+        return json({ error: a.status === 'requested' ? 'Aprove a antecipação antes de desembolsar.' : 'O boleto já foi pago: não há mais desembolso a fazer.' }, 400);
       }
       const saleFields = 'id, method, amount, status, due_date, pix_copy_paste, boleto_digitable_line, boleto_url, payment_url, paid_at';
-      const markDone = async (method: string, extra: Record<string, unknown> = {}) => {
-        await admin.from('receivable_assignments').update({ disbursed_at: new Date().toISOString(), disbursement_method: method, ...extra }).eq('id', a.id);
-        await admin.from('receivable_assignment_events').insert({
-          assignment_id: a.id, event_type: 'disbursement', request_id: `assign-disburse-${method}-${a.id}`, success: true,
-          payload: { method, ...extra }, response: {}, created_by: u.user.id,
-        });
-      };
+      const markDone = (method: string, extra: Record<string, unknown> = {}) => markDisbursed(admin, a, method, u.user.id, extra);
 
       if (body.action === 'disburse_manual') {
         if (a.disbursed_at) return json({ ok: true, already: true });
@@ -99,11 +106,20 @@ Deno.serve(async (req) => {
       };
 
       if (body.action === 'disburse_status') {
-        if (!a.disbursement_sale_id) return json({ ok: true, sale: null, disbursed: !!a.disbursed_at });
+        if (!a.disbursement_sale_id) return json({ ok: true, sale: null, disbursed: !!a.disbursed_at, closed: a.status === 'cancelled' });
+        // A sincronização registra o desembolso sozinha quando a cobrança aparece paga.
         if (!a.disbursed_at) await callSale({ action: 'sync', sale_id: a.disbursement_sale_id });
         const { data: s } = await admin.from('necta_sales').select(saleFields).eq('id', a.disbursement_sale_id).maybeSingle();
-        if (s?.status === 'paid' && !a.disbursed_at) await markDone(s.method === 'pix' ? 'pix_charge' : 'boleto_charge');
-        return json({ ok: true, sale: s, disbursed: !!a.disbursed_at || s?.status === 'paid' });
+        const { data: fresh } = await admin.from('receivable_assignments').select('status, disbursed_at, last_error').eq('id', a.id).maybeSingle();
+        if (s?.status === 'paid' && fresh?.status === 'assigned' && !fresh?.disbursed_at) {
+          await markDone(s.method === 'pix' ? 'pix_charge' : 'boleto_charge');
+        }
+        const closed = fresh?.status === 'cancelled';
+        return json({
+          ok: true, sale: s, closed,
+          disbursed: !closed && (!!fresh?.disbursed_at || s?.status === 'paid'),
+          warning: closed ? (fresh?.last_error ?? closedMessage) : null,
+        });
       }
 
       // disburse_charge
@@ -139,10 +155,16 @@ Deno.serve(async (req) => {
     if (body.action === 'disburse') {
       const { data: a } = await admin.from('receivable_assignments').select('*').eq('id', body.assignment_id).maybeSingle();
       if (!a) return json({ error: 'Cessão não encontrada' }, 404);
-      if (!(await access(a.financier_company_id))) return json({ error: 'Apenas o financiador desembolsa.' }, 403);
+      if (!(await financierAccess(a.financier_company_id))) return json({ error: 'Apenas o financiador (com a permissão Financiador) desembolsa.' }, 403);
       if (a.disbursed_at) return json({ ok: true, already: true });
-      if (!['assigned', 'paid_by_debtor', 'settled', 'settlement_failed'].includes(a.status)) {
-        return json({ error: 'Aprove a antecipação antes de desembolsar.' }, 400);
+      if (a.status !== 'assigned') {
+        return json({ error: a.status === 'requested' ? 'Aprove a antecipação antes de desembolsar.' : 'Esta cessão não aceita mais desembolso.' }, 400);
+      }
+      // A transferência entre contas digitais ainda não foi confirmada pela Necta para o marketplace
+      // da Pagando (rota de escopo company + formato do pedido). Fica desligada até o admin liberar.
+      const settings = await loadAnticipationSettings(admin);
+      if (!settings.internal_transfer_enabled) {
+        return json({ ok: false, error: 'Transferência Pagando.net ainda não liberada para desembolso. Use "Cobrança PIX".' });
       }
       assignment = a;
       from = a.financier_company_id; to = a.cedent_company_id; amount = Number(a.net_amount);
@@ -202,11 +224,7 @@ Deno.serve(async (req) => {
       const res = await nectaRequest(`/banking/marketplaces/${mkt}/internal-transfers`, 'POST', payload, undefined, marketplaceCreds());
       await admin.from('seller_transfers').update({ status: 'done', error: null, response: res ?? {} }).eq('id', row.id);
       if (assignment) {
-        await admin.from('receivable_assignments').update({ disbursed_at: new Date().toISOString(), disbursement_transfer_id: row.id, disbursement_method: 'pagando_transfer' }).eq('id', assignment.id);
-        await admin.from('receivable_assignment_events').insert({
-          assignment_id: assignment.id, event_type: 'disbursement', request_id: requestId, success: true,
-          payload, response: res ?? {}, created_by: u.user.id,
-        });
+        await markDisbursed(admin, assignment, 'pagando_transfer', u.user.id, { disbursement_transfer_id: row.id });
       }
       return json({ ok: true });
     } catch (e) {

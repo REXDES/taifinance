@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { decode as base64Decode } from 'https://deno.land/std@0.168.0/encoding/base64.ts';
 import { timingSafeEqual } from 'https://deno.land/std@0.168.0/crypto/timing_safe_equal.ts';
 import { mirrorSaleToLedger } from '../_shared/nectaLedger.ts';
-import { onSalePaid } from '../_shared/anticipation.ts';
+import { onSalePaid, onDisbursementSalePaid } from '../_shared/anticipation.ts';
 
 // @supabase/supabase-js não expõe um subpath /cors (só a exportação "."), então
 // `npm:@supabase/supabase-js@2/cors` não resolve — corsHeaders definido aqui,
@@ -145,8 +145,6 @@ Deno.serve(async (req) => {
             await admin.from('payables_receivables')
               .update({ status: 'paid', paid_date: paidAt.slice(0, 10), paid_account_id: sale.account_id ?? accountId ?? null })
               .eq('id', sale.payable_receivable_id);
-            // Título cedido: liquida automaticamente ao financiador (split pós-pagamento).
-            try { await onSalePaid(admin, sale); } catch (err) { console.error('anticipation settle', err); }
           }
         }
 
@@ -158,6 +156,14 @@ Deno.serve(async (req) => {
         }
 
         await admin.from('necta_sales').update(update).eq('id', sale.id);
+
+        // Antecipação, depois de gravar a venda como paga (a liquidação lê o valor pago dela):
+        // título cedido → repasse ao financiador; cobrança de desembolso → desembolso registrado.
+        if (mapped === 'paid') {
+          const paidSale = { ...sale, ...update };
+          try { await onSalePaid(admin, paidSale); } catch (err) { console.error('anticipation settle', err); }
+          try { await onDisbursementSalePaid(admin, paidSale); } catch (err) { console.error('anticipation disbursement', err); }
+        }
         if (logged) await admin.from('necta_webhook_events').update({ processed: true, company_id: sale.company_id }).eq('id', logged.id);
       }
     }

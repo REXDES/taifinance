@@ -1,7 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { addMonths, format } from 'date-fns';
 import { parseLocalDate } from '@/lib/dateUtils';
+
+/** Status da cessão em que o título fica travado (mesma lista de public.ra_active_statuses()). */
+export const ASSIGNMENT_LOCK_STATUSES = ['requested', 'approved', 'assigned', 'paid_by_debtor', 'split_pending', 'settlement_failed'];
+
+/** Título em antecipação: o banco recusa editar, baixar, cancelar ou excluir. */
+export interface AssignmentLock {
+  status: string;
+  financier: string | null;
+}
 
 export interface PayableReceivable {
   id: string;
@@ -37,6 +46,9 @@ export interface PayableReceivable {
   necta_parent_sale_id?: string | null;
   necta_recurrence_index?: number | null;
   necta_is_recurring?: boolean;
+  necta_payable_receivable_id?: string | null;
+  /** Presente quando o título (ou o boleto dele) está em antecipação. */
+  assignment_lock?: AssignmentLock | null;
 }
 
 export interface PayableReceivableFilters {
@@ -50,6 +62,12 @@ export interface PayableReceivableFilters {
 export function usePayablesReceivables(companyId: string | null, filters?: PayableReceivableFilters) {
   const [payablesReceivables, setPayablesReceivables] = useState<PayableReceivable[]>([]);
   const [loading, setLoading] = useState(true);
+  // Títulos travados por antecipação: ficam de fora das ações em lote (pausar/excluir futuras).
+  const lockedIdsRef = useRef<string[]>([]);
+  const excludeLocked = <Q,>(query: Q): Q => {
+    const ids = lockedIdsRef.current;
+    return ids.length ? (query as any).not('id', 'in', `(${ids.join(',')})`) : query;
+  };
 
   // Serialize status array for stable dependency comparison
   const statusKey = filters?.status?.join(',') ?? '';
@@ -107,7 +125,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
       if (filters?.type !== 'payable' && companyFlag?.necta_mirror_enabled) {
         let nectaQuery = (supabase as any)
           .from('necta_sales')
-          .select('id, company_id, description, amount, due_date, status, paid_at, method, payer_name, parent_sale_id, recurrence_index, is_recurring, category_id, subcategory_id, account_id, created_at, updated_at, created_by')
+          .select('id, company_id, description, amount, due_date, status, paid_at, method, payer_name, parent_sale_id, recurrence_index, is_recurring, category_id, subcategory_id, account_id, created_at, updated_at, created_by, payable_receivable_id')
           .eq('company_id', companyId)
           .order('due_date', { ascending: true });
         if (filters?.startDate) nectaQuery = nectaQuery.gte('due_date', filters.startDate);
@@ -142,13 +160,40 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
               necta_parent_sale_id: s.parent_sale_id ?? null,
               necta_recurrence_index: s.recurrence_index ?? null,
               necta_is_recurring: !!s.is_recurring || !!s.parent_sale_id,
+              necta_payable_receivable_id: s.payable_receivable_id ?? null,
             } as PayableReceivable;
           })
           .filter((item: PayableReceivable) =>
             !filters?.status?.length || filters.status.includes(item.status));
       }
 
-      setPayablesReceivables([...own, ...nectaItems]
+      // Antecipação: títulos (e boletos) com cessão ativa ficam travados.
+      const locks = new Map<string, AssignmentLock>();
+      const lockedSales = new Map<string, AssignmentLock>();
+      const { data: assignments } = await (supabase as any)
+        .from('receivable_assignments')
+        .select('payable_receivable_id, necta_sale_id, status, financier_company_id')
+        .eq('cedent_company_id', companyId)
+        .in('status', ASSIGNMENT_LOCK_STATUSES);
+      if (assignments?.length) {
+        const finIds = [...new Set(assignments.map((a: any) => a.financier_company_id))];
+        const { data: fins } = await (supabase as any).from('companies').select('id, name').in('id', finIds);
+        const finName = new Map<string, string>((fins ?? []).map((c: any) => [c.id, c.name]));
+        for (const a of assignments) {
+          const lock = { status: a.status, financier: finName.get(a.financier_company_id) ?? null };
+          locks.set(a.payable_receivable_id, lock);
+          if (a.necta_sale_id) lockedSales.set(a.necta_sale_id, lock);
+        }
+      }
+      lockedIdsRef.current = [...locks.keys()];
+      const withLocks = [...own, ...nectaItems].map((item: any) => {
+        const lock = item.source === 'necta'
+          ? (lockedSales.get(item.necta_sale_id) ?? (item.necta_payable_receivable_id ? locks.get(item.necta_payable_receivable_id) : undefined))
+          : locks.get(item.id);
+        return lock ? { ...item, assignment_lock: lock } : item;
+      });
+
+      setPayablesReceivables(withLocks
         .sort((a, b) => a.due_date.localeCompare(b.due_date)));
     } catch (error) {
       console.error('Error fetching payables/receivables:', error);
@@ -350,15 +395,15 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
 
     if (record.payment_type === 'installment') {
       const rootId = record.parent_id || record.id;
-      const { error: childrenError } = await supabase
+      const { error: childrenError } = await excludeLocked(supabase
         .from('payables_receivables')
         .update({ status: to })
         .eq('parent_id', rootId)
         .eq('status', from)
-        .gt('due_date', record.due_date);
+        .gt('due_date', record.due_date));
       if (childrenError) throw childrenError;
     } else if (record.payment_type === 'recurring') {
-      const { error: recurringError } = await supabase
+      const { error: recurringError } = await excludeLocked(supabase
         .from('payables_receivables')
         .update({ status: to })
         .eq('company_id', record.company_id)
@@ -366,7 +411,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
         .eq('type', record.type)
         .eq('payment_type', 'recurring')
         .eq('status', from)
-        .gt('due_date', record.due_date);
+        .gt('due_date', record.due_date));
       if (recurringError) throw recurringError;
     }
 
@@ -400,12 +445,13 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
       // Delete all related pending records (children with same parent OR same recurring pattern)
       if (record.payment_type === 'installment') {
         // For installments: delete all pending children and the parent if it's pending
-        const { error: deleteChildrenError } = await supabase
+        // (parcelas em antecipação ficam de fora — o banco recusaria e falharia o lote inteiro).
+        const { error: deleteChildrenError } = await excludeLocked(supabase
           .from('payables_receivables')
           .delete()
           .eq('parent_id', rootId)
           .eq('status', 'pending')
-          .gt('due_date', record.due_date);
+          .gt('due_date', record.due_date));
 
         if (deleteChildrenError) throw deleteChildrenError;
 
@@ -426,7 +472,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
         }
       } else if (record.payment_type === 'recurring') {
         // For recurring: delete all pending future occurrences with same description/type
-        const { error } = await supabase
+        const { error } = await excludeLocked(supabase
           .from('payables_receivables')
           .delete()
           .eq('company_id', record.company_id)
@@ -434,7 +480,7 @@ export function usePayablesReceivables(companyId: string | null, filters?: Payab
           .eq('type', record.type)
           .eq('payment_type', 'recurring')
           .eq('status', 'pending')
-          .gte('due_date', record.due_date);
+          .gte('due_date', record.due_date));
 
         if (error) throw error;
       }

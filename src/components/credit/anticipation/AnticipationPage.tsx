@@ -16,6 +16,7 @@ import { Loader2, Paperclip, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatBR, parseLocalDate } from '@/lib/dateUtils';
 import { DisburseDialog } from './DisburseDialog';
+import { platformFee } from '@/lib/anticipationFee';
 
 interface Props { companyId: string }
 
@@ -26,10 +27,11 @@ export const ASSIGNMENT_STATUS: Record<string, { label: string; variant: 'defaul
   approved: { label: 'Aprovado', variant: 'default' },
   rejected: { label: 'Recusado', variant: 'destructive' },
   assigned: { label: 'Cedido', variant: 'default' },
-  paid_by_debtor: { label: 'Pago — repasse pendente', variant: 'secondary' },
-  settled: { label: 'Liquidado ao financiador', variant: 'outline' },
+  paid_by_debtor: { label: 'Pago — processando repasse', variant: 'secondary' },
+  split_pending: { label: 'Repasse agendado ao financiador', variant: 'secondary' },
+  settled: { label: 'Repassado ao financiador', variant: 'outline' },
   settlement_failed: { label: 'Falha no repasse', variant: 'destructive' },
-  cancelled: { label: 'Cancelado', variant: 'outline' },
+  cancelled: { label: 'Encerrado', variant: 'outline' },
 };
 
 function daysUntil(due: string) {
@@ -59,10 +61,12 @@ export function AnticipationPage({ companyId }: Props) {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [disbursing, setDisbursing] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(null);
 
   const load = useCallback(async () => {
     if (!companyId) return;
     setLoading(true);
+    db.from('anticipation_settings').select('*').maybeSingle().then(({ data }: any) => setSettings(data ?? null));
     const [{ data: comp }, { data: links }, { data: prs }, { data: sales }, { data: asg }, { data: att }] = await Promise.all([
       db.from('companies').select('is_financiador').eq('id', companyId).maybeSingle(),
       db.from('financier_cedent_links').select('financier_company_id').eq('cedent_company_id', companyId).eq('active', true),
@@ -117,17 +121,20 @@ export function AnticipationPage({ companyId }: Props) {
     return null;
   };
 
+  // Prévia: o valor final é recalculado pelo servidor na solicitação e de novo na aprovação.
   const simulation = useMemo(() => {
     if (!rules) return null;
-    let face = 0, discount = 0;
+    const cedentPaysFee = (settings?.platform_fee_payer ?? 'cedent') === 'cedent';
+    let face = 0, discount = 0, fee = 0;
     titles.filter(t => selected.has(t.id)).forEach(t => {
       const r = computeDiscount(Number(t.amount), Number(rules.monthly_discount_rate), daysUntil(t.due_date));
       face += Number(t.amount); discount += r.discount;
+      if (cedentPaysFee) fee += platformFee(settings, Number(t.amount));
     });
-    return { face, discount, net: face - discount };
-  }, [selected, titles, rules]);
+    return { face, discount, fee, net: face - discount - fee };
+  }, [selected, titles, rules, settings]);
 
-  const usedByFin = useMemo(() => mine.filter(a => a.financier_company_id === finId && ['requested', 'approved', 'assigned', 'paid_by_debtor', 'settlement_failed'].includes(a.status))
+  const usedByFin = useMemo(() => mine.filter(a => a.financier_company_id === finId && ['requested', 'approved', 'assigned', 'paid_by_debtor', 'split_pending', 'settlement_failed'].includes(a.status))
     .reduce((s, a) => s + Number(a.face_amount), 0), [mine, finId]);
 
   const upload = async (prId: string, file: File) => {
@@ -165,6 +172,7 @@ export function AnticipationPage({ companyId }: Props) {
         title_description: t.description, debtor_name: t.clients_suppliers?.name ?? null,
       };
     });
+    // O banco recalcula valores e revalida as regras a partir do título e do boleto reais.
     const { error } = await db.from('receivable_assignments').insert(rows);
     setSending(false);
     if (error) return toast.error(error.message);
@@ -176,7 +184,13 @@ export function AnticipationPage({ companyId }: Props) {
     const { data, error } = await supabase.functions.invoke('receivable-assignment', { body: { action, assignment_id: a.id, ...extra } });
     setBusy(null);
     if (error || data?.error || data?.ok === false) return toast.error(data?.error ?? error?.message ?? 'Falha');
-    toast.success('Atualizado'); load();
+    if (data?.busy) toast.info('Outra conferência deste repasse está em andamento. Tente de novo em instantes.');
+    else if (data?.warning) toast.warning(data.warning);
+    else if (action === 'check' || action === 'retry') {
+      const label = ASSIGNMENT_STATUS[data?.status]?.label;
+      toast.success(label ? `Situação: ${label}` : 'Repasse conferido');
+    } else toast.success('Atualizado');
+    load();
   };
 
   const AssignmentTable = ({ rows, asFinancier }: { rows: any[]; asFinancier: boolean }) => (
@@ -196,8 +210,19 @@ export function AnticipationPage({ companyId }: Props) {
               <TableCell>{a.debtor_name ?? a.payables_receivables?.clients_suppliers?.name ?? '—'}</TableCell>
               <TableCell>{formatBR(a.due_date)}</TableCell>
               <TableCell className="text-right">{brl(a.face_amount)}</TableCell>
-              <TableCell className="text-right">{brl(a.net_amount)}</TableCell>
-              <TableCell><Badge variant={s.variant}>{s.label}</Badge>{a.rejection_reason && <div className="text-xs text-muted-foreground mt-1">{a.rejection_reason}</div>}</TableCell>
+              <TableCell className="text-right">
+                {brl(a.net_amount)}
+                <div className="text-xs text-muted-foreground whitespace-nowrap">
+                  deságio {brl(a.discount_amount)}
+                  {Number(a.platform_fee_amount) > 0 && ` · taxa ${brl(a.platform_fee_amount)}${a.platform_fee_payer === 'financier' ? ' (financiador)' : ''}`}
+                </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant={s.variant}>{s.label}</Badge>
+                {a.rejection_reason && <div className="text-xs text-muted-foreground mt-1">{a.rejection_reason}</div>}
+                {a.status === 'cancelled' && a.cancel_reason && <div className="text-xs text-muted-foreground mt-1 max-w-[260px]">{a.cancel_reason}</div>}
+                {a.last_error && <div className="text-xs text-destructive mt-1 max-w-[260px]">{a.last_error}</div>}
+              </TableCell>
               <TableCell>
                 {(attachments[a.payable_receivable_id] ?? []).length === 0
                   ? <span className="text-xs text-muted-foreground">—</span>
@@ -211,11 +236,14 @@ export function AnticipationPage({ companyId }: Props) {
                   <Button size="sm" onClick={() => act('approve', a)}>Aprovar</Button>
                   <Button size="sm" variant="outline" onClick={() => { setRejecting(a); setReason(''); }}>Recusar</Button>
                 </>}
-                {asFinancier && !a.disbursed_at && ['assigned', 'paid_by_debtor', 'settled', 'settlement_failed'].includes(a.status) &&
+                {asFinancier && !a.disbursed_at && a.status === 'assigned' &&
                   <Button size="sm" onClick={() => setDisbursing(a)}>{a.disbursement_sale_id ? 'Ver cobrança de desembolso' : 'Desembolsar ao cedente'}</Button>}
+                {asFinancier && !a.disbursed_at && a.status === 'cancelled' && a.disbursement_sale_id &&
+                  <Button size="sm" variant="outline" onClick={() => setDisbursing(a)}>Ver cobrança de desembolso</Button>}
                 {a.disbursed_at && <Badge variant="secondary">Desembolsado</Badge>}
                 {!asFinancier && a.status === 'requested' && <Button size="sm" variant="outline" onClick={() => act('cancel', a)}>Cancelar</Button>}
-                {['settlement_failed', 'paid_by_debtor'].includes(a.status) && <Button size="sm" variant="outline" onClick={() => act('retry', a)}><RefreshCw className="w-3 h-3 mr-1" />Reprocessar repasse</Button>}
+                {['split_pending', 'paid_by_debtor'].includes(a.status) && <Button size="sm" variant="outline" onClick={() => act('check', a)}><RefreshCw className="w-3 h-3 mr-1" />Verificar repasse</Button>}
+                {asFinancier && a.status === 'settlement_failed' && <Button size="sm" variant="outline" onClick={() => act('retry', a)}><RefreshCw className="w-3 h-3 mr-1" />Reprocessar repasse</Button>}
               </TableCell>
             </TableRow>
           );
@@ -229,7 +257,7 @@ export function AnticipationPage({ companyId }: Props) {
   return (
     <div className="space-y-6">
       <div><h1 className="text-2xl font-bold">Antecipação</h1>
-        <p className="text-muted-foreground">Ceda boletos Pagando.net a um financiador. Quando o sacado paga, o valor líquido vai direto para a conta do financiador.</p></div>
+        <p className="text-muted-foreground">Ceda boletos Pagando.net a um financiador: você recebe o valor líquido no desembolso e, quando o sacado paga, o valor do boleto vai direto para a conta do financiador. Título cedido fica travado em Contas a Receber.</p></div>
       <Tabs defaultValue={isFin && financiers.length === 0 ? 'financier' : 'request'}>
         <TabsList>
           <TabsTrigger value="request">Solicitar</TabsTrigger>
@@ -300,7 +328,8 @@ export function AnticipationPage({ companyId }: Props) {
                   <div className="mt-4 flex flex-wrap items-center justify-end gap-6 text-sm">
                     <div>Face: <b>{brl(simulation.face)}</b></div>
                     <div>Deságio: <b>{brl(simulation.discount)}</b></div>
-                    <div>Líquido: <b>{brl(simulation.net)}</b></div>
+                    {simulation.fee > 0 && <div>Taxa da plataforma: <b>{brl(simulation.fee)}</b></div>}
+                    <div>Você recebe: <b>{brl(simulation.net)}</b></div>
                     <Button onClick={request} disabled={sending}>{sending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Solicitar antecipação</Button>
                   </div>
                 )}

@@ -3,7 +3,7 @@ import { ModuleBrandMark } from '@/components/ModuleBrandMark';
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings, MessageCircle, Pause, Play } from 'lucide-react';
+import { Plus, Filter, Check, X, Loader2, UserPlus, Trash2, HelpCircle, Pencil, Sparkles, QrCode, Settings, MessageCircle, Pause, Play, Lock } from 'lucide-react';
 import { AiCategoryHelper } from './AiCategoryHelper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -891,7 +891,14 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(record.status)}
-                      {(record as any).assignment_id && <Badge variant="outline" className="ml-1">Cedido</Badge>}
+                      {record.assignment_lock
+                        ? <Badge variant="outline" className="ml-1 gap-1" title="Título em antecipação: valor, vencimento e baixa ficam travados">
+                            <Lock className="h-3 w-3" />
+                            {['requested', 'approved'].includes(record.assignment_lock.status)
+                              ? 'Em análise (antecipação)'
+                              : `Cedido${record.assignment_lock.financier ? ` a ${record.assignment_lock.financier}` : ''}`}
+                          </Badge>
+                        : (record as any).assignment_id && <Badge variant="outline" className="ml-1">Cedido</Badge>}
                       {record.source === 'necta' && (
                         <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/30"><ModuleBrandMark module="payments" size={12} /></Badge>
                       )}
@@ -901,14 +908,20 @@ export function PayablesReceivablesPage({ companyId, onNavigate }: PayablesRecei
                     {record.source === 'necta' && (
                       <div className="flex justify-end items-center gap-2">
                         <span className="text-xs text-muted-foreground">Baixa automática</span>
-                        {record.status === 'pending' && (
+                        {record.status === 'pending' && !record.assignment_lock && (
                           <Button size="sm" variant="ghost" title="Cancelar cobrança" onClick={() => setGatewayCancel(record)}>
                             <X className="h-4 w-4 text-red-600" />
                           </Button>
                         )}
                       </div>
                     )}
-                    {record.status === 'pending' && record.source !== 'necta' && (
+                    {record.source !== 'necta' && record.assignment_lock && (
+                      <div className="flex justify-end items-center gap-1 text-xs text-muted-foreground" title="Para alterar, cancele a solicitação na tela Antecipação (enquanto não aprovada) ou fale com o financiador.">
+                        <Lock className="h-3 w-3" />
+                        <span>{['requested', 'approved'].includes(record.assignment_lock.status) ? 'Em antecipação — aguardando o financiador' : 'Baixa automática pelo boleto cedido'}</span>
+                      </div>
+                    )}
+                    {record.status === 'pending' && record.source !== 'necta' && !record.assignment_lock && (
                       <div className="flex justify-end gap-2">
                         {record.type === 'receivable' && !record.is_amount_pending && (
                           <Button

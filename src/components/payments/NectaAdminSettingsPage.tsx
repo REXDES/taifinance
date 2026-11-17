@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { CheckCircle2, Copy, Loader2, Plus, RefreshCw, Trash2, XCircle } from 'lucide-react';
+import { AnticipationSettingsCard } from '@/components/credit/anticipation/AnticipationSettingsCard';
 
 interface Props { companyId: string | null }
 
@@ -22,6 +23,8 @@ export function NectaAdminSettingsPage({ companyId }: Props) {
   const { user } = useAuth();
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  // Dados do token do marketplace (GET /users/me): marketplace filho, estabelecimento principal, papéis.
+  const [me, setMe] = useState<any>(null);
   const [scope, setScope] = useState('marketplaces');
   const [scopeUuid, setScopeUuid] = useState('');
   const [endpoints, setEndpoints] = useState<any[]>([]);
@@ -49,8 +52,10 @@ export function NectaAdminSettingsPage({ companyId }: Props) {
     setTesting(true);
     try {
       const resp = await nectaCall<any>('/users/me');
+      setMe(resp ?? null);
       setTestResult({ ok: true, message: `Conectado como ${resp?.email ?? resp?.name ?? 'token de API'}` });
     } catch (e) {
+      setMe(null);
       setTestResult({ ok: false, message: (e as Error).message });
     }
     setTesting(false);
@@ -109,7 +114,12 @@ export function NectaAdminSettingsPage({ companyId }: Props) {
           <TabsTrigger value="api">API</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="events">Eventos recebidos</TabsTrigger>
+          <TabsTrigger value="anticipation">Antecipação</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="anticipation">
+          <AnticipationSettingsCard suggestedRecipientId={me?.mainEstablishmentId ?? null} />
+        </TabsContent>
 
         <TabsContent value="api">
           <Card>
@@ -129,6 +139,28 @@ export function NectaAdminSettingsPage({ companyId }: Props) {
                   {testResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                   <AlertDescription className="break-words text-xs">{testResult.message}</AlertDescription>
                 </Alert>
+              )}
+              {me && (
+                <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1 rounded-md border p-3 text-sm">
+                  <span className="text-muted-foreground">Marketplace</span>
+                  <span className="break-all">{me.marketplace?.name ?? '—'}{me.marketplace?.id ? ` (${me.marketplace.id})` : ''}</span>
+                  <span className="text-muted-foreground">Marketplace filho</span>
+                  <span>{me.isChildMarketplace === true ? 'Sim — o saldo fica no estabelecimento principal' : me.isChildMarketplace === false ? 'Não (marketplace raiz)' : 'Não informado'}</span>
+                  <span className="text-muted-foreground">Estabelecimento principal</span>
+                  <span className="break-all">
+                    {me.mainEstablishmentId ? `${me.mainEstablishmentName ?? 'sem nome'} (${me.mainEstablishmentId})` : 'Nenhum vinculado'}
+                    {me.mainEstablishmentId && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" title="Copiar ID"
+                        onClick={() => { navigator.clipboard.writeText(me.mainEstablishmentId); toast.success('ID copiado'); }}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </span>
+                  <span className="text-muted-foreground">Token vinculado a estabelecimento</span>
+                  <span>{me.establishment?.name ?? (me.establishment ? 'Sim' : 'Não (escopo do marketplace)')}</span>
+                  <span className="text-muted-foreground">Papéis do token</span>
+                  <span>{Array.isArray(me.roles) && me.roles.length ? me.roles.join(', ') : '—'}{me.canAuthorizeSplit ? ' · autoriza split' : ''}</span>
+                </div>
               )}
               <div>
                 <Label>URL para receber notificações (cadastre no gateway)</Label>

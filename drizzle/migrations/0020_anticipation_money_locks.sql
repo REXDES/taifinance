@@ -475,6 +475,20 @@ BEGIN
   IF NOT public.ra_is_end_user() THEN
     RETURN coalesce(NEW, OLD);
   END IF;
+  -- Nova cobrança (ou troca de vínculo) apontando para um título já em antecipação:
+  -- o sacado só pode pagar o boleto que foi cedido.
+  IF TG_OP IN ('INSERT', 'UPDATE') AND NEW.payable_receivable_id IS NOT NULL
+     AND (TG_OP = 'INSERT' OR NEW.payable_receivable_id IS DISTINCT FROM OLD.payable_receivable_id)
+     AND EXISTS (
+       SELECT 1 FROM public.receivable_assignments a
+        WHERE a.payable_receivable_id = NEW.payable_receivable_id
+          AND a.status = ANY (public.ra_active_statuses())
+     ) THEN
+    RAISE EXCEPTION 'Este título está em antecipação: não é possível vincular outra cobrança a ele.';
+  END IF;
+  IF TG_OP = 'INSERT' THEN
+    RETURN NEW;
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.receivable_assignments a
      WHERE a.status = ANY (public.ra_active_statuses())
@@ -506,7 +520,7 @@ BEGIN
 END;
 $$;
 DROP TRIGGER IF EXISTS ra_lock_sale ON public.necta_sales;
-CREATE TRIGGER ra_lock_sale BEFORE UPDATE OR DELETE ON public.necta_sales
+CREATE TRIGGER ra_lock_sale BEFORE INSERT OR UPDATE OR DELETE ON public.necta_sales
   FOR EACH ROW EXECUTE FUNCTION public.ra_lock_sale();
 
 -- ------------------------------------------- cessão e histórico só pelo servidor

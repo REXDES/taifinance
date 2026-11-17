@@ -141,6 +141,13 @@
       "when": 1793298276801,
       "tag": "0019_assignment_disbursement_methods",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794926819764,
+      "tag": "0020_anticipation_money_locks",
+      "breakpoints": true
     }
   ]
 }
